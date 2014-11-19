@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 include(CheckIncludeFiles)
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
+include(CheckLibraryExists)
 
 project (KD)
     set(DIST_DIR ${CMAKE_CURRENT_LIST_DIR}/../distribution)
@@ -8,17 +8,12 @@ project (KD)
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wfatal-errors -pedantic")
 
-    find_package(EGL REQUIRED)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${EGL_INCLUDE_DIR}")
-    find_package(X11 REQUIRED)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${X11_INCLUDE_DIR}")
-    set(KD_WINDOW_SUPPORTED ${X11_FOUND})
-    configure_file(${DIST_DIR}/KD/kdplatform.h.in ${DIST_DIR}/KD/kdplatform.h)
-
-    set(KD_SOURCE  ${SRC_DIR}/kd.c)
+    set(KD_SOURCE ${SRC_DIR}/kd.c)
     list(APPEND KD_SOURCE ${KD_SOURCE})
     list(APPEND KD_INCLUDE_DIRS ${DIST_DIR})
 
+    check_include_files("X11/Xlib.h;X11/Xutil.h" KD_WINDOW_SUPPORTED)
+    configure_file(${DIST_DIR}/KD/kdplatform.h.in ${DIST_DIR}/KD/kdplatform.h)
     check_include_files(threads.h HAVE_THREADS_H)
     if(NOT HAVE_THREADS_H)
         list(APPEND KD_SOURCE ${SRC_DIR}/thirdparty/threads/threads.c)
@@ -30,5 +25,12 @@ project (KD)
         list(APPEND KD_INCLUDE_DIRS ${SRC_DIR}/thirdparty/mqueue)
     endif()
 
+    check_library_exists(X11 XOpenDisplay "" HAVE_X11)
+    if(HAVE_X11)
+        list(APPEND KD_LIBRARIES X11)
+    endif()
+    list(APPEND KD_LIBRARIES ${CMAKE_DL_LIBS})
+
     include_directories(${KD_INCLUDE_DIRS} )
-    add_library (KD STATIC ${KD_SOURCE})
+    add_library (KD SHARED ${KD_SOURCE})
+    target_link_libraries(KD ${KD_LIBRARIES})

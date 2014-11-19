@@ -28,15 +28,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdnoreturn.h>
-#include <math.h>
 
-#include <unistd.h>
+#include <KHR/khrplatform.h>
 
 #cmakedefine KD_WINDOW_SUPPORTED
 #define MESA_EGL_NO_X11_HEADERS
 
-#define KD_API
-#define KD_APIENTRY
+#define KD_API KHRONOS_APICALL
+#define KD_APIENTRY KHRONOS_APIENTRY
 #define KD_NORETURN noreturn
 
 #ifdef NDEBUG
@@ -57,7 +56,7 @@ typedef int16_t KDint16;
 typedef uint16_t KDuint16;
 typedef uintptr_t KDuintptr;
 typedef size_t KDsize;
-typedef ssize_t KDssize;
+typedef khronos_ssize_t KDssize;
 #define KDINT_MIN INT32_MIN
 #define KDINT_MAX INT32_MAX
 #define KDUINT_MAX UINT32_MAX

@@ -22,10 +22,12 @@
 #define _POSIX_C_SOURCE 200809L
 
 /******************************************************************************
- * Khronos includes
+ * KD includes
  ******************************************************************************/
 
 #include <KD/kd.h>
+#include <KD/KHR_float64.h>
+#include <KD/EXT_platform_window.h>
 
 /******************************************************************************
  * C11 includes
@@ -58,8 +60,10 @@
  * Platform includes
  ******************************************************************************/
 
+#ifdef KD_WINDOW_SUPPORTED
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#endif
 
 /******************************************************************************
  * Workarrounds
@@ -433,75 +437,9 @@ struct KDCallback
     void* eventuserptr;
 } KDCallback;
 static thread_local struct KDCallback callbacks[999] = {{0}};
-
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
-    /* Translate events */
-#ifdef KD_WINDOW_SUPPORTED
-    KDEvent* event = kdCreateEvent();
-    EGLNativeDisplayType display = XOpenDisplay(NULL);
-    if (XPending(display) > 0)
-    {
-        XEvent xevent = {0};
-        XNextEvent(display,&xevent);
-        switch(xevent.type)
-        {
-            case ButtonPress:
-            {
-                event->type = KD_EVENT_INPUT_POINTER;
-                event->timestamp = kdGetTimeUST();
-                event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                event->data.inputpointer.x = xevent.xbutton.x;
-                event->data.inputpointer.y = xevent.xbutton.y;
-                event->data.inputpointer.select = 1;
-
-                KDboolean has_callback = 0;
-                for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
-                {
-                    if(callbacks[i].eventtype == KD_EVENT_INPUT)
-                    {
-                        has_callback = 1;
-                        callbacks[i].func(event);
-                    }
-                }
-
-                if(has_callback)
-                {
-                    kdFreeEvent(event);
-                }
-                else
-                {
-                    kdPostEvent(event);
-                }
-                break;
-            }
-            case ConfigureNotify:
-            {
-                event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-                event->timestamp = kdGetTimeUST();
-                kdPostEvent(event);
-                break;
-            }
-            case ClientMessage:
-            {
-                if((Atom)xevent.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", 0))
-                {
-                    event->type = KD_EVENT_WINDOW_CLOSE;
-                    event->timestamp = kdGetTimeUST();
-                    kdPostEvent(event);
-                    break;
-                }
-            }
-            default:
-            {
-                XPutBackEvent(display,&xevent);
-                kdFreeEvent(event);
-                break;
-            }
-        }
-    }
-#endif
-    return 0;
+    return kdPumpPlatformEvents(EGL_PLATFORM_X11_KHR);
 }
 
 /* kdInstallCallback: Install or remove a callback function for event processing. */
@@ -1395,46 +1333,53 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfl
 /* kdCreateWindow: Create a window. */
  typedef struct KDWindow
 {
-    EGLNativeWindowType window;
-    EGLNativeDisplayType display;
+    void* window;
+    void* display;
     EGLint format;
+    EGLenum platform;
 } KDWindow;
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, void *eventuserptr)
 {
-    KDWindow* window = (KDWindow*)kdMalloc(sizeof(KDWindow));
-    eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-    window->display = XOpenDisplay(NULL);
-    window->window = XCreateSimpleWindow(window->display, 
-        XRootWindow(window->display, XDefaultScreen(window->display)), 0, 0, 
-        XWidthOfScreen(XDefaultScreenOfDisplay(window->display)), 
-        XHeightOfScreen(XDefaultScreenOfDisplay(window->display)), 0, 
-        XBlackPixel(window->display, XDefaultScreen(window->display)), 
-        XWhitePixel(window->display, XDefaultScreen(window->display)));
-    XMapWindow(window->display, window->window);
-    Atom wm_del_win_msg = XInternAtom(window->display, "WM_DELETE_WINDOW", 0);
-    XSetWMProtocols(window->display, window->window, &wm_del_win_msg, 1);
-    return window;
+    return kdCreatePlatformWindow(EGL_PLATFORM_X11_KHR, display, config, eventuserptr);
 }
 
 /* kdDestroyWindow: Destroy a window. */
 KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 {
-    XCloseDisplay(window->display);
+    KDint retval = -1;
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        XCloseDisplay((Display*)window->display);
+        retval = 0;
+    }
+    else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        kdSetError(KD_EOPNOTSUPP);
+    }
     kdFree(window);
-    return 0;
+    return retval;
 }
 
 /* kdSetWindowPropertybv, kdSetWindowPropertyiv, kdSetWindowPropertycv: Set a window property to request a change in the on-screen representation of the window. */
 KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, const KDboolean *param)
 {
-    return 0;
+    kdSetError(KD_EOPNOTSUPP);
+    return -1;
 }
 KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, const KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-        XMoveResizeWindow(window->display, window->window, 0, 0, param[0], param[1]);
-        return 0;
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            XMoveResizeWindow((Display*)window->display, (Window)window->window, 0, 0, param[0], param[1]);
+            return 0;
+        }
+        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            kdSetError(KD_EOPNOTSUPP);
+            return -1;
+        }
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -1443,8 +1388,16 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-        XStoreName(window->display, window->window, param);
-        return 0;
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            XStoreName((Display*)window->display, (Window)window->window, param);
+            return 0;
+        }
+        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            kdSetError(KD_EOPNOTSUPP);
+            return -1;
+        }
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -1453,15 +1406,24 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 /* kdGetWindowPropertybv, kdGetWindowPropertyiv, kdGetWindowPropertycv: Get the current value of a window property. */
 KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KDWindow *window, KDint pname, KDboolean *param)
 {
-    return 0;
+    kdSetError(KD_EOPNOTSUPP);
+    return -1;
 }
 KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-        param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(window->display));
-        param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(window->display));
-        return 0;
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            param[0] = XWidthOfScreen(XDefaultScreenOfDisplay((Display*)window->display));
+            param[1] = XHeightOfScreen(XDefaultScreenOfDisplay((Display*)window->display));
+            return 0;
+        }
+        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            kdSetError(KD_EOPNOTSUPP);
+            return -1;
+        }
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -1470,8 +1432,16 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-        XFetchName(window->display, window->window, &param);
-        return 0;
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            XFetchName((Display*)window->display, (Window)window->window, &param);
+            return 0;
+        } 
+        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            kdSetError(KD_EOPNOTSUPP);
+            return -1;
+        }
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -1480,9 +1450,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-    XFlush(window->display);
-    *nativewindow = window->window;
-    return 0;
+    return kdRealizePlatformWindow(window, (void*)nativewindow, KD_NULL);
 }
 #endif
 
@@ -1509,6 +1477,133 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 /******************************************************************************
  * Extensions
  ******************************************************************************/
+
+#ifdef KD_WINDOW_SUPPORTED
+/* kdPumpPlatformEvents: Pump the thread's event queue, performing callbacks. */
+KD_API KDint KD_APIENTRY kdPumpPlatformEvents(EGLenum platform)
+{
+    if(platform == EGL_PLATFORM_X11_KHR)
+    {
+        Display* display = XOpenDisplay(NULL);
+        if (XPending(display) > 0)
+        {
+            KDEvent* event = kdCreateEvent();
+            XEvent xevent = {0};
+            XNextEvent(display,&xevent);
+            switch(xevent.type)
+            {
+                case ButtonPress:
+                {
+                    event->type = KD_EVENT_INPUT_POINTER;
+                    event->timestamp = kdGetTimeUST();
+                    event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+                    event->data.inputpointer.x = xevent.xbutton.x;
+                    event->data.inputpointer.y = xevent.xbutton.y;
+                    event->data.inputpointer.select = 1;
+
+                    KDboolean has_callback = 0;
+                    for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                    {
+                        if(callbacks[i].eventtype == KD_EVENT_INPUT)
+                        {
+                            has_callback = 1;
+                            callbacks[i].func(event);
+                        }
+                    }
+
+                    if(has_callback)
+                    {
+                        kdFreeEvent(event);
+                    }
+                    else
+                    {
+                        kdPostEvent(event);
+                    }
+                    break;
+                }
+                case ConfigureNotify:
+                {
+                    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+                    event->timestamp = kdGetTimeUST();
+                    kdPostEvent(event);
+                    break;
+                }
+                case ClientMessage:
+                {
+                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", 0))
+                    {
+                        event->type = KD_EVENT_WINDOW_CLOSE;
+                        event->timestamp = kdGetTimeUST();
+                        kdPostEvent(event);
+                        break;
+                    }
+                }
+                default:
+                {
+                    XPutBackEvent(display,&xevent);
+                    kdFreeEvent(event);
+                    break;
+                }
+            }
+        }
+    }
+    else if(platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+    }
+    else
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+    }
+    return 0;
+}
+
+/* kdCreatePlatformWindow: Create a window. */
+KD_API KDWindow *KD_APIENTRY kdCreatePlatformWindow(EGLenum platform, EGLDisplay display, EGLConfig config, void *eventuserptr)
+{
+    KDWindow* window = (KDWindow*)kdMalloc(sizeof(KDWindow));
+    eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
+    window->platform = platform;
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        window->display = (void*)XOpenDisplay(display);
+        window->window = (void*)XCreateSimpleWindow((Display*)window->display, 
+            XRootWindow((Display*)window->display, XDefaultScreen((Display*)window->display)), 0, 0, 
+            XWidthOfScreen(XDefaultScreenOfDisplay((Display*)window->display)), 
+            XHeightOfScreen(XDefaultScreenOfDisplay((Display*)window->display)), 0, 
+            XBlackPixel((Display*)window->display, XDefaultScreen((Display*)window->display)), 
+            XWhitePixel((Display*)window->display, XDefaultScreen((Display*)window->display)));
+        XMapWindow((Display*)window->display, (Window)window->window);
+        Atom wm_del_win_msg = XInternAtom((Display*)window->display, "WM_DELETE_WINDOW", 0);
+        XSetWMProtocols((Display*)window->display, (Window)window->window, &wm_del_win_msg, 1);
+    }
+    else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        window = KD_NULL;
+    }
+    else
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        window = KD_NULL;
+    }
+    return window;
+}
+
+/* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
+KD_API KDint KD_APIENTRY kdRealizePlatformWindow(KDWindow *window, void *nativewindow, void *nativedisplay)
+{
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        XFlush((Display*)window->display);
+    }
+    *(KDuintptr*)nativewindow = *(KDuintptr*)window->window;
+    *(KDuintptr*)nativedisplay = *(KDuintptr*)window->display;
+    return 0;
+}
+#endif
 
 /******************************************************************************
  * Thirdparty

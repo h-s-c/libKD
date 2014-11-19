@@ -9,5 +9,4 @@ ninja
 
 #mkdir -p $BUILDSYSTEM_DIR/builds/musl
 #cd $BUILDSYSTEM_DIR/builds/musl
-#cmake -DCMAKE_C_COMPILER=musl-gcc -DCMAKE_BUILD_TYPE=Debug -GNinja $BUILDSYSTEM_DIR
-#ninja
+#musl-gcc -shared -std=c11 -fPIC -o libKD.so $ROOT_DIR/sourcecode/kd.c -I$ROOT_DIR/distribution
