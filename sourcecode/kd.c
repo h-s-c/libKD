@@ -27,7 +27,9 @@
 
 #include <KD/kd.h>
 #include <KD/KHR_float64.h>
-#include <KD/EXT_platform_window.h>
+#define MESA_EGL_NO_X11_HEADERS
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 /******************************************************************************
  * C11 includes
@@ -191,7 +193,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine, arg);
     if(error == thrd_success)
     {
-        KDchar* queueid = KD_NULL;
+        KDchar queueid[KD_ULTOSTR_MAXLEN];
         kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
         mq_open(queueid,O_CREAT);
     }
@@ -210,7 +212,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
-    KDchar* queueid = KD_NULL;
+    KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     mq_unlink(queueid);
     thrd_exit(*(int*)retval);
@@ -219,7 +221,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
-    KDchar* queueid = KD_NULL;
+    KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
     int error = thrd_join(thread->thrd, *retval);
     if(error == thrd_success)
@@ -407,7 +409,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     clock_gettime(CLOCK_REALTIME, &tm);
     tm.tv_nsec += timeout;
 
-    KDchar* queueid = KD_NULL;
+    KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     mqd_t queue = mq_open(queueid, O_RDONLY);
     if(mq_timedreceive( queue, (char*)event, sizeof(struct KDEvent), NULL, &tm ) == -1) 
@@ -439,7 +441,83 @@ struct KDCallback
 static thread_local struct KDCallback callbacks[999] = {{0}};
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
-    return kdPumpPlatformEvents(EGL_PLATFORM_X11_KHR);
+    EGLenum platform = EGL_PLATFORM_X11_KHR;
+    if(platform == EGL_PLATFORM_X11_KHR)
+    {
+        Display* display = XOpenDisplay(NULL);
+        if (XPending(display) > 0)
+        {
+            KDEvent* event = kdCreateEvent();
+            XEvent xevent = {0};
+            XNextEvent(display,&xevent);
+            switch(xevent.type)
+            {
+                case ButtonPress:
+                {
+                    event->type = KD_EVENT_INPUT_POINTER;
+                    event->timestamp = kdGetTimeUST();
+                    event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+                    event->data.inputpointer.x = xevent.xbutton.x;
+                    event->data.inputpointer.y = xevent.xbutton.y;
+                    event->data.inputpointer.select = 1;
+
+                    KDboolean has_callback = 0;
+                    for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                    {
+                        if(callbacks[i].eventtype == KD_EVENT_INPUT)
+                        {
+                            has_callback = 1;
+                            callbacks[i].func(event);
+                        }
+                    }
+
+                    if(has_callback)
+                    {
+                        kdFreeEvent(event);
+                    }
+                    else
+                    {
+                        kdPostEvent(event);
+                    }
+                    break;
+                }
+                case ConfigureNotify:
+                {
+                    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+                    event->timestamp = kdGetTimeUST();
+                    kdPostEvent(event);
+                    break;
+                }
+                case ClientMessage:
+                {
+                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", 0))
+                    {
+                        event->type = KD_EVENT_WINDOW_CLOSE;
+                        event->timestamp = kdGetTimeUST();
+                        kdPostEvent(event);
+                        break;
+                    }
+                }
+                default:
+                {
+                    XPutBackEvent(display,&xevent);
+                    kdFreeEvent(event);
+                    break;
+                }
+            }
+        }
+    }
+    else if(platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+    }
+    else
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+    }
+    return 0;
 }
 
 /* kdInstallCallback: Install or remove a callback function for event processing. */
@@ -472,7 +550,7 @@ KD_API KDint KD_APIENTRY kdPostEvent(KDEvent *event)
 }
 KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 {
-    KDchar* queueid = KD_NULL;
+    KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
     mqd_t queue = mq_open(queueid, O_WRONLY);
     mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
@@ -506,7 +584,7 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
         kdAssert(0);
     }
 
-    KDchar* queueid = KD_NULL;
+    KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     mq_open(queueid,O_CREAT);
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
@@ -517,7 +595,7 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
-    KDchar* queueid = KD_NULL;
+    KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     mq_unlink(queueid);
     exit(status);
@@ -893,13 +971,15 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 /* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
 KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 {
-    result = (KDTm*)gmtime(timep);
-    return result;
+    KDTm * retval = (KDTm*)gmtime(timep);
+    *result = *retval;
+    return retval;
 }
 KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 {
-    result = (KDTm*)localtime(timep);
-    return result;
+    KDTm * retval = (KDTm*)localtime(timep);
+    *result = *retval;
+    return retval;
 }
 
 /* kdUSTAtEpoch: Get the UST corresponding to KDtime 0. */
@@ -1340,7 +1420,33 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfl
 } KDWindow;
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, void *eventuserptr)
 {
-    return kdCreatePlatformWindow(EGL_PLATFORM_X11_KHR, display, config, eventuserptr);
+    KDWindow* window = (KDWindow*)kdMalloc(sizeof(KDWindow));
+    eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
+    window->platform = EGL_PLATFORM_X11_KHR;
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        window->display = (void*)XOpenDisplay(display);
+        window->window = (void*)XCreateSimpleWindow((Display*)window->display, 
+            XRootWindow((Display*)window->display, XDefaultScreen((Display*)window->display)), 0, 0, 
+            XWidthOfScreen(XDefaultScreenOfDisplay((Display*)window->display)), 
+            XHeightOfScreen(XDefaultScreenOfDisplay((Display*)window->display)), 0, 
+            XBlackPixel((Display*)window->display, XDefaultScreen((Display*)window->display)), 
+            XWhitePixel((Display*)window->display, XDefaultScreen((Display*)window->display)));
+        XMapWindow((Display*)window->display, (Window)window->window);
+        Atom wm_del_win_msg = XInternAtom((Display*)window->display, "WM_DELETE_WINDOW", 0);
+        XSetWMProtocols((Display*)window->display, (Window)window->window, &wm_del_win_msg, 1);
+    }
+    else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        window = KD_NULL;
+    }
+    else
+    {
+        kdSetError(KD_EOPNOTSUPP);
+        window = KD_NULL;
+    }
+    return window;
 }
 
 /* kdDestroyWindow: Destroy a window. */
@@ -1450,7 +1556,12 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-    return kdRealizePlatformWindow(window, (void*)nativewindow, KD_NULL);
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        XFlush((Display*)window->display);
+    }
+    *nativewindow = window->window;
+    return 0;
 }
 #endif
 
@@ -1477,133 +1588,6 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 /******************************************************************************
  * Extensions
  ******************************************************************************/
-
-#ifdef KD_WINDOW_SUPPORTED
-/* kdPumpPlatformEvents: Pump the thread's event queue, performing callbacks. */
-KD_API KDint KD_APIENTRY kdPumpPlatformEvents(EGLenum platform)
-{
-    if(platform == EGL_PLATFORM_X11_KHR)
-    {
-        Display* display = XOpenDisplay(NULL);
-        if (XPending(display) > 0)
-        {
-            KDEvent* event = kdCreateEvent();
-            XEvent xevent = {0};
-            XNextEvent(display,&xevent);
-            switch(xevent.type)
-            {
-                case ButtonPress:
-                {
-                    event->type = KD_EVENT_INPUT_POINTER;
-                    event->timestamp = kdGetTimeUST();
-                    event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                    event->data.inputpointer.x = xevent.xbutton.x;
-                    event->data.inputpointer.y = xevent.xbutton.y;
-                    event->data.inputpointer.select = 1;
-
-                    KDboolean has_callback = 0;
-                    for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
-                    {
-                        if(callbacks[i].eventtype == KD_EVENT_INPUT)
-                        {
-                            has_callback = 1;
-                            callbacks[i].func(event);
-                        }
-                    }
-
-                    if(has_callback)
-                    {
-                        kdFreeEvent(event);
-                    }
-                    else
-                    {
-                        kdPostEvent(event);
-                    }
-                    break;
-                }
-                case ConfigureNotify:
-                {
-                    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-                    event->timestamp = kdGetTimeUST();
-                    kdPostEvent(event);
-                    break;
-                }
-                case ClientMessage:
-                {
-                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", 0))
-                    {
-                        event->type = KD_EVENT_WINDOW_CLOSE;
-                        event->timestamp = kdGetTimeUST();
-                        kdPostEvent(event);
-                        break;
-                    }
-                }
-                default:
-                {
-                    XPutBackEvent(display,&xevent);
-                    kdFreeEvent(event);
-                    break;
-                }
-            }
-        }
-    }
-    else if(platform == EGL_PLATFORM_WAYLAND_KHR)
-    {
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
-    }
-    else
-    {
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
-    }
-    return 0;
-}
-
-/* kdCreatePlatformWindow: Create a window. */
-KD_API KDWindow *KD_APIENTRY kdCreatePlatformWindow(EGLenum platform, EGLDisplay display, EGLConfig config, void *eventuserptr)
-{
-    KDWindow* window = (KDWindow*)kdMalloc(sizeof(KDWindow));
-    eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-    window->platform = platform;
-    if(window->platform == EGL_PLATFORM_X11_KHR)
-    {
-        window->display = (void*)XOpenDisplay(display);
-        window->window = (void*)XCreateSimpleWindow((Display*)window->display, 
-            XRootWindow((Display*)window->display, XDefaultScreen((Display*)window->display)), 0, 0, 
-            XWidthOfScreen(XDefaultScreenOfDisplay((Display*)window->display)), 
-            XHeightOfScreen(XDefaultScreenOfDisplay((Display*)window->display)), 0, 
-            XBlackPixel((Display*)window->display, XDefaultScreen((Display*)window->display)), 
-            XWhitePixel((Display*)window->display, XDefaultScreen((Display*)window->display)));
-        XMapWindow((Display*)window->display, (Window)window->window);
-        Atom wm_del_win_msg = XInternAtom((Display*)window->display, "WM_DELETE_WINDOW", 0);
-        XSetWMProtocols((Display*)window->display, (Window)window->window, &wm_del_win_msg, 1);
-    }
-    else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
-    {
-        kdSetError(KD_EOPNOTSUPP);
-        window = KD_NULL;
-    }
-    else
-    {
-        kdSetError(KD_EOPNOTSUPP);
-        window = KD_NULL;
-    }
-    return window;
-}
-
-/* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
-KD_API KDint KD_APIENTRY kdRealizePlatformWindow(KDWindow *window, void *nativewindow, void *nativedisplay)
-{
-    if(window->platform == EGL_PLATFORM_X11_KHR)
-    {
-        XFlush((Display*)window->display);
-    }
-    *(KDuintptr*)nativewindow = *(KDuintptr*)window->window;
-    *(KDuintptr*)nativedisplay = *(KDuintptr*)window->display;
-    return 0;
-}
-#endif
 
 /******************************************************************************
  * Thirdparty
