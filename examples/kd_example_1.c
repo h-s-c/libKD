@@ -2,8 +2,9 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-#include <unistd.h>
+#include <unistd.h> // sleep()
 
+/* Simple window creation and drawing example */
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
     kdLogMessage("Starting example 1\n");
