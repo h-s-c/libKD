@@ -197,7 +197,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     {
         KDchar queueid[KD_ULTOSTR_MAXLEN];
         kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
-        mq_open(queueid,O_CREAT);
+        mq_open(queueid,O_CREAT, 0666, NULL);
     }
     else if(error == thrd_nomem)
     {
