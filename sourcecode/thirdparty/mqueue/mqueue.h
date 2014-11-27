@@ -3,11 +3,14 @@
 
 #include <stdint.h>
 
-#include <sys/types.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct sigevent sigevent;
+typedef struct timespec timespec;
 
 typedef uintptr_t mqd_t;
 

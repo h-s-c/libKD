@@ -22,8 +22,8 @@ freely, subject to the following restrictions:
     distribution.
 */
 
-#ifndef _TINYCTHREAD_H_
-#define _TINYCTHREAD_H_
+#ifndef _THREADS_H_
+#define _THREADS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -472,5 +472,5 @@ int tss_set(tss_t key, void *val);
 }
 #endif
 
-#endif /* _TINYTHREAD_H_ */
+#endif /* _THREADS_H_ */
 
