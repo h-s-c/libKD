@@ -486,19 +486,20 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 {
                     if(XLookupKeysym(&xevent.xkey, 0) == XK_Escape)
                     {
-                        event->type = KD_EVENT_WINDOW_CLOSE;
+                        event->type      = KD_EVENT_WINDOW_CLOSE;
                         event->timestamp = kdGetTimeUST();
+
                         kdPostEvent(event);
                         break;
                     }
                 }
                 case ButtonPress:
                 {
-                    event->type = KD_EVENT_INPUT_POINTER;
-                    event->timestamp = kdGetTimeUST();
-                    event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                    event->data.inputpointer.x = xevent.xbutton.x;
-                    event->data.inputpointer.y = xevent.xbutton.y;
+                    event->type                     = KD_EVENT_INPUT_POINTER;
+                    event->timestamp                = kdGetTimeUST();
+                    event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                    event->data.inputpointer.x      = xevent.xbutton.x;
+                    event->data.inputpointer.y      = xevent.xbutton.y;
                     event->data.inputpointer.select = 1;
 
                     KDboolean has_callback = 0;
@@ -523,8 +524,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 }
                 case ConfigureNotify:
                 {
-                    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+                    event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
                     event->timestamp = kdGetTimeUST();
+
                     kdPostEvent(event);
                     break;
                 }
@@ -532,8 +534,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 {
                     if((Atom)xevent.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", False))
                     {
-                        event->type = KD_EVENT_WINDOW_CLOSE;
+                        event->type      = KD_EVENT_WINDOW_CLOSE;
                         event->timestamp = kdGetTimeUST();
+
                         kdPostEvent(event);
                         break;
                     }
@@ -567,9 +570,10 @@ KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype
     {
         if(!callbacks[i].func)
         {
-           callbacks[i].func = func;
-           callbacks[i].eventtype = eventtype;
+           callbacks[i].func         = func;
+           callbacks[i].eventtype    = eventtype;
            callbacks[i].eventuserptr = eventuserptr;
+           
            return 0;
         }
     }
@@ -1043,27 +1047,30 @@ typedef struct KDTimer
 static void timerhandler(int sig, siginfo_t *si, void *uc)
 {
     KDTimer* timer = (KDTimer*)si->si_value.sival_ptr;
+
     KDEvent* event = kdCreateEvent();
-    event->type = KD_EVENT_TIMER;
+    event->type      = KD_EVENT_TIMER;
     event->timestamp = kdGetTimeUST();
-    event->userptr = timer->userptr;
+    event->userptr   = timer->userptr;
+
     kdPostThreadEvent(event, timer->thread);
 }
 KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
 {
     KDTimer* timer = (KDTimer*)kdMalloc(sizeof(KDTimer));
-    timer->thread = kdThreadSelf();
+    timer->thread  = kdThreadSelf();
     timer->userptr = eventuserptr;
 
     struct sigaction sa = {{0}};
-    sa.sa_flags = SA_SIGINFO;
+    sa.sa_flags     = SA_SIGINFO;
     sa.sa_sigaction = timerhandler;
+
     sigemptyset(&sa.sa_mask);
     sigaction(SIGRTMIN, &sa, NULL);
 
     struct sigevent se = {{0}};
-    se.sigev_notify = SIGEV_SIGNAL;
-    se.sigev_signo = SIGRTMIN;
+    se.sigev_notify          = SIGEV_SIGNAL;
+    se.sigev_signo           = SIGRTMIN;
     se.sigev_value.sival_ptr = &timer;
 
     timer_create(CLOCK_REALTIME, &se, &timer->timer);
@@ -1212,9 +1219,11 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
     struct stat* posixstat = {0};
     int retval = stat(pathname, posixstat);
-    buf->st_mode = posixstat->st_mode;
-    buf->st_size = posixstat->st_size;
+
+    buf->st_mode  = posixstat->st_mode;
+    buf->st_size  = posixstat->st_size;
     buf->st_mtime = posixstat->st_mtim.tv_sec;
+
     return retval;
 }
 
@@ -1222,9 +1231,11 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 {
     struct stat* posixstat = {0};
     int retval = fstat(fileno(file->file), posixstat);
-    buf->st_mode = posixstat->st_mode;
-    buf->st_size = posixstat->st_size;
+
+    buf->st_mode  = posixstat->st_mode;
+    buf->st_size  = posixstat->st_size;
     buf->st_mtime = posixstat->st_mtim.tv_sec;
+
     return retval;
 }
 
