@@ -1462,10 +1462,17 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfl
 #ifdef KD_WINDOW_SUPPORTED
 
 /* kdCreateWindow: Create a window. */
- typedef struct KDWindow
+typedef struct KDWindowX11
 {
-    EGLNativeWindowType window;
-    EGLNativeDisplayType display;
+    Window window;
+    Display* display;
+} KDWindowX11;
+typedef struct KDWindowWayland
+{
+} KDWindowWayland;
+typedef struct KDWindow
+{
+    void* nativewindow;
     EGLint format;
     EGLenum platform;
 } KDWindow;
@@ -1476,33 +1483,35 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     window->platform = EGL_PLATFORM_X11_KHR;
     if(window->platform == EGL_PLATFORM_X11_KHR)
     {
-        window->display = XOpenDisplay(NULL);
-        window->window = XCreateSimpleWindow(window->display, 
-            XRootWindow(window->display, XDefaultScreen(window->display)), 0, 0, 
-            XWidthOfScreen(XDefaultScreenOfDisplay(window->display)), 
-            XHeightOfScreen(XDefaultScreenOfDisplay(window->display)), 0, 
-            XBlackPixel(window->display, XDefaultScreen(window->display)), 
-            XWhitePixel(window->display, XDefaultScreen(window->display)));
-        XStoreName(window->display, window->window, "OpenKODE");
-        Atom wm_del_win_msg = XInternAtom(window->display, "WM_DELETE_WINDOW", False);
-        XSetWMProtocols(window->display, window->window, &wm_del_win_msg, 1);
-        Atom mwm_prop_hints = XInternAtom(window->display, "_MOTIF_WM_HINTS", True);
+        window->nativewindow = kdMalloc(sizeof(KDWindowX11));
+        KDWindowX11* x11window = window->nativewindow;
+        x11window->display = XOpenDisplay(NULL);
+        x11window->window = XCreateSimpleWindow(x11window->display, 
+            XRootWindow(x11window->display, XDefaultScreen(x11window->display)), 0, 0, 
+            XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display)), 
+            XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display)), 0, 
+            XBlackPixel(x11window->display, XDefaultScreen(x11window->display)), 
+            XWhitePixel(x11window->display, XDefaultScreen(x11window->display)));
+        XStoreName(x11window->display, x11window->window, "OpenKODE");
+        Atom wm_del_win_msg = XInternAtom(x11window->display, "WM_DELETE_WINDOW", False);
+        XSetWMProtocols(x11window->display, x11window->window, &wm_del_win_msg, 1);
+        Atom mwm_prop_hints = XInternAtom(x11window->display, "_MOTIF_WM_HINTS", True);
         long mwm_hints[5] = { 2, 0, 0, 0, 0 };
-        XChangeProperty(window->display, window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const unsigned char *)&mwm_hints, 5);
-        Atom netwm_prop_hints = XInternAtom(window->display, "_NET_WM_STATE", False);
+        XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const unsigned char *)&mwm_hints, 5);
+        Atom netwm_prop_hints = XInternAtom(x11window->display, "_NET_WM_STATE", False);
         Atom netwm_hints[3];
-        netwm_hints[0] = XInternAtom(window->display, "_NET_WM_STATE_FULLSCREEN", False);
-        netwm_hints[1] = XInternAtom(window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        netwm_hints[2] = XInternAtom(window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        XChangeProperty(window->display, window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *)&netwm_hints, 3); 
-        XMapWindow(window->display, window->window);
-        XFlush(window->display);
-        XSelectInput(window->display, window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
+        netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
+        netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+        netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+        XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *)&netwm_hints, 3); 
+        XMapWindow(x11window->display, x11window->window);
+        XFlush(x11window->display);
+        XSelectInput(x11window->display, x11window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
     }
     else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
-        kdSetError(KD_EOPNOTSUPP);
-        window = KD_NULL;
+        window->nativewindow = kdMalloc(sizeof(KDWindowWayland));
+        KDWindowWayland* waylandwindow = window->nativewindow;
     }
     else
     {
@@ -1518,7 +1527,9 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
     KDint retval = -1;
     if(window->platform == EGL_PLATFORM_X11_KHR)
     {
-        XCloseDisplay(window->display);
+        KDWindowX11* x11window = window->nativewindow;
+        XCloseDisplay(x11window->display);
+        kdFree(x11window);
         retval = 0;
     }
     else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -1541,7 +1552,8 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            XMoveResizeWindow(window->display, (Window)window->window, 0, 0, param[0], param[1]);
+            KDWindowX11* x11window = window->nativewindow;
+            XMoveResizeWindow(x11window->display, x11window->window, 0, 0, param[0], param[1]);
             return 0;
         }
         else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -1559,7 +1571,8 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            XStoreName(window->display, (Window)window->window, param);
+            KDWindowX11* x11window = window->nativewindow;
+            XStoreName(x11window->display, x11window->window, param);
             return 0;
         }
         else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -1584,8 +1597,9 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(window->display));
-            param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(window->display));
+            KDWindowX11* x11window = window->nativewindow;
+            param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display));
+            param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display));
             return 0;
         }
         else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -1603,7 +1617,8 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            XFetchName(window->display, (Window)window->window, &param);
+            KDWindowX11* x11window = window->nativewindow;
+            XFetchName(x11window->display, x11window->window, &param);
             return 0;
         } 
         else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -1619,8 +1634,13 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-    *nativewindow = window->window;
-    return 0;
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        KDWindowX11* x11window = window->nativewindow;
+        *nativewindow = x11window->window;
+        return 0;
+    } 
+    return -1;
 }
 #endif
 
