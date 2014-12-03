@@ -34,6 +34,8 @@
  * C11 includes
  ******************************************************************************/
 
+#include <ctype.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <locale.h>
 #include <math.h>
@@ -42,6 +44,50 @@
 #include <string.h>
 #include <threads.h>
 #include <time.h>
+
+ int get_errno_name(char *buf, int buf_size) {
+    // Using the linux-only gawk instead of awk, because of the convenient
+    // match() functionality. For Posix portability, use a different recipe...
+    char cmd[] = "e=       && " // errno to be inserted here (max digits = 6)
+                 "echo '#include <errno.h>' | "
+                 "gcc -dM -E - | " // optionally, use $CC inead of gcc
+                 "gawk \"match(\\$0, /^#[[:space:]]*define[[:space:]]+"
+                     "(E[[:alnum:]]+)[[:space:]]+$e($|[^[:alnum:]])/, m) "
+                     "{ print m[1] }\"";
+    {
+        // Insert the errno as the "e" shell variable in the command above.
+        int errno_digit_c = snprintf(cmd + 2, 6, "%d", errno);
+        if (errno_digit_c < 1) {
+            fprintf(stderr, "Failed to stringify an errno "
+                            "in get_errno_name().\n");
+            return -1;
+        }
+        // Replace the inserted terminating '\0' with whitespace
+        cmd[errno_digit_c + 2] = ' ';
+    }
+    FILE *f = popen(cmd, "r");
+    if (f == NULL) {
+        perror("Failed to popen() in get_errno_name()");
+        return -1;
+    }
+    int read_size = 0, c;
+    while ((c = getc(f)) != EOF) {
+        if (isalnum(c)) {
+            buf[read_size++] = c;
+            if (read_size + 1 > buf_size) {
+                fprintf(stderr, "Read errno name is larger than the character "
+                                "buffer supplied to get_errno_name().\n");
+                return -1;
+            }
+        }
+    }
+    buf[read_size++] = '\0';
+    if (pclose(f) == -1) {
+        perror("Failed to pclose() in get_errno_name()");
+        return -1;
+    }
+    return read_size;
+}
 
 /******************************************************************************
  * POSIX includes
@@ -197,7 +243,8 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     {
         KDchar queueid[KD_ULTOSTR_MAXLEN];
         kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
-        mq_open(queueid,O_CREAT, 0666, NULL);
+        mqd_t queue = mq_open(queueid, O_RDWR | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
+        mq_close(queue);
     }
     else if(error == thrd_nomem)
     {
@@ -444,121 +491,118 @@ struct KDCallback
     KDint eventtype;
     void* eventuserptr;
 } KDCallback;
+typedef struct KDWindowX11
+{
+    Window window;
+    Display* display;
+} KDWindowX11;
+typedef struct KDWindowWayland
+{
+} KDWindowWayland;
+typedef struct KDWindow
+{
+    void* nativewindow;
+    EGLint format;
+    EGLenum platform;
+} KDWindow;
 static thread_local struct KDCallback callbacks[999] = {{0}};
+static thread_local struct KDWindow windows[999]= {{0}};
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
-    EGLenum platform = EGL_PLATFORM_X11_KHR;
-    if(platform == EGL_PLATFORM_X11_KHR)
+    for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
     {
-        __block Display* display = XOpenDisplay(NULL);
-        while(^{
-            /*
-            Simple DirectMedia Layer
-            Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
-            zlib license
-            */
-            XFlush(display);
-            if (XEventsQueued(display, QueuedAlready)) 
-            {
-                return (1);
-            }
-
-            static struct timeval zero_time;
-            int x11_fd;
-            fd_set fdset;
-
-            x11_fd = ConnectionNumber(display);
-            FD_ZERO(&fdset);
-            FD_SET(x11_fd, &fdset);
-            if (select(x11_fd + 1, &fdset, NULL, NULL, &zero_time) == 1) 
-            {
-                return (XPending(display));
-            }
-            return (0);
-        })
+        if(windows[i].nativewindow)
         {
-            KDEvent* event = kdCreateEvent();
-            XEvent xevent = {0};
-            XNextEvent(display,&xevent);
-            switch(xevent.type)
+            if(windows[i].platform == EGL_PLATFORM_X11_KHR)
             {
-                case KeyPress:
+                KDWindowX11* x11window = windows[i].nativewindow;
+                XSelectInput(x11window->display, x11window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
+                while(XPending(x11window->display) > 0)
                 {
-                    if(XLookupKeysym(&xevent.xkey, 0) == XK_Escape)
+                    KDEvent* event = kdCreateEvent();
+                    XEvent xevent = {0};
+                    XNextEvent(x11window->display,&xevent);
+                    switch(xevent.type)
                     {
-                        event->type      = KD_EVENT_WINDOW_CLOSE;
-                        event->timestamp = kdGetTimeUST();
-
-                        kdPostEvent(event);
-                        break;
-                    }
-                }
-                case ButtonPress:
-                {
-                    event->type                     = KD_EVENT_INPUT_POINTER;
-                    event->timestamp                = kdGetTimeUST();
-                    event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
-                    event->data.inputpointer.x      = xevent.xbutton.x;
-                    event->data.inputpointer.y      = xevent.xbutton.y;
-                    event->data.inputpointer.select = 1;
-
-                    KDboolean has_callback = 0;
-                    for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
-                    {
-                        if(callbacks[i].eventtype == KD_EVENT_INPUT)
+                        case KeyPress:
                         {
-                            has_callback = 1;
-                            callbacks[i].func(event);
+                            if(XLookupKeysym(&xevent.xkey, 0) == XK_Escape)
+                            {
+                                event->type      = KD_EVENT_WINDOW_CLOSE;
+                                event->timestamp = kdGetTimeUST();
+
+                                kdLogMessage("KD_EVENT_WINDOW_CLOSE\n");
+                                kdPostEvent(event);
+                                break;
+                            }
+                        }
+                        case ButtonPress:
+                        {
+                            event->type                     = KD_EVENT_INPUT_POINTER;
+                            event->timestamp                = kdGetTimeUST();
+                            event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                            event->data.inputpointer.x      = xevent.xbutton.x;
+                            event->data.inputpointer.y      = xevent.xbutton.y;
+                            event->data.inputpointer.select = 1;
+
+                            KDboolean has_callback = 0;
+                            for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                            {
+                                if(callbacks[i].eventtype == KD_EVENT_INPUT)
+                                {
+                                    has_callback = 1;
+                                    callbacks[i].func(event);
+                                }
+                            }
+
+                            if(has_callback)
+                            {
+                                kdFreeEvent(event);
+                            }
+                            else
+                            {
+                                kdPostEvent(event);
+                            }
+                            break;
+                        }
+                        case ConfigureNotify:
+                        {
+                            event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
+                            event->timestamp = kdGetTimeUST();
+
+                            kdPostEvent(event);
+                            break;
+                        }
+                        case ClientMessage:
+                        {
+                            if((Atom)xevent.xclient.data.l[0] == XInternAtom(x11window->display, "WM_DELETE_WINDOW", False))
+                            {
+                                event->type      = KD_EVENT_WINDOW_CLOSE;
+                                event->timestamp = kdGetTimeUST();
+
+                                kdPostEvent(event);
+                                break;
+                            }
+                        }
+                        default:
+                        {
+                            kdFreeEvent(event);
+                            break;
                         }
                     }
-
-                    if(has_callback)
-                    {
-                        kdFreeEvent(event);
-                    }
-                    else
-                    {
-                        kdPostEvent(event);
-                    }
-                    break;
-                }
-                case ConfigureNotify:
-                {
-                    event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
-                    event->timestamp = kdGetTimeUST();
-
-                    kdPostEvent(event);
-                    break;
-                }
-                case ClientMessage:
-                {
-                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", False))
-                    {
-                        event->type      = KD_EVENT_WINDOW_CLOSE;
-                        event->timestamp = kdGetTimeUST();
-
-                        kdPostEvent(event);
-                        break;
-                    }
-                }
-                default:
-                {
-                    kdFreeEvent(event);
-                    break;
                 }
             }
+            else if(windows[i].platform == EGL_PLATFORM_WAYLAND_KHR)
+            {
+                kdSetError(KD_EOPNOTSUPP);
+                break;
+            }
+            else
+            {
+                kdSetError(KD_EOPNOTSUPP);
+                break;
+            }
         }
-        XCloseDisplay(display);
-    }
-    else if(platform == EGL_PLATFORM_WAYLAND_KHR)
-    {
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
-    }
-    else
-    {
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
     }
     return 0;
 }
@@ -597,8 +641,9 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
     mqd_t queue = mq_open(queueid, O_WRONLY);
-    mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
-    return 0;
+    KDint retval = mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
+    mq_close(queue);
+    return retval;
 }
 
 /* kdFreeEvent: Abandon an event instead of posting it. */
@@ -630,8 +675,9 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
-    mq_open(queueid,O_CREAT, 0666, NULL);
+    mqd_t queue = mq_open(queueid, O_RDWR | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
+    mq_close(queue);
     mq_unlink(queueid);
     return retval;
 }
@@ -1462,20 +1508,6 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfl
 #ifdef KD_WINDOW_SUPPORTED
 
 /* kdCreateWindow: Create a window. */
-typedef struct KDWindowX11
-{
-    Window window;
-    Display* display;
-} KDWindowX11;
-typedef struct KDWindowWayland
-{
-} KDWindowWayland;
-typedef struct KDWindow
-{
-    void* nativewindow;
-    EGLint format;
-    EGLenum platform;
-} KDWindow;
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, void *eventuserptr)
 {
     KDWindow* window = (KDWindow*)kdMalloc(sizeof(KDWindow));
@@ -1506,7 +1538,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
         XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *)&netwm_hints, 3); 
         XMapWindow(x11window->display, x11window->window);
         XFlush(x11window->display);
-        XSelectInput(x11window->display, x11window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
     }
     else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
@@ -1517,6 +1548,17 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     {
         kdSetError(KD_EOPNOTSUPP);
         window = KD_NULL;
+    }
+    for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
+    {
+        if(!windows[i].nativewindow)
+        {
+           windows[i].nativewindow = window->nativewindow;
+           windows[i].format       = window->format;
+           windows[i].platform     = window->platform;
+
+           break;
+        }
     }
     return window;
 }
