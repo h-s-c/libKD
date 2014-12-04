@@ -536,7 +536,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 event->type      = KD_EVENT_WINDOW_CLOSE;
                                 event->timestamp = kdGetTimeUST();
 
-                                kdLogMessage("KD_EVENT_WINDOW_CLOSE\n");
                                 kdPostEvent(event);
                                 break;
                             }
