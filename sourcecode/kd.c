@@ -241,9 +241,11 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine, arg);
     if(error == thrd_success)
     {
-        KDchar queueid[KD_ULTOSTR_MAXLEN];
-        kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
-        mqd_t queue = mq_open(queueid, O_RDWR | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
+        KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+        KDchar thread_id[KD_ULTOSTR_MAXLEN];
+        kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
+        kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
+        mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);        
         mq_close(queue);
     }
     else if(error == thrd_nomem)
@@ -458,10 +460,13 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     clock_gettime(CLOCK_REALTIME, &tm);
     tm.tv_nsec += timeout;
 
-    KDchar queueid[KD_ULTOSTR_MAXLEN];
-    kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
-    mqd_t queue = mq_open(queueid, O_RDONLY);
-    if(mq_timedreceive( queue, (char*)event, sizeof(struct KDEvent), NULL, &tm ) == -1) 
+    KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+    KDchar thread_id[KD_ULTOSTR_MAXLEN];
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
+    kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
+    mqd_t queue = mq_open(queue_path, O_RDONLY);
+    KDint retval = mq_timedreceive( queue, (char*)event, 8192, NULL, &tm );
+    if(retval == -1) 
     {
         kdFreeEvent(event);
         event = KD_NULL;
@@ -638,10 +643,18 @@ KD_API KDint KD_APIENTRY kdPostEvent(KDEvent *event)
 }
 KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 {
-    KDchar queueid[KD_ULTOSTR_MAXLEN];
-    kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
-    mqd_t queue = mq_open(queueid, O_WRONLY);
+    KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+    KDchar thread_id[KD_ULTOSTR_MAXLEN];
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
+    kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
+    mqd_t queue = mq_open(queue_path, O_WRONLY);
     KDint retval = mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
+    if(retval == -1)
+    {
+        char str[99];
+        get_errno_name(str,99);
+        kdLogMessage("mq_send: ");kdLogMessage(str); kdLogMessage(" \n");
+    }
     mq_close(queue);
     return retval;
 }
@@ -660,6 +673,10 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /******************************************************************************
  * Application startup and exit.
  ******************************************************************************/
+ typedef struct KDFile
+{
+    FILE* file;
+} KDFile;
  int main(int argc, char **argv)
 {
     void* app = dlopen(NULL, RTLD_NOW);
@@ -673,12 +690,22 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
         kdAssert(0);
     }
 
-    KDchar queueid[KD_ULTOSTR_MAXLEN];
-    kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
-    mqd_t queue = mq_open(queueid, O_RDWR | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
+    KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+    KDchar thread_id[KD_ULTOSTR_MAXLEN];
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
+    kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
+    mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
+    if(queue == -1)
+    {
+        char str[99];
+        get_errno_name(str,99);
+        kdLogMessage(str); kdLogMessage("\n");
+        kdLogMessage(queue_path); kdLogMessage("\n");
+    }
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
+
     mq_close(queue);
-    mq_unlink(queueid);
+    mq_unlink(queue_path);
     return retval;
 }
 
@@ -1145,10 +1172,6 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
  ******************************************************************************/
 
 /* kdFopen: Open a file from the file system. */
-typedef struct KDFile
-{
-    FILE* file;
-} KDFile;
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile* file = (KDFile*)kdMalloc(sizeof(KDFile));
@@ -1185,13 +1208,13 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 /* kdGetc: Read next byte from an open file. */
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
-    return getc(file->file);
+    return fgetc(file->file);
 }
 
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-    return putc(c, file->file);
+    return fputc(c, file->file);
 }
 
 /* kdFgets: Read a line of text from an open file. */
