@@ -631,7 +631,7 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     void* rawptr = dlsym(app, "kdMain");
-    memcpy(&kdMain, &rawptr, sizeof(rawptr));
+    kdMemcpy(&kdMain, &rawptr, sizeof(rawptr));
     if(dlerror() != NULL)
     {
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.");
