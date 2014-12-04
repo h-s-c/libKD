@@ -25,7 +25,7 @@
 /* Simple input example */
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdLogMessage("Starting example 1\n");
+    kdLogMessage("Starting example 2\n");
 
     kdLogMessage("-----KD-----\n");
     kdLogMessage("Vendor: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VENDOR)); kdLogMessage("\n");
