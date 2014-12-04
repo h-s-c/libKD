@@ -22,10 +22,20 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-/* Simple event example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Escape) */
+/* Simple event with callback example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Escape)*/
+static KDboolean quit = 0;
+void callback(const KDEvent *event)
+{
+    if(event->type == KD_EVENT_WINDOW_CLOSE)
+    {
+        quit = 1;
+    }
+    kdDefaultEvent(event);
+}
+
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdLogMessage("Starting example 2\n");
+    kdLogMessage("Starting example 3\n");
 
     kdLogMessage("-----KD-----\n");
     kdLogMessage("Vendor: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VENDOR)); kdLogMessage("\n");
@@ -87,16 +97,14 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Renderer: "); kdLogMessage((const char*)glGetString(GL_RENDERER)); kdLogMessage("\n");
     kdLogMessage("Extensions: "); kdLogMessage((const char*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
 
+    kdInstallCallback(callback, KD_EVENT_WINDOW_CLOSE, KD_NULL);
+
     for(;;)
     {
-        const KDEvent *event = kdWaitEvent(0);
-        if(event)
+        kdPumpEvents();
+        if(quit)
         {
-            if(event->type == KD_EVENT_WINDOW_CLOSE)
-            {
-                break;
-            }
-            kdDefaultEvent(event);
+            break;
         }
 
         glClearColor(0, 1, 0, 0);

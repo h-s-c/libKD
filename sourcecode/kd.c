@@ -424,7 +424,6 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     if(retval == -1) 
     {
         kdFreeEvent(event);
-        event = KD_NULL;
     }
     mq_close(queue);
     return event;
@@ -491,7 +490,24 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 event->type      = KD_EVENT_WINDOW_CLOSE;
                                 event->timestamp = kdGetTimeUST();
 
-                                kdPostEvent(event);
+                                KDboolean has_callback = 0;
+                                for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                                {
+                                    if(callbacks[i].eventtype == KD_EVENT_WINDOW_CLOSE)
+                                    {
+                                        has_callback = 1;
+                                        callbacks[i].func(event);
+                                    }
+                                }
+
+                                if(has_callback)
+                                {
+                                    kdFreeEvent(event);
+                                }
+                                else
+                                {
+                                    kdPostEvent(event);
+                                }
                                 break;
                             }
                         }
@@ -539,7 +555,24 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 event->type      = KD_EVENT_WINDOW_CLOSE;
                                 event->timestamp = kdGetTimeUST();
 
-                                kdPostEvent(event);
+                                KDboolean has_callback = 0;
+                                for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                                {
+                                    if(callbacks[i].eventtype == KD_EVENT_WINDOW_CLOSE)
+                                    {
+                                        has_callback = 1;
+                                        callbacks[i].func(event);
+                                    }
+                                }
+
+                                if(has_callback)
+                                {
+                                    kdFreeEvent(event);
+                                }
+                                else
+                                {
+                                    kdPostEvent(event);
+                                }
                                 break;
                             }
                         }
@@ -610,6 +643,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 /* kdFreeEvent: Abandon an event instead of posting it. */
 KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
+    event = KD_NULL;
     kdFree(event);
 }
 
