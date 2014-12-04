@@ -34,7 +34,6 @@
  * C11 includes
  ******************************************************************************/
 
-#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <locale.h>
@@ -44,50 +43,6 @@
 #include <string.h>
 #include <threads.h>
 #include <time.h>
-
- int get_errno_name(char *buf, int buf_size) {
-    // Using the linux-only gawk instead of awk, because of the convenient
-    // match() functionality. For Posix portability, use a different recipe...
-    char cmd[] = "e=       && " // errno to be inserted here (max digits = 6)
-                 "echo '#include <errno.h>' | "
-                 "gcc -dM -E - | " // optionally, use $CC inead of gcc
-                 "gawk \"match(\\$0, /^#[[:space:]]*define[[:space:]]+"
-                     "(E[[:alnum:]]+)[[:space:]]+$e($|[^[:alnum:]])/, m) "
-                     "{ print m[1] }\"";
-    {
-        // Insert the errno as the "e" shell variable in the command above.
-        int errno_digit_c = snprintf(cmd + 2, 6, "%d", errno);
-        if (errno_digit_c < 1) {
-            fprintf(stderr, "Failed to stringify an errno "
-                            "in get_errno_name().\n");
-            return -1;
-        }
-        // Replace the inserted terminating '\0' with whitespace
-        cmd[errno_digit_c + 2] = ' ';
-    }
-    FILE *f = popen(cmd, "r");
-    if (f == NULL) {
-        perror("Failed to popen() in get_errno_name()");
-        return -1;
-    }
-    int read_size = 0, c;
-    while ((c = getc(f)) != EOF) {
-        if (isalnum(c)) {
-            buf[read_size++] = c;
-            if (read_size + 1 > buf_size) {
-                fprintf(stderr, "Read errno name is larger than the character "
-                                "buffer supplied to get_errno_name().\n");
-                return -1;
-            }
-        }
-    }
-    buf[read_size++] = '\0';
-    if (pclose(f) == -1) {
-        perror("Failed to pclose() in get_errno_name()");
-        return -1;
-    }
-    return read_size;
-}
 
 /******************************************************************************
  * POSIX includes
@@ -648,12 +603,6 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_WRONLY);
     KDint retval = mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
-    if(retval == -1)
-    {
-        char str[99];
-        get_errno_name(str,99);
-        kdLogMessage("mq_send: ");kdLogMessage(str); kdLogMessage(" \n");
-    }
     mq_close(queue);
     return retval;
 }
@@ -694,13 +643,7 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
     kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
-    if(queue == -1)
-    {
-        char str[99];
-        get_errno_name(str,99);
-        kdLogMessage(str); kdLogMessage("\n");
-        kdLogMessage(queue_path); kdLogMessage("\n");
-    }
+
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
 
     mq_close(queue);
