@@ -48,6 +48,7 @@
  * POSIX includes
  ******************************************************************************/
 
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -65,7 +66,19 @@
  * Platform includes
  ******************************************************************************/
 
-#ifdef KD_WINDOW_SUPPORTED
+#if defined(__linux__)
+#include <linux/random.h>
+#include <linux/version.h>
+#endif
+
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#include <sys/param.h>
+#if defined(BSD)
+    /* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
+#endif
+#endif
+
+#if defined(KD_WINDOW_SUPPORTED)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #endif
@@ -78,8 +91,8 @@
 #undef st_mtime
 
 /* C11 Annex K is optional */
-#ifndef __STDC_LIB_EXT1__
-#if __BSD_VISIBLE != 1
+#if !defined(__STDC_LIB_EXT1__)
+#if !defined(BSD)
 size_t strlcat(char *dst, const char *src, size_t siz);
 size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif
@@ -815,12 +828,26 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 /* kdCryptoRandom: Return random data. */
 KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 {
-    for (KDuint i = 0; i < buflen; i++)
-    {
-        srand(time(0));
-        buf[i] = rand() ;
-    }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+    getrandom(buf, buflen, GRND_BLOCK);
     return 0;
+#endif
+#ifdef __OpenBSD__
+    return getentropy(buf, buflen);
+#endif
+
+    if(ioctl(open("/dev/urandom", O_RDONLY), RNDGETENTCNT, NULL))
+    {
+        KDFile* urandom = kdFopen("/dev/urandom", "r");
+        kdFread((void *)buf, sizeof(KDuint8), buflen, urandom); 
+        kdFclose(urandom);
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
 }
 
 /******************************************************************************
@@ -1116,7 +1143,7 @@ KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
 /* kdSetTimer: Set timer. */
 typedef struct KDTimer
 {
-    timer_t timer;
+    timer_t* timer;
     KDThread* thread;
     void *userptr;
 } KDTimer;
@@ -1128,12 +1155,12 @@ static void timerhandler(int sig, siginfo_t *si, void *uc)
     event->type      = KD_EVENT_TIMER;
     event->timestamp = kdGetTimeUST();
     event->userptr   = timer->userptr;
-
     kdPostThreadEvent(event, timer->thread);
 }
 KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
 {
     KDTimer* timer = (KDTimer*)kdMalloc(sizeof(KDTimer));
+    timer->timer   = (timer_t*)kdMalloc(sizeof(timer_t));
     timer->thread  = kdThreadSelf();
     timer->userptr = eventuserptr;
 
@@ -1147,17 +1174,29 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
     struct sigevent se = {{0}};
     se.sigev_notify          = SIGEV_SIGNAL;
     se.sigev_signo           = SIGRTMIN;
-    se.sigev_value.sival_ptr = &timer;
+    se.sigev_value.sival_ptr = timer;
 
-    timer_create(CLOCK_REALTIME, &se, &timer->timer);
+    timer_create(CLOCK_REALTIME, &se, timer->timer);
 
     struct itimerspec ts = {{0}};
-    ts.it_value.tv_nsec = interval;
+    if ((interval % 1000000000) == 0)
+    {
+        ts.it_value.tv_sec = interval / 1000000000;
+    }
+    else
+    {
+        ts.it_value.tv_sec = (interval - (interval % 1000000000)) / 1000000000;
+    }
+
+    ts.it_value.tv_nsec = interval - (ts.it_value.tv_sec*1000000000);
+
     if(periodic != KD_TIMER_ONESHOT)
     {
-        ts.it_interval.tv_nsec = interval;
+        ts.it_interval.tv_sec = ts.it_value.tv_sec;
+        ts.it_interval.tv_nsec = ts.it_value.tv_nsec;
     }
-    timer_settime(timer->timer, 0, &ts, NULL);
+
+    timer_settime(*timer->timer, 0, &ts, NULL);
 
     return timer;
 }
@@ -1740,7 +1779,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
  * Thirdparty
  ******************************************************************************/
 
- #if __BSD_VISIBLE != 1
+#if !defined(BSD)
 /*
  * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
  *

@@ -87,3 +87,8 @@ project (KD_example_3)
     include_directories(${DIST_DIR})
     add_executable(KD_example_3 ${EXAMPLE_DIR}/kd_example_3.c)
     target_link_libraries(KD_example_3 KD EGL GLESv2)
+
+project (KD_example_4)
+    include_directories(${DIST_DIR})
+    add_executable(KD_example_4 ${EXAMPLE_DIR}/kd_example_4.c)
+    target_link_libraries(KD_example_4 KD EGL GLESv2)
