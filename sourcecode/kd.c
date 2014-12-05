@@ -510,6 +510,33 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 }
                                 break;
                             }
+                            if(XLookupKeysym(&xevent.xkey, 0) == XK_Return)
+                            {
+                                event->type               = KD_EVENT_INPUT;
+                                event->timestamp          = kdGetTimeUST();
+                                event->data.input.index   = KD_INPUT_GAMEKEYS_FIRE;
+                                event->data.input.value.i = 1;
+
+                                KDboolean has_callback = 0;
+                                for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                                {
+                                    if(callbacks[i].eventtype == KD_EVENT_INPUT)
+                                    {
+                                        has_callback = 1;
+                                        callbacks[i].func(event);
+                                    }
+                                }
+
+                                if(has_callback)
+                                {
+                                    kdFreeEvent(event);
+                                }
+                                else
+                                {
+                                    kdPostEvent(event);
+                                }
+                                break;
+                            }
                         }
                         case ButtonPress:
                         {
@@ -523,7 +550,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             KDboolean has_callback = 0;
                             for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
                             {
-                                if(callbacks[i].eventtype == KD_EVENT_INPUT)
+                                if(callbacks[i].eventtype == KD_EVENT_INPUT_POINTER)
                                 {
                                     has_callback = 1;
                                     callbacks[i].func(event);
