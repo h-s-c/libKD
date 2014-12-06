@@ -34,7 +34,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
 
     const EGLint egl_attributes[] =
     {
-        EGL_SURFACE_TYPE,                EGL_WINDOW_BIT,
+        EGL_SURFACE_TYPE,                EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
         EGL_RENDERABLE_TYPE,             EGL_OPENGL_ES2_BIT,
         EGL_RED_SIZE,                    8,
         EGL_GREEN_SIZE,                  8,
@@ -48,13 +48,6 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     const EGLint egl_context_attributes[] =
     { 
         EGL_CONTEXT_CLIENT_VERSION, 2,
-        EGL_NONE,
-    };
-
-    const EGLint egl_attrib_list[] =
-    { 
-        EGL_COLORSPACE,     EGL_COLORSPACE_LINEAR,
-        EGL_ALPHA_FORMAT,   EGL_ALPHA_FORMAT_NONPRE,
         EGL_NONE,
     };
 
@@ -76,10 +69,13 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     EGLNativeWindowType egl_native_window;
     kdRealizeWindow(kd_window, &egl_native_window);
 
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, egl_attrib_list);  
+    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);  
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
 
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+
+    eglSurfaceAttrib(egl_display, egl_surface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
+    eglSwapInterval(egl_display, 1);
 
     kdLogMessage("-----GLES2-----\n");
     kdLogMessage("Vendor: "); kdLogMessage((const char*)glGetString(GL_VENDOR)); kdLogMessage("\n");
