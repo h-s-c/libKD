@@ -86,6 +86,7 @@ project (KD)
     include_directories(${KD_INCLUDE_DIRS} )
     add_library (KD SHARED ${KD_SOURCE})
     target_link_libraries(KD ${KD_LIBRARIES})
+    set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 project (KD_example_1)
     include_directories(${DIST_DIR})
