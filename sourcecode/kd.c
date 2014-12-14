@@ -698,6 +698,9 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 } KDFile;
  int main(int argc, char **argv)
 {
+#ifdef KD_WINDOW_DISPMANX
+    bcm_host_init();
+#endif
     void* app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
     /* ISO C forbids assignment between function pointer and ‘void *’ */
@@ -719,6 +722,9 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 
     mq_close(queue);
     mq_unlink(queue_path);
+#ifdef KD_WINDOW_DISPMANX
+    bcm_host_deinit();
+#endif
     return retval;
 }
 

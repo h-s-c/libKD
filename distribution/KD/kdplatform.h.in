@@ -28,7 +28,9 @@
 #include <KHR/khrplatform.h>
 
 #cmakedefine KD_WINDOW_SUPPORTED
-#define MESA_EGL_NO_X11_HEADERS
+#cmakedefine KD_WINDOW_X11
+#cmakedefine KD_WINDOW_WAYLAND
+#cmakedefine KD_WINDOW_DISPMANX
 
 #define KD_API KHRONOS_APICALL
 #define KD_APIENTRY KHRONOS_APIENTRY
