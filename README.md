@@ -1,4 +1,4 @@
-** OpenKODE Core implementation.**
+**OpenKODE Core implementation.**
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
