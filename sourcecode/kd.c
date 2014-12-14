@@ -66,22 +66,26 @@
  * Platform includes
  ******************************************************************************/
 
-#if defined(__linux__)
+#ifdef __unix__
+#ifdef __linux__
 #include <bsd/string.h>
 #include <linux/random.h>
 #include <linux/version.h>
 #endif
-
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #include <sys/param.h>
-#if defined(BSD)
+#ifdef BSD
     /* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
 #endif
 #endif
 
-#if defined(KD_WINDOW_SUPPORTED)
+#ifdef KD_WINDOW_SUPPORTED
+#ifdef KD_WINDOW_X11
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#endif
+#ifdef KD_WINDOW_DISPMANX
+#include <bcm_host.h>
+#endif
 #endif
 
 /******************************************************************************
