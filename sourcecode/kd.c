@@ -1579,6 +1579,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     {
         window->nativewindow = kdMalloc(sizeof(KDWindowX11));
         KDWindowX11* x11window = window->nativewindow;
+        XInitThreads();
         x11window->display = XOpenDisplay(NULL);
         x11window->window = XCreateSimpleWindow(x11window->display, 
             XRootWindow(x11window->display, XDefaultScreen(x11window->display)), 0, 0, 
