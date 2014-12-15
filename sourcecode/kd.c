@@ -83,6 +83,10 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #endif
+#ifdef KD_WINDOW_WAYLAND
+#include <wayland-client.h>
+#include <wayland-egl.h>
+#endif
 #ifdef KD_WINDOW_DISPMANX
 #include <bcm_host.h>
 #endif
