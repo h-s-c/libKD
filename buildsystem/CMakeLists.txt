@@ -51,6 +51,7 @@ project (KD)
         set(KD_WINDOW_SUPPORTED ON)
         set(KD_WINDOW_DISPMANX ON)
         list(APPEND KD_LIBRARIES bcm_host)
+        list(APPEND KD_INCLUDE_DIRS /opt/vc/include)
     endif()
     configure_file(${DIST_DIR}/KD/kdplatform.h.in ${DIST_DIR}/KD/kdplatform.h)
 
