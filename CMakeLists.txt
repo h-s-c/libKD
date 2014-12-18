@@ -18,16 +18,16 @@
  # 3. This notice may not be removed or altered from any source distribution.
  ##############################################################################
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 2.8)
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
-set(DIST_DIR ${CMAKE_CURRENT_LIST_DIR}/../distribution)
-set(SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../sourcecode)
-set(EXAMPLE_DIR ${CMAKE_CURRENT_LIST_DIR}/../examples)
+set(DIST_DIR distribution)
+set(SOURCE_DIR sourcecode)
+set(EXAMPLE_DIR examples)
 
 project (KD)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fblocks -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
 
     set(KD_SOURCE ${SOURCE_DIR}/kd.c)
     list(APPEND KD_SOURCE ${KD_SOURCE})
@@ -53,14 +53,7 @@ project (KD)
         list(APPEND KD_LIBRARIES bcm_host)
         list(APPEND KD_INCLUDE_DIRS /opt/vc/include)
     endif()
-    configure_file(${DIST_DIR}/KD/kdplatform.h.in ${DIST_DIR}/KD/kdplatform.h)
-
-    message(STATUS "Compiler compatibility checks")
-    check_include_files(Block.h HAVE_BLOCK_H)
-    if(NOT HAVE_BLOCK_H)
-        list(APPEND KD_SOURCE ${SOURCE_DIR}/thirdparty/Block/Block.c)
-        list(APPEND KD_INCLUDE_DIRS ${SOURCE_DIR}/thirdparty/Block)
-    endif()
+    configure_file(${DIST_DIR}/KD/kdplatform.h.in ${CMAKE_SOURCE_DIR}/${DIST_DIR}/KD/kdplatform.h)
 
     message(STATUS "C11 compatibility checks")
     check_include_files(threads.h HAVE_THREADS_H)
