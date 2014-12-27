@@ -2,7 +2,7 @@
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
--   zlib licensed
+-   zlib licensed (examples are public domain)
 -   Only kd.c + headers are needed in case you don't use CMake.
 
 ###Dependencies
