@@ -503,7 +503,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         case KeyPress:
                         {
-                            if(XLookupKeysym(&xevent.xkey, 0) == XK_Escape)
+                            /* Alt-F4 fires a close window event */
+                            if(XLookupKeysym(&xevent.xkey, 0) == XK_F4 && (xevent.xkey.state & Mod1Mask))
                             {
                                 event->type      = KD_EVENT_WINDOW_CLOSE;
                                 event->timestamp = kdGetTimeUST();
@@ -512,33 +513,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
                                 {
                                     if(callbacks[i].eventtype == KD_EVENT_WINDOW_CLOSE)
-                                    {
-                                        has_callback = 1;
-                                        callbacks[i].func(event);
-                                    }
-                                }
-
-                                if(has_callback)
-                                {
-                                    kdFreeEvent(event);
-                                }
-                                else
-                                {
-                                    kdPostEvent(event);
-                                }
-                                break;
-                            }
-                            if(XLookupKeysym(&xevent.xkey, 0) == XK_Return)
-                            {
-                                event->type               = KD_EVENT_INPUT;
-                                event->timestamp          = kdGetTimeUST();
-                                event->data.input.index   = KD_INPUT_GAMEKEYS_FIRE;
-                                event->data.input.value.i = 1;
-
-                                KDboolean has_callback = 0;
-                                for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
-                                {
-                                    if(callbacks[i].eventtype == KD_EVENT_INPUT)
                                     {
                                         has_callback = 1;
                                         callbacks[i].func(event);

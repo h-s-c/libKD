@@ -29,7 +29,7 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-/* Simple timer example */
+/* Simple timer example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Alt-F4)*/
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
     kdLogMessage("Starting example 4\n");

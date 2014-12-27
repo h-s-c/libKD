@@ -29,7 +29,7 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-/* Simple event example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Escape) */
+/* Simple event example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Alt-F4) */
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
     kdLogMessage("Starting example 2\n");

@@ -29,7 +29,7 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-/* Simple event with callback example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Escape)*/
+/* Simple event with callback example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Alt-F4)*/
 static KDboolean quit = 0;
 void callback(const KDEvent *event)
 {
