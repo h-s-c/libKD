@@ -114,6 +114,65 @@
 /******************************************************************************
  * Errors
  ******************************************************************************/
+typedef struct
+{
+    KDint       errorcode_kd;
+    int         errorcode;
+    const char* errorcode_text;
+} errorcodes;
+
+errorcodes errorcodes_posix[] =
+{
+    { KD_EACCES,            EACCES,         "Permission denied."},
+    { KD_EADDRINUSE,        EADDRINUSE,     "Adress in use."},
+    { KD_EADDRNOTAVAIL,     EADDRNOTAVAIL,  "Address not available on the local platform."},
+    { KD_EAFNOSUPPORT,      EAFNOSUPPORT,   "Address family not supported."},
+    { KD_EAGAIN,            EAGAIN,         "Resource unavailable, try again."},
+    { KD_EALREADY,          EALREADY,       "A connection attempt is already in progress for this socket."},
+    { KD_EBADF,             EBADF,          "File not opened in the appropriate mode for the operation."},
+    { KD_EBUSY,             EBUSY,          "Device or resource busy."},
+    { KD_ECONNREFUSED,      ECONNREFUSED,   "Connection refused."},
+    { KD_ECONNRESET,        ECONNRESET,     "Connection reset."},
+    { KD_EDEADLK,           EDEADLK,        "Resource deadlock would occur."},
+    { KD_EDESTADDRREQ,      EDESTADDRREQ,   "Destination address required."},
+    { KD_EEXIST,            EEXIST,         "File exists."},
+    { KD_EFBIG,             EFBIG,          "File too large."},
+    { KD_EHOSTUNREACH,      EHOSTUNREACH,   "Host is unreachable."},
+    { KD_EHOST_NOT_FOUND,   0,              "The specified name is not known."}, /* EHOSTNOTFOUND is not standard */
+    { KD_EINVAL,            EINVAL,         "Invalid argument."},
+    { KD_EIO,               EIO,            "I/O error."},
+    { KD_EILSEQ,            EILSEQ,         "Illegal byte sequence."},
+    { KD_EISCONN,           EISCONN,        "Socket is connected."},
+    { KD_EISDIR,            EISDIR,         "Is a directory."},
+    { KD_EMFILE,            EMFILE,         "Too many openfiles."},
+    { KD_ENAMETOOLONG,      ENAMETOOLONG,   "Filename too long."},
+    { KD_ENOENT,            ENOENT,         "No such file or directory."},
+    { KD_ENOMEM,            ENOMEM,         "Not enough space."},
+    { KD_ENOSPC,            ENOSPC,         "No space left on device."},
+    { KD_ENOSYS,            ENOSYS,         "Function not supported."},
+    { KD_ENOTCONN,          ENOTCONN,       "The socket is not connected."},
+    { KD_ENO_DATA,          ENODATA,        "The specified name is valid but does not have an address."},
+    { KD_ENO_RECOVERY,      0,              "A non-recoverable error has occurred on the name server."}, /* ENORECOVERY is not standard */
+    { KD_EOPNOTSUPP,        EOPNOTSUPP,     "Operation not supported."},
+    { KD_EOVERFLOW,         EOVERFLOW,      "Overflow."},
+    { KD_EPERM,             EPERM,          "Operation not permitted."},
+    { KD_ERANGE,            ERANGE,         "Result out of range."},
+    { KD_ETIMEDOUT,         ETIMEDOUT,      "Connection timed out."},
+    { KD_ETRY_AGAIN,        0,              "A temporary error has occurred on an authoratitive name server, and the lookup may succeed if retried later."}, /* ETRYAGAIN is not standard */
+};
+
+KDint errorcode_posix(int errorcode, char* text)
+{
+    for (KDuint i = 0; i < sizeof(errorcodes) / sizeof(errorcodes[0]); i++)
+    {
+        if (errorcodes_posix[i].errorcode == errorcode)
+        {
+            *text = *errorcodes_posix[i].errorcode_text;
+            return errorcodes_posix[i].errorcode_kd;
+        }
+    }
+    return 0;
+}
 
 static thread_local KDint lasterror = 0;
  /* kdGetError: Get last error indication. */
@@ -441,6 +500,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     KDint retval = mq_timedreceive( queue, (char*)event, 8192, NULL, &tm );
     if(retval == -1) 
     {
+        kdSetError(errorcode_posix(errno, NULL));
         kdFreeEvent(event);
     }
     mq_close(queue);
@@ -1000,6 +1060,7 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
     void* retval = memchr(src , byte, len);
     if(retval == NULL)
     {
+        kdSetError(errorcode_posix(errno, NULL));
         return KD_NULL;
     }
     return retval;
@@ -1035,6 +1096,7 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
     void* retval = strchr(str, ch);
     if(retval == NULL)
     {
+        kdSetError(errorcode_posix(errno, NULL));
         return KD_NULL;
     }
     return retval;
