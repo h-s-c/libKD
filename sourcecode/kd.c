@@ -161,13 +161,12 @@ errorcodes errorcodes_posix[] =
     { KD_ETRY_AGAIN,        0,              "A temporary error has occurred on an authoratitive name server, and the lookup may succeed if retried later."}, /* ETRYAGAIN is not standard */
 };
 
-KDint errorcode_posix(int errorcode, char* text)
+KDint errorcode_posix(int errorcode)
 {
     for (KDuint i = 0; i < sizeof(errorcodes_posix) / sizeof(errorcodes_posix[0]); i++)
     {
         if (errorcodes_posix[i].errorcode == errorcode)
         {
-            *text = *errorcodes_posix[i].errorcode_text;
             return errorcodes_posix[i].errorcode_kd;
         }
     }
@@ -500,7 +499,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     KDint retval = mq_timedreceive( queue, (char*)event, 8192, NULL, &tm );
     if(retval == -1) 
     {
-        kdSetError(errorcode_posix(errno, NULL));
+        kdSetError(errorcode_posix(errno));
         kdFreeEvent(event);
     }
     mq_close(queue);
@@ -1060,7 +1059,7 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
     void* retval = memchr(src , byte, len);
     if(retval == NULL)
     {
-        kdSetError(errorcode_posix(errno, NULL));
+        kdSetError(errorcode_posix(errno));
         return KD_NULL;
     }
     return retval;
@@ -1096,7 +1095,7 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
     void* retval = strchr(str, ch);
     if(retval == NULL)
     {
-        kdSetError(errorcode_posix(errno, NULL));
+        kdSetError(errorcode_posix(errno));
         return KD_NULL;
     }
     return retval;
