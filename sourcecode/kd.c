@@ -50,6 +50,7 @@
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
@@ -874,7 +875,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
-    getrandom(buf, buflen, GRND_BLOCK);
+    syscall(__NR_getrandom, buf, buflen, 0);
     return 0;
 #endif
 #ifdef __OpenBSD__
