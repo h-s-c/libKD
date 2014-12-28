@@ -163,7 +163,7 @@ errorcodes errorcodes_posix[] =
 
 KDint errorcode_posix(int errorcode, char* text)
 {
-    for (KDuint i = 0; i < sizeof(errorcodes) / sizeof(errorcodes[0]); i++)
+    for (KDuint i = 0; i < sizeof(errorcodes_posix) / sizeof(errorcodes_posix[0]); i++)
     {
         if (errorcodes_posix[i].errorcode == errorcode)
         {
