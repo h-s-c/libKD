@@ -3,6 +3,10 @@ compiler:
   - gcc
   - clang
 
+matrix:
+  allow_failures:
+    - compiler: gcc
+
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
