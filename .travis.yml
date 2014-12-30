@@ -5,6 +5,6 @@ compiler:
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y libegl1-mesa-dev libbsd-dev
+  - sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
 
 script: mkdir build && cd build && cmake ../ && make
