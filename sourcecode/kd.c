@@ -369,6 +369,7 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
     {
         kdSetError(KD_EAGAIN);
     }
+    kdFree(mutex);
     return KD_NULL;
 }
 
@@ -415,6 +416,7 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
     {
         kdSetError(KD_EAGAIN);
     }
+    kdFree(cond);
     return KD_NULL;
 }
 
@@ -1203,6 +1205,7 @@ static void timerhandler(int sig, siginfo_t *si, void *uc)
     event->timestamp = kdGetTimeUST();
     event->userptr   = timer->userptr;
     kdPostThreadEvent(event, timer->thread);
+    kdFreeEvent(event);
 }
 KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
 {

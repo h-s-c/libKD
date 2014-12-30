@@ -98,10 +98,11 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         const KDEvent *event = kdWaitEvent(0);
         if(event)
         {
+            KDboolean exit = 0;
             if(event->type == KD_EVENT_WINDOW_CLOSE)
             {
                 kdCancelTimer(timer);
-                break;
+                exit = 1;
             }
             else if(event->type == KD_EVENT_TIMER)
             {
@@ -113,6 +114,11 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
                 glClearColor(r, g, b, 1.0);
             }
             kdDefaultEvent(event);
+
+            if(exit)
+            {
+                break;
+            }
         }
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
