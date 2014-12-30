@@ -6,6 +6,7 @@
 ###Status
 [![Travis Status](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
 [![AppVeyor Status](https://img.shields.io/badge/build-unknown-lightgrey.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
+[![Drone Status](https://drone.io/github.com/h-s-c/libKD/status.png)](https://drone.io/github.com/h-s-c/libKD/latest)
 [![Coveralls Status](https://img.shields.io/coveralls/h-s-c/libKD.svg)](https://coveralls.io/r/h-s-c/libKD)
 [![Coverity Status](https://scan.coverity.com/projects/3798/badge.svg)](https://scan.coverity.com/projects/3798)
 
