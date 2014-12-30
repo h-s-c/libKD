@@ -1,7 +1,9 @@
 **OpenKODE Core implementation.**
 
-[![Build Status](https://travis-ci.org/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
-[![Coverity Scan Build Status](https://scan.coverity.com/projects/3798/badge.svg)](https://scan.coverity.com/projects/3798)
+[![Travis](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
+[![AppVeyor](https://img.shields.io/badge/build-unknown-lightgrey.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
+[![Coveralls](https://img.shields.io/coveralls/h-s-c/libKD.svg)](https://coveralls.io/r/h-s-c/libKD)
+[![Coverity](https://scan.coverity.com/projects/3798/badge.svg)](https://scan.coverity.com/projects/3798)
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
