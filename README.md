@@ -1,7 +1,7 @@
 **OpenKODE Core implementation.**
 
 ###License
-[![Zlib License](http://img.shields.io/:license-mit-blue.svg)](http://opensource.org/licenses/Zlib)
+[![Zlib License](http://img.shields.io/:license-zlib-blue.svg)](http://opensource.org/licenses/Zlib)
 
 ###Status
 [![Travis Status](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
