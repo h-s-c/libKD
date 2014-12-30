@@ -1378,24 +1378,24 @@ KD_API KDint KD_APIENTRY kdTruncate(const KDchar *pathname, KDoff length)
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
-    struct stat* posixstat = {0};
-    int retval = stat(pathname, posixstat);
+    struct stat posixstat = {0};
+    int retval = stat(pathname, &posixstat);
 
-    buf->st_mode  = posixstat->st_mode;
-    buf->st_size  = posixstat->st_size;
-    buf->st_mtime = posixstat->st_mtim.tv_sec;
+    buf->st_mode  = posixstat.st_mode;
+    buf->st_size  = posixstat.st_size;
+    buf->st_mtime = posixstat.st_mtim.tv_sec;
 
     return retval;
 }
 
 KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 {
-    struct stat* posixstat = {0};
-    int retval = fstat(fileno(file->file), posixstat);
+    struct stat posixstat = {0};
+    int retval = fstat(fileno(file->file), &posixstat);
 
-    buf->st_mode  = posixstat->st_mode;
-    buf->st_size  = posixstat->st_size;
-    buf->st_mtime = posixstat->st_mtim.tv_sec;
+    buf->st_mode  = posixstat.st_mode;
+    buf->st_size  = posixstat.st_size;
+    buf->st_mtime = posixstat.st_mtim.tv_sec;
 
     return retval;
 }
@@ -1421,7 +1421,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 /* kdReadDir: Return the next file in a directory. */
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
-    KDDirent*  kddirent = {0};
+    KDDirent*  kddirent = (KDDirent*)kdMalloc(sizeof(KDDirent));
     struct dirent* posixdirent = readdir(dir->dir);
     kddirent->d_name = posixdirent->d_name;
     return kddirent;
