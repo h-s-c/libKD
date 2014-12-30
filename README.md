@@ -1,13 +1,16 @@
 **OpenKODE Core implementation.**
 
-[![Travis](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
-[![AppVeyor](https://img.shields.io/badge/build-unknown-lightgrey.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
-[![Coveralls](https://img.shields.io/coveralls/h-s-c/libKD.svg)](https://coveralls.io/r/h-s-c/libKD)
-[![Coverity](https://scan.coverity.com/projects/3798/badge.svg)](https://scan.coverity.com/projects/3798)
+###License
+[![Zlib License](http://img.shields.io/:license-mit-blue.svg)](http://opensource.org/licenses/Zlib)
+
+###Status
+[![Travis Status](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
+[![AppVeyor Status](https://img.shields.io/badge/build-unknown-lightgrey.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
+[![Coveralls Status](https://img.shields.io/coveralls/h-s-c/libKD.svg)](https://coveralls.io/r/h-s-c/libKD)
+[![Coverity Status](https://scan.coverity.com/projects/3798/badge.svg)](https://scan.coverity.com/projects/3798)
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
--   zlib licensed (examples are public domain)
 -   Only kd.c + headers are needed in case you don't use CMake.
 
 ###Dependencies
