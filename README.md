@@ -1,5 +1,7 @@
 **OpenKODE Core implementation.**
 
+[![Build Status](https://travis-ci.org/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
+
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
 -   zlib licensed (examples are public domain)
