@@ -1,6 +1,7 @@
 **OpenKODE Core implementation.**
 
 [![Build Status](https://travis-ci.org/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/3798/badge.svg)](https://scan.coverity.com/projects/3798)
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
