@@ -14,7 +14,7 @@ install:
   - sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
 
 before_script:
-  - cmake -DCOVERAGE .
+  - cmake -DWANT_COVERAGE=On .
 
 script:
   - make

@@ -29,7 +29,7 @@ set(EXAMPLE_DIR examples)
 project (KD)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
 
-    if(COVERAGE)
+    if(WANT_COVERAGE)
         message(STATUS "Code coverage build.")
         if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
