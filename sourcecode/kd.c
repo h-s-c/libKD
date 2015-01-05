@@ -41,8 +41,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <threads.h>
 #include <time.h>
+
+#ifndef EMSCRIPTEN
+#include <threads.h>
+#else
+#define thread_local
+#endif
 
 /******************************************************************************
  * POSIX includes
@@ -59,9 +64,12 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <mqueue.h>
-#include <semaphore.h>
 #include <signal.h>
 #include <unistd.h>
+
+#ifndef EMSCRIPTEN
+#include <semaphore.h>
+#endif
 
 /******************************************************************************
  * Platform includes
@@ -77,6 +85,10 @@
 #ifdef BSD
     /* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
 #endif
+#endif
+
+#ifdef EMSCRIPTEN
+#include <emscripten/emscripten.h>
 #endif
 
 #ifdef KD_WINDOW_SUPPORTED
@@ -264,26 +276,36 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize sta
 /* kdThreadCreate: Create a new thread. */
 typedef struct KDThread
 {
+#ifndef EMSCRIPTEN
     thrd_t thrd;
+#else
+    KDuint thrd;
+#endif
 } KDThread;
 static thread_local KDThread threadself = {0};
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
     KDThread* thread = &threadself;
+#ifndef EMSCRIPTEN
     int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine, arg);
-    if(error == thrd_success)
+    if(error == thrd_nomem)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    else if(error == thrd_success)
+#else
+    /* We have only the mainthread */
+    thread->thrd = 1234;
+    kdSetError(KD_ENOSYS);
+#endif
     {
         KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
         KDchar thread_id[KD_ULTOSTR_MAXLEN];
         kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
         kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
-        mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);        
+        mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
         mq_close(queue);
-    }
-    else if(error == thrd_nomem)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
     }
     if(attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
@@ -298,7 +320,11 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     mq_unlink(queueid);
+#ifndef EMSCRIPTEN
     thrd_exit(*(int*)retval);
+#else
+    kdExit(0);
+#endif
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
@@ -306,28 +332,36 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
+#ifndef EMSCRIPTEN
     int error = thrd_join(thread->thrd, *retval);
     if(error == thrd_success)
+#endif
     {
         mq_unlink(queueid);
         return 0;
     }
+#ifndef EMSCRIPTEN
     else if(error == thrd_error)
     {
         kdSetError(KD_EINVAL);
     }
+#else
+    kdSetError(KD_EDEADLK);
+#endif
     return -1;
 }
 
 /* kdThreadDetach: Allow resources to be freed as soon as a thread terminates. */
 KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 {
+#ifndef EMSCRIPTEN
     int error = thrd_detach(thread->thrd);
     if(error == thrd_success)
     {
         return 0;
     }
     else if(error == thrd_error)
+#endif
     {
         kdSetError(KD_EINVAL);
     }
@@ -338,7 +372,11 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
     KDThread* thread = &threadself;
+#ifndef EMSCRIPTEN
     thread->thrd = thrd_current();
+#else
+    thread->thrd = 1234;
+#endif
     return thread;
 }
 
@@ -352,6 +390,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 }
 #endif /* ndef KD_NO_STATIC_DATA */
 
+#ifndef EMSCRIPTEN //TODO: Emscripten mutex
 /* kdThreadMutexCreate: Create a mutex. */
 typedef struct KDThreadMutex
 {
@@ -394,14 +433,18 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
     mtx_unlock(&mutex->mtx);
     return 0;
 }
+#endif //TODO: Emscripten mutex
 
 /* kdThreadCondCreate: Create a condition variable. */
 typedef struct KDThreadCond
 {
-   cnd_t cnd;
+#ifndef EMSCRIPTEN
+    cnd_t cnd;
+#endif
 } KDThreadCond;
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
 {
+#ifndef EMSCRIPTEN
     KDThreadCond* cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
     int error =  cnd_init(&cond->cnd);
     if(error == thrd_success)
@@ -417,37 +460,49 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
         kdSetError(KD_EAGAIN);
     }
     kdFree(cond);
+#else
+    kdSetError(KD_ENOSYS);
+#endif
     return KD_NULL;
 }
 
 /* kdThreadCondFree: Free a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
 {
+#ifndef EMSCRIPTEN
     cnd_destroy(&cond->cnd);
     kdFree(cond);
+#endif
     return 0;
 }
 
 /* kdThreadCondSignal, kdThreadCondBroadcast: Signal a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondSignal(KDThreadCond *cond)
 {
+#ifndef EMSCRIPTEN
     cnd_signal(&cond->cnd);
+#endif
     return 0;
 }
 
 KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 {
+#ifndef EMSCRIPTEN
     cnd_broadcast(&cond->cnd);
+#endif
     return 0;
 }
 
 /* kdThreadCondWait: Wait for a condition variable to be signalled. */
 KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mutex)
 {
+#ifndef EMSCRIPTEN
     cnd_wait(&cond->cnd, &mutex->mtx );
+#endif
     return 0;
 }
 
+#ifndef EMSCRIPTEN //TODO: Emscripten semaphore
 /* kdThreadSemCreate: Create a semaphore. */
 typedef struct KDThreadSem
 {
@@ -479,6 +534,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 {
     return sem_post(&sem->sem);
 }
+#endif //TODO: Emscripten semaphore
 
 /******************************************************************************
  * Events
@@ -875,15 +931,25 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 /* kdCryptoRandom: Return random data. */
 KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 {
-
+#ifdef __linux__
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
     syscall(__NR_getrandom, buf, buflen, 0);
     return 0;
+#endif
 #endif
 #ifdef __OpenBSD__
     return getentropy(buf, buflen);
 #endif
 
+#ifdef EMSCRIPTEN
+    KDuint8 randomdata = (KDuint8)EM_ASM_INT(
+    {
+        var array = new Uint8Array($0);
+        window.crypto.getRandomValues(array);
+    }, buflen);
+    *buf = randomdata;
+    return 0;
+#else
     if(ioctl(open("/dev/urandom", O_RDONLY), RNDGETENTCNT, NULL))
     {
         KDFile* urandom = kdFopen("/dev/urandom", "r");
@@ -895,6 +961,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     {
         return -1;
     }
+#endif
 }
 
 /******************************************************************************

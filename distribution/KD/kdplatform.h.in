@@ -32,6 +32,8 @@
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_DISPMANX
 
+#cmakedefine KD_NO_STATIC_DATA
+
 #define KD_API KHRONOS_APICALL
 #define KD_APIENTRY KHRONOS_APIENTRY
 #define KD_NORETURN noreturn
