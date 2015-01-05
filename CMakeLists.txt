@@ -31,7 +31,6 @@ project (KD)
 
     if(EMSCRIPTEN)
         message(STATUS "Emscripten build")
-        add_definitions(-DEMSCRIPTEN)
         set(KD_NO_STATIC_DATA ON)
     endif()
 

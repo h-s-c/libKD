@@ -43,7 +43,7 @@
 #include <string.h>
 #include <time.h>
 
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 #include <threads.h>
 #else
 #define thread_local
@@ -67,7 +67,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 #include <semaphore.h>
 #endif
 
@@ -87,7 +87,7 @@
 #endif
 #endif
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
@@ -276,7 +276,7 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize sta
 /* kdThreadCreate: Create a new thread. */
 typedef struct KDThread
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     thrd_t thrd;
 #else
     KDuint thrd;
@@ -286,7 +286,7 @@ static thread_local KDThread threadself = {0};
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
     KDThread* thread = &threadself;
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine, arg);
     if(error == thrd_nomem)
     {
@@ -320,7 +320,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     mq_unlink(queueid);
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     thrd_exit(*(int*)retval);
 #else
     kdExit(0);
@@ -332,7 +332,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     int error = thrd_join(thread->thrd, *retval);
     if(error == thrd_success)
 #endif
@@ -340,7 +340,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         mq_unlink(queueid);
         return 0;
     }
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     else if(error == thrd_error)
     {
         kdSetError(KD_EINVAL);
@@ -354,7 +354,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 /* kdThreadDetach: Allow resources to be freed as soon as a thread terminates. */
 KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     int error = thrd_detach(thread->thrd);
     if(error == thrd_success)
     {
@@ -372,7 +372,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
     KDThread* thread = &threadself;
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     thread->thrd = thrd_current();
 #else
     thread->thrd = 1234;
@@ -390,7 +390,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 }
 #endif /* ndef KD_NO_STATIC_DATA */
 
-#ifndef EMSCRIPTEN //TODO: Emscripten mutex
+#ifndef __EMSCRIPTEN__ //TODO: Emscripten mutex
 /* kdThreadMutexCreate: Create a mutex. */
 typedef struct KDThreadMutex
 {
@@ -438,13 +438,13 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 /* kdThreadCondCreate: Create a condition variable. */
 typedef struct KDThreadCond
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     cnd_t cnd;
 #endif
 } KDThreadCond;
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     KDThreadCond* cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
     int error =  cnd_init(&cond->cnd);
     if(error == thrd_success)
@@ -469,7 +469,7 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
 /* kdThreadCondFree: Free a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     cnd_destroy(&cond->cnd);
     kdFree(cond);
 #endif
@@ -479,7 +479,7 @@ KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
 /* kdThreadCondSignal, kdThreadCondBroadcast: Signal a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondSignal(KDThreadCond *cond)
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     cnd_signal(&cond->cnd);
 #endif
     return 0;
@@ -487,7 +487,7 @@ KD_API KDint KD_APIENTRY kdThreadCondSignal(KDThreadCond *cond)
 
 KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     cnd_broadcast(&cond->cnd);
 #endif
     return 0;
@@ -496,13 +496,13 @@ KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 /* kdThreadCondWait: Wait for a condition variable to be signalled. */
 KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mutex)
 {
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     cnd_wait(&cond->cnd, &mutex->mtx );
 #endif
     return 0;
 }
 
-#ifndef EMSCRIPTEN //TODO: Emscripten semaphore
+#ifndef __EMSCRIPTEN__ //TODO: Emscripten semaphore
 /* kdThreadSemCreate: Create a semaphore. */
 typedef struct KDThreadSem
 {
@@ -941,7 +941,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     return getentropy(buf, buflen);
 #endif
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     KDuint8 randomdata = (KDuint8)EM_ASM_INT(
     {
         var array = new Uint8Array($0);
