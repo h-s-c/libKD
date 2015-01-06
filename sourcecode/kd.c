@@ -560,12 +560,13 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_RDONLY);
     KDint retval = mq_timedreceive( queue, (char*)event, 8192, NULL, &tm );
-    if(retval == -1) 
+    mq_close(queue);
+    if(retval == -1)
     {
         kdSetError(errorcode_posix(errno));
         kdFreeEvent(event);
+        return KD_NULL;
     }
-    mq_close(queue);
     return event;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
@@ -782,13 +783,13 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     mqd_t queue = mq_open(queue_path, O_WRONLY);
     KDint retval = mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
     mq_close(queue);
+    kdFreeEvent(event);
     return retval;
 }
 
 /* kdFreeEvent: Abandon an event instead of posting it. */
 KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
-    event = KD_NULL;
     kdFree(event);
 }
 
@@ -946,6 +947,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     return 0;
 #endif
 #endif
+
 #ifdef __OpenBSD__
     return getentropy(buf, buflen);
 #endif
@@ -961,19 +963,16 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
         );
     }
     return 0;
-#else
-    if(ioctl(open("/dev/urandom", O_RDONLY), RNDGETENTCNT, NULL))
-    {
-        KDFile* urandom = kdFopen("/dev/urandom", "r");
-        kdFread((void *)buf, sizeof(KDuint8), buflen, urandom); 
-        kdFclose(urandom);
-        return 0;
-    }
-    else
-    {
-        return -1;
-    }
 #endif
+
+    int fd = open("/dev/urandom", O_RDONLY);
+    kdAssert(ioctl(fd, RNDGETENTCNT, NULL));
+    close(fd);
+
+    KDFile* urandom = kdFopen("/dev/urandom", "r");
+    kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
+    kdFclose(urandom);
+    return 0;
 }
 
 /******************************************************************************
@@ -1284,7 +1283,6 @@ static void timerhandler(int sig, siginfo_t *si, void *uc)
     event->timestamp = kdGetTimeUST();
     event->userptr   = timer->userptr;
     kdPostThreadEvent(event, timer->thread);
-    kdFreeEvent(event);
 }
 KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
 {
