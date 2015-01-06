@@ -954,7 +954,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 #endif
 
     int fd = open("/dev/urandom", O_RDONLY);
-    kdAssert(ioctl(fd, RNDGETENTCNT, NULL));
+    kdAssert(ioctl(fd, RNDGETENTCNT, NULL) == 0);
     close(fd);
 
     KDFile* urandom = kdFopen("/dev/urandom", "r");
