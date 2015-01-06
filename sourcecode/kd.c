@@ -721,12 +721,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             else if(windows[i].platform == EGL_PLATFORM_WAYLAND_KHR)
             {
                 kdSetError(KD_EOPNOTSUPP);
-                break;
-            }
-            else
-            {
-                kdSetError(KD_EOPNOTSUPP);
-                break;
             }
         }
     }
