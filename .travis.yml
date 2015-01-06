@@ -18,6 +18,7 @@ before_script:
 
 script:
   - make
+  - make test
 
 after_success:
   -  if [ "$CC" = "gcc" ]; then coveralls --gcov-options '\-lp' --gcov 'gcov-4.9'; fi
