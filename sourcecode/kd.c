@@ -952,8 +952,13 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     close(fd);
 
     KDFile* urandom = kdFopen("/dev/urandom", "r");
-    kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
+    KDsize result = kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
     kdFclose(urandom);
+    if (result != buflen)
+    {
+        kdSetError(KD_ENOMEM);
+        return -1;
+    }
     return 0;
 }
 
