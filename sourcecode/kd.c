@@ -21,6 +21,10 @@
 #define __STDC_WANT_LIB_EXT1__ 1
 #define _POSIX_C_SOURCE 200809L
 
+#ifdef __EMSCRIPTEN__
+#define _GNU_SOURCE
+#endif
+
 /******************************************************************************
  * KD includes
  ******************************************************************************/
@@ -942,12 +946,15 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 #endif
 
 #ifdef __EMSCRIPTEN__
-    KDuint8 randomdata = (KDuint8)EM_ASM_INT(
+    for(KDsize i = 0; i < buflen; i++)
     {
-        var array = new Uint8Array($0);
-        window.crypto.getRandomValues(array);
-    }, buflen);
-    *buf = randomdata;
+        buf[i] = EM_ASM_INT_V
+        (
+            var array = new Uint8Array(1);
+            window.crypto.getRandomValues(array);
+            return array;
+        );
+    }
     return 0;
 #else
     if(ioctl(open("/dev/urandom", O_RDONLY), RNDGETENTCNT, NULL))
@@ -1228,19 +1235,19 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 /* kdTime: Get the current wall clock time. */
 KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 {
-    return time(timep);
+    return time((time_t*)timep);
 }
 
 /* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
 KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 {
-    KDTm * retval = (KDTm*)gmtime(timep);
+    KDTm * retval = (KDTm*)gmtime((const time_t*)timep);
     *result = *retval;
     return retval;
 }
 KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 {
-    KDTm * retval = (KDTm*)localtime(timep);
+    KDTm * retval = (KDTm*)localtime((const time_t*)timep);
     *result = *retval;
     return retval;
 }
