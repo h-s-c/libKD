@@ -608,6 +608,10 @@ static thread_local struct KDCallback callbacks[999] = {{0}};
 static thread_local struct KDWindow windows[999]= {{0}};
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
+#ifdef __EMSCRIPTEN__
+    /* Give back control to the browser */
+    emscripten_sleep(1);
+#endif
     for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
     {
         if(windows[i].nativewindow)
@@ -796,11 +800,12 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /******************************************************************************
  * Application startup and exit.
  ******************************************************************************/
- typedef struct KDFile
+typedef struct KDFile
 {
     FILE* file;
 } KDFile;
- int main(int argc, char **argv)
+
+int main(int argc, char **argv)
 {
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_init();
