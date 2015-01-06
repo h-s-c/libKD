@@ -646,11 +646,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                     }
                                 }
 
-                                if(has_callback)
-                                {
-                                    kdFreeEvent(event);
-                                }
-                                else
+                                if(!has_callback)
                                 {
                                     kdPostEvent(event);
                                 }
@@ -676,11 +672,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 }
                             }
 
-                            if(has_callback)
-                            {
-                                kdFreeEvent(event);
-                            }
-                            else
+                            if(!has_callback)
                             {
                                 kdPostEvent(event);
                             }
@@ -711,11 +703,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                     }
                                 }
 
-                                if(has_callback)
-                                {
-                                    kdFreeEvent(event);
-                                }
-                                else
+                                if(!has_callback)
                                 {
                                     kdPostEvent(event);
                                 }
