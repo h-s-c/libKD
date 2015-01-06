@@ -29,7 +29,7 @@ script:
 
 after_success:
   - lcov --compat-libtool --directory . --capture --output-file=coverage.info
-  - lcov --remove coverage.info '/usr*' 'tests/*' 'examples/*' 'cov-int/*' 'CMakeFiles/*' -o coverage.info
+  - lcov --remove coverage.info 'distribution/*' 'examples/*' 'sourcecode/thirdparty/*' 'tests/*' 'cov-int/*' 'CMakeFiles/*' '/usr*' -o coverage.info
   - coveralls-lcov coverage.info
 
 notifications:
