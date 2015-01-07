@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/h-s-c/libKD.png?label=ready&title=Ready)](https://waffle.io/h-s-c/libKD)
 **OpenKODE Core implementation.**
 
 ###License
