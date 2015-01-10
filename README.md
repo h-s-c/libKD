@@ -21,12 +21,4 @@
 ###Dependencies
 -   POSIX, C11 (C11 threads alternative implementation is included; 
     C11 Annex K is optional, BSD safe string functions can be used instead)
--   X11, EGL
-
-###Todo:
--   Android support (Bionic libc does not have POSIX messages queues, 
-    see 'sourcecode/thirdparty/mqueue')
--   Next-Gen window server support (Wayland/Mir)
--   Improve input handling
--   Networking
--   OS X/iOS support (no test devices)
+-   EGL, X11, Wayland, DispmanX (depending on your platform)
