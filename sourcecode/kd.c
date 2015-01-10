@@ -135,7 +135,7 @@ typedef struct
 {
     KDint       errorcode_kd;
     int         errorcode;
-    const char* errorcode_text;
+    const char *errorcode_text;
 } errorcodes;
 
 errorcodes errorcodes_posix[] =
@@ -251,7 +251,7 @@ typedef struct KDThreadAttr
 } KDThreadAttr;
 KD_API KDThreadAttr *KD_APIENTRY kdThreadAttrCreate(void)
 {
-    KDThreadAttr* attr = (KDThreadAttr*)kdMalloc(sizeof(KDThreadAttr));
+    KDThreadAttr *attr = (KDThreadAttr*)kdMalloc(sizeof(KDThreadAttr));
     return attr;
 }
 
@@ -289,7 +289,7 @@ typedef struct KDThread
 static thread_local KDThread threadself = {0};
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
-    KDThread* thread = &threadself;
+    KDThread *thread = &threadself;
 #ifndef __EMSCRIPTEN__
     int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine, arg);
     if(error == thrd_nomem)
@@ -375,7 +375,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-    KDThread* thread = &threadself;
+    KDThread *thread = &threadself;
 #ifndef __EMSCRIPTEN__
     thread->thrd = thrd_current();
 #else
@@ -402,7 +402,7 @@ typedef struct KDThreadMutex
 } KDThreadMutex;
 KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
 {
-    KDThreadMutex* mutex = (KDThreadMutex*)kdMalloc(sizeof(KDThreadMutex));
+    KDThreadMutex *mutex = (KDThreadMutex*)kdMalloc(sizeof(KDThreadMutex));
     int error = mtx_init(&mutex->mtx, mtx_plain);
     if(error == thrd_success)
     {
@@ -449,7 +449,7 @@ typedef struct KDThreadCond
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
 {
 #ifndef __EMSCRIPTEN__
-    KDThreadCond* cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
+    KDThreadCond *cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
     int error =  cnd_init(&cond->cnd);
     if(error == thrd_success)
     {
@@ -514,7 +514,7 @@ typedef struct KDThreadSem
 } KDThreadSem;
 KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
 {
-    KDThreadSem* sem = (KDThreadSem*)kdMalloc(sizeof(KDThreadSem));
+    KDThreadSem *sem = (KDThreadSem*)kdMalloc(sizeof(KDThreadSem));
     sem_init(&sem->sem, 0, value);
     return sem;
 }
@@ -548,7 +548,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
     kdPumpEvents();
-    KDEvent* event = kdCreateEvent();
+    KDEvent *event = kdCreateEvent();
 
     struct timespec tm = {0};
     clock_gettime(CLOCK_REALTIME, &tm);
@@ -559,7 +559,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_RDONLY);
-    KDint retval = mq_timedreceive( queue, (char*)event, 8192, NULL, &tm );
+    KDssize retval = mq_timedreceive( queue, (char*)event, 8192, NULL, &tm );
     mq_close(queue);
     if(retval == -1)
     {
@@ -587,21 +587,21 @@ KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
 struct KDCallback 
 {
-    KDCallbackFunc* func;
+    KDCallbackFunc *func;
     KDint eventtype;
-    void* eventuserptr;
+    void *eventuserptr;
 } KDCallback;
 typedef struct KDWindowX11
 {
     Window window;
-    Display* display;
+    Display *display;
 } KDWindowX11;
 typedef struct KDWindowWayland
 {
 } KDWindowWayland;
 typedef struct KDWindow
 {
-    void* nativewindow;
+    void *nativewindow;
     EGLint format;
     EGLenum platform;
 } KDWindow;
@@ -613,17 +613,17 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     /* Give back control to the browser */
     emscripten_sleep(1);
 #endif
-    for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
+    for (KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
     {
-        if(windows[i].nativewindow)
+        if(windows[window].nativewindow)
         {
-            if(windows[i].platform == EGL_PLATFORM_X11_KHR)
+            if(windows[window].platform == EGL_PLATFORM_X11_KHR)
             {
-                KDWindowX11* x11window = windows[i].nativewindow;
+                KDWindowX11 *x11window = windows[window].nativewindow;
                 XSelectInput(x11window->display, x11window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
                 while(XPending(x11window->display) > 0)
                 {
-                    KDEvent* event = kdCreateEvent();
+                    KDEvent *event = kdCreateEvent();
                     XEvent xevent = {0};
                     XNextEvent(x11window->display,&xevent);
                     switch(xevent.type)
@@ -637,12 +637,12 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 event->timestamp = kdGetTimeUST();
 
                                 KDboolean has_callback = 0;
-                                for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                                for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
                                 {
-                                    if(callbacks[i].eventtype == KD_EVENT_WINDOW_CLOSE)
+                                    if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
                                     {
                                         has_callback = 1;
-                                        callbacks[i].func(event);
+                                        callbacks[callback].func(event);
                                     }
                                 }
 
@@ -663,12 +663,12 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             event->data.inputpointer.select = 1;
 
                             KDboolean has_callback = 0;
-                            for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                            for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
                             {
-                                if(callbacks[i].eventtype == KD_EVENT_INPUT_POINTER)
+                                if(callbacks[callback].eventtype == KD_EVENT_INPUT_POINTER)
                                 {
                                     has_callback = 1;
-                                    callbacks[i].func(event);
+                                    callbacks[callback].func(event);
                                 }
                             }
 
@@ -694,12 +694,12 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 event->timestamp = kdGetTimeUST();
 
                                 KDboolean has_callback = 0;
-                                for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+                                for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
                                 {
-                                    if(callbacks[i].eventtype == KD_EVENT_WINDOW_CLOSE)
+                                    if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
                                     {
                                         has_callback = 1;
-                                        callbacks[i].func(event);
+                                        callbacks[callback].func(event);
                                     }
                                 }
 
@@ -718,7 +718,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     }
                 }
             }
-            else if(windows[i].platform == EGL_PLATFORM_WAYLAND_KHR)
+            else if(windows[window].platform == EGL_PLATFORM_WAYLAND_KHR)
             {
                 kdSetError(KD_EOPNOTSUPP);
             }
@@ -730,13 +730,13 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 /* kdInstallCallback: Install or remove a callback function for event processing. */
 KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype, void *eventuserptr)
 {
-    for (KDuint i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); i++)
+    for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
     {
-        if(!callbacks[i].func)
+        if(!callbacks[callback].func)
         {
-           callbacks[i].func         = func;
-           callbacks[i].eventtype    = eventtype;
-           callbacks[i].eventuserptr = eventuserptr;
+           callbacks[callback].func         = func;
+           callbacks[callback].eventtype    = eventtype;
+           callbacks[callback].eventuserptr = eventuserptr;
            
            return 0;
         }
@@ -747,7 +747,7 @@ KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype
 /* kdCreateEvent: Create an event for posting. */
 KD_API KDEvent *KD_APIENTRY kdCreateEvent(void)
 {
-    KDEvent* event = (KDEvent*)kdMalloc(sizeof(KDEvent));
+    KDEvent *event = (KDEvent*)kdMalloc(sizeof(KDEvent));
     return event;
 }
 
@@ -785,7 +785,7 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
  ******************************************************************************/
 typedef struct KDFile
 {
-    FILE* file;
+    FILE *file;
 } KDFile;
 
 int main(int argc, char **argv)
@@ -793,10 +793,10 @@ int main(int argc, char **argv)
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_init();
 #endif
-    void* app = dlopen(NULL, RTLD_NOW);
+    void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
     /* ISO C forbids assignment between function pointer and ‘void *’ */
-    void* rawptr = dlsym(app, "kdMain");
+    void *rawptr = dlsym(app, "kdMain");
     kdMemcpy(&kdMain, &rawptr, sizeof(rawptr));
     if(dlerror() != NULL)
     {
@@ -927,6 +927,23 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
     syscall(__NR_getrandom, buf, buflen, 0);
     return 0;
+#else
+    int fd = open("/dev/urandom", O_RDONLY);
+    if(fd >= 0)
+    {
+        kdAssert(ioctl(fd, RNDGETENTCNT, NULL) == 0);
+        close(fd);
+    }
+
+    KDFile *urandom = kdFopen("/dev/urandom", "r");
+    KDsize result = kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
+    kdFclose(urandom);
+    if (result != buflen)
+    {
+        kdSetError(KD_ENOMEM);
+        return -1;
+    }
+    return 0;
 #endif
 #endif
 
@@ -946,23 +963,6 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     }
     return 0;
 #endif
-
-    int fd = open("/dev/urandom", O_RDONLY);
-    if(fd >= 0)
-    {
-        kdAssert(ioctl(fd, RNDGETENTCNT, NULL) == 0);
-        close(fd);
-    }
-
-    KDFile* urandom = kdFopen("/dev/urandom", "r");
-    KDsize result = kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
-    kdFclose(urandom);
-    if (result != buflen)
-    {
-        kdSetError(KD_ENOMEM);
-        return -1;
-    }
-    return 0;
 }
 
 /******************************************************************************
@@ -1127,7 +1127,7 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
-    void* retval = memchr(src , byte, len);
+    void *retval = memchr(src , byte, len);
     if(retval == NULL)
     {
         kdSetError(errorcode_posix(errno));
@@ -1163,7 +1163,7 @@ KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 /* kdStrchr: Scan string for a byte value. */
 KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
 {
-    void* retval = strchr(str, ch);
+    void *retval = strchr(str, ch);
     if(retval == NULL)
     {
         kdSetError(errorcode_posix(errno));
@@ -1195,7 +1195,7 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 /* kdStrncat_s: Concatenate two strings. */
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srcmaxlen)
 {
-    return strncat_s(buf, buflen, src, srcmaxlen);
+    return (KDint)strncat_s(buf, buflen, src, srcmaxlen);
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
@@ -1207,13 +1207,13 @@ KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsiz
 /* kdStrcpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
-    return strcpy_s(buf, buflen, src);
+    return (KDint)strcpy_s(buf, buflen, src);
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srclen)
 {
-    return strncpy_s(buf, buflen, src, srclen);
+    return (KDint)strncpy_s(buf, buflen, src, srclen);
 }
 
 /******************************************************************************
@@ -1235,13 +1235,13 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 /* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
 KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 {
-    KDTm * retval = (KDTm*)gmtime((const time_t*)timep);
+    KDTm *retval = (KDTm*)gmtime((const time_t*)timep);
     *result = *retval;
     return retval;
 }
 KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 {
-    KDTm * retval = (KDTm*)localtime((const time_t*)timep);
+    KDTm *retval = (KDTm*)localtime((const time_t*)timep);
     *result = *retval;
     return retval;
 }
@@ -1260,15 +1260,15 @@ KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
 /* kdSetTimer: Set timer. */
 typedef struct KDTimer
 {
-    timer_t* timer;
-    KDThread* thread;
+    timer_t *timer;
+    KDThread *thread;
     void *userptr;
 } KDTimer;
 static void timerhandler(int sig, siginfo_t *si, void *uc)
 {
-    KDTimer* timer = (KDTimer*)si->si_value.sival_ptr;
+    KDTimer *timer = (KDTimer*)si->si_value.sival_ptr;
 
-    KDEvent* event = kdCreateEvent();
+    KDEvent *event = kdCreateEvent();
     event->type      = KD_EVENT_TIMER;
     event->timestamp = kdGetTimeUST();
     event->userptr   = timer->userptr;
@@ -1276,7 +1276,7 @@ static void timerhandler(int sig, siginfo_t *si, void *uc)
 }
 KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
 {
-    KDTimer* timer = (KDTimer*)kdMalloc(sizeof(KDTimer));
+    KDTimer *timer = (KDTimer*)kdMalloc(sizeof(KDTimer));
     timer->timer   = (timer_t*)kdMalloc(sizeof(timer_t));
     timer->thread  = kdThreadSelf();
     timer->userptr = eventuserptr;
@@ -1333,7 +1333,7 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 /* kdFopen: Open a file from the file system. */
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
-    KDFile* file = (KDFile*)kdMalloc(sizeof(KDFile));
+    KDFile *file = (KDFile*)kdMalloc(sizeof(KDFile));
     file->file = fopen(pathname, mode);
     return file;
 }
@@ -1379,7 +1379,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 /* kdFgets: Read a line of text from an open file. */
 KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 {
-    return fgets(buffer, buflen, file->file);
+    return fgets(buffer, (KDint)buflen, file->file);
 }
 
 /* kdFEOF: Check for end of file. */
@@ -1476,11 +1476,11 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 /* kdOpenDir: Open a directory ready for listing. */
 typedef struct KDDir
 {
-    DIR* dir;
+    DIR *dir;
 } KDDir;
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
-    KDDir* dir = (KDDir*)kdMalloc(sizeof(KDDir));
+    KDDir *dir = (KDDir*)kdMalloc(sizeof(KDDir));
     dir->dir = opendir(pathname);
     return dir;
 }
@@ -1488,8 +1488,8 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 /* kdReadDir: Return the next file in a directory. */
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
-    KDDirent*  kddirent = (KDDirent*)kdMalloc(sizeof(KDDirent));
-    struct dirent* posixdirent = readdir(dir->dir);
+    KDDirent *kddirent = (KDDirent*)kdMalloc(sizeof(KDDirent));
+    struct dirent *posixdirent = readdir(dir->dir);
     kddirent->d_name = posixdirent->d_name;
     return kddirent;
 }
@@ -1610,28 +1610,28 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
 KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return 0;
 }
 
 /* kdHtons: Convert a 16-bit integer from host to network byte order. */
 KD_API KDuint16 KD_APIENTRY kdHtons(KDuint16 hostshort)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return (KDuint16)0;
 }
 
 /* kdNtohl: Convert a 32-bit integer from network to host byte order. */
 KD_API KDuint32 KD_APIENTRY kdNtohl(KDuint32 netlong)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return 0;
 }
 
 /* kdNtohs: Convert a 16-bit integer from network to host byte order. */
 KD_API KDuint16 KD_APIENTRY kdNtohs(KDuint16 netshort)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return (KDuint16)0;
 }
 
 /* kdInetAton: Convert a &#8220;dotted quad&#8221; format address to an integer. */
@@ -1692,55 +1692,59 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfl
 /* kdCreateWindow: Create a window. */
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, void *eventuserptr)
 {
-    KDWindow* window = (KDWindow*)kdMalloc(sizeof(KDWindow));
+    KDWindow *window = (KDWindow *) kdMalloc(sizeof(KDWindow));
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
     window->platform = EGL_PLATFORM_X11_KHR;
-    if(window->platform == EGL_PLATFORM_X11_KHR)
+    if (window->platform == EGL_PLATFORM_X11_KHR)
     {
         window->nativewindow = kdMalloc(sizeof(KDWindowX11));
-        KDWindowX11* x11window = window->nativewindow;
+        KDWindowX11 *x11window = window->nativewindow;
         XInitThreads();
         x11window->display = XOpenDisplay(NULL);
-        x11window->window = XCreateSimpleWindow(x11window->display, 
-            XRootWindow(x11window->display, XDefaultScreen(x11window->display)), 0, 0, 
-            XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display)), 
-            XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display)), 0, 
-            XBlackPixel(x11window->display, XDefaultScreen(x11window->display)), 
-            XWhitePixel(x11window->display, XDefaultScreen(x11window->display)));
+        x11window->window = XCreateSimpleWindow(x11window->display,
+                XRootWindow(x11window->display, XDefaultScreen(x11window->display)), 0, 0,
+                (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display)),
+                (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display)), 0,
+                XBlackPixel(x11window->display, XDefaultScreen(x11window->display)),
+                XWhitePixel(x11window->display, XDefaultScreen(x11window->display)));
         XStoreName(x11window->display, x11window->window, "OpenKODE");
         Atom wm_del_win_msg = XInternAtom(x11window->display, "WM_DELETE_WINDOW", False);
         XSetWMProtocols(x11window->display, x11window->window, &wm_del_win_msg, 1);
         Atom mwm_prop_hints = XInternAtom(x11window->display, "_MOTIF_WM_HINTS", True);
-        long mwm_hints[5] = { 2, 0, 0, 0, 0 };
-        XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const unsigned char *)&mwm_hints, 5);
+        long mwm_hints[5] = {2, 0, 0, 0, 0};
+        XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const unsigned char *) &mwm_hints, 5);
         Atom netwm_prop_hints = XInternAtom(x11window->display, "_NET_WM_STATE", False);
         Atom netwm_hints[3];
         netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
         netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
         netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *)&netwm_hints, 3); 
+        XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
         XMapWindow(x11window->display, x11window->window);
         XFlush(x11window->display);
     }
-    else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    else if (window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
         window->nativewindow = kdMalloc(sizeof(KDWindowWayland));
-        KDWindowWayland* waylandwindow = window->nativewindow;
+        KDWindowWayland *waylandwindow = window->nativewindow;
     }
     else
     {
         kdSetError(KD_EOPNOTSUPP);
+        kdFree(window);
         window = KD_NULL;
     }
-    for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
+    if (window != KD_NULL)
     {
-        if(!windows[i].nativewindow)
+        for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
         {
-           windows[i].nativewindow = window->nativewindow;
-           windows[i].format       = window->format;
-           windows[i].platform     = window->platform;
+            if (!windows[i].nativewindow)
+            {
+                windows[i].nativewindow = window->nativewindow;
+                windows[i].format = window->format;
+                windows[i].platform = window->platform;
 
-           break;
+                break;
+            }
         }
     }
     return window;
@@ -1752,7 +1756,7 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
     KDint retval = -1;
     if(window->platform == EGL_PLATFORM_X11_KHR)
     {
-        KDWindowX11* x11window = window->nativewindow;
+        KDWindowX11 *x11window = window->nativewindow;
         XCloseDisplay(x11window->display);
         kdFree(x11window);
         retval = 0;
@@ -1777,8 +1781,8 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            KDWindowX11* x11window = window->nativewindow;
-            XMoveResizeWindow(x11window->display, x11window->window, 0, 0, param[0], param[1]);
+            KDWindowX11 *x11window = window->nativewindow;
+            XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
             return 0;
         }
         else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -1796,7 +1800,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            KDWindowX11* x11window = window->nativewindow;
+            KDWindowX11 *x11window = window->nativewindow;
             XStoreName(x11window->display, x11window->window, param);
             return 0;
         }
@@ -1822,7 +1826,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            KDWindowX11* x11window = window->nativewindow;
+            KDWindowX11 *x11window = window->nativewindow;
             param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display));
             param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display));
             return 0;
@@ -1842,7 +1846,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
     {
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            KDWindowX11* x11window = window->nativewindow;
+            KDWindowX11 *x11window = window->nativewindow;
             XFetchName(x11window->display, x11window->window, &param);
             return 0;
         } 
@@ -1861,7 +1865,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 {
     if(window->platform == EGL_PLATFORM_X11_KHR)
     {
-        KDWindowX11* x11window = window->nativewindow;
+        KDWindowX11 *x11window = window->nativewindow;
         *nativewindow = x11window->window;
         return 0;
     } 
