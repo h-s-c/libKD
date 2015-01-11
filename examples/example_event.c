@@ -92,14 +92,21 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
 
     for(;;)
     {
+
         const KDEvent *event = kdWaitEvent(0);
         if(event)
         {
+            KDboolean exit = 0;
             if(event->type == KD_EVENT_WINDOW_CLOSE)
+            {
+                exit = 1;
+            }
+
+            kdDefaultEvent(event);
+            if(exit)
             {
                 break;
             }
-            kdDefaultEvent(event);
         }
 
         glClearColor(0, 1, 0, 0);

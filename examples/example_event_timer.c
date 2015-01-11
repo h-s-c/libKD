@@ -113,8 +113,8 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
                 float b = buffer[2]%256 / 255.0f;
                 glClearColor(r, g, b, 1.0);
             }
-            kdDefaultEvent(event);
 
+            kdDefaultEvent(event);
             if(exit)
             {
                 break;
