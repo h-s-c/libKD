@@ -355,7 +355,12 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
     mq_unlink(queueid);
 #ifndef __EMSCRIPTEN__
-    thrd_exit(*(int*)retval);
+    KDint result = 0;
+    if(retval != KD_NULL)
+    {
+        result = *(KDint*)retval;
+    }
+    thrd_exit(result);
 #else
     kdExit(0);
 #endif
@@ -367,6 +372,11 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
 #ifndef __EMSCRIPTEN__
+    if(thrd_equal(thread->thrd, kdThreadSelf()->thrd) != 0)
+    {
+        kdSetError(KD_EDEADLK);
+        return -1;
+    }
     void* result = KD_NULL;
     if(retval != KD_NULL)
     {

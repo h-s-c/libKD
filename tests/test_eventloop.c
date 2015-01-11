@@ -21,27 +21,28 @@
 #include <stdlib.h> /* EXIT_FAILURE */
 #include <KD/kd.h>
 
-/* Test if we can call test_func more than once. */
-static KDint test_once_count = 0;
-static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
-static void test_once_func()
-{
-    ++test_once_count;
-}
-
+/* Test can communicate properly with event loops in different threads. */
 void* test_func( void *arg)
 {
-    for(KDint i = 0 ; i < 9 ;i++)
+    for(;;)
     {
-        kdThreadOnce(&test_once, test_once_func);
+        const KDEvent *event = kdWaitEvent(99);
+        if(event)
+        {
+            KDboolean quit = 0;
+            if(event->type == KD_EVENT_QUIT)
+            {
+                quit = 1;
+            }
+
+            kdDefaultEvent(event);
+            if(quit)
+            {
+                break;
+            }
+        }
     }
-    kdThreadJoin(kdThreadSelf(), KD_NULL);
-    if(kdGetError() != KD_EDEADLK)
-    {
-        kdExit(EXIT_FAILURE);
-    }
-    kdThreadExit(KD_NULL);
-    kdExit(EXIT_FAILURE);
+    return 0;
 }
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
@@ -53,12 +54,11 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     }
     for(KDint thread = 0 ; thread < 9 ;thread++)
     {
+        KDEvent *event = kdCreateEvent();
+        event->type      = KD_EVENT_QUIT;
+        event->timestamp = kdGetTimeUST();
+        kdPostThreadEvent(event, threads[thread]);
         kdThreadJoin(threads[thread], KD_NULL);
-    }
-
-    if (test_once_count != 1)
-    {
-        kdExit(EXIT_FAILURE);
     }
     return 0;
 }

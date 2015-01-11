@@ -150,7 +150,11 @@ if(WANT_TESTS)
         add_executable(${PROJECT_NAME} ${TEST_DIR}/${PROJECT_NAME}.c)
         target_link_libraries(${PROJECT_NAME} KD)
         add_test(${PROJECT_NAME} ${PROJECT_NAME})
+        set_tests_properties(${PROJECT_NAME} PROPERTIES TIMEOUT 5)
     endfunction()
+
+    project (test_eventloop)
+        test_helper()
 
     project (test_stacksize)
         test_helper()
