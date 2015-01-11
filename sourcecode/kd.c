@@ -338,9 +338,12 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
         mq_close(queue);
     }
-    if(attr->detachstate == KD_THREAD_CREATE_DETACHED)
+    if(attr != KD_NULL)
     {
-        kdThreadDetach(thread);
+        if (attr->detachstate == KD_THREAD_CREATE_DETACHED)
+        {
+            kdThreadDetach(thread);
+        }
     }
     return thread;
 }
@@ -364,7 +367,12 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     KDchar queueid[KD_ULTOSTR_MAXLEN];
     kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
 #ifndef __EMSCRIPTEN__
-    int error = thrd_join(thread->thrd, *retval);
+    void* result = KD_NULL;
+    if(retval != KD_NULL)
+    {
+        result = *retval;
+    }
+    int error = thrd_join(thread->thrd, result);
     if(error == thrd_success)
 #endif
     {
@@ -413,10 +421,33 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
+static KDThreadOnce* once_controls[999] = {KD_NULL};
+static KDThreadMutex* once_controls_mutex = KD_NULL;
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
-    once_control->impl = ONCE_FLAG_INIT;
-    call_once( once_control->impl, init_routine);
+    /* TODO: This locks once_controls for all threads which is not spec compatible */
+    kdThreadMutexLock(once_controls_mutex);
+    for (KDuint i = 0; i < sizeof(once_controls) / sizeof(once_controls[0]); i++)
+    {
+        /* Check if we already ran this routine. */
+        if(once_controls[i] == once_control)
+        {
+            kdThreadMutexUnlock(once_controls_mutex);
+            return 0;
+        }
+    }
+    for (KDuint i = 0; i < sizeof(once_controls) / sizeof(once_controls[0]); i++)
+    {
+        /* Put once flag into an empty slot and run routine. */
+        if(once_controls[i] == KD_NULL)
+        {
+            once_controls[i] = once_control;
+            init_routine();
+            kdThreadMutexUnlock(once_controls_mutex);
+            return 0;
+        }
+    }
+    kdThreadMutexUnlock(once_controls_mutex);
     return 0;
 }
 #endif /* ndef KD_NO_STATIC_DATA */
@@ -825,6 +856,7 @@ int main(int argc, char **argv)
     bcm_host_init();
 #endif
     start_routine_original_mutex = kdThreadMutexCreate(KD_NULL);
+    once_controls_mutex = kdThreadMutexCreate(KD_NULL);
 
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
@@ -850,6 +882,7 @@ int main(int argc, char **argv)
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_deinit();
 #endif
+    kdThreadMutexFree(once_controls_mutex);
     kdThreadMutexFree(start_routine_original_mutex);
     return retval;
 }
