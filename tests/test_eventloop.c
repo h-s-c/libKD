@@ -22,11 +22,12 @@
 #include <KD/kd.h>
 
 /* Test can communicate properly with event loops in different threads. */
+#define THREAD_COUNT 4
 void* test_func( void *arg)
 {
     for(;;)
     {
-        const KDEvent *event = kdWaitEvent(99);
+        const KDEvent *event = kdWaitEvent(0);
         if(event)
         {
             KDboolean quit = 0;
@@ -47,18 +48,30 @@ void* test_func( void *arg)
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDThread* threads[9] = {KD_NULL};
-    for(KDint thread = 0 ; thread < 9 ;thread++)
+    KDThread* threads[THREAD_COUNT] = {KD_NULL};
+    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
     {
         threads[thread] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
+        if(threads[thread] == KD_NULL)
+        {
+            kdExit(EXIT_FAILURE);
+        }
     }
-    for(KDint thread = 0 ; thread < 9 ;thread++)
+    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
     {
         KDEvent *event = kdCreateEvent();
         event->type      = KD_EVENT_QUIT;
-        event->timestamp = kdGetTimeUST();
-        kdPostThreadEvent(event, threads[thread]);
-        kdThreadJoin(threads[thread], KD_NULL);
+        if(kdPostThreadEvent(event, threads[thread]) == -1)
+        {
+            kdExit(EXIT_FAILURE);
+        }
+    }
+    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
+    {
+        if(kdThreadJoin(threads[thread], KD_NULL) == -1)
+        {
+            kdExit(EXIT_FAILURE);
+        }
     }
     return 0;
 }

@@ -67,12 +67,13 @@
  ******************************************************************************/
 
 #include <sys/ioctl.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
-#include <sys/select.h> 
+#include <sys/select.h>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -290,12 +291,12 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize sta
 typedef struct KDThread
 {
 #ifndef __EMSCRIPTEN__
-    thrd_t thrd;
+    thrd_t thread;
 #else
     KDuint thrd;
 #endif
 } KDThread;
-
+static struct KDThread threads[999] = {{0}};
 static KDThreadMutex* start_routine_original_mutex = KD_NULL;
 static void *(*start_routine_original)(void *) = KD_NULL;
 static void start_routine_injector(void *arg)
@@ -310,50 +311,61 @@ static void start_routine_injector(void *arg)
     GC_unregister_my_thread();
 #endif
 }
-static thread_local KDThread threadself = {0};
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
-    KDThread *thread = &threadself;
-#ifndef __EMSCRIPTEN__
     kdThreadMutexLock(start_routine_original_mutex);
     start_routine_original = start_routine;
-    int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine_injector, arg);
+    thrd_t thrd = 0;
+    int error = thrd_create(&thrd, (thrd_start_t)start_routine_injector, arg);
     kdThreadMutexUnlock(start_routine_original_mutex);
+
     if(error == thrd_nomem)
     {
         kdSetError(KD_ENOMEM);
-        return KD_NULL;
     }
     else if(error == thrd_success)
-#else
-    /* We have only the mainthread */
-    thread->thrd = 1234;
-    kdSetError(KD_ENOSYS);
-#endif
     {
-        KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
-        KDchar thread_id[KD_ULTOSTR_MAXLEN];
-        kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
-        kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
-        mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
-        mq_close(queue);
-    }
-    if(attr != KD_NULL)
-    {
-        if (attr->detachstate == KD_THREAD_CREATE_DETACHED)
+        for (KDuint thread = 0; thread < sizeof(threads) / sizeof(threads[0]); thread++)
         {
-            kdThreadDetach(thread);
+            if(!threads[thread].thread)
+            {
+                threads[thread].thread = thrd;
+                KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+                KDchar thread_id[KD_ULTOSTR_MAXLEN];
+                kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, threads[thread].thread, 0);
+                kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
+                mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
+                if(queue == -1)
+                {
+                    kdAssert(0);
+                }
+                mq_close(queue);
+                if(attr != KD_NULL)
+                {
+                    if (attr->detachstate == KD_THREAD_CREATE_DETACHED)
+                    {
+                        kdThreadDetach(&threads[thread]);
+                    }
+                }
+                return &threads[thread];
+            }
         }
     }
-    return thread;
+    return KD_NULL;
 }
 
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
-    KDchar queueid[KD_ULTOSTR_MAXLEN];
-    kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
-    mq_unlink(queueid);
+    KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+    KDchar thread_id[KD_ULTOSTR_MAXLEN];
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, kdThreadSelf()->thread, 0);
+    kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
+    KDint sucess = mq_unlink(queue_path);
+    if(sucess == -1)
+    {
+        kdAssert(0);
+    }
 #ifndef __EMSCRIPTEN__
     KDint result = 0;
     if(retval != KD_NULL)
@@ -369,10 +381,12 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
-    KDchar queueid[KD_ULTOSTR_MAXLEN];
-    kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
+    KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+    KDchar thread_id[KD_ULTOSTR_MAXLEN];
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, thread->thread, 0);
+    kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
 #ifndef __EMSCRIPTEN__
-    if(thrd_equal(thread->thrd, kdThreadSelf()->thrd) != 0)
+    if(thrd_equal(thread->thread, kdThreadSelf()->thread) != 0)
     {
         kdSetError(KD_EDEADLK);
         return -1;
@@ -382,11 +396,16 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     {
         result = *retval;
     }
-    int error = thrd_join(thread->thrd, result);
+    int error = thrd_join(thread->thread, result);
     if(error == thrd_success)
 #endif
     {
-        mq_unlink(queueid);
+        kdLogMessage(queue_path);kdLogMessage("/n");
+        KDint sucess = mq_unlink(queue_path);
+        if(sucess == -1)
+        {
+            kdAssert(0);
+        }
         return 0;
     }
 #ifndef __EMSCRIPTEN__
@@ -404,7 +423,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 {
 #ifndef __EMSCRIPTEN__
-    int error = thrd_detach(thread->thrd);
+    int error = thrd_detach(thread->thread);
     if(error == thrd_success)
     {
         return 0;
@@ -420,13 +439,14 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-    KDThread *thread = &threadself;
-#ifndef __EMSCRIPTEN__
-    thread->thrd = thrd_current();
-#else
-    thread->thrd = 1234;
-#endif
-    return thread;
+    for (KDuint thread = 0; thread < sizeof(threads) / sizeof(threads[0]); thread++)
+    {
+        if (threads[thread].thread == thrd_current())
+        {
+            return &threads[thread];
+        }
+    }
+    return &threads[0];
 }
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
@@ -624,7 +644,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 
     KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
     KDchar thread_id[KD_ULTOSTR_MAXLEN];
-    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  kdThreadSelf()->thread, 0);
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_RDONLY);
     KDssize retval = mq_timedreceive( queue, (char*)event, 8192, NULL, &tm );
@@ -702,7 +722,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             if(XLookupKeysym(&xevent.xkey, 0) == XK_F4 && (xevent.xkey.state & Mod1Mask))
                             {
                                 event->type      = KD_EVENT_WINDOW_CLOSE;
-                                event->timestamp = kdGetTimeUST();
 
                                 KDboolean has_callback = 0;
                                 for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
@@ -724,7 +743,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         case ButtonPress:
                         {
                             event->type                     = KD_EVENT_INPUT_POINTER;
-                            event->timestamp                = kdGetTimeUST();
                             event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
                             event->data.inputpointer.x      = xevent.xbutton.x;
                             event->data.inputpointer.y      = xevent.xbutton.y;
@@ -749,7 +767,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         case ConfigureNotify:
                         {
                             event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
-                            event->timestamp = kdGetTimeUST();
 
                             kdPostEvent(event);
                             break;
@@ -759,8 +776,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             if((Atom)xevent.xclient.data.l[0] == XInternAtom(x11window->display, "WM_DELETE_WINDOW", False))
                             {
                                 event->type      = KD_EVENT_WINDOW_CLOSE;
-                                event->timestamp = kdGetTimeUST();
-
                                 KDboolean has_callback = 0;
                                 for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
                                 {
@@ -826,9 +841,14 @@ KD_API KDint KD_APIENTRY kdPostEvent(KDEvent *event)
 }
 KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 {
+    if(event->timestamp == 0)
+    {
+        event->timestamp = kdGetTimeUST();
+    }
+
     KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
     KDchar thread_id[KD_ULTOSTR_MAXLEN];
-    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)thread->thrd, 0);
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  thread->thread, 0);
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_WRONLY);
     KDint retval = mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
@@ -868,6 +888,16 @@ int main(int argc, char **argv)
     start_routine_original_mutex = kdThreadMutexCreate(KD_NULL);
     once_controls_mutex = kdThreadMutexCreate(KD_NULL);
 
+    /* Register mainthread */
+    threads[0].thread = thrd_current();
+
+    /* Raise number of mqeues to this users hardlimit*/
+    if (!geteuid())
+    {
+        struct rlimit limit = {RLIM_INFINITY, RLIM_INFINITY};
+        setrlimit(RLIMIT_MSGQUEUE, &limit);
+    }
+
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
     /* ISO C forbids assignment between function pointer and ‘void *’ */
@@ -881,9 +911,13 @@ int main(int argc, char **argv)
 
     KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
     KDchar thread_id[KD_ULTOSTR_MAXLEN];
-    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, kdThreadSelf()->thread, 0);
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
+    if(queue == -1)
+    {
+        kdAssert(0);
+    }
 
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
 
@@ -900,9 +934,15 @@ int main(int argc, char **argv)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
-    KDchar queueid[KD_ULTOSTR_MAXLEN];
-    kdUltostr(queueid, KD_ULTOSTR_MAXLEN,  (KDuintptr)kdThreadSelf()->thrd, 0);
-    mq_unlink(queueid);
+    KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
+    KDchar thread_id[KD_ULTOSTR_MAXLEN];
+    kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, kdThreadSelf()->thread, 0);
+    kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
+    KDint sucess = mq_unlink(queue_path);
+    if(sucess == -1)
+    {
+                kdAssert(0);
+    }
     exit(status);
 }
 
@@ -1359,7 +1399,6 @@ static void timerhandler(int sig, siginfo_t *si, void *uc)
 
     KDEvent *event = kdCreateEvent();
     event->type      = KD_EVENT_TIMER;
-    event->timestamp = kdGetTimeUST();
     event->userptr   = timer->userptr;
     kdPostThreadEvent(event, timer->thread);
 }
@@ -1973,17 +2012,14 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 /* kdHandleAssertion: Handle assertion failure. */
 KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
 {
-    char message[KDINT_MAX-1];
-    char format[] = "Assert \"%s\" in file \"%s\" on line %d";
-    snprintf(message, KDINT_MAX-1, format, condition, filename, linenumber);
-    kdLogMessage(message);
-    kdExit(-1);
+
 }
 
 /* kdLogMessage: Output a log message. */
 KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 {
     printf(string);
+    fflush(stdout);
 }
 
 /******************************************************************************

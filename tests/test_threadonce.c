@@ -22,6 +22,7 @@
 #include <KD/kd.h>
 
 /* Test if we can call test_func more than once. */
+#define THREAD_COUNT 4
 static KDint test_once_count = 0;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func()
@@ -31,7 +32,7 @@ static void test_once_func()
 
 void* test_func( void *arg)
 {
-    for(KDint i = 0 ; i < 9 ;i++)
+    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
     {
         kdThreadOnce(&test_once, test_once_func);
     }
@@ -46,14 +47,14 @@ void* test_func( void *arg)
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDThread* threads[9] = {KD_NULL};
-    for(KDint thread = 0 ; thread < 9 ;thread++)
+    KDThread* threads[THREAD_COUNT] = {KD_NULL};
+    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
     {
         threads[thread] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-    }
-    for(KDint thread = 0 ; thread < 9 ;thread++)
-    {
-        kdThreadJoin(threads[thread], KD_NULL);
+        if(threads[thread] == KD_NULL)
+        {
+            kdExit(EXIT_FAILURE);
+        }
     }
 
     if (test_once_count != 1)
