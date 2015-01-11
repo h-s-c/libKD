@@ -18,11 +18,11 @@
 * 3. This notice may not be removed or altered from any source distribution.
 ******************************************************************************/
 
-#include <stdlib.h> /* EXIT_FAILURE */
 #include <KD/kd.h>
+#include <stdlib.h> /* EXIT_FAILURE */
 
 /* Test can communicate properly with event loops in different threads. */
-#define THREAD_COUNT 4
+#define THREAD_COUNT 8-1 /* POSIX minimum mqueues minus one for the mainthread */
 void* test_func( void *arg)
 {
     for(;;)

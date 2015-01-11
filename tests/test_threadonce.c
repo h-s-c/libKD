@@ -18,11 +18,11 @@
 * 3. This notice may not be removed or altered from any source distribution.
 ******************************************************************************/
 
-#include <stdlib.h> /* EXIT_FAILURE */
 #include <KD/kd.h>
+#include <stdlib.h> /* EXIT_FAILURE */
 
 /* Test if we can call test_func more than once. */
-#define THREAD_COUNT 4
+#define THREAD_COUNT 8-1 /* POSIX minimum mqueues minus one for the mainthread */
 static KDint test_once_count = 0;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func()
