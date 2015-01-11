@@ -1375,6 +1375,7 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
     timer_create(CLOCK_REALTIME, &se, timer->timer);
 
     struct itimerspec ts = {{0}};
+    /* Determine seconds from the overall nanoseconds */
     if ((interval % 1000000000) == 0)
     {
         ts.it_value.tv_sec = interval / 1000000000;
@@ -1384,6 +1385,7 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
         ts.it_value.tv_sec = (interval - (interval % 1000000000)) / 1000000000;
     }
 
+    /* Remaining nanoseconds */
     ts.it_value.tv_nsec = interval - (ts.it_value.tv_sec*1000000000);
 
     if(periodic != KD_TIMER_ONESHOT)
