@@ -34,6 +34,15 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+/* This needs to be included early */
+#ifdef KD_GC
+#ifndef KD_NDEBUG
+#define GC_DEBUG
+#endif
+#define GC_THREADS
+#include <gc.h>
+#endif
+
 /******************************************************************************
  * C11 includes
  ******************************************************************************/
@@ -286,12 +295,30 @@ typedef struct KDThread
     KDuint thrd;
 #endif
 } KDThread;
+
+static KDThreadMutex* start_routine_original_mutex = KD_NULL;
+static void *(*start_routine_original)(void *) = KD_NULL;
+static void start_routine_injector(void *arg)
+{
+#ifdef KD_GC
+    struct GC_stack_base sb;
+    GC_get_stack_base(&sb);
+    GC_register_my_thread(&sb);
+#endif
+    start_routine_original(arg);
+#ifdef KD_GC
+    GC_unregister_my_thread();
+#endif
+}
 static thread_local KDThread threadself = {0};
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
     KDThread *thread = &threadself;
 #ifndef __EMSCRIPTEN__
-    int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine, arg);
+    kdThreadMutexLock(start_routine_original_mutex);
+    start_routine_original = start_routine;
+    int error = thrd_create(&thread->thrd, (thrd_start_t)start_routine_injector, arg);
+    kdThreadMutexUnlock(start_routine_original_mutex);
     if(error == thrd_nomem)
     {
         kdSetError(KD_ENOMEM);
@@ -790,9 +817,15 @@ typedef struct KDFile
 
 int main(int argc, char **argv)
 {
+#ifdef KD_GC
+    GC_INIT();
+    GC_allow_register_threads();
+#endif
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_init();
 #endif
+    start_routine_original_mutex = kdThreadMutexCreate(KD_NULL);
+
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
     /* ISO C forbids assignment between function pointer and ‘void *’ */
@@ -817,6 +850,7 @@ int main(int argc, char **argv)
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_deinit();
 #endif
+    kdThreadMutexFree(start_routine_original_mutex);
     return retval;
 }
 
@@ -982,19 +1016,31 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 /* kdMalloc: Allocate memory. */
 KD_API void *KD_APIENTRY kdMalloc(KDsize size)
 {
+#ifdef GC_DEBUG
+    return GC_MALLOC(size);
+#else
     return malloc(size);
+#endif
 }
 
 /* kdFree: Free allocated memory block. */
 KD_API void KD_APIENTRY kdFree(void *ptr)
 {
+#ifdef KD_GC
+    GC_FREE(ptr);
+#else
     free(ptr);
+#endif
 }
 
 /* kdRealloc: Resize memory block. */
 KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
 {
+#ifdef KD_GC
+    return GC_REALLOC(ptr, size);
+#else
     return realloc(ptr, size);
+#endif
 }
 
 /******************************************************************************
@@ -1321,7 +1367,9 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
 /* kdCancelTimer: Cancel and free a timer. */
 KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 {
+#ifndef KD_GC
     timer_delete(timer->timer);
+#endif
     kdFree(timer);
     return 0;
 }
