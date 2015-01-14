@@ -59,8 +59,6 @@
 
 #ifndef __EMSCRIPTEN__
 #include <threads.h>
-#else
-#define thread_local
 #endif
 
 /******************************************************************************
@@ -81,10 +79,6 @@
 #include <mqueue.h>
 #include <signal.h>
 #include <unistd.h>
-
-#ifndef __EMSCRIPTEN__
-#include <semaphore.h>
-#endif
 
 /******************************************************************************
  * Platform includes
@@ -132,6 +126,11 @@
 #define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
 #define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
 #define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
+#endif
+
+/* Emscripten does not provides this functionality */
+#ifdef __EMSCRIPTEN__
+#define thread_local
 #endif
 
 /******************************************************************************
