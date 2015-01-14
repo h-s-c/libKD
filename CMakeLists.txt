@@ -51,7 +51,6 @@ project (KD)
     if(EMSCRIPTEN)
         message(STATUS "Emscripten build")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-warn-absolute-paths -s ASYNCIFY=1")
-        set(KD_NO_STATIC_DATA ON)
     endif()
 
     set(KD_SOURCE ${SOURCE_DIR}/kd.c)
