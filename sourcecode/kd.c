@@ -889,24 +889,33 @@ int main(int argc, char **argv)
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
 
     mq_close(queue);
-    mq_unlink(queue_path);
+
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_deinit();
 #endif
     kdThreadMutexFree(once_control_mutex);
     kdThreadMutexFree(start_routine_original_mutex);
+
+    KDint sucess_unlink = mq_unlink(queue_path);
+    if(sucess_unlink == -1)
+    {
+        kdAssert(0);
+    }
     return retval;
 }
 
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
+    kdThreadMutexFree(once_control_mutex);
+    kdThreadMutexFree(start_routine_original_mutex);
+    
     KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
     KDchar thread_id[KD_ULTOSTR_MAXLEN];
     kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, kdThreadSelf()->thread, 0);
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
-    KDint sucess = mq_unlink(queue_path);
-    if(sucess == -1)
+    KDint sucess_unlink = mq_unlink(queue_path);
+    if(sucess_unlink == -1)
     {
                 kdAssert(0);
     }
