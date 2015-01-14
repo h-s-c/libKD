@@ -817,6 +817,11 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     kdUltostr(thread_id, KD_ULTOSTR_MAXLEN,  thread->thread, 0);
     kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
     mqd_t queue = mq_open(queue_path, O_WRONLY);
+    if(queue == -1)
+    {
+        kdAssert(0);
+    }
+
     KDint retval = mq_send(queue, (const char*)event, sizeof(struct KDEvent), 0);
     mq_close(queue);
     kdFreeEvent(event);
@@ -1362,73 +1367,95 @@ KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
  ******************************************************************************/
 
 /* kdSetTimer: Set timer. */
-typedef struct KDTimer
+typedef struct __KDTimerPayload
 {
-    timer_t *timer;
-    KDThread *thread;
-    void *userptr;
-} KDTimer;
-static void timerhandler(int sig, siginfo_t *si, void *uc)
+    KDint64     interval;
+    KDint       periodic;
+    void        *eventuserptr;
+    KDThread    *destination;
+} __KDTimerPayload;
+static void* __kdTimerHandler(void *arg)
 {
-    KDTimer *timer = (KDTimer*)si->si_value.sival_ptr;
+    __KDTimerPayload* payload = (__KDTimerPayload*)arg;
 
-    KDEvent *event = kdCreateEvent();
-    event->type      = KD_EVENT_TIMER;
-    event->userptr   = timer->userptr;
-    kdPostThreadEvent(event, timer->thread);
-}
-KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
-{
-    KDTimer *timer = (KDTimer*)kdMalloc(sizeof(KDTimer));
-    timer->timer   = (timer_t*)kdMalloc(sizeof(timer_t));
-    timer->thread  = kdThreadSelf();
-    timer->userptr = eventuserptr;
-
-    struct sigaction sa = {{0}};
-    sa.sa_flags     = SA_SIGINFO;
-    sa.sa_sigaction = timerhandler;
-
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIGRTMIN, &sa, NULL);
-
-    struct sigevent se = {{0}};
-    se.sigev_notify          = SIGEV_SIGNAL;
-    se.sigev_signo           = SIGRTMIN;
-    se.sigev_value.sival_ptr = timer;
-
-    timer_create(CLOCK_REALTIME, &se, timer->timer);
-
-    struct itimerspec ts = {{0}};
+    struct timespec ts = {0};
     /* Determine seconds from the overall nanoseconds */
-    if ((interval % 1000000000) == 0)
+    if ((payload->interval % 1000000000) == 0)
     {
-        ts.it_value.tv_sec = interval / 1000000000;
+        ts.tv_sec = payload->interval / 1000000000;
     }
     else
     {
-        ts.it_value.tv_sec = (interval - (interval % 1000000000)) / 1000000000;
+        ts.tv_sec = (payload->interval - (payload->interval % 1000000000)) / 1000000000;
     }
 
     /* Remaining nanoseconds */
-    ts.it_value.tv_nsec = interval - (ts.it_value.tv_sec*1000000000);
+    ts.tv_nsec = payload->interval - (ts.tv_sec*1000000000);
 
-    if(periodic != KD_TIMER_ONESHOT)
+    for(;;)
     {
-        ts.it_interval.tv_sec = ts.it_value.tv_sec;
-        ts.it_interval.tv_nsec = ts.it_value.tv_nsec;
+        thrd_sleep(&ts, NULL);
+
+        /* Post event to the original thread */
+        KDEvent *timerevent = kdCreateEvent();
+        timerevent->type = KD_EVENT_TIMER;
+        timerevent->userptr = payload->eventuserptr;
+        kdPostThreadEvent(timerevent, payload->destination);
+
+        /* Abort if this is a oneshot timer*/
+        if(payload->periodic == KD_TIMER_ONESHOT)
+        {
+            break;
+        }
+
+        /* Check for quit event send by kdCancelTimer */
+        const KDEvent *event = kdWaitEvent(0);
+        if(event)
+        {
+            KDboolean quit = 0;
+            if(event->type == KD_EVENT_QUIT)
+            {
+                quit = 1;
+            }
+
+            kdDefaultEvent(event);
+            if(quit)
+            {
+                break;
+            }
+        }
     }
+    return 0;
+}
+typedef struct KDTimer
+{
+    KDThread    *thread;
+    __KDTimerPayload* payload;
+} KDTimer;
+KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
+{
 
-    timer_settime(*timer->timer, 0, &ts, NULL);
+    __KDTimerPayload* payload = (__KDTimerPayload*)kdMalloc(sizeof(__KDTimerPayload));
+    payload->interval = interval;
+    payload->periodic = periodic;
+    payload->eventuserptr = eventuserptr;
+    payload->destination = kdThreadSelf();
 
+    KDTimer *timer = (KDTimer*)kdMalloc(sizeof(KDTimer));
+    timer->thread = kdThreadCreate(KD_NULL, __kdTimerHandler, payload);
+    timer->payload = payload;
     return timer;
 }
 
 /* kdCancelTimer: Cancel and free a timer. */
 KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 {
-#ifndef KD_GC
-    timer_delete(timer->timer);
-#endif
+    /* Post quit event to the timer thread */
+    KDEvent *event = kdCreateEvent();
+    event->type = KD_EVENT_QUIT;
+    kdPostThreadEvent(event, timer->thread);
+    kdThreadJoin(timer->thread, KD_NULL);
+    kdFree(timer->payload);
     kdFree(timer);
     return 0;
 }
