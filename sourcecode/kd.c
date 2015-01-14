@@ -471,8 +471,6 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
         };
         kdThreadMutexUnlock(once_control_mutex);
     }
-    else
-
     return 0;
 }
 #endif /* ndef KD_NO_STATIC_DATA */
