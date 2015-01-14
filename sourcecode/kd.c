@@ -284,43 +284,41 @@ typedef struct KDThread
 {
     thrd_t thread;
 } KDThread;
-static struct KDThread threads[999] = {{0}};
-static KDThreadMutex* start_routine_original_mutex = KD_NULL;
-static void *(*start_routine_original)(void *) = KD_NULL;
-static void start_routine_injector(void *arg)
+static KDThreadMutex* __kd_threads_mutex = KD_NULL;
+static struct KDThread __kd_threads[999] = {{0}};
+static void *(*__kd_start_routine_original)(void *) = KD_NULL;
+static void __kd_start_routine_injector(void *arg)
 {
 #ifdef KD_GC
     struct GC_stack_base sb;
     GC_get_stack_base(&sb);
     GC_register_my_thread(&sb);
 #endif
-    start_routine_original(arg);
+    __kd_start_routine_original(arg);
 #ifdef KD_GC
     GC_unregister_my_thread();
 #endif
 }
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
-    kdThreadMutexLock(start_routine_original_mutex);
-    start_routine_original = start_routine;
+    kdThreadMutexLock(__kd_threads_mutex);
+    __kd_start_routine_original = start_routine;
     thrd_t thrd = 0;
-    int error = thrd_create(&thrd, (thrd_start_t)start_routine_injector, arg);
-    kdThreadMutexUnlock(start_routine_original_mutex);
-
+    int error = thrd_create(&thrd, (thrd_start_t)__kd_start_routine_injector, arg);
     if(error == thrd_nomem)
     {
         kdSetError(KD_ENOMEM);
     }
     else if(error == thrd_success)
     {
-        for (KDuint thread = 0; thread < sizeof(threads) / sizeof(threads[0]); thread++)
+        for (KDuint thread = 0; thread < sizeof(__kd_threads) / sizeof(__kd_threads[0]); thread++)
         {
-            if(!threads[thread].thread)
+            if(!__kd_threads[thread].thread)
             {
-                threads[thread].thread = thrd;
+                __kd_threads[thread].thread = thrd;
                 KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
                 KDchar thread_id[KD_ULTOSTR_MAXLEN];
-                kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, threads[thread].thread, 0);
+                kdUltostr(thread_id, KD_ULTOSTR_MAXLEN, __kd_threads[thread].thread, 0);
                 kdStrncat_s(queue_path, sizeof(queue_path), thread_id, sizeof(thread_id));
                 mqd_t queue = mq_open(queue_path, O_CREAT, S_IRUSR | S_IWUSR, NULL);
                 if(queue == -1)
@@ -332,13 +330,15 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
                 {
                     if (attr->detachstate == KD_THREAD_CREATE_DETACHED)
                     {
-                        kdThreadDetach(&threads[thread]);
+                        kdThreadDetach(&__kd_threads[thread]);
                     }
                 }
-                return &threads[thread];
+                kdThreadMutexUnlock(__kd_threads_mutex);
+                return &__kd_threads[thread];
             }
         }
     }
+    kdThreadMutexUnlock(__kd_threads_mutex);
     return KD_NULL;
 }
 
@@ -415,19 +415,19 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-    for (KDuint thread = 0; thread < sizeof(threads) / sizeof(threads[0]); thread++)
+    for (KDuint thread = 0; thread < sizeof(__kd_threads) / sizeof(__kd_threads[0]); thread++)
     {
-        if (threads[thread].thread == thrd_current())
+        if (__kd_threads[thread].thread == thrd_current())
         {
-            return &threads[thread];
+            return &__kd_threads[thread];
         }
     }
-    return &threads[0];
+    return &__kd_threads[0];
 }
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
-static KDThreadMutex* once_control_mutex = KD_NULL;
+static KDThreadMutex* __kd_once_mutex = KD_NULL;
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
     /* Safe double-checked locking */
@@ -435,7 +435,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
     atomic_thread_fence(memory_order_acquire);
     if(temp_control.impl == 0)
     {
-        kdThreadMutexLock(once_control_mutex);
+        kdThreadMutexLock(__kd_once_mutex);
         temp_control = atomic_load_explicit(once_control, memory_order_relaxed);
         if(temp_control.impl == 0)
         {
@@ -444,7 +444,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
             atomic_thread_fence(memory_order_release);
             atomic_store_explicit(once_control, temp_control, memory_order_relaxed);
         };
-        kdThreadMutexUnlock(once_control_mutex);
+        kdThreadMutexUnlock(__kd_once_mutex);
     }
     return 0;
 }
@@ -856,11 +856,11 @@ int main(int argc, char **argv)
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_init();
 #endif
-    start_routine_original_mutex = kdThreadMutexCreate(KD_NULL);
-    once_control_mutex = kdThreadMutexCreate(KD_NULL);
+    __kd_threads_mutex = kdThreadMutexCreate(KD_NULL);
+    __kd_once_mutex = kdThreadMutexCreate(KD_NULL);
 
-    /* Register mainthread */
-    threads[0].thread = thrd_current();
+    /* Register mainthread, no need for lock at this stage*/
+    __kd_threads[0].thread = thrd_current();
 
     /* Raise number of mqeues to this users hardlimit*/
     if (!geteuid())
@@ -897,8 +897,8 @@ int main(int argc, char **argv)
 #ifdef KD_WINDOW_DISPMANX
     bcm_host_deinit();
 #endif
-    kdThreadMutexFree(once_control_mutex);
-    kdThreadMutexFree(start_routine_original_mutex);
+    kdThreadMutexFree(__kd_once_mutex);
+    kdThreadMutexFree(__kd_threads_mutex);
 
     KDint sucess_unlink = mq_unlink(queue_path);
     if(sucess_unlink == -1)
@@ -911,8 +911,8 @@ int main(int argc, char **argv)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
-    kdThreadMutexFree(once_control_mutex);
-    kdThreadMutexFree(start_routine_original_mutex);
+    kdThreadMutexFree(__kd_once_mutex);
+    kdThreadMutexFree(__kd_threads_mutex);
     
     KDchar queue_path[KD_ULTOSTR_MAXLEN] = "/";
     KDchar thread_id[KD_ULTOSTR_MAXLEN];
