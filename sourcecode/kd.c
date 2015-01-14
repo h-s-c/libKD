@@ -383,7 +383,6 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     int error = thrd_join(thread->thread, result);
     if(error == thrd_success)
     {
-        kdLogMessage(queue_path);kdLogMessage("/n");
         KDint sucess = mq_unlink(queue_path);
         if(sucess == -1)
         {
