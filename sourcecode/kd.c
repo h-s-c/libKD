@@ -593,19 +593,24 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
 /* kdThreadSemCreate: Create a semaphore. */
 typedef struct KDThreadSem
 {
-    sem_t sem;
+    KDuint          count;
+    KDThreadMutex*   mutex;
+    KDThreadCond*    condition;
 } KDThreadSem;
 KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
 {
     KDThreadSem *sem = (KDThreadSem*)kdMalloc(sizeof(KDThreadSem));
-    sem_init(&sem->sem, 0, value);
+    sem->count = 0;
+    sem->mutex = kdThreadMutexCreate(KD_NULL);
+    sem->condition = kdThreadCondCreate(KD_NULL);
     return sem;
 }
 
 /* kdThreadSemFree: Free a semaphore. */
 KD_API KDint KD_APIENTRY kdThreadSemFree(KDThreadSem *sem)
 {
-    sem_destroy(&sem->sem);
+    kdThreadMutexFree(sem->mutex);
+    kdThreadCondFree(sem->condition);
     kdFree(sem);
     return 0;
 }
@@ -613,13 +618,24 @@ KD_API KDint KD_APIENTRY kdThreadSemFree(KDThreadSem *sem)
 /* kdThreadSemWait: Lock a semaphore. */
 KD_API KDint KD_APIENTRY kdThreadSemWait(KDThreadSem *sem)
 {
-    return sem_wait(&sem->sem);
+    kdThreadMutexLock(sem->mutex);
+    while(sem->count == 0)
+    {
+        kdThreadCondWait(sem->condition, sem->mutex);
+    }
+    --sem->count;
+    kdThreadMutexUnlock(sem->mutex);
+    return 0;
 }
 
 /* kdThreadSemPost: Unlock a semaphore. */
 KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 {
-    return sem_post(&sem->sem);
+    kdThreadMutexLock(sem->mutex);
+    ++sem->count;
+    kdThreadCondSignal(sem->condition);
+    kdThreadMutexUnlock(sem->mutex);
+    return 0;
 }
 #endif //TODO: Emscripten semaphore
 
