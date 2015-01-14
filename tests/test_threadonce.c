@@ -22,7 +22,7 @@
 #include <stdlib.h> /* EXIT_FAILURE */
 
 /* Test if we can call test_func more than once. */
-#define THREAD_COUNT 8-1 /* POSIX minimum mqueues minus one for the mainthread */
+#define THREAD_COUNT 8-1-1 /* POSIX minimum mqueues; -1 for the mainthread; -1 for safety */
 static KDint test_once_count = 0;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func()

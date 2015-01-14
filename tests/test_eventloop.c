@@ -22,7 +22,7 @@
 #include <stdlib.h> /* EXIT_FAILURE */
 
 /* Test can communicate properly with event loops in different threads. */
-#define THREAD_COUNT 8-1 /* POSIX minimum mqueues minus one for the mainthread */
+#define THREAD_COUNT 8-1-1 /* POSIX minimum mqueues; -1 for the mainthread; -1 for safety */
 void* test_func( void *arg)
 {
     for(;;)
