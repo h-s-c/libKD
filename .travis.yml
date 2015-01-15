@@ -3,11 +3,11 @@ compiler:
   - gcc
 
 before_install:
+  - sudo apt-get purge gcc -qq
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
   - sudo apt-get install -qq gcc-4.9 g++-4.9
-  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 40 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 --slave /usr/bin/gcov gcov /usr/bin/gcov-4.9 90
-  - sudo update-alternatives --config gcc
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 90 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 --slave /usr/bin/gcov gcov /usr/bin/gcov-4.9
   - sudo apt-get install -qq cmake lcov
   - wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz
   - tar xzf lcov-1.11.tar.gz
