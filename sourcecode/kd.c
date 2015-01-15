@@ -21,10 +21,6 @@
 #define __STDC_WANT_LIB_EXT1__ 1
 #define _POSIX_C_SOURCE 200809L
 
-#ifdef __EMSCRIPTEN__
-#define _GNU_SOURCE
-#endif
-
 /******************************************************************************
  * KD includes
  ******************************************************************************/
@@ -66,7 +62,6 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
 #include <sys/select.h>
@@ -74,7 +69,6 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <mqueue.h>
-#include <signal.h>
 #include <unistd.h>
 
 /******************************************************************************
@@ -120,6 +114,10 @@
 
 /* C11 Annex K is optional */
 #if !defined(__STDC_LIB_EXT1__)
+#ifdef __EMSCRIPTEN__
+size_t strlcpy(char *dst, const char *src, size_t dstsize);
+size_t strlcat(char *dst, const char *src, size_t dstsize);
+#endif
 #define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
 #define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
 #define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
