@@ -52,22 +52,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <threads.h>
-#include <time.h>
 
 /******************************************************************************
  * POSIX includes
  ******************************************************************************/
 
-#include <sys/ioctl.h>
-#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/types.h>
 #include <sys/vfs.h>
-#include <sys/select.h>
 #include <dirent.h>
 #include <dlfcn.h>
-#include <fcntl.h>
 #include <unistd.h>
 
 /******************************************************************************
