@@ -21,6 +21,7 @@
 #ifndef __kdplatform_h_
 #define __kdplatform_h_
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdnoreturn.h>
@@ -47,7 +48,7 @@
 #ifdef KD_NDEBUG
 #define kdAssert(c)
 #else
-#define kdAssert(c) ((void)( (c) ? 0 : (kdHandleAssertion(#c, __FILE__, __LINE__), 0)))
+#define kdAssert(c) assert(c)
 #endif
 
 typedef int32_t KDint32;
