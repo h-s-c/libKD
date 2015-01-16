@@ -37,7 +37,7 @@ project (KD)
 
     if(WANT_COVERAGE)
         message(STATUS "Code coverage build")
-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
         endif()
