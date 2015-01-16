@@ -60,6 +60,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/vfs.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <unistd.h>
