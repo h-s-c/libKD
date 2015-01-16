@@ -429,7 +429,7 @@ static KDThreadMutex* __kd_once_mutex = KD_NULL;
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
     /* Safe double-checked locking */
-    _Atomic KDThreadOnce temp_control = atomic_load_explicit((_Atomic KDThreadOnce*)once_control, memory_order_relaxed);
+    _Atomic(KDThreadOnce) temp_control = atomic_load_explicit((_Atomic(KDThreadOnce)*)once_control, memory_order_relaxed);
     atomic_thread_fence(memory_order_acquire);
     if(temp_control.impl == 0)
     {
