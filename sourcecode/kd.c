@@ -64,7 +64,7 @@
 #include <sys/param.h>
 #ifdef BSD
 #define _BSD_SOURCE 
-    /* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
+/* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
 #endif
 #endif
 
@@ -1058,11 +1058,6 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 /* kdCryptoRandom: Return random data. */
 KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 {
-#ifdef __linux__
-    syscall(__NR_getrandom, buf, buflen, 0);
-    return 0;
-#endif
-
 #ifdef __OpenBSD__
     return getentropy(buf, buflen);
 #endif
@@ -1081,13 +1076,6 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 #endif
 
 #ifdef __unix__
-    int fd = open("/dev/urandom", O_RDONLY);
-    if(fd >= 0)
-    {
-        //kdAssert(ioctl(fd, RNDGETENTCNT, NULL) == 0);
-        close(fd);
-    }
-
     KDFile *urandom = kdFopen("/dev/urandom", "r");
     KDsize result = kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
     kdFclose(urandom);
