@@ -32,7 +32,7 @@
 /* Simple timer example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Alt-F4)*/
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdLogMessage("Starting example 4\n");
+    kdLogMessage("Starting example\n");
 
     kdLogMessage("-----KD-----\n");
     kdLogMessage("Vendor: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VENDOR)); kdLogMessage("\n");

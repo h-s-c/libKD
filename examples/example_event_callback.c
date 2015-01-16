@@ -42,7 +42,7 @@ void callback(const KDEvent *event)
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdLogMessage("Starting example 3\n");
+    kdLogMessage("Starting example\n");
 
     kdLogMessage("-----KD-----\n");
     kdLogMessage("Vendor: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VENDOR)); kdLogMessage("\n");
