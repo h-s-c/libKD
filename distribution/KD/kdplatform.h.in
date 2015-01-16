@@ -21,17 +21,16 @@
 #ifndef __kdplatform_h_
 #define __kdplatform_h_
 
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdnoreturn.h>
 
+#define MESA_EGL_NO_X11_HEADERS
 #include <KHR/khrplatform.h>
 
 #cmakedefine KD_WINDOW_SUPPORTED
-#cmakedefine KD_WINDOW_X11
-#cmakedefine KD_WINDOW_WAYLAND
-#cmakedefine KD_WINDOW_DISPMANX
 
 #cmakedefine KD_GC
 

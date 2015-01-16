@@ -57,6 +57,17 @@
  * POSIX includes
  ******************************************************************************/
 
+#ifdef __unix__
+#ifdef __linux__
+#define _GNU_SOURCE 
+#endif
+#include <sys/param.h>
+#ifdef BSD
+#define _BSD_SOURCE 
+    /* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
+#endif
+#endif
+
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/vfs.h>
@@ -69,34 +80,13 @@
  * Platform includes
  ******************************************************************************/
 
-#ifdef __unix__
-#ifdef __linux__
-#include <bsd/string.h>
-#include <linux/random.h>
-#include <linux/version.h>
-#endif
-#include <sys/param.h>
-#ifdef BSD
-    /* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
-#endif
-#endif
-
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
 #ifdef KD_WINDOW_SUPPORTED
-#ifdef KD_WINDOW_X11
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#endif
-#ifdef KD_WINDOW_WAYLAND
-#include <wayland-client.h>
-#include <wayland-egl.h>
-#endif
-#ifdef KD_WINDOW_DISPMANX
-#include <bcm_host.h>
-#endif
 #endif
 
 /******************************************************************************
@@ -108,10 +98,8 @@
 
 /* C11 Annex K is optional */
 #if !defined(__STDC_LIB_EXT1__)
-#ifdef __EMSCRIPTEN__
 size_t strlcpy(char *dst, const char *src, size_t dstsize);
 size_t strlcat(char *dst, const char *src, size_t dstsize);
-#endif
 #define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
 #define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
 #define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
@@ -731,79 +719,51 @@ struct KDCallback
     KDint eventtype;
     void *eventuserptr;
 } KDCallback;
+#ifdef KD_WINDOW_SUPPORTED
 typedef struct KDWindowX11
 {
     Window window;
     Display *display;
 } KDWindowX11;
-typedef struct KDWindowWayland
-{
-} KDWindowWayland;
 typedef struct KDWindow
 {
     void *nativewindow;
     EGLint format;
-    EGLenum platform;
 } KDWindow;
-static thread_local struct KDCallback callbacks[999] = {{0}};
 static thread_local struct KDWindow windows[999]= {{0}};
+#endif
+static thread_local struct KDCallback callbacks[999] = {{0}};
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
 #ifdef __EMSCRIPTEN__
     /* Give back control to the browser */
     emscripten_sleep(1);
 #endif
+#ifdef KD_WINDOW_SUPPORTED
     for (KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
     {
         if(windows[window].nativewindow)
         {
-            if(windows[window].platform == EGL_PLATFORM_X11_KHR)
+            KDWindowX11 *x11window = windows[window].nativewindow;
+            XSelectInput(x11window->display, x11window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
+            while(XPending(x11window->display) > 0)
             {
-                KDWindowX11 *x11window = windows[window].nativewindow;
-                XSelectInput(x11window->display, x11window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
-                while(XPending(x11window->display) > 0)
+                KDEvent *event = kdCreateEvent();
+                XEvent xevent = {0};
+                XNextEvent(x11window->display,&xevent);
+                switch(xevent.type)
                 {
-                    KDEvent *event = kdCreateEvent();
-                    XEvent xevent = {0};
-                    XNextEvent(x11window->display,&xevent);
-                    switch(xevent.type)
+                    case KeyPress:
                     {
-                        case KeyPress:
+                        /* Alt-F4 fires a close window event */
+                        if(XLookupKeysym(&xevent.xkey, 0) == XK_F4 && (xevent.xkey.state & Mod1Mask))
                         {
-                            /* Alt-F4 fires a close window event */
-                            if(XLookupKeysym(&xevent.xkey, 0) == XK_F4 && (xevent.xkey.state & Mod1Mask))
-                            {
-                                event->type      = KD_EVENT_WINDOW_CLOSE;
-
-                                KDboolean has_callback = 0;
-                                for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
-                                {
-                                    if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
-                                    {
-                                        has_callback = 1;
-                                        callbacks[callback].func(event);
-                                    }
-                                }
-
-                                if(!has_callback)
-                                {
-                                    kdPostEvent(event);
-                                }
-                                break;
-                            }
-                        }
-                        case ButtonPress:
-                        {
-                            event->type                     = KD_EVENT_INPUT_POINTER;
-                            event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
-                            event->data.inputpointer.x      = xevent.xbutton.x;
-                            event->data.inputpointer.y      = xevent.xbutton.y;
-                            event->data.inputpointer.select = 1;
+                            event->type      = KD_EVENT_WINDOW_CLOSE;
 
                             KDboolean has_callback = 0;
                             for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
                             {
-                                if(callbacks[callback].eventtype == KD_EVENT_INPUT_POINTER)
+                                if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
                                 {
                                     has_callback = 1;
                                     callbacks[callback].func(event);
@@ -816,49 +776,70 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             }
                             break;
                         }
-                        case ConfigureNotify:
-                        {
-                            event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
+                    }
+                    case ButtonPress:
+                    {
+                        event->type                     = KD_EVENT_INPUT_POINTER;
+                        event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                        event->data.inputpointer.x      = xevent.xbutton.x;
+                        event->data.inputpointer.y      = xevent.xbutton.y;
+                        event->data.inputpointer.select = 1;
 
-                            kdPostEvent(event);
-                            break;
-                        }
-                        case ClientMessage:
+                        KDboolean has_callback = 0;
+                        for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
                         {
-                            if((Atom)xevent.xclient.data.l[0] == XInternAtom(x11window->display, "WM_DELETE_WINDOW", False))
+                            if(callbacks[callback].eventtype == KD_EVENT_INPUT_POINTER)
                             {
-                                event->type      = KD_EVENT_WINDOW_CLOSE;
-                                KDboolean has_callback = 0;
-                                for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
-                                {
-                                    if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
-                                    {
-                                        has_callback = 1;
-                                        callbacks[callback].func(event);
-                                    }
-                                }
-
-                                if(!has_callback)
-                                {
-                                    kdPostEvent(event);
-                                }
-                                break;
+                                has_callback = 1;
+                                callbacks[callback].func(event);
                             }
                         }
-                        default:
+
+                        if(!has_callback)
                         {
-                            kdFreeEvent(event);
+                            kdPostEvent(event);
+                        }
+                        break;
+                    }
+                    case ConfigureNotify:
+                    {
+                        event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
+
+                        kdPostEvent(event);
+                        break;
+                    }
+                    case ClientMessage:
+                    {
+                        if((Atom)xevent.xclient.data.l[0] == XInternAtom(x11window->display, "WM_DELETE_WINDOW", False))
+                        {
+                            event->type      = KD_EVENT_WINDOW_CLOSE;
+                            KDboolean has_callback = 0;
+                            for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
+                            {
+                                if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
+                                {
+                                    has_callback = 1;
+                                    callbacks[callback].func(event);
+                                }
+                            }
+
+                            if(!has_callback)
+                            {
+                                kdPostEvent(event);
+                            }
                             break;
                         }
                     }
+                    default:
+                    {
+                        kdFreeEvent(event);
+                        break;
+                    }
                 }
-            }
-            else if(windows[window].platform == EGL_PLATFORM_WAYLAND_KHR)
-            {
-                kdSetError(KD_EOPNOTSUPP);
             }
         }
     }
+#endif
     return 0;
 }
 
@@ -929,9 +910,6 @@ int main(int argc, char **argv)
     GC_INIT();
     GC_allow_register_threads();
 #endif
-#ifdef KD_WINDOW_DISPMANX
-    bcm_host_init();
-#endif
     __kd_threads_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_threadonce_mutex = kdThreadMutexCreate(KD_NULL);
 
@@ -963,9 +941,6 @@ int main(int argc, char **argv)
     kdThreadMutexFree(__kd_threadonce_mutex);
     kdThreadMutexFree(__kd_threads_mutex);
 
-#ifdef KD_WINDOW_DISPMANX
-    bcm_host_deinit();
-#endif
     return retval;
 }
 
@@ -1084,27 +1059,8 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 {
 #ifdef __linux__
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
     syscall(__NR_getrandom, buf, buflen, 0);
     return 0;
-#else
-    int fd = open("/dev/urandom", O_RDONLY);
-    if(fd >= 0)
-    {
-        kdAssert(ioctl(fd, RNDGETENTCNT, NULL) == 0);
-        close(fd);
-    }
-
-    KDFile *urandom = kdFopen("/dev/urandom", "r");
-    KDsize result = kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
-    kdFclose(urandom);
-    if (result != buflen)
-    {
-        kdSetError(KD_ENOMEM);
-        return -1;
-    }
-    return 0;
-#endif
 #endif
 
 #ifdef __OpenBSD__
@@ -1120,6 +1076,25 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
             window.crypto.getRandomValues(array);
             return array;
         );
+    }
+    return 0;
+#endif
+
+#ifdef __unix__
+    int fd = open("/dev/urandom", O_RDONLY);
+    if(fd >= 0)
+    {
+        //kdAssert(ioctl(fd, RNDGETENTCNT, NULL) == 0);
+        close(fd);
+    }
+
+    KDFile *urandom = kdFopen("/dev/urandom", "r");
+    KDsize result = kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
+    kdFclose(urandom);
+    if (result != buflen)
+    {
+        kdSetError(KD_ENOMEM);
+        return -1;
     }
     return 0;
 #endif
@@ -1890,57 +1865,37 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
 {
     KDWindow *window = (KDWindow *) kdMalloc(sizeof(KDWindow));
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-    window->platform = EGL_PLATFORM_X11_KHR;
-    if (window->platform == EGL_PLATFORM_X11_KHR)
+    window->nativewindow = kdMalloc(sizeof(KDWindowX11));
+    KDWindowX11 *x11window = window->nativewindow;
+    XInitThreads();
+    x11window->display = XOpenDisplay(NULL);
+    x11window->window = XCreateSimpleWindow(x11window->display,
+            XRootWindow(x11window->display, XDefaultScreen(x11window->display)), 0, 0,
+            (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display)),
+            (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display)), 0,
+            XBlackPixel(x11window->display, XDefaultScreen(x11window->display)),
+            XWhitePixel(x11window->display, XDefaultScreen(x11window->display)));
+    XStoreName(x11window->display, x11window->window, "OpenKODE");
+    Atom wm_del_win_msg = XInternAtom(x11window->display, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(x11window->display, x11window->window, &wm_del_win_msg, 1);
+    Atom mwm_prop_hints = XInternAtom(x11window->display, "_MOTIF_WM_HINTS", True);
+    long mwm_hints[5] = {2, 0, 0, 0, 0};
+    XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const unsigned char *) &mwm_hints, 5);
+    Atom netwm_prop_hints = XInternAtom(x11window->display, "_NET_WM_STATE", False);
+    Atom netwm_hints[3];
+    netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
+    netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
+    XMapWindow(x11window->display, x11window->window);
+    XFlush(x11window->display);
+    for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
     {
-        window->nativewindow = kdMalloc(sizeof(KDWindowX11));
-        KDWindowX11 *x11window = window->nativewindow;
-        XInitThreads();
-        x11window->display = XOpenDisplay(NULL);
-        x11window->window = XCreateSimpleWindow(x11window->display,
-                XRootWindow(x11window->display, XDefaultScreen(x11window->display)), 0, 0,
-                (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display)),
-                (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display)), 0,
-                XBlackPixel(x11window->display, XDefaultScreen(x11window->display)),
-                XWhitePixel(x11window->display, XDefaultScreen(x11window->display)));
-        XStoreName(x11window->display, x11window->window, "OpenKODE");
-        Atom wm_del_win_msg = XInternAtom(x11window->display, "WM_DELETE_WINDOW", False);
-        XSetWMProtocols(x11window->display, x11window->window, &wm_del_win_msg, 1);
-        Atom mwm_prop_hints = XInternAtom(x11window->display, "_MOTIF_WM_HINTS", True);
-        long mwm_hints[5] = {2, 0, 0, 0, 0};
-        XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const unsigned char *) &mwm_hints, 5);
-        Atom netwm_prop_hints = XInternAtom(x11window->display, "_NET_WM_STATE", False);
-        Atom netwm_hints[3];
-        netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
-        netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
-        XMapWindow(x11window->display, x11window->window);
-        XFlush(x11window->display);
-    }
-    else if (window->platform == EGL_PLATFORM_WAYLAND_KHR)
-    {
-        window->nativewindow = kdMalloc(sizeof(KDWindowWayland));
-        KDWindowWayland *waylandwindow = window->nativewindow;
-    }
-    else
-    {
-        kdSetError(KD_EOPNOTSUPP);
-        kdFree(window);
-        window = KD_NULL;
-    }
-    if (window != KD_NULL)
-    {
-        for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
+        if (!windows[i].nativewindow)
         {
-            if (!windows[i].nativewindow)
-            {
-                windows[i].nativewindow = window->nativewindow;
-                windows[i].format = window->format;
-                windows[i].platform = window->platform;
-
-                break;
-            }
+            windows[i].nativewindow = window->nativewindow;
+            windows[i].format = window->format;
+            break;
         }
     }
     return window;
@@ -1950,17 +1905,10 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
 KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 {
     KDint retval = -1;
-    if(window->platform == EGL_PLATFORM_X11_KHR)
-    {
-        KDWindowX11 *x11window = window->nativewindow;
-        XCloseDisplay(x11window->display);
-        kdFree(x11window);
-        retval = 0;
-    }
-    else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
-    {
-        kdSetError(KD_EOPNOTSUPP);
-    }
+    KDWindowX11 *x11window = window->nativewindow;
+    XCloseDisplay(x11window->display);
+    kdFree(x11window);
+    retval = 0;
     kdFree(window);
     return retval;
 }
@@ -1975,17 +1923,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-        if(window->platform == EGL_PLATFORM_X11_KHR)
-        {
-            KDWindowX11 *x11window = window->nativewindow;
-            XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
-            return 0;
-        }
-        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
-        {
-            kdSetError(KD_EOPNOTSUPP);
-            return -1;
-        }
+        KDWindowX11 *x11window = window->nativewindow;
+        XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
+        return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -1994,17 +1934,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-        if(window->platform == EGL_PLATFORM_X11_KHR)
-        {
-            KDWindowX11 *x11window = window->nativewindow;
-            XStoreName(x11window->display, x11window->window, param);
-            return 0;
-        }
-        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
-        {
-            kdSetError(KD_EOPNOTSUPP);
-            return -1;
-        }
+        KDWindowX11 *x11window = window->nativewindow;
+        XStoreName(x11window->display, x11window->window, param);
+        return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -2020,18 +1952,10 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-        if(window->platform == EGL_PLATFORM_X11_KHR)
-        {
-            KDWindowX11 *x11window = window->nativewindow;
-            param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display));
-            param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display));
-            return 0;
-        }
-        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
-        {
-            kdSetError(KD_EOPNOTSUPP);
-            return -1;
-        }
+        KDWindowX11 *x11window = window->nativewindow;
+        param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display));
+        param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display));
+        return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -2040,17 +1964,9 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-        if(window->platform == EGL_PLATFORM_X11_KHR)
-        {
-            KDWindowX11 *x11window = window->nativewindow;
-            XFetchName(x11window->display, x11window->window, &param);
-            return 0;
-        } 
-        else if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
-        {
-            kdSetError(KD_EOPNOTSUPP);
-            return -1;
-        }
+        KDWindowX11 *x11window = window->nativewindow;
+        XFetchName(x11window->display, x11window->window, &param);
+        return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -2059,13 +1975,9 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-    if(window->platform == EGL_PLATFORM_X11_KHR)
-    {
-        KDWindowX11 *x11window = window->nativewindow;
-        *nativewindow = x11window->window;
-        return 0;
-    } 
-    return -1;
+    KDWindowX11 *x11window = window->nativewindow;
+    *nativewindow = x11window->window;
+    return 0;
 }
 #endif
 
