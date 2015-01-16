@@ -33,7 +33,7 @@ set(WANT_COVERAGE "Off" CACHE BOOL "Build with code coverage")
 set(WANT_GC "Off" CACHE BOOL "Build with gargabe collection")
 
 project (KD)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcx16 -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
 
     if(WANT_COVERAGE)
         message(STATUS "Code coverage build")

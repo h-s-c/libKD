@@ -22,7 +22,7 @@
 #include <stdlib.h> /* EXIT_FAILURE */
 
 /* Test can communicate properly with event loops in different threads. */
-#define THREAD_COUNT 8-1-1 /* POSIX minimum mqueues; -1 for the mainthread; -1 for safety */
+#define THREAD_COUNT 10
 void* test_func( void *arg)
 {
     for(;;)
@@ -48,27 +48,27 @@ void* test_func( void *arg)
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
+    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
+    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
     {
-        threads[thread] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if(threads[thread] == KD_NULL)
+        threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
+        if(threads[i] == KD_NULL)
         {
             kdExit(EXIT_FAILURE);
         }
     }
-    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
+    for(KDint k = 0 ; k < THREAD_COUNT ;k++)
     {
         KDEvent *event = kdCreateEvent();
         event->type      = KD_EVENT_QUIT;
-        if(kdPostThreadEvent(event, threads[thread]) == -1)
+        if(kdPostThreadEvent(event, threads[k]) == -1)
         {
             kdExit(EXIT_FAILURE);
         }
     }
-    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
+    for(KDint j = 0 ; j < THREAD_COUNT ;j++)
     {
-        if(kdThreadJoin(threads[thread], KD_NULL) == -1)
+        if(kdThreadJoin(threads[j], KD_NULL) == -1)
         {
             kdExit(EXIT_FAILURE);
         }

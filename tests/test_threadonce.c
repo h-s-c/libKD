@@ -19,15 +19,18 @@
 ******************************************************************************/
 
 #include <KD/kd.h>
+#include <stdatomic.h> /* _Atomic */
 #include <stdlib.h> /* EXIT_FAILURE */
 
+#include <stdio.h>
+
 /* Test if we can call test_func more than once. */
-#define THREAD_COUNT 8-1-1 /* POSIX minimum mqueues; -1 for the mainthread; -1 for safety */
-static KDint test_once_count = 0;
+#define THREAD_COUNT 10
+_Atomic (KDint) test_once_count = ATOMIC_VAR_INIT(0);
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func()
 {
-    ++test_once_count;
+    atomic_fetch_add(&test_once_count, 1);
 }
 
 void* test_func( void *arg)
@@ -47,17 +50,26 @@ void* test_func( void *arg)
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint thread = 0 ; thread < THREAD_COUNT ;thread++)
+    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
+    for(KDint i = 0 ; i < THREAD_COUNT ; i++)
     {
-        threads[thread] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if(threads[thread] == KD_NULL)
+        threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
+        if (threads[i] == KD_NULL)
         {
             kdExit(EXIT_FAILURE);
         }
     }
+    for(KDint k = 0 ; k < THREAD_COUNT ; k++)
+    {
+        if(kdThreadJoin(threads[k], KD_NULL) == -1)
+        {
+            kdExit(EXIT_FAILURE);
+        }
+        threads[k] = KD_NULL;
+    }
 
-    if (test_once_count != 1)
+    KDint test = atomic_load(&test_once_count);
+    if (test != 1)
     {
         kdExit(EXIT_FAILURE);
     }
