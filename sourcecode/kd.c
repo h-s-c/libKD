@@ -20,7 +20,7 @@
 
 #define __STDC_WANT_LIB_EXT1__ 1
 
-#if __STDC_HOSTED__ == 0
+#if !__STDC_HOSTED__
 #pragma GCC error "Freestanding C is not supported."
 #endif
 
@@ -66,13 +66,13 @@
 
 #if __STDC_VERSION__ >= 201112L
 
-#ifndef __STDC_NO_ATOMICS__
+#if !__STDC_NO_ATOMICS__
 #include <stdatomic.h>
 #else
 #include "thirdparty/c11/stdatomic.h"
 #endif
 
-#ifndef __STDC_NO_THREADS__
+#if !__STDC_NO_THREADS__
 #include <threads.h>
 #else
 #include "thirdparty/c11/threads.h"

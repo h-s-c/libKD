@@ -70,7 +70,7 @@ typedef khronos_ssize_t KDssize;
 #define KDSIZE_MAX SIZE_MAX
 #define KDUINTPTR_MAX UINTPTR_MAX
 
-#ifdef __STDC_IEC_559__
+#if __STDC_IEC_559__
 #define KD_INFINITY INFINITY
 #endif
 
