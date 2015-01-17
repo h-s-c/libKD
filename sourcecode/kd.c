@@ -64,10 +64,14 @@
 
 #if !__STDC_NO_ATOMICS__
 #include <stdatomic.h>
+#else
+#pragma GCC error "C11 atomics are required by libKD."
 #endif
 
 #if !__STDC_NO_THREADS__
 #include <threads.h>
+#else
+#pragma GCC error "C11 threads are required by libKD."
 #endif
 
 #ifndef __STDC_LIB_EXT1__
@@ -79,7 +83,7 @@ size_t strlcat(char *dst, const char *src, size_t dstsize);
 #endif
 
 #else
-#pragma GCC error "C11 is not supported."
+#pragma GCC error "C11 is required by libKD."
 #endif
 
 
@@ -132,7 +136,8 @@ struct __kd_eventqueue_head {
 
 typedef struct __kd_eventqueue {
     struct __kd_eventqueue_node *node_buffer;
-    _Atomic struct __kd_eventqueue_head head, free;
+    _Atomic struct __kd_eventqueue_head head;
+    _Atomic struct __kd_eventqueue_head free;
     _Atomic KDsize size;
 } __kd_eventqueue;
 
@@ -533,10 +538,9 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
-static KDThreadMutex* __kd_threadonce_mutex = KD_NULL;
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
-    if(!atomic_flag_test_and_set(&once_control->impl))
+    if(!atomic_flag_test_and_set((atomic_flag**)&once_control->impl))
     {
         init_routine();
     };
@@ -912,8 +916,6 @@ int main(int argc, char **argv)
     GC_INIT();
     GC_allow_register_threads();
 #endif
-    __kd_threadonce_mutex = kdThreadMutexCreate(KD_NULL);
-
     KDuint slot = atomic_fetch_add(&__kd_threads_index, 1);
     atomic_thread_fence(memory_order_acquire);
     __kd_eventqueue* eventqueue = (__kd_eventqueue*)kdMalloc(sizeof(__kd_eventqueue));
@@ -941,9 +943,6 @@ int main(int argc, char **argv)
     __kd_threads[slot].thread = 0;
     __kd_threads[slot].eventqueue = KD_NULL;
     atomic_thread_fence(memory_order_release);
-
-    kdThreadMutexFree(__kd_threadonce_mutex);
-
     return retval;
 }
 
@@ -967,7 +966,6 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
         }
         atomic_thread_fence(memory_order_release);
     }
-    kdThreadMutexFree(__kd_threadonce_mutex);
     exit(status);
 }
 
