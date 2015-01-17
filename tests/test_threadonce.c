@@ -42,9 +42,11 @@ void* test_func( void *arg)
     kdThreadJoin(kdThreadSelf(), KD_NULL);
     if(kdGetError() != KD_EDEADLK)
     {
+        kdAssert(0);
         kdExit(EXIT_FAILURE);
     }
     kdThreadExit(KD_NULL);
+    kdAssert(0);
     kdExit(EXIT_FAILURE);
 }
 
@@ -56,6 +58,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
         if (threads[i] == KD_NULL)
         {
+            kdAssert(0);
             kdExit(EXIT_FAILURE);
         }
     }
@@ -63,6 +66,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     {
         if(kdThreadJoin(threads[k], KD_NULL) == -1)
         {
+            kdAssert(0);
             kdExit(EXIT_FAILURE);
         }
         threads[k] = KD_NULL;
@@ -71,6 +75,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     KDint test = atomic_load(&test_once_count);
     if (test != 1)
     {
+        kdAssert(0);
         kdExit(EXIT_FAILURE);
     }
     return 0;

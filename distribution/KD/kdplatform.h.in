@@ -21,6 +21,10 @@
 #ifndef __kdplatform_h_
 #define __kdplatform_h_
 
+#undef __STDC_NO_THREADS__
+#undef __STDC_NO_ATOMICS__
+#cmakedefine01 __STDC_NO_THREADS__
+#cmakedefine01 __STDC_NO_ATOMICS__
 
 #include <assert.h>
 #include <stddef.h>

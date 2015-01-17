@@ -20,10 +20,6 @@
 
 #define __STDC_WANT_LIB_EXT1__ 1
 
-#if !__STDC_HOSTED__
-#pragma GCC error "Freestanding C is not supported."
-#endif
-
 #ifdef __unix__
 #ifdef __linux__
 #define _GNU_SOURCE
@@ -68,14 +64,10 @@
 
 #if !__STDC_NO_ATOMICS__
 #include <stdatomic.h>
-#else
-#include "thirdparty/c11/stdatomic.h"
 #endif
 
 #if !__STDC_NO_THREADS__
 #include <threads.h>
-#else
-#include "thirdparty/c11/threads.h"
 #endif
 
 #ifndef __STDC_LIB_EXT1__
@@ -382,36 +374,32 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize sta
 }
 
 /* kdThreadCreate: Create a new thread. */
+typedef struct __kd_start_routine_args
+{
+    void *(*start_routine)(void *);
+    void *arg;
+    KDThreadSem *sem;
+} __kd_start_routine_args;
 typedef struct KDThread
 {
     thrd_t thread;
     struct __kd_eventqueue* eventqueue;
+    __kd_start_routine_args* start_routine_args;
 } KDThread;
 static KDThread __kd_threads[999] = {{0}};
-static KDThreadMutex* __kd_threads_mutex = KD_NULL;
+static atomic_uint __kd_threads_index =  ATOMIC_VAR_INIT(0);
 
-static void *(*__kd_start_routine)(void *) = KD_NULL;
-static void __kd_injector(void *arg)
+static void __kd_injector(void *args)
 {
 #ifdef KD_GC
     struct GC_stack_base sb;
     GC_get_stack_base(&sb);
     GC_register_my_thread(&sb);
 #endif
-    __kd_start_routine(arg);
-    KDThread* thread = kdThreadSelf();
-    kdThreadMutexLock(__kd_threads_mutex);
-    for (KDuint i = 0; i < sizeof(__kd_threads) / sizeof(__kd_threads[0]); i++)
-    {
-        if (__kd_threads[i].thread == thread->thread)
-        {
-            __kd_eventqueue_quit(__kd_threads[i].eventqueue);
-            kdFree(__kd_threads[i].eventqueue);
-            __kd_threads[i].eventqueue = KD_NULL;
-            break;
-        }
-    }
-    kdThreadMutexUnlock(__kd_threads_mutex);
+    __kd_start_routine_args* start_routine_args = (__kd_start_routine_args*)args;
+    kdThreadSemWait(start_routine_args->sem);
+    kdThreadSemFree(start_routine_args->sem);
+    start_routine_args->start_routine(start_routine_args->arg);
 #ifdef KD_GC
     GC_unregister_my_thread();
 #endif
@@ -419,49 +407,56 @@ static void __kd_injector(void *arg)
 
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
-    kdThreadMutexLock(__kd_threads_mutex);
-    __kd_start_routine = start_routine;
+    __kd_start_routine_args* start_routine_args = (__kd_start_routine_args*)kdMalloc(sizeof(__kd_start_routine_args));
+    start_routine_args->start_routine = start_routine;
+    start_routine_args->arg = arg;
+    start_routine_args->sem = kdThreadSemCreate(0);
     thrd_t thrd = 0;
-    int error = thrd_create(&thrd, (thrd_start_t)__kd_injector, arg);
+    int error = thrd_create(&thrd, (thrd_start_t)__kd_injector, start_routine_args);
     if(error == thrd_nomem)
     {
+        kdAssert(0);
         kdSetError(KD_ENOMEM);
     }
     else if(error == thrd_success)
     {
-        for (KDuint i = 0; i < sizeof(__kd_threads) / sizeof(__kd_threads[0]); i++)
+        for (KDuint i = 0; i < atomic_fetch_add(&__kd_threads_index, 1) ; i++)
         {
             if (!__kd_threads[i].thread)
             {
+                atomic_thread_fence(memory_order_acquire);
                 __kd_eventqueue* eventqueue = (__kd_eventqueue*)kdMalloc(sizeof(__kd_eventqueue));
                 __kd_eventqueue_init(eventqueue, 99999);
                 __kd_threads[i].eventqueue = eventqueue;
                 __kd_threads[i].thread = thrd;
-                kdThreadMutexUnlock(__kd_threads_mutex);
+                __kd_threads[i].start_routine_args = start_routine_args;
+                atomic_thread_fence(memory_order_release);
+                kdThreadSemPost(start_routine_args->sem);
                 return &__kd_threads[i];
             }
         }
-        kdAssert(0);
     }
-    kdThreadMutexUnlock(__kd_threads_mutex);
     return KD_NULL;
 }
 
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
-    kdThreadMutexLock(__kd_threads_mutex);
-    for (KDuint i = 0; i < sizeof(__kd_threads) / sizeof(__kd_threads[0]); i++)
+    for (KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
-        if (__kd_threads[i].thread == thrd_current())
+        if(__kd_threads[i].thread == thrd_current())
         {
+            atomic_thread_fence(memory_order_acquire);
             __kd_eventqueue_quit(__kd_threads[i].eventqueue);
             kdFree(__kd_threads[i].eventqueue);
+            __kd_threads[i].thread = 0;
             __kd_threads[i].eventqueue = KD_NULL;
+            kdFree(__kd_threads[i].start_routine_args);
+            __kd_threads[i].start_routine_args = KD_NULL;
+            atomic_thread_fence(memory_order_release);
             break;
         }
     }
-    kdThreadMutexUnlock(__kd_threads_mutex);
     KDint result = 0;
     if(retval != KD_NULL)
     {
@@ -490,6 +485,14 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     int error = thrd_join(thread->thread, result);
     if(error == thrd_success)
     {
+        atomic_thread_fence(memory_order_acquire);
+        __kd_eventqueue_quit(thread->eventqueue);
+        kdFree(thread->eventqueue);
+        thread->thread = 0;
+        thread->eventqueue = KD_NULL;
+        kdFree(thread->start_routine_args);
+        thread->start_routine_args = KD_NULL;
+        atomic_thread_fence(memory_order_release);
         return 0;
     }
     else if(error == thrd_error)
@@ -517,16 +520,13 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-    kdThreadMutexLock(__kd_threads_mutex);
-    for (KDuint i = 0; i < sizeof(__kd_threads) / sizeof(__kd_threads[0]); i++)
+    for (KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
         if (__kd_threads[i].thread == thrd_current())
         {
-            kdThreadMutexUnlock(__kd_threads_mutex);
             return &__kd_threads[i];
         }
     }
-    kdThreadMutexUnlock(__kd_threads_mutex);
     kdAssert(0);
     return KD_NULL;
 }
@@ -536,22 +536,10 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 static KDThreadMutex* __kd_threadonce_mutex = KD_NULL;
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
-    /* Safe double-checked locking */
-    KDThreadOnce temp_control = atomic_load_explicit(once_control, memory_order_relaxed);
-    atomic_thread_fence(memory_order_acquire);
-    if(temp_control.impl == 0)
+    if(!atomic_flag_test_and_set(&once_control->impl))
     {
-        kdThreadMutexLock(__kd_threadonce_mutex);
-        temp_control = atomic_load_explicit(once_control, memory_order_relaxed);
-        if(temp_control.impl == 0)
-        {
-            temp_control.impl = (void*)1;
-            init_routine();
-            atomic_thread_fence(memory_order_release);
-            atomic_store_explicit(once_control, temp_control, memory_order_relaxed);
-        };
-        kdThreadMutexUnlock(__kd_threadonce_mutex);
-    }
+        init_routine();
+    };
     return 0;
 }
 #endif /* ndef KD_NO_STATIC_DATA */
@@ -662,7 +650,7 @@ typedef struct KDThreadSem
 KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
 {
     KDThreadSem *sem = (KDThreadSem*)kdMalloc(sizeof(KDThreadSem));
-    sem->count = 0;
+    sem->count = value;
     sem->mutex = kdThreadMutexCreate(KD_NULL);
     sem->condition = kdThreadCondCreate(KD_NULL);
     return sem;
@@ -924,15 +912,16 @@ int main(int argc, char **argv)
     GC_INIT();
     GC_allow_register_threads();
 #endif
-    __kd_threads_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_threadonce_mutex = kdThreadMutexCreate(KD_NULL);
 
-    kdThreadMutexLock(__kd_threads_mutex);
+    KDuint slot = atomic_fetch_add(&__kd_threads_index, 1);
+    atomic_thread_fence(memory_order_acquire);
     __kd_eventqueue* eventqueue = (__kd_eventqueue*)kdMalloc(sizeof(__kd_eventqueue));
     __kd_eventqueue_init(eventqueue, 99999);
-    __kd_threads[0].thread = thrd_current();
-    __kd_threads[0].eventqueue = eventqueue;
-    kdThreadMutexUnlock(__kd_threads_mutex);
+    __kd_threads[slot].thread = thrd_current();
+    __kd_threads[slot].eventqueue = eventqueue;
+    __kd_threads[slot].start_routine_args = KD_NULL;
+    atomic_thread_fence(memory_order_release);
 
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
@@ -946,14 +935,14 @@ int main(int argc, char **argv)
     }
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
 
-    kdThreadMutexLock(__kd_threads_mutex);
-    __kd_eventqueue_quit(__kd_threads[0].eventqueue);
-    kdFree(__kd_threads[0].eventqueue);
-    __kd_threads[0].eventqueue = KD_NULL;
-    kdThreadMutexUnlock(__kd_threads_mutex);
+    atomic_thread_fence(memory_order_acquire);
+    __kd_eventqueue_quit(__kd_threads[slot].eventqueue);
+    kdFree(__kd_threads[slot].eventqueue);
+    __kd_threads[slot].thread = 0;
+    __kd_threads[slot].eventqueue = KD_NULL;
+    atomic_thread_fence(memory_order_release);
 
     kdThreadMutexFree(__kd_threadonce_mutex);
-    kdThreadMutexFree(__kd_threads_mutex);
 
     return retval;
 }
@@ -961,20 +950,24 @@ int main(int argc, char **argv)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
-    kdThreadMutexLock(__kd_threads_mutex);
-    for (KDuint i = 0; i < sizeof(__kd_threads) / sizeof(__kd_threads[0]); i++)
+    for (KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
-        if (__kd_threads[i].thread)
+        atomic_thread_fence(memory_order_acquire);
+        __kd_threads[i].thread = 0;
+        if(__kd_threads[i].eventqueue)
         {
             __kd_eventqueue_quit(__kd_threads[i].eventqueue);
             kdFree(__kd_threads[i].eventqueue);
             __kd_threads[i].eventqueue = KD_NULL;
-            __kd_threads[i].thread = 0;
         }
+        if(__kd_threads[i].start_routine_args)
+        {
+            kdFree(__kd_threads[i].start_routine_args);
+            __kd_threads[i].start_routine_args = KD_NULL;
+        }
+        atomic_thread_fence(memory_order_release);
     }
-    kdThreadMutexUnlock(__kd_threads_mutex);
     kdThreadMutexFree(__kd_threadonce_mutex);
-    kdThreadMutexFree(__kd_threads_mutex);
     exit(status);
 }
 
@@ -1411,31 +1404,34 @@ typedef struct __KDTimerPayload
 {
     KDint64     interval;
     KDint       periodic;
+    KDust       starttime;
     void        *eventuserptr;
     KDThread    *destination;
 } __KDTimerPayload;
 static void* __kdTimerHandler(void *arg)
 {
     __KDTimerPayload* payload = (__KDTimerPayload*)arg;
-
-    struct timespec ts = {0};
-    /* Determine seconds from the overall nanoseconds */
-    if ((payload->interval % 1000000000) == 0)
-    {
-        ts.tv_sec = payload->interval / 1000000000;
-    }
-    else
-    {
-        ts.tv_sec = (payload->interval - (payload->interval % 1000000000)) / 1000000000;
-    }
-
-    /* Remaining nanoseconds */
-    ts.tv_nsec = payload->interval - (ts.tv_sec*1000000000);
-
     for(;;)
     {
-        thrd_sleep(&ts, NULL);
+        struct timespec ts = {0};
+        KDust sleeptime = payload->interval - (kdGetTimeUST() - payload->starttime);
+        payload->starttime = kdGetTimeUST();
+        if(sleeptime > 0)
+        {
+            /* Determine seconds from the overall nanoseconds */
+            if ((sleeptime % 1000000000) == 0)
+            {
+                ts.tv_sec = sleeptime / 1000000000;
+            }
+            else
+            {
+                ts.tv_sec = (sleeptime - (sleeptime % 1000000000)) / 1000000000;
+            }
+            /* Remaining nanoseconds */
+            ts.tv_nsec = sleeptime - (ts.tv_sec * 1000000000);
 
+            thrd_sleep(&ts, NULL);
+        }
         /* Post event to the original thread */
         KDEvent *timerevent = kdCreateEvent();
         timerevent->type = KD_EVENT_TIMER;
@@ -1477,6 +1473,7 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
     __KDTimerPayload* payload = (__KDTimerPayload*)kdMalloc(sizeof(__KDTimerPayload));
     payload->interval = interval;
     payload->periodic = periodic;
+    payload->starttime = kdGetTimeUST();
     payload->eventuserptr = eventuserptr;
     payload->destination = kdThreadSelf();
 
