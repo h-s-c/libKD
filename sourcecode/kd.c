@@ -19,7 +19,20 @@
  ******************************************************************************/
 
 #define __STDC_WANT_LIB_EXT1__ 1
-#define _POSIX_C_SOURCE 200809L
+
+#if __STDC_HOSTED__ == 0
+#pragma GCC error "Freestanding C is not supported."
+#endif
+
+#ifdef __unix__
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
+#include <sys/param.h>
+#ifdef BSD
+#define _BSD_SOURCE
+#endif
+#endif
 
 /******************************************************************************
  * KD includes
@@ -47,26 +60,40 @@
 #include <inttypes.h>
 #include <locale.h>
 #include <math.h>
-#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if __STDC_VERSION__ >= 201112L
+
+#ifndef __STDC_NO_ATOMICS__
+#include <stdatomic.h>
+#else
+#include "thirdparty/c11/stdatomic.h"
+#endif
+
+#ifndef __STDC_NO_THREADS__
 #include <threads.h>
+#else
+#include "thirdparty/c11/threads.h"
+#endif
+
+#ifndef __STDC_LIB_EXT1__
+size_t strlcpy(char *dst, const char *src, size_t dstsize);
+size_t strlcat(char *dst, const char *src, size_t dstsize);
+#define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
+#define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
+#define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
+#endif
+
+#else
+#pragma GCC error "C11 is not supported."
+#endif
+
 
 /******************************************************************************
  * POSIX includes
  ******************************************************************************/
-
-#ifdef __unix__
-#ifdef __linux__
-#define _GNU_SOURCE 
-#endif
-#include <sys/param.h>
-#ifdef BSD
-#define _BSD_SOURCE 
-/* __DragonFly__ __FreeBSD__ __NetBSD__ __OpenBSD__ */
-#endif
-#endif
 
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -95,15 +122,6 @@
 
 /* POSIX reserved but OpenKODE uses this */
 #undef st_mtime
-
-/* C11 Annex K is optional */
-#if !defined(__STDC_LIB_EXT1__)
-size_t strlcpy(char *dst, const char *src, size_t dstsize);
-size_t strlcat(char *dst, const char *src, size_t dstsize);
-#define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
-#define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
-#define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
-#endif
 
 /******************************************************************************
  * Internal eventqueue
@@ -899,10 +917,6 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /******************************************************************************
  * Application startup and exit.
  ******************************************************************************/
-typedef struct KDFile
-{
-    FILE *file;
-} KDFile;
 
 int main(int argc, char **argv)
 {
@@ -1490,6 +1504,10 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
  ******************************************************************************/
 
 /* kdFopen: Open a file from the file system. */
+typedef struct KDFile
+{
+    FILE *file;
+} KDFile;
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile*)kdMalloc(sizeof(KDFile));
