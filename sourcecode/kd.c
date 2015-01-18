@@ -695,16 +695,32 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 /******************************************************************************
  * Events
  ******************************************************************************/
+void __kd_sleep_nanoseconds(KDust timeout)
+{
+    struct timespec ts = {0};
+    /* Determine seconds from the overall nanoseconds */
+    if ((timeout % 1000000000) == 0)
+    {
+        ts.tv_sec = timeout / 1000000000;
+    }
+    else
+    {
+        ts.tv_sec = (timeout - (timeout % 1000000000)) / 1000000000;
+    }
+    /* Remaining nanoseconds */
+    ts.tv_nsec = timeout - (ts.tv_sec * 1000000000);
+
+    thrd_sleep(&ts, NULL);
+}
 
 /* kdWaitEvent: Get next event from thread's event queue. */
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
+    if(timeout != -1)
+    {
+        __kd_sleep_nanoseconds(timeout);
+    }
     kdPumpEvents();
-
-    struct timespec tm = {0};
-    clock_gettime(CLOCK_REALTIME, &tm);
-    tm.tv_nsec += timeout;
-
     return __kd_eventqueue_get(kdThreadSelf()->eventqueue);
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
@@ -1402,7 +1418,6 @@ typedef struct __KDTimerPayload
 {
     KDint64     interval;
     KDint       periodic;
-    KDust       starttime;
     void        *eventuserptr;
     KDThread    *destination;
 } __KDTimerPayload;
@@ -1411,25 +1426,8 @@ static void* __kdTimerHandler(void *arg)
     __KDTimerPayload* payload = (__KDTimerPayload*)arg;
     for(;;)
     {
-        struct timespec ts = {0};
-        KDust sleeptime = payload->interval - (kdGetTimeUST() - payload->starttime);
-        payload->starttime = kdGetTimeUST();
-        if(sleeptime > 0)
-        {
-            /* Determine seconds from the overall nanoseconds */
-            if ((sleeptime % 1000000000) == 0)
-            {
-                ts.tv_sec = sleeptime / 1000000000;
-            }
-            else
-            {
-                ts.tv_sec = (sleeptime - (sleeptime % 1000000000)) / 1000000000;
-            }
-            /* Remaining nanoseconds */
-            ts.tv_nsec = sleeptime - (ts.tv_sec * 1000000000);
+        __kd_sleep_nanoseconds(payload->interval);
 
-            thrd_sleep(&ts, NULL);
-        }
         /* Post event to the original thread */
         KDEvent *timerevent = kdCreateEvent();
         timerevent->type = KD_EVENT_TIMER;
@@ -1471,7 +1469,6 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
     __KDTimerPayload* payload = (__KDTimerPayload*)kdMalloc(sizeof(__KDTimerPayload));
     payload->interval = interval;
     payload->periodic = periodic;
-    payload->starttime = kdGetTimeUST();
     payload->eventuserptr = eventuserptr;
     payload->destination = kdThreadSelf();
 

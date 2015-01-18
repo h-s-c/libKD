@@ -27,7 +27,7 @@ void* test_func( void *arg)
 {
     for(;;)
     {
-        const KDEvent *event = kdWaitEvent(0);
+        const KDEvent *event = kdWaitEvent(1500000000);
         if(event)
         {
             KDboolean quit = 0;

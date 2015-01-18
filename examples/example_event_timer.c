@@ -95,7 +95,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     
     for(;;)
     {
-        const KDEvent *event = kdWaitEvent(0);
+        const KDEvent *event = kdWaitEvent(-1);
         if(event)
         {
             KDboolean exit = 0;
