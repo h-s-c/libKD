@@ -68,7 +68,9 @@
 #pragma GCC error "C11 atomics are required by libKD."
 #endif
 
-#if !__STDC_NO_THREADS__
+/* Removed check because we use an alternative C11 threads implementation on some Platforms */
+/* #if !__STDC_NO_THREADS__ */
+#if 1
 #include <threads.h>
 #else
 #pragma GCC error "C11 threads are required by libKD."

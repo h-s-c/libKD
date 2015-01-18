@@ -21,11 +21,6 @@
 #ifndef __kdplatform_h_
 #define __kdplatform_h_
 
-#undef __STDC_NO_THREADS__
-#undef __STDC_NO_ATOMICS__
-#cmakedefine01 __STDC_NO_THREADS__
-#cmakedefine01 __STDC_NO_ATOMICS__
-
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -72,11 +67,8 @@ typedef khronos_ssize_t KDssize;
 #define KDSSIZE_MIN SSIZE_MIN
 #define KDSSIZE_MAX SSIZE_MAX
 #define KDSIZE_MAX SIZE_MAX
-#define KDUINTPTR_MAX UINTPTR_MAX
-
-#if __STDC_IEC_559__
+#define KDUINTPTR_MAX UINTPTR_MAX_
 #define KD_INFINITY INFINITY
-#endif
 
 #endif /* __kdplatform_h_ */
 
