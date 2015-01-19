@@ -19,7 +19,6 @@
 ******************************************************************************/
 
 #include <KD/kd.h>
-#include <event2/event_struct.h>
 
 /* Test if we can register multiple callbacks to the same eventype/eventuserptr combo. */
 static KDboolean quit = 0;
