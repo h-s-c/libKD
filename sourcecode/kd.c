@@ -716,14 +716,17 @@ void __kd_sleep_nanoseconds(KDust timeout)
 }
 
 /* kdWaitEvent: Get next event from thread's event queue. */
+static thread_local KDEvent *__kd_lastevent = KD_NULL;
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
+    kdFreeEvent(__kd_lastevent);
     if(timeout != -1)
     {
         __kd_sleep_nanoseconds(timeout);
     }
     kdPumpEvents();
-    return __kdQueueGet(kdThreadSelf()->eventqueue);
+    __kd_lastevent = __kdQueueGet(kdThreadSelf()->eventqueue);
+    return __kd_lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
 KD_API void KD_APIENTRY kdSetEventUserptr(void *userptr)
@@ -734,10 +737,6 @@ KD_API void KD_APIENTRY kdSetEventUserptr(void *userptr)
 /* kdDefaultEvent: Perform default processing on an unrecognized event. */
 KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
 {
-    if(event != KD_NULL)
-    {
-        kdFreeEvent((KDEvent*)event);
-    }
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
@@ -916,7 +915,10 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 /* kdFreeEvent: Abandon an event instead of posting it. */
 KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
-    kdFree(event);
+    if(event != KD_NULL)
+    {
+        kdFree(event);
+    }
 }
 
 /******************************************************************************
@@ -1421,14 +1423,7 @@ static void* __kdTimerHandler(void *arg)
         const KDEvent *event = kdWaitEvent(0);
         if(event)
         {
-            KDboolean quit = 0;
             if(event->type == KD_EVENT_QUIT)
-            {
-                quit = 1;
-            }
-
-            kdDefaultEvent(event);
-            if(quit)
             {
                 break;
             }
