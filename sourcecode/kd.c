@@ -775,14 +775,22 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     return __kd_lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
+static atomic_intptr_t __kd_globaleventuserptr;
 KD_API void KD_APIENTRY kdSetEventUserptr(void *userptr)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    atomic_store(&__kd_globaleventuserptr, userptr);
 }
 
 /* kdDefaultEvent: Perform default processing on an unrecognized event. */
 KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
 {
+    if(event)
+    {
+        if(event->type == KD_EVENT_QUIT)
+        {
+            kdExit(0);
+        }
+    }
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
@@ -805,15 +813,51 @@ typedef struct KDWindow
 } KDWindow;
 static thread_local KDWindow windows[999]= {{0}};
 #endif
-static thread_local KDCallback callbacks[999] = {{0}};
+static thread_local KDuint __kd_callbacks_index = 0;
+static thread_local KDCallback __kd_callbacks[999] = {{0}};
+static KDboolean __kdExecCallback(KDEvent* event)
+{
+    for (KDuint callback = 0; callback < __kd_callbacks_index; callback++)
+    {
+        if(__kd_callbacks[callback].func != KD_NULL)
+        {
+            KDboolean typematch = __kd_callbacks[callback].eventtype == event->type || __kd_callbacks[callback].eventtype == 0;
+            KDboolean userptrmatch = __kd_callbacks[callback].eventuserptr == event->userptr;
+            if (typematch && userptrmatch)
+            {
+                __kd_callbacks[callback].func(event);
+                kdFreeEvent(event);
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
 #ifdef __EMSCRIPTEN__
     /* Give back control to the browser */
     emscripten_sleep(1);
 #endif
+    KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
+    if(queuesize > 0)
+    {
+        for (KDuint i = 0; i < __kdQueueSize(kdThreadSelf()->eventqueue); i++)
+        {
+            KDEvent *callbackevent = __kdQueueGet(kdThreadSelf()->eventqueue);
+            if (callbackevent != KD_NULL)
+            {
+                if (!__kdExecCallback(callbackevent))
+                {
+                    /* Not a callback */
+                    kdPostEvent(callbackevent);
+                }
+            }
+        }
+    }
 #ifdef KD_WINDOW_SUPPORTED
-    for (KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
+    for(KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
     {
         if(windows[window].nativewindow)
         {
@@ -832,18 +876,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         if(XLookupKeysym(&xevent.xkey, 0) == XK_F4 && (xevent.xkey.state & Mod1Mask))
                         {
                             event->type      = KD_EVENT_WINDOW_CLOSE;
-
-                            KDboolean has_callback = 0;
-                            for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
-                            {
-                                if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
-                                {
-                                    has_callback = 1;
-                                    callbacks[callback].func(event);
-                                }
-                            }
-
-                            if(!has_callback)
+                            if(!__kdExecCallback(event))
                             {
                                 kdPostEvent(event);
                             }
@@ -857,18 +890,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         event->data.inputpointer.x      = xevent.xbutton.x;
                         event->data.inputpointer.y      = xevent.xbutton.y;
                         event->data.inputpointer.select = 1;
-
-                        KDboolean has_callback = 0;
-                        for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
-                        {
-                            if(callbacks[callback].eventtype == KD_EVENT_INPUT_POINTER)
-                            {
-                                has_callback = 1;
-                                callbacks[callback].func(event);
-                            }
-                        }
-
-                        if(!has_callback)
+                        if(!__kdExecCallback(event))
                         {
                             kdPostEvent(event);
                         }
@@ -886,17 +908,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         if((Atom)xevent.xclient.data.l[0] == XInternAtom(x11window->display, "WM_DELETE_WINDOW", False))
                         {
                             event->type      = KD_EVENT_WINDOW_CLOSE;
-                            KDboolean has_callback = 0;
-                            for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
-                            {
-                                if(callbacks[callback].eventtype == KD_EVENT_WINDOW_CLOSE)
-                                {
-                                    has_callback = 1;
-                                    callbacks[callback].func(event);
-                                }
-                            }
-
-                            if(!has_callback)
+                            if(!__kdExecCallback(event))
                             {
                                 kdPostEvent(event);
                             }
@@ -919,24 +931,29 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 /* kdInstallCallback: Install or remove a callback function for event processing. */
 KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype, void *eventuserptr)
 {
-    for (KDuint callback = 0; callback < sizeof(callbacks) / sizeof(callbacks[0]); callback++)
+    for(KDuint callback = 0; callback < __kd_callbacks_index; callback++)
     {
-        if(!callbacks[callback].func)
+        KDboolean typematch = __kd_callbacks[callback].eventtype == eventtype || __kd_callbacks[callback].eventtype == 0;
+        KDboolean userptrmatch = __kd_callbacks[callback].eventuserptr == eventuserptr;
+        if(typematch && userptrmatch)
         {
-           callbacks[callback].func         = func;
-           callbacks[callback].eventtype    = eventtype;
-           callbacks[callback].eventuserptr = eventuserptr;
-           
-           return 0;
+            __kd_callbacks[callback].func = func;
+            return 0;
         }
     }
-    return -1;
+    __kd_callbacks[__kd_callbacks_index].func           = func;
+    __kd_callbacks[__kd_callbacks_index].eventtype      = eventtype;
+    __kd_callbacks[__kd_callbacks_index].eventuserptr   = eventuserptr;
+    __kd_callbacks_index++;
+    return 0;
 }
 
 /* kdCreateEvent: Create an event for posting. */
 KD_API KDEvent *KD_APIENTRY kdCreateEvent(void)
 {
     KDEvent *event = (KDEvent*)kdMalloc(sizeof(KDEvent));
+    event->type = -1;
+    event->userptr = KD_NULL;
     return event;
 }
 
@@ -1001,7 +1018,7 @@ int main(int argc, char **argv)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
-    for (KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
+    for(KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
         __kdThreadUnregister(&__kd_threads[i]);
     }
@@ -1464,13 +1481,14 @@ static void* __kdTimerHandler(void *arg)
         }
 
         /* Check for quit event send by kdCancelTimer */
-        const KDEvent *event = kdWaitEvent(0);
+        const KDEvent *event = kdWaitEvent(-1);
         if(event)
         {
             if(event->type == KD_EVENT_QUIT)
             {
                 break;
             }
+            kdDefaultEvent(event);
         }
     }
     return 0;

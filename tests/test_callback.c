@@ -19,53 +19,39 @@
 ******************************************************************************/
 
 #include <KD/kd.h>
+#include <event2/event_struct.h>
 
-/* Test if we can can communicate properly with event loops in different threads. */
-#define THREAD_COUNT 10
-void* test_func( void *arg)
+/* Test if we can register multiple callbacks to the same eventype/eventuserptr combo. */
+static KDboolean quit = 0;
+void callback1(const KDEvent *event)
 {
-    for(;;)
+    kdAssert(0);
+}
+void callback2(const KDEvent *event)
+{
+    if(event->type == KD_EVENT_QUIT)
     {
-        const KDEvent *event = kdWaitEvent(1500000000);
-        if(event)
-        {
-            if(event->type == KD_EVENT_QUIT)
-            {
-                break;
-            }
-            kdDefaultEvent(event);
-        }
+        quit = 1;
+        return;
     }
-    kdThreadExit(KD_NULL);
+    kdDefaultEvent(event);
 }
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
-    {
-        threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if(threads[i] == KD_NULL)
-        {
-            kdAssert(0);
-        }
-    }
-    for(KDint k = 0 ; k < THREAD_COUNT ;k++)
+    kdInstallCallback(callback1, KD_EVENT_QUIT, (void*)1234);
+    kdInstallCallback(callback2, KD_EVENT_QUIT, (void*)1234);
+    for(;;)
     {
         KDEvent *event = kdCreateEvent();
-        event->type      = KD_EVENT_QUIT;
-        if(kdPostThreadEvent(event, threads[k]) == -1)
+        event->type = KD_EVENT_QUIT;
+        event->userptr = (void*)1234;
+        kdPostEvent(event);
+        kdPumpEvents();
+        if(quit)
         {
-            kdAssert(0);
+            break;
         }
-    }
-    for(KDint j = 0 ; j < THREAD_COUNT ;j++)
-    {
-        if(kdThreadJoin(threads[j], KD_NULL) == -1)
-        {
-            kdAssert(0);
-        }
-        threads[j] = KD_NULL;
     }
     return 0;
 }

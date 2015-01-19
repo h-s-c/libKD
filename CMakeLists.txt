@@ -125,6 +125,10 @@ if(WANT_TESTS)
         set_tests_properties(${PROJECT_NAME} PROPERTIES TIMEOUT 5)
     endfunction()
 
+
+    project (test_callback)
+        test_helper()
+
     project (test_eventloop)
         test_helper()
 
