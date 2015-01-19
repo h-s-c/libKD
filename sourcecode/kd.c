@@ -843,7 +843,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
     if(queuesize > 0)
     {
-        for (KDuint i = 0; i < __kdQueueSize(kdThreadSelf()->eventqueue); i++)
+        for (KDuint i = 0; i < queuesize; i++)
         {
             KDEvent *callbackevent = __kdQueueGet(kdThreadSelf()->eventqueue);
             if (callbackevent != KD_NULL)
