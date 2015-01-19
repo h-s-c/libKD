@@ -125,64 +125,67 @@ size_t strlcat(char *dst, const char *src, size_t dstsize);
  * Internal eventqueue
  ******************************************************************************/
 
-/* __kd_eventqueue based on lstack by  Chris Wellons (Public Domain/Unlicense) */
-struct __kd_eventqueue_node {
+/* __KDQueue based on lstack by  Chris Wellons (Public Domain/Unlicense) */
+typedef struct __KDQueueNode __KDQueueNode;
+typedef struct __KDQueueNode {
     void *value;
-    struct __kd_eventqueue_node *next;
-};
+    __KDQueueNode *next;
+} __KDQueueNode;
 
-struct __kd_eventqueue_head {
+typedef struct __KDQueueHead {
     KDuintptr aba;
-    struct __kd_eventqueue_node *node;
-};
+    __KDQueueNode *node;
+} __KDQueueHead;
 
 typedef struct __kd_eventqueue {
-    struct __kd_eventqueue_node *node_buffer;
-    _Atomic struct __kd_eventqueue_head head;
-    _Atomic struct __kd_eventqueue_head free;
+    __KDQueueNode *node_buffer;
+    _Atomic __KDQueueHead head, free;
     _Atomic KDsize size;
-} __kd_eventqueue;
+} __KDQueue;
 
-static inline size_t __kd_eventqueue_size(__kd_eventqueue *eventqueue)
+static inline size_t __kdQueueSize(__KDQueue *queue)
 {
-    return atomic_load(&eventqueue->size);
+    return atomic_load(&queue->size);
 }
 
-static inline void __kd_eventqueue_quit(__kd_eventqueue *eventqueue)
+static inline void __kdQueueFree(__KDQueue *queue)
 {
-    if(eventqueue)
+    if(queue)
     {
-        kdFree(eventqueue->node_buffer);
+        kdFree(queue->node_buffer);
+        queue->node_buffer = KD_NULL;
+        kdFree(queue);
+        queue = KD_NULL;
     }
 }
 
-static int __kd_eventqueue_init(__kd_eventqueue *eventqueue, KDsize max_size)
+static __KDQueue *__kdQueueCreate(KDsize max_size)
 {
-    eventqueue->head.aba = ATOMIC_VAR_INIT(0);
-    eventqueue->head.node = ATOMIC_VAR_INIT(KD_NULL);
-    eventqueue->size = ATOMIC_VAR_INIT(0);
+    __KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
+    queue->head.aba = ATOMIC_VAR_INIT(0);
+    queue->head.node = ATOMIC_VAR_INIT(KD_NULL);
+    queue->size = ATOMIC_VAR_INIT(0);
 
     /* Pre-allocate all nodes. */
-    eventqueue->node_buffer = kdMalloc(max_size * sizeof(struct __kd_eventqueue_node));
-    if (eventqueue->node_buffer == KD_NULL)
+    queue->node_buffer = kdMalloc(max_size * sizeof(__KDQueueNode));
+    if (queue->node_buffer == KD_NULL)
     {
-        kdAssert(0);
         kdSetError(KD_ENOMEM);
-        return -1;
+        return KD_NULL;
     }
     for (size_t i = 0; i < max_size - 1; i++)
     {
-        eventqueue->node_buffer[i].next = eventqueue->node_buffer + i + 1;
+        queue->node_buffer[i].next = queue->node_buffer + i + 1;
     }
-    eventqueue->node_buffer[max_size - 1].next = KD_NULL;
-    eventqueue->free.aba = ATOMIC_VAR_INIT(0);
-    eventqueue->free.node = ATOMIC_VAR_INIT(eventqueue->node_buffer);
-    return 0;
+    queue->node_buffer[max_size - 1].next = KD_NULL;
+    queue->free.aba = ATOMIC_VAR_INIT(0);
+    queue->free.node = ATOMIC_VAR_INIT(queue->node_buffer);
+    return queue;
 }
 
-static struct __kd_eventqueue_node *__kd_eventqueue_pop(_Atomic struct __kd_eventqueue_head *head)
+static struct __KDQueueNode *__kdQueuePop(_Atomic __KDQueueHead *head)
 {
-    struct __kd_eventqueue_head next, orig = atomic_load(head);
+    __KDQueueHead next, orig = atomic_load(head);
     do {
         if (orig.node == KD_NULL)
         {
@@ -194,9 +197,9 @@ static struct __kd_eventqueue_node *__kd_eventqueue_pop(_Atomic struct __kd_even
     return orig.node;
 }
 
-static void __kd_eventqueue_push(_Atomic struct __kd_eventqueue_head *head, struct __kd_eventqueue_node *node)
+static void  __kdQueuePush(_Atomic __KDQueueHead *head, __KDQueueNode *node)
 {
-    struct __kd_eventqueue_head next, orig = atomic_load(head);
+    struct __KDQueueHead next, orig = atomic_load(head);
     do {
         node->next = orig.node;
         next.aba = orig.aba + 1;
@@ -204,30 +207,30 @@ static void __kd_eventqueue_push(_Atomic struct __kd_eventqueue_head *head, stru
     } while (!atomic_compare_exchange_weak(head, &orig, next));
 }
 
-static KDint __kd_eventqueue_post(__kd_eventqueue *eventqueue, void *value)
+static KDint  __kdQueuePost(__KDQueue *queue, void *value)
 {
-    struct __kd_eventqueue_node *node = __kd_eventqueue_pop(&eventqueue->free);
+    struct __KDQueueNode *node = __kdQueuePop(&queue->free);
     if (node == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
         return -1;
     }
     node->value = value;
-    __kd_eventqueue_push(&eventqueue->head, node);
-    atomic_fetch_add(&eventqueue->size, 1);
+    __kdQueuePush(&queue->head, node);
+    atomic_fetch_add(&queue->size, 1);
     return 0;
 }
 
-void *__kd_eventqueue_get(__kd_eventqueue *eventqueue)
+void *__kdQueueGet(__KDQueue *queue)
 {
-    struct __kd_eventqueue_node *node = __kd_eventqueue_pop(&eventqueue->head);
+    struct __KDQueueNode *node = __kdQueuePop(&queue->head);
     if (node == KD_NULL)
     {
         return KD_NULL;
     }
-    atomic_fetch_sub(&eventqueue->size, 1);
+    atomic_fetch_sub(&queue->size, 1);
     void *value = node->value;
-    __kd_eventqueue_push(&eventqueue->free, node);
+    __kdQueuePush(&queue->free, node);
     return value;
 }
 
@@ -239,9 +242,9 @@ typedef struct
     KDint       errorcode_kd;
     int         errorcode;
     const char *errorcode_text;
-} errorcodes;
+} __KDErrors;
 
-errorcodes errorcodes_posix[] =
+static __KDErrors errorcodes_posix[] =
 {
     { KD_EACCES,            EACCES,         "Permission denied."},
     { KD_EADDRINUSE,        EADDRINUSE,     "Adress in use."},
@@ -281,7 +284,7 @@ errorcodes errorcodes_posix[] =
     { KD_ETRY_AGAIN,        0,              "A temporary error has occurred on an authoratitive name server, and the lookup may succeed if retried later."}, /* ETRYAGAIN is not standard */
 };
 
-KDint errorcode_posix(int errorcode)
+KDint __kdTranslateError(int errorcode)
 {
     for (KDuint i = 0; i < sizeof(errorcodes_posix) / sizeof(errorcodes_posix[0]); i++)
     {
@@ -381,32 +384,63 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize sta
 }
 
 /* kdThreadCreate: Create a new thread. */
-typedef struct __kd_start_routine_args
+typedef struct __KDThreadStartArgs
 {
     void *(*start_routine)(void *);
     void *arg;
     KDThreadSem *sem;
-} __kd_start_routine_args;
+} __KDThreadStartArgs;
 typedef struct KDThread
 {
     thrd_t thread;
-    struct __kd_eventqueue* eventqueue;
-    __kd_start_routine_args* start_routine_args;
+    struct __kd_eventqueue *eventqueue;
+    void* cleanup;
 } KDThread;
 static KDThread __kd_threads[999] = {{0}};
 static atomic_uint __kd_threads_index =  ATOMIC_VAR_INIT(0);
 
-static void __kd_injector(void *args)
+static KDThread* __kdThreadRegister(thrd_t threadid, void* cleanup)
+{
+    KDuint slot = atomic_fetch_add(&__kd_threads_index, 1);
+    atomic_thread_fence(memory_order_acquire);
+    __kd_threads[slot].thread = threadid;
+    __kd_threads[slot].eventqueue = __kdQueueCreate(99999);
+    __kd_threads[slot].cleanup = cleanup;
+    atomic_thread_fence(memory_order_release);
+    return &__kd_threads[slot];
+}
+
+static void __kdThreadUnregister(KDThread *thread)
+{
+    if(thread != KD_NULL)
+    {
+        atomic_thread_fence(memory_order_acquire);
+        thread->thread = 0;
+        if (thread->eventqueue != KD_NULL)
+        {
+            __kdQueueFree(thread->eventqueue);
+            thread->eventqueue = KD_NULL;
+        }
+        if (thread->cleanup != KD_NULL)
+        {
+            kdFree(thread->cleanup);
+            thread->cleanup = KD_NULL;
+        }
+        atomic_thread_fence(memory_order_release);
+    }
+}
+
+static void __kdThreadStart(void *args)
 {
 #ifdef KD_GC
     struct GC_stack_base sb;
     GC_get_stack_base(&sb);
     GC_register_my_thread(&sb);
 #endif
-    __kd_start_routine_args* start_routine_args = (__kd_start_routine_args*)args;
-    kdThreadSemWait(start_routine_args->sem);
-    kdThreadSemFree(start_routine_args->sem);
-    start_routine_args->start_routine(start_routine_args->arg);
+    __KDThreadStartArgs* start_args = (__KDThreadStartArgs*)args;
+    kdThreadSemWait(start_args->sem);
+    kdThreadSemFree(start_args->sem);
+    start_args->start_routine(start_args->arg);
 #ifdef KD_GC
     GC_unregister_my_thread();
 #endif
@@ -414,34 +448,21 @@ static void __kd_injector(void *args)
 
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
-    __kd_start_routine_args* start_routine_args = (__kd_start_routine_args*)kdMalloc(sizeof(__kd_start_routine_args));
-    start_routine_args->start_routine = start_routine;
-    start_routine_args->arg = arg;
-    start_routine_args->sem = kdThreadSemCreate(0);
-    thrd_t thrd = 0;
-    int error = thrd_create(&thrd, (thrd_start_t)__kd_injector, start_routine_args);
+    __KDThreadStartArgs *start_args = (__KDThreadStartArgs*)kdMalloc(sizeof(__KDThreadStartArgs));
+    start_args->start_routine = start_routine;
+    start_args->arg = arg;
+    start_args->sem = kdThreadSemCreate(0);
+    thrd_t threadid = 0;
+    int error = thrd_create(&threadid, (thrd_start_t)__kdThreadStart, start_args);
     if(error == thrd_nomem)
     {
-        kdAssert(0);
         kdSetError(KD_ENOMEM);
     }
     else if(error == thrd_success)
     {
-        for (KDuint i = 0; i < atomic_fetch_add(&__kd_threads_index, 1) ; i++)
-        {
-            if (!__kd_threads[i].thread)
-            {
-                atomic_thread_fence(memory_order_acquire);
-                __kd_eventqueue* eventqueue = (__kd_eventqueue*)kdMalloc(sizeof(__kd_eventqueue));
-                __kd_eventqueue_init(eventqueue, 99999);
-                __kd_threads[i].eventqueue = eventqueue;
-                __kd_threads[i].thread = thrd;
-                __kd_threads[i].start_routine_args = start_routine_args;
-                atomic_thread_fence(memory_order_release);
-                kdThreadSemPost(start_routine_args->sem);
-                return &__kd_threads[i];
-            }
-        }
+        KDThread *thread = __kdThreadRegister(threadid, start_args);
+        kdThreadSemPost(start_args->sem);
+        return thread;
     }
     return KD_NULL;
 }
@@ -449,21 +470,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
-    for (KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
-    {
-        if(__kd_threads[i].thread == thrd_current())
-        {
-            atomic_thread_fence(memory_order_acquire);
-            __kd_eventqueue_quit(__kd_threads[i].eventqueue);
-            kdFree(__kd_threads[i].eventqueue);
-            __kd_threads[i].thread = 0;
-            __kd_threads[i].eventqueue = KD_NULL;
-            kdFree(__kd_threads[i].start_routine_args);
-            __kd_threads[i].start_routine_args = KD_NULL;
-            atomic_thread_fence(memory_order_release);
-            break;
-        }
-    }
+    __kdThreadUnregister(kdThreadSelf());
     KDint result = 0;
     if(retval != KD_NULL)
     {
@@ -492,14 +499,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     int error = thrd_join(thread->thread, result);
     if(error == thrd_success)
     {
-        atomic_thread_fence(memory_order_acquire);
-        __kd_eventqueue_quit(thread->eventqueue);
-        kdFree(thread->eventqueue);
-        thread->thread = 0;
-        thread->eventqueue = KD_NULL;
-        kdFree(thread->start_routine_args);
-        thread->start_routine_args = KD_NULL;
-        atomic_thread_fence(memory_order_release);
+        __kdThreadUnregister(thread);
         return 0;
     }
     else if(error == thrd_error)
@@ -723,7 +723,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
         __kd_sleep_nanoseconds(timeout);
     }
     kdPumpEvents();
-    return __kd_eventqueue_get(kdThreadSelf()->eventqueue);
+    return __kdQueueGet(kdThreadSelf()->eventqueue);
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
 KD_API void KD_APIENTRY kdSetEventUserptr(void *userptr)
@@ -741,7 +741,7 @@ KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
-struct KDCallback 
+typedef struct KDCallback 
 {
     KDCallbackFunc *func;
     KDint eventtype;
@@ -758,9 +758,9 @@ typedef struct KDWindow
     void *nativewindow;
     EGLint format;
 } KDWindow;
-static thread_local struct KDWindow windows[999]= {{0}};
+static thread_local KDWindow windows[999]= {{0}};
 #endif
-static thread_local struct KDCallback callbacks[999] = {{0}};
+static thread_local KDCallback callbacks[999] = {{0}};
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
 #ifdef __EMSCRIPTEN__
@@ -906,7 +906,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     {
         event->timestamp = kdGetTimeUST();
     }
-    if(__kd_eventqueue_post(thread->eventqueue, event) == -1)
+    if(__kdQueuePost(thread->eventqueue, event) == -1)
     {
         kdAssert(0);
     }
@@ -934,14 +934,7 @@ int main(int argc, char **argv)
     GC_INIT();
     GC_allow_register_threads();
 #endif
-    KDuint slot = atomic_fetch_add(&__kd_threads_index, 1);
-    atomic_thread_fence(memory_order_acquire);
-    __kd_eventqueue* eventqueue = (__kd_eventqueue*)kdMalloc(sizeof(__kd_eventqueue));
-    __kd_eventqueue_init(eventqueue, 99999);
-    __kd_threads[slot].thread = thrd_current();
-    __kd_threads[slot].eventqueue = eventqueue;
-    __kd_threads[slot].start_routine_args = KD_NULL;
-    atomic_thread_fence(memory_order_release);
+    __kdThreadRegister(thrd_current(), KD_NULL);
 
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
@@ -955,12 +948,7 @@ int main(int argc, char **argv)
     }
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
 
-    atomic_thread_fence(memory_order_acquire);
-    __kd_eventqueue_quit(__kd_threads[slot].eventqueue);
-    kdFree(__kd_threads[slot].eventqueue);
-    __kd_threads[slot].thread = 0;
-    __kd_threads[slot].eventqueue = KD_NULL;
-    atomic_thread_fence(memory_order_release);
+    __kdThreadUnregister(kdThreadSelf());
     return retval;
 }
 
@@ -969,20 +957,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
     for (KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
-        atomic_thread_fence(memory_order_acquire);
-        __kd_threads[i].thread = 0;
-        if(__kd_threads[i].eventqueue)
-        {
-            __kd_eventqueue_quit(__kd_threads[i].eventqueue);
-            kdFree(__kd_threads[i].eventqueue);
-            __kd_threads[i].eventqueue = KD_NULL;
-        }
-        if(__kd_threads[i].start_routine_args)
-        {
-            kdFree(__kd_threads[i].start_routine_args);
-            __kd_threads[i].start_routine_args = KD_NULL;
-        }
-        atomic_thread_fence(memory_order_release);
+        __kdThreadUnregister(&__kd_threads[i]);
     }
     exit(status);
 }
@@ -1288,7 +1263,7 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
     void *retval = memchr(src , byte, len);
     if(retval == NULL)
     {
-        kdSetError(errorcode_posix(errno));
+        kdSetError(__kdTranslateError(errno));
         return KD_NULL;
     }
     return retval;
@@ -1324,7 +1299,7 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
     void *retval = strchr(str, ch);
     if(retval == NULL)
     {
-        kdSetError(errorcode_posix(errno));
+        kdSetError(__kdTranslateError(errno));
         return KD_NULL;
     }
     return retval;

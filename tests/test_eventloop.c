@@ -54,7 +54,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
         if(threads[i] == KD_NULL)
         {
-            kdExit(EXIT_FAILURE);
+            kdAssert(0);
         }
     }
     for(KDint k = 0 ; k < THREAD_COUNT ;k++)
@@ -63,15 +63,16 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         event->type      = KD_EVENT_QUIT;
         if(kdPostThreadEvent(event, threads[k]) == -1)
         {
-            kdExit(EXIT_FAILURE);
+            kdAssert(0);
         }
     }
     for(KDint j = 0 ; j < THREAD_COUNT ;j++)
     {
         if(kdThreadJoin(threads[j], KD_NULL) == -1)
         {
-            kdExit(EXIT_FAILURE);
+            kdAssert(0);
         }
+        threads[j] = KD_NULL;
     }
     return 0;
 }
