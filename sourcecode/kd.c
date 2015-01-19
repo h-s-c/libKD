@@ -95,6 +95,7 @@ size_t strlcat(char *dst, const char *src, size_t dstsize);
 
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/utsname.h>
 #include <sys/vfs.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -325,15 +326,17 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
 {
     if(attribute == KD_ATTRIB_VENDOR)
     {
-        return "libKD open source implementation";
+        return "libKD (zlib license)";
     }
     else if(attribute == KD_ATTRIB_VERSION)
     {
-        return "0.1";
+        return "1.0.3 (libKD 0.1-alpha)";
     }
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
-        return "POSIX";
+        static struct utsname name;
+        uname(&name);
+        return name.sysname;
     }
     kdSetError(KD_EINVAL);
     return KD_NULL;
@@ -354,10 +357,15 @@ KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KDint attribute, KDint i
 typedef struct KDThreadAttr
 {
     KDint detachstate;
+    KDsize stacksize;
 } KDThreadAttr;
 KD_API KDThreadAttr *KD_APIENTRY kdThreadAttrCreate(void)
 {
     KDThreadAttr *attr = (KDThreadAttr*)kdMalloc(sizeof(KDThreadAttr));
+    /* Spec default */
+    attr->detachstate = KD_THREAD_CREATE_JOINABLE;
+    /* Impl default */
+    attr->stacksize = 100000;
     return attr;
 }
 
@@ -379,8 +387,8 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDetachState(KDThreadAttr *attr, KDint de
 /* kdThreadAttrSetStackSize: Set stacksize attribute. */
 KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize stacksize)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return -1;
+    attr->stacksize = stacksize;
+    return 0;
 }
 
 /* kdThreadCreate: Create a new thread. */
@@ -392,20 +400,28 @@ typedef struct __KDThreadStartArgs
 } __KDThreadStartArgs;
 typedef struct KDThread
 {
-    thrd_t thread;
-    struct __kd_eventqueue *eventqueue;
+    KDuint64 threadid;
+    KDThreadAttr* threadattr;
     void* cleanup;
+    struct __kd_eventqueue *eventqueue;
 } KDThread;
 static KDThread __kd_threads[999] = {{0}};
 static atomic_uint __kd_threads_index =  ATOMIC_VAR_INIT(0);
 
-static KDThread* __kdThreadRegister(thrd_t threadid, void* cleanup)
+static KDThread* __kdThreadRegister(KDuint64 threadid, const KDThreadAttr* threadattr, void* cleanup)
 {
     KDuint slot = atomic_fetch_add(&__kd_threads_index, 1);
     atomic_thread_fence(memory_order_acquire);
-    __kd_threads[slot].thread = threadid;
-    __kd_threads[slot].eventqueue = __kdQueueCreate(99999);
+    __kd_threads[slot].threadid = threadid;
+    __kd_threads[slot].threadattr = kdThreadAttrCreate();
+    if(threadattr != KD_NULL)
+    {
+        /* Copy user-provided thread attributes */
+        kdThreadAttrSetStackSize(__kd_threads[slot].threadattr, threadattr->stacksize);
+        kdThreadAttrSetDetachState(__kd_threads[slot].threadattr, threadattr->detachstate);
+    }
     __kd_threads[slot].cleanup = cleanup;
+    __kd_threads[slot].eventqueue = __kdQueueCreate(__kd_threads[slot].threadattr->stacksize);
     atomic_thread_fence(memory_order_release);
     return &__kd_threads[slot];
 }
@@ -415,22 +431,27 @@ static void __kdThreadUnregister(KDThread *thread)
     if(thread != KD_NULL)
     {
         atomic_thread_fence(memory_order_acquire);
-        thread->thread = 0;
-        if (thread->eventqueue != KD_NULL)
+        thread->threadid = 0;
+        if (thread->threadattr != KD_NULL)
         {
-            __kdQueueFree(thread->eventqueue);
-            thread->eventqueue = KD_NULL;
+            kdThreadAttrFree(thread->threadattr);
+            thread->threadattr = KD_NULL;
         }
         if (thread->cleanup != KD_NULL)
         {
             kdFree(thread->cleanup);
             thread->cleanup = KD_NULL;
         }
+        if (thread->eventqueue != KD_NULL)
+        {
+            __kdQueueFree(thread->eventqueue);
+            thread->eventqueue = KD_NULL;
+        }
         atomic_thread_fence(memory_order_release);
     }
 }
 
-static void __kdThreadStart(void *args)
+static int __kdThreadStart(void *args)
 {
 #ifdef KD_GC
     struct GC_stack_base sb;
@@ -440,10 +461,20 @@ static void __kdThreadStart(void *args)
     __KDThreadStartArgs* start_args = (__KDThreadStartArgs*)args;
     kdThreadSemWait(start_args->sem);
     kdThreadSemFree(start_args->sem);
-    start_args->start_routine(start_args->arg);
+    void *retval = start_args->start_routine(start_args->arg);
+    KDint result = 0;
+    if(retval != KD_NULL)
+    {
+        result = *(KDint*)retval;
+    }
+    if(kdThreadSelf()->threadattr->detachstate == KD_THREAD_CREATE_DETACHED)
+    {
+        __kdThreadUnregister(kdThreadSelf());
+    }
 #ifdef KD_GC
     GC_unregister_my_thread();
 #endif
+    return result;
 }
 
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
@@ -460,8 +491,13 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     }
     else if(error == thrd_success)
     {
-        KDThread *thread = __kdThreadRegister(threadid, start_args);
+        KDThread *thread = __kdThreadRegister(threadid, attr, start_args);
         kdThreadSemPost(start_args->sem);
+        if(thread->threadattr->detachstate == KD_THREAD_CREATE_DETACHED)
+        {
+            kdThreadDetach(thread);
+            return KD_NULL;
+        }
         return thread;
     }
     return KD_NULL;
@@ -470,6 +506,11 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
+    /* In mainthread call kdExit */
+    if(thrd_equal(__kd_threads[0].threadid, kdThreadSelf()->threadid) != 0)
+    {
+        kdExit(0);
+    }
     __kdThreadUnregister(kdThreadSelf());
     KDint result = 0;
     if(retval != KD_NULL)
@@ -482,11 +523,13 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
-    if(!thread->thread)
+    /* Undefined by spec; we return 0 */
+    if(!thread->threadid)
     {
         return 0;
     }
-    if(thrd_equal(thread->thread, kdThreadSelf()->thread) != 0)
+    /* Join on self */
+    if(thrd_equal(thread->threadid, kdThreadSelf()->threadid) != 0)
     {
         kdSetError(KD_EDEADLK);
         return -1;
@@ -496,7 +539,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     {
         result = *retval;
     }
-    int error = thrd_join(thread->thread, result);
+    int error = thrd_join(thread->threadid, result);
     if(error == thrd_success)
     {
         __kdThreadUnregister(thread);
@@ -512,7 +555,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 /* kdThreadDetach: Allow resources to be freed as soon as a thread terminates. */
 KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 {
-    int error = thrd_detach(thread->thread);
+    int error = thrd_detach(thread->threadid);
     if(error == thrd_success)
     {
         return 0;
@@ -529,7 +572,7 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
     for (KDuint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
-        if (__kd_threads[i].thread == thrd_current())
+        if (__kd_threads[i].threadid == thrd_current())
         {
             return &__kd_threads[i];
         }
@@ -719,7 +762,10 @@ void __kd_sleep_nanoseconds(KDust timeout)
 static thread_local KDEvent *__kd_lastevent = KD_NULL;
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
-    kdFreeEvent(__kd_lastevent);
+    if(__kd_lastevent != KD_NULL)
+    {
+        kdFreeEvent(__kd_lastevent);
+    }
     if(timeout != -1)
     {
         __kd_sleep_nanoseconds(timeout);
@@ -915,10 +961,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 /* kdFreeEvent: Abandon an event instead of posting it. */
 KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
-    if(event != KD_NULL)
-    {
-        kdFree(event);
-    }
+    kdFree(event);
 }
 
 /******************************************************************************
@@ -936,7 +979,8 @@ int main(int argc, char **argv)
     GC_INIT();
     GC_allow_register_threads();
 #endif
-    __kdThreadRegister(thrd_current(), KD_NULL);
+    /* __kd_threads[0] is always the mainthread*/
+    __kdThreadRegister(thrd_current(), KD_NULL, KD_NULL);
 
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
@@ -1627,12 +1671,12 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 }
 
 /* kdReadDir: Return the next file in a directory. */
+static thread_local KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
-    KDDirent *kddirent = (KDDirent*)kdMalloc(sizeof(KDDirent));
-    struct dirent *posixdirent = readdir(dir->dir);
-    kddirent->d_name = posixdirent->d_name;
-    return kddirent;
+    struct dirent* posixdirent = readdir(dir->dir);
+    __kd_lastdirent->d_name = posixdirent->d_name;
+    return __kd_lastdirent;
 }
 
 /* kdCloseDir: Close a directory. */

@@ -20,7 +20,6 @@
 
 #include <KD/kd.h>
 #include <stdatomic.h> /* _Atomic */
-#include <stdlib.h> /* EXIT_FAILURE */
 
 #include <stdio.h>
 

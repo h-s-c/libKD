@@ -19,7 +19,6 @@
 ******************************************************************************/
 
 #include <KD/kd.h>
-#include <stdlib.h> /* EXIT_FAILURE */
 
 /* Test can communicate properly with event loops in different threads. */
 #define THREAD_COUNT 10
@@ -43,7 +42,7 @@ void* test_func( void *arg)
             }
         }
     }
-    return 0;
+    kdThreadExit(KD_NULL);
 }
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
