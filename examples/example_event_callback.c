@@ -36,6 +36,7 @@ void callback(const KDEvent *event)
     if(event->type == KD_EVENT_WINDOW_CLOSE)
     {
         quit = 1;
+        return;
     }
     kdDefaultEvent(event);
 }
