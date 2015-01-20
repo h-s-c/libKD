@@ -16,9 +16,9 @@
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
--   Only kd.c + headers are needed in case you don't use CMake.
+-   Only kd.c + headers are needed in case you don't want to use CMake
+-   Code is NOT production ready
 
 ###Dependencies
--   POSIX, C11 (C11 threads alternative implementation is included; 
-    C11 Annex K is optional, BSD safe string functions can be used instead)
--   EGL, X11, Wayland, DispmanX (depending on your platform)
+-   POSIX, C11 (C11 atomics NOT optional; C11 threads optional; C11 Annex K optional)
+-   EGL, X11
