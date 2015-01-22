@@ -10,7 +10,7 @@ before_install:
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 90; fi
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 90; fi
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-4.9 90; fi
-  - sudo apt-get install -qq cmake lcov mercurial
+  - sudo apt-get install -qq cmake lcov
   - wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz && tar xzf lcov-1.11.tar.gz
   - cd lcov-1.11 && make && sudo make install && cd ..
   - gem install coveralls-lcov
