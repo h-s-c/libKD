@@ -31,7 +31,7 @@ set(WANT_EXAMPLES "On" CACHE BOOL "Build with examples")
 set(WANT_TESTS "On" CACHE BOOL "Build with tests")
 set(WANT_COVERAGE "Off" CACHE BOOL "Build with code coverage")
 set(WANT_GC "Off" CACHE BOOL "Build with gargabe collection")
-set(WANT_VFS "On" CACHE BOOL "Build with virtual filesystem")
+set(WANT_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
 project (KD)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcx16 -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")

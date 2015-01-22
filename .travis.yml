@@ -17,8 +17,6 @@ before_install:
 
 install:
   - sudo apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
-  - hg clone http://hg.icculus.org/icculus/physfs/
-  - cd physfs && cmake . && make && sudo make install && cd ..
 
 before_script:
   - cmake -DCMAKE_BUILD_TYPE=Debug -DWANT_COVERAGE=On .
