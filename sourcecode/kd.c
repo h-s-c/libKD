@@ -1167,9 +1167,9 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 #endif
 
 #ifdef __unix__
-    KDFile *urandom = kdFopen("/dev/urandom", "r");
-    KDsize result = kdFread((void *)buf, sizeof(KDuint8), buflen, urandom);
-    kdFclose(urandom);
+    FILE *urandom = fopen("/dev/urandom", "r");
+    KDsize result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
+    fclose(urandom);
     if (result != buflen)
     {
         kdSetError(KD_ENOMEM);
@@ -1562,19 +1562,43 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 /* kdFopen: Open a file from the file system. */
 typedef struct KDFile
 {
+#ifdef KD_VFS
+    PHYSFS_File *file;
+#else
     FILE *file;
+#endif
 } KDFile;
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile*)kdMalloc(sizeof(KDFile));
+#ifdef KD_VFS
+    if(kdStrcmp(mode, "wb") == 0)
+    {
+        file->file = PHYSFS_openWrite(pathname);
+    }
+    else if(kdStrcmp(mode, "rb") == 0)
+    {
+        file->file = PHYSFS_openRead(pathname);
+    }
+    else if(kdStrcmp(mode, "ab") == 0)
+    {
+        file->file = PHYSFS_openAppend(pathname);
+    }
+#else
     file->file = fopen(pathname, mode);
+#endif
     return file;
 }
 
 /* kdFclose: Close an open file. */
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
-    KDint retval = fclose(file->file);
+    KDint retval = 0;
+#ifdef KD_VFS
+    retval = PHYSFS_close(file->file);
+#else
+    retval = fclose(file->file);
+#endif
     kdFree(file);
     return retval;
 }
@@ -1582,139 +1606,342 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 /* kdFflush: Flush an open file. */
 KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 {
-    return fflush(file->file);
+    KDint retval = 0;
+#ifdef KD_VFS
+    retval = PHYSFS_flush(file->file);
+#else
+    retval = fflush(file->file);
+#endif
+    return retval;
 }
 
 /* kdFread: Read from a file. */
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
-    return fread(buffer, size, count, file->file);
+    KDsize retval = 0;
+#ifdef KD_VFS
+    retval = (KDsize)PHYSFS_readBytes(file->file, buffer, size);
+#else
+    retval = fread(buffer, size, count, file->file);
+#endif
+    return retval;
 }
 
 /* kdFwrite: Write to a file. */
 KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
-    return fwrite(buffer, size, count, file->file);
+    KDsize retval = 0;
+#ifdef KD_VFS
+    retval = (KDsize)PHYSFS_writeBytes(file->file, buffer, size);
+#else
+    retval = fwrite(buffer, size, count, file->file);
+#endif
+    return retval;
 }
 
 /* kdGetc: Read next byte from an open file. */
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
-    return fgetc(file->file);
+    KDint byte = 0;
+#ifdef KD_VFS
+    PHYSFS_readBytes(file->file, &byte, 1);
+#else
+    byte = fgetc(file->file);
+#endif
+    return byte;
 }
 
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-    return fputc(c, file->file);
+    KDint byte = 0;
+#ifdef KD_VFS
+    PHYSFS_writeBytes(file->file, &c, 1);
+    byte = c;
+#else
+    byte = fputc(c, file->file);
+#endif
+    return byte;
 }
 
 /* kdFgets: Read a line of text from an open file. */
 KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 {
-    return fgets(buffer, (KDint)buflen, file->file);
+    KDchar *line = KD_NULL;
+#ifdef KD_VFS
+    /* TODO: Loop this until '\n' or 'EOF' */
+    kdAssert(0);
+    PHYSFS_readBytes(file->file, buffer, 1);
+    line = buffer;
+#else
+    line = fgets(buffer, (KDint)buflen, file->file);
+#endif
+    return line;
 }
 
 /* kdFEOF: Check for end of file. */
 KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 {
-    return feof(file->file);
+    KDint retval = 0;
+#ifdef KD_VFS
+    retval = PHYSFS_eof(file->file);
+#else
+    retval = feof(file->file);
+#endif
+    return retval;
 }
 
 /* kdFerror: Check for an error condition on an open file. */
 KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 {
-    return ferror(file->file);
+    KDint retval = 0;
+#ifdef KD_VFS
+    PHYSFS_ErrorCode errorcode = PHYSFS_getLastErrorCode();
+    if(errorcode != PHYSFS_ERR_OK)
+    {
+        retval = KD_EOF;
+    }
+#else
+    if(ferror(file->file) != 0)
+    {
+        retval = KD_EOF;
+    }
+#endif
+    return retval;
 }
 
 /* kdClearerr: Clear a file's error and end-of-file indicators. */
 KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 {
+#ifdef KD_VFS
+    PHYSFS_setErrorCode(PHYSFS_ERR_OK);
+#else
     clearerr(file->file);
+#endif
 }
+
+typedef struct
+{
+    KDuint  seekorigin_kd;
+    int     seekorigin;
+} __KDSeekOrigin;
+
+#ifndef KD_VFS
+static __KDSeekOrigin seekorigins_c[] =
+{
+    {KD_SEEK_SET, SEEK_SET},
+    {KD_SEEK_CUR, SEEK_CUR},
+    {KD_SEEK_END, SEEK_END}
+};
+#endif
 
 /* kdFseek: Reposition the file position indicator in a file. */
 KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
 {
-    return fseek( file->file, offset, origin);
+    KDint retval = 0;
+#ifdef KD_VFS
+    /* TODO: Support other seek origins*/
+    if(origin == KD_SEEK_SET)
+    {
+        retval = PHYSFS_seek(file->file, (PHYSFS_uint64)offset);
+    }
+    else
+    {
+        kdAssert(0);
+    }
+#else
+    for (KDuint i = 0; i < sizeof(seekorigins_c) / sizeof(seekorigins_c[0]); i++)
+    {
+        if (seekorigins_c[i].seekorigin_kd == origin)
+        {
+            retval = fseek( file->file, offset, seekorigins_c[i].seekorigin);
+            break;
+        }
+    }
+#endif
+    return retval;
 }
 
 /* kdFtell: Get the file position of an open file. */
 KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 {
-    return ftell( file->file);
+    KDoff position = 0;
+#ifdef KD_VFS
+    position = (KDoff)PHYSFS_tell(file->file);
+#else
+    position = ftell(file->file);
+#endif
+    return position;
 }
 
 /* kdMkdir: Create new directory. */
 KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 {
-    return mkdir (pathname, S_IRWXU);
+    KDint retval = 0;
+#ifdef KD_VFS
+    retval = PHYSFS_mkdir(pathname);
+#else
+    retval = mkdir(pathname, S_IRWXU);
+#endif
+    return retval;
 }
 
 /* kdRmdir: Delete a directory. */
 KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 {
-    return rmdir(pathname);
+    KDint retval = 0;
+#ifdef KD_VFS
+    retval = PHYSFS_delete(pathname);
+#else
+    retval = rmdir(pathname);
+#endif
+    return retval;
 }
 
 /* kdRename: Rename a file. */
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
-    return rename(src, dest);
+    KDint retval = 0;
+#ifdef KD_VFS
+    /* TODO: Implement rename */
+    kdAssert(0);
+#else
+    retval = rename(src, dest);
+#endif
+    return retval;
 }
 
 /* kdRemove: Delete a file. */
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
-    return remove(pathname);
+    KDint retval = 0;
+#ifdef KD_VFS
+    retval = PHYSFS_delete(pathname);
+#else
+    retval = remove(pathname);
+#endif
+    return retval;
 }
 
 /* kdTruncate: Truncate or extend a file. */
 KD_API KDint KD_APIENTRY kdTruncate(const KDchar *pathname, KDoff length)
 {
-    return truncate(pathname, length); 
+    KDint retval = 0;
+#ifdef KD_VFS
+    /* TODO: Implement truncate */
+    kdAssert(0);
+#else
+    retval = truncate(pathname, length);
+#endif
+    return retval;
 }
 
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
+    KDint retval = -1;
+#ifdef KD_VFS
+    struct PHYSFS_Stat physfsstat = {0};
+    if(PHYSFS_stat(pathname, &physfsstat) != 0)
+    {
+        retval = 0;
+        if(physfsstat.filetype == PHYSFS_FILETYPE_DIRECTORY)
+        {
+            buf->st_mode  = 0x4000;
+        }
+        else if(physfsstat.filetype == PHYSFS_FILETYPE_REGULAR )
+        {
+            buf->st_mode  = 0x8000;
+        }
+        else
+        {
+            buf->st_mode  = 0x0000;
+            retval = -1;
+        }
+        buf->st_size  = (KDoff)physfsstat.filesize;
+        buf->st_mtime = (KDtime)physfsstat.modtime;
+    }
+#else
     struct stat posixstat = {0};
-    int retval = stat(pathname, &posixstat);
+    retval = stat(pathname, &posixstat);
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
     buf->st_mtime = posixstat.st_mtim.tv_sec;
-
+#endif
     return retval;
 }
 
 KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 {
+    KDint retval = -1;
+#ifdef KD_VFS
+    buf->st_mode  = 0x0000;
+    buf->st_size  = (KDoff)PHYSFS_fileLength(file->file);
+    buf->st_mtime = 0;
+#else
     struct stat posixstat = {0};
-    int retval = fstat(fileno(file->file), &posixstat);
+    retval = fstat(fileno(file->file), &posixstat);
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
     buf->st_mtime = posixstat.st_mtim.tv_sec;
-
+#endif
     return retval;
 }
+
+typedef struct
+{
+    KDint   accessmode_kd;
+    int     accessmode;
+} __KDAccessMode;
+
+#ifndef KD_VFS
+static __KDAccessMode accessmode_posix[] =
+{
+    {KD_R_OK, R_OK},
+    {KD_W_OK, W_OK},
+    {KD_X_OK, X_OK}
+};
+#endif
 
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
-    return access(pathname, amode);
+    KDint retval = -1;
+#ifdef KD_VFS
+    /* TODO: Implement access */
+    kdAssert(0);
+#else
+    for (KDuint i = 0; i < sizeof(accessmode_posix) / sizeof(accessmode_posix[0]); i++)
+    {
+        if (accessmode_posix[i].accessmode_kd == amode)
+        {
+            retval = access(pathname, accessmode_posix[i].accessmode);
+            break;
+        }
+    }
+#endif
+    return retval;
 }
 
 /* kdOpenDir: Open a directory ready for listing. */
 typedef struct KDDir
 {
+#ifdef KD_VFS
+    char **dir;
+#else
     DIR *dir;
+#endif
 } KDDir;
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
     KDDir *dir = (KDDir*)kdMalloc(sizeof(KDDir));
+#ifdef KD_VFS
+    dir->dir = PHYSFS_enumerateFiles(pathname);
+#else
     dir->dir = opendir(pathname);
+#endif
     return dir;
 }
 
@@ -1722,24 +1949,51 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 static thread_local KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
+#ifdef KD_VFS
+    KDboolean next = 0;
+    for (KDchar **i = dir->dir; *i != KD_NULL; i++)
+    {
+        if(__kd_lastdirent == KD_NULL || next == 1)
+        {
+            __kd_lastdirent->d_name = *i;
+        }
+        else
+        {
+            if(kdStrcmp(__kd_lastdirent->d_name, *i) == 0)
+            {
+                next = 1;
+            }
+        }
+    }
+#else
     struct dirent* posixdirent = readdir(dir->dir);
     __kd_lastdirent->d_name = posixdirent->d_name;
+#endif
     return __kd_lastdirent;
 }
 
 /* kdCloseDir: Close a directory. */
 KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 {
-    KDint retval = closedir(dir->dir);
+#ifdef KD_VFS
+    PHYSFS_freeList(&dir->dir);
+#else
+    closedir(dir->dir);
+#endif
     kdFree(dir);
-    return retval;
+    return 0;
 }
 
 /* kdGetFree: Get free space on a drive. */
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
+#ifdef KD_VFS
+    const KDchar *temp = PHYSFS_getRealDir(pathname);
+#else
+    const KDchar *temp = pathname;
+#endif
      struct statfs buf = {0};
-     statfs(pathname, &buf);
+     statfs(temp, &buf);
      return (buf.f_bsize/1024L) * buf.f_bavail;
 }
 
