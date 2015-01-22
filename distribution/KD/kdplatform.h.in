@@ -33,6 +33,8 @@
 
 #cmakedefine KD_GC
 
+#cmakedefine KD_VFS
+
 #cmakedefine KD_NO_STATIC_DATA
 
 #define KD_API KHRONOS_APICALL

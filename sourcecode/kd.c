@@ -56,6 +56,7 @@
 #include <inttypes.h>
 #include <locale.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,6 +114,14 @@ size_t strlcat(char *dst, const char *src, size_t dstsize);
 #ifdef KD_WINDOW_SUPPORTED
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#endif
+
+/******************************************************************************
+* Middleware
+******************************************************************************/
+
+#ifdef KD_VFS
+#include <physfs.h>
 #endif
 
 /******************************************************************************
@@ -990,13 +999,31 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
  * Application startup and exit.
  ******************************************************************************/
 
+const char* __kdAppName(const char *argv0)
+{
+#ifdef __GLIBC__
+    extern const char *__progname;
+    return __progname;
+#endif
+    /* TODO: This is not reliable */
+    return argv0;
+}
+
 int main(int argc, char **argv)
 {
 #ifdef KD_GC
     GC_INIT();
     GC_allow_register_threads();
 #endif
-    /* __kd_threads[0] is always the mainthread*/
+#ifdef KD_VFS
+    PHYSFS_init(argv[0]);
+    const KDchar *prefdir = PHYSFS_getPrefDir("libKD", __kdAppName(argv[0]));
+    PHYSFS_setWriteDir(prefdir);
+    PHYSFS_mount(prefdir, "/", 0);
+    PHYSFS_mkdir("/res");
+    PHYSFS_mkdir("/data");
+    PHYSFS_mkdir("/tmp");
+#endif
     __kdThreadRegister(thrd_current(), KD_NULL, KD_NULL);
 
     void *app = dlopen(NULL, RTLD_NOW);
@@ -1012,6 +1039,9 @@ int main(int argc, char **argv)
     int retval = (*kdMain)(argc, (const KDchar *const *)argv);
 
     __kdThreadUnregister(kdThreadSelf());
+#ifdef KD_VFS
+    PHYSFS_deinit();
+#endif
     return retval;
 }
 
