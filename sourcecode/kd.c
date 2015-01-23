@@ -64,6 +64,10 @@
 #if __STDC_VERSION__ >= 201112L
 
 #if !__STDC_NO_ATOMICS__
+#ifdef __ANDROID__
+typedef uint32_t char32_t;
+typedef uint16_t char16_t;
+#endif
 #include <stdatomic.h>
 #else
 #pragma GCC error "C11 atomics are required by libKD."
@@ -112,8 +116,12 @@ size_t strlcat(char *dst, const char *src, size_t dstsize);
 #endif
 
 #ifdef KD_WINDOW_SUPPORTED
+#ifdef __ANDROID__
+#include <android/native_window.h>
+#else
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#endif
 #endif
 
 /******************************************************************************
@@ -136,20 +144,20 @@ size_t strlcat(char *dst, const char *src, size_t dstsize);
  ******************************************************************************/
 
 /* __KDQueue based on lstack by  Chris Wellons (Public Domain/Unlicense) */
-typedef struct __KDQueueNode __KDQueueNode;
-typedef struct __KDQueueNode {
+struct __KDQueueNode {
     void *value;
-    __KDQueueNode *next;
-} __KDQueueNode;
+    struct __KDQueueNode *next;
+};
 
 typedef struct __KDQueueHead {
     KDuintptr aba;
-    __KDQueueNode *node;
+    struct __KDQueueNode *node;
 } __KDQueueHead;
 
-typedef struct __kd_eventqueue {
-    __KDQueueNode *node_buffer;
-    _Atomic __KDQueueHead head, free;
+typedef struct __KDQueue {
+    struct __KDQueueNode *node_buffer;
+    _Atomic __KDQueueHead head;
+    _Atomic __KDQueueHead free;
     _Atomic KDsize size;
 } __KDQueue;
 
@@ -172,12 +180,12 @@ static inline void __kdQueueFree(__KDQueue *queue)
 static __KDQueue *__kdQueueCreate(KDsize max_size)
 {
     __KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
-    queue->head.aba = ATOMIC_VAR_INIT(0);
-    queue->head.node = ATOMIC_VAR_INIT(KD_NULL);
-    queue->size = ATOMIC_VAR_INIT(0);
+    __KDQueueHead headinit = {.aba = 0, .node = KD_NULL};
+    atomic_init(&queue->head, headinit);
+    atomic_init(&queue->size, 0);
 
     /* Pre-allocate all nodes. */
-    queue->node_buffer = kdMalloc(max_size * sizeof(__KDQueueNode));
+    queue->node_buffer = kdMalloc(max_size * sizeof(struct __KDQueueNode));
     if (queue->node_buffer == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
@@ -188,14 +196,16 @@ static __KDQueue *__kdQueueCreate(KDsize max_size)
         queue->node_buffer[i].next = queue->node_buffer + i + 1;
     }
     queue->node_buffer[max_size - 1].next = KD_NULL;
-    queue->free.aba = ATOMIC_VAR_INIT(0);
-    queue->free.node = ATOMIC_VAR_INIT(queue->node_buffer);
+
+    __KDQueueHead freeinit = {.aba = 0, .node = queue->node_buffer};
+    atomic_init(&queue->free, freeinit);
     return queue;
 }
 
 static struct __KDQueueNode *__kdQueuePop(_Atomic __KDQueueHead *head)
 {
-    __KDQueueHead next, orig = atomic_load(head);
+    __KDQueueHead next = {0};
+    __KDQueueHead orig = atomic_load(head);
     do {
         if (orig.node == KD_NULL)
         {
@@ -207,9 +217,10 @@ static struct __KDQueueNode *__kdQueuePop(_Atomic __KDQueueHead *head)
     return orig.node;
 }
 
-static void  __kdQueuePush(_Atomic __KDQueueHead *head, __KDQueueNode *node)
+static void  __kdQueuePush(_Atomic __KDQueueHead *head, struct __KDQueueNode *node)
 {
-    struct __KDQueueHead next, orig = atomic_load(head);
+    __KDQueueHead next = {0};
+    __KDQueueHead orig = atomic_load(head);
     do {
         node->next = orig.node;
         next.aba = orig.aba + 1;
@@ -409,10 +420,14 @@ typedef struct __KDThreadStartArgs
 } __KDThreadStartArgs;
 typedef struct KDThread
 {
+#ifdef __ANDROID__
+    KDint64 threadid;
+#else
     KDuint64 threadid;
+#endif
     KDThreadAttr* threadattr;
     void* cleanup;
-    struct __kd_eventqueue *eventqueue;
+    struct __KDQueue *eventqueue;
 } KDThread;
 static KDThread __kd_threads[999] = {{0}};
 static atomic_uint __kd_threads_index =  ATOMIC_VAR_INIT(0);
@@ -810,11 +825,19 @@ typedef struct KDCallback
     void *eventuserptr;
 } KDCallback;
 #ifdef KD_WINDOW_SUPPORTED
+#ifdef __ANDROID__
+typedef struct KDWindowAndroid
+{
+    struct ANativeWindow *window;
+    void *display;
+} KDWindowAndroid;
+#else
 typedef struct KDWindowX11
 {
     Window window;
     Display *display;
 } KDWindowX11;
+#endif
 typedef struct KDWindow
 {
     void *nativewindow;
@@ -866,6 +889,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         }
     }
 #ifdef KD_WINDOW_SUPPORTED
+#ifdef __ANDROID__
+#else
     for(KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
     {
         if(windows[window].nativewindow)
@@ -933,6 +958,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             }
         }
     }
+#endif
 #endif
     return 0;
 }
@@ -1874,7 +1900,11 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
+#ifdef __ANDROID__
+    buf->st_mtime = posixstat.st_mtime;
+#else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
+#endif
 #endif
     return retval;
 }
@@ -1892,7 +1922,11 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
+#ifdef __ANDROID__
+    buf->st_mtime = posixstat.st_mtime;
+#else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
+#endif
 #endif
     return retval;
 }
@@ -2188,6 +2222,11 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
 {
     KDWindow *window = (KDWindow *) kdMalloc(sizeof(KDWindow));
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
+#ifdef __ANDROID__
+    window->nativewindow = kdMalloc(sizeof(KDWindowAndroid));
+    KDWindowAndroid *androidwindow = window->nativewindow;
+    ANativeWindow_setBuffersGeometry(androidwindow->window, 0, 0, window->format);
+#else
     window->nativewindow = kdMalloc(sizeof(KDWindowX11));
     KDWindowX11 *x11window = window->nativewindow;
     XInitThreads();
@@ -2212,6 +2251,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
     XMapWindow(x11window->display, x11window->window);
     XFlush(x11window->display);
+#endif
     for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
     {
         if (!windows[i].nativewindow)
@@ -2227,13 +2267,16 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
 /* kdDestroyWindow: Destroy a window. */
 KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 {
-    KDint retval = -1;
+#ifdef __ANDROID__
+    KDWindowAndroid *androidwindow = window->nativewindow;
+    kdFree(androidwindow);
+#else
     KDWindowX11 *x11window = window->nativewindow;
     XCloseDisplay(x11window->display);
     kdFree(x11window);
-    retval = 0;
+#endif
     kdFree(window);
-    return retval;
+    return 0;
 }
 
 /* kdSetWindowPropertybv, kdSetWindowPropertyiv, kdSetWindowPropertycv: Set a window property to request a change in the on-screen representation of the window. */
@@ -2246,8 +2289,13 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
+#ifdef __ANDROID__
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+#else
         KDWindowX11 *x11window = window->nativewindow;
         XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
+#endif
         return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
@@ -2257,8 +2305,13 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
+#ifdef __ANDROID__
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+#else
         KDWindowX11 *x11window = window->nativewindow;
         XStoreName(x11window->display, x11window->window, param);
+#endif
         return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
@@ -2275,9 +2328,15 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
+#ifdef __ANDROID__
+        KDWindowAndroid *androidwindow = window->nativewindow;
+        param[0] = ANativeWindow_getWidth(androidwindow->window);
+        param[1] = ANativeWindow_getHeight(androidwindow->window);
+#else
         KDWindowX11 *x11window = window->nativewindow;
         param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display));
         param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display));
+#endif
         return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
@@ -2287,8 +2346,13 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
+#ifdef __ANDROID__
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+#else
         KDWindowX11 *x11window = window->nativewindow;
         XFetchName(x11window->display, x11window->window, &param);
+#endif
         return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
@@ -2298,8 +2362,13 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
+#ifdef __ANDROID__
+    KDWindowAndroid *androidwindow = window->nativewindow;
+    *nativewindow = androidwindow->window;
+#else
     KDWindowX11 *x11window = window->nativewindow;
     *nativewindow = x11window->window;
+#endif
     return 0;
 }
 #endif
