@@ -159,7 +159,6 @@ int _tthread_timespec_get(struct timespec *ts, int base);
  #define _Thread_local __thread
 #endif
 
-#define thread_local _Thread_local
 
 /* Macros */
 #if defined(_TTHREAD_WIN32_)

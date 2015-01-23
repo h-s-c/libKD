@@ -306,7 +306,7 @@ KDint __kdTranslateError(int errorcode)
     return 0;
 }
 
-static thread_local KDint lasterror = 0;
+static _Thread_local KDint lasterror = 0;
  /* kdGetError: Get last error indication. */
 KD_API KDint KD_APIENTRY kdGetError(void)
 {
@@ -768,7 +768,7 @@ void __kd_sleep_nanoseconds(KDust timeout)
 }
 
 /* kdWaitEvent: Get next event from thread's event queue. */
-static thread_local KDEvent *__kd_lastevent = KD_NULL;
+static _Thread_local KDEvent *__kd_lastevent = KD_NULL;
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
     if(__kd_lastevent != KD_NULL)
@@ -820,10 +820,10 @@ typedef struct KDWindow
     void *nativewindow;
     EGLint format;
 } KDWindow;
-static thread_local KDWindow windows[999]= {{0}};
+static _Thread_local KDWindow windows[999]= {{0}};
 #endif
-static thread_local KDuint __kd_callbacks_index = 0;
-static thread_local KDCallback __kd_callbacks[999] = {{0}};
+static _Thread_local KDuint __kd_callbacks_index = 0;
+static _Thread_local KDCallback __kd_callbacks[999] = {{0}};
 static KDboolean __kdExecCallback(KDEvent* event)
 {
     for (KDuint callback = 0; callback < __kd_callbacks_index; callback++)
@@ -1234,7 +1234,7 @@ KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
  * Thread-local storage.
  ******************************************************************************/
 
-static thread_local void* tlsptr = KD_NULL;
+static _Thread_local void* tlsptr = KD_NULL;
 /* kdGetTLS: Get the thread-local storage pointer. */
 KD_API void *KD_APIENTRY kdGetTLS(void)
 {
@@ -1953,7 +1953,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 }
 
 /* kdReadDir: Return the next file in a directory. */
-static thread_local KDDirent *__kd_lastdirent = KD_NULL;
+static _Thread_local KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
 #ifdef KD_VFS
