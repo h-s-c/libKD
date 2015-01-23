@@ -1016,6 +1016,13 @@ int main(int argc, char **argv)
     GC_allow_register_threads();
 #endif
 #ifdef KD_VFS
+    struct PHYSFS_Allocator allocator= {0};
+    allocator.Deinit = KD_NULL;
+    allocator.Free = kdFree;
+    allocator.Init = KD_NULL;
+    allocator.Malloc = (void *(*)(PHYSFS_uint64))kdMalloc;
+    allocator.Realloc = (void *(*)(void*, PHYSFS_uint64))kdRealloc;
+    PHYSFS_setAllocator(&allocator);
     PHYSFS_init(argv[0]);
     const KDchar *prefdir = PHYSFS_getPrefDir("libKD", __kdAppName(argv[0]));
     PHYSFS_setWriteDir(prefdir);
