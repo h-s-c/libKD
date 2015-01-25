@@ -1181,6 +1181,7 @@ typedef struct __KDMainArgs
 } __KDMainArgs;
 static void* __kdMainInjector( void *arg)
 {
+    __KDMainArgs* mainargs = (__KDMainArgs*)arg;
 #ifdef __ANDROID__
     /* Wait until we get the initial KD_EVENT_WINDOW_FOCUS */
     for(;;)
@@ -1205,8 +1206,8 @@ static void* __kdMainInjector( void *arg)
     allocator.Malloc = (void *(*)(PHYSFS_uint64))kdMalloc;
     allocator.Realloc = (void *(*)(void*, PHYSFS_uint64))kdRealloc;
     PHYSFS_setAllocator(&allocator);
-    PHYSFS_init(argv[0]);
-    const KDchar *prefdir = PHYSFS_getPrefDir("libKD", __kdAppName(argv[0]));
+    PHYSFS_init(mainargs->argv[0]);
+    const KDchar *prefdir = PHYSFS_getPrefDir("libKD", __kdAppName(mainargs->argv[0]));
     PHYSFS_setWriteDir(prefdir);
     PHYSFS_mount(prefdir, "/", 0);
     PHYSFS_mkdir("/res");
@@ -1215,7 +1216,6 @@ static void* __kdMainInjector( void *arg)
 #endif
 
     void *app = dlopen(NULL, RTLD_NOW);
-    __KDMainArgs* mainargs = (__KDMainArgs*)arg;
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
