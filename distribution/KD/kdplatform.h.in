@@ -31,9 +31,9 @@
 
 #cmakedefine KD_WINDOW_SUPPORTED
 
-#cmakedefine KD_GC
+#cmakedefine KD_GC_SUPPORTED
 
-#cmakedefine KD_VFS
+#cmakedefine KD_VFS_SUPPORTED
 
 #cmakedefine KD_NO_STATIC_DATA
 
