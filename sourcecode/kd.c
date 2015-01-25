@@ -1233,6 +1233,7 @@ static void* __kdMainInjector( void *arg)
     return 0;
 }
 
+#ifndef __ANDROID__
 int main(int argc, char **argv)
 {
 #ifdef KD_GC_SUPPORTED
@@ -1246,6 +1247,7 @@ int main(int argc, char **argv)
     kdThreadJoin(mainthread, KD_NULL);
     return 0;
 }
+#endif
 
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
