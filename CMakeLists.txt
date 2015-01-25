@@ -26,6 +26,7 @@
 ###############################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
+cmake_policy(SET CMP0037 OLD)
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
@@ -39,6 +40,9 @@ set(KD_BUILD_TESTS "Off" CACHE BOOL "Build with tests")
 set(KD_BUILD_COVERAGE "Off" CACHE BOOL "Build with code coverage")
 set(KD_BUILD_GC "Off" CACHE BOOL "Build with gargabe collection")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
+
+add_custom_target(install)
+add_custom_target(package)
 
 project (KD)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
@@ -131,7 +135,44 @@ if(KD_BUILD_EXAMPLES)
     function(example_helper)
         include_directories(${DIST_DIR})
         if(ANDROID)
+            set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/libs/${ANDROID_NDK_ABI_NAME})
+            file( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/AndroidManifest.xml
+"<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<!-- BEGIN_INCLUDE(manifest) -->
+<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"
+        package=\"kd.${PROJECT_NAME}\"
+        android:versionCode=\"1\"
+        android:versionName=\"1.0\">
+    <uses-sdk android:minSdkVersion=\"9\" />
+    <uses-feature android:glEsVersion=\"0x00020000\"></uses-feature>
+    <application android:label=\"${PROJECT_NAME}\" android:hasCode=\"false\">
+        <activity android:name=\"android.app.NativeActivity\"
+                android:label=\"${PROJECT_NAME}\"
+                android:configChanges=\"orientation|keyboardHidden|screenSize\"
+                android:theme=\"@android:style/Theme.NoTitleBar.Fullscreen\" >
+            <meta-data android:name=\"android.app.lib_name\"
+                    android:value=\"${PROJECT_NAME}\" />
+            <intent-filter>
+                <action android:name=\"android.intent.action.MAIN\" />
+                <category android:name=\"android.intent.category.LAUNCHER\" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+<!-- END_INCLUDE(manifest) -->")
             add_library(${PROJECT_NAME} SHARED ${EXAMPLE_DIR}/${PROJECT_NAME}.c $<TARGET_OBJECTS:KD_object>)
+            execute_process( COMMAND android update project --name ${PROJECT_NAME} --path . --target android-19 --subprojects WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
+            if(CMAKE_BUILD_TYPE MATCHES Debug)
+                set(APK_NAME ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/bin/${PROJECT_NAME}-debug.apk)
+                add_custom_command(OUTPUT ${APK_NAME} COMMAND ant debug DEPENDS ${PROJECT_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
+            else()
+                set(APK_NAME ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/bin/${PROJECT_NAME}-release-unsigned.apk)
+                add_custom_command(OUTPUT ${APK_NAME} COMMAND ant release DEPENDS ${PROJECT_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
+            endif()
+            add_custom_target( ${PROJECT_NAME}-package DEPENDS ${APK_NAME})
+            add_custom_target( ${PROJECT_NAME}-install COMMAND adb install -r ${APK_NAME} DEPENDS ${APK_NAME})
+            add_dependencies(package ${PROJECT_NAME}-package)
+            add_dependencies(install ${PROJECT_NAME}-install)
         else()
             add_executable(${PROJECT_NAME} ${EXAMPLE_DIR}/${PROJECT_NAME}.c)
         endif()
