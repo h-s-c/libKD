@@ -41,16 +41,23 @@ set(KD_BUILD_COVERAGE "Off" CACHE BOOL "Build with code coverage")
 set(KD_BUILD_GC "Off" CACHE BOOL "Build with gargabe collection")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(KD_BUILD_DEBUG "On")
+else()
+    set(KD_BUILD_DEBUG "Off")
+endif()
+
 add_custom_target(install)
 add_custom_target(package)
 
 project (KD)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
+
     # TODO: This is an not an Android issue but an ARM one
     if(NOT ANDROID)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcx16")
     endif()
-
 
     if(KD_BUILD_COVERAGE)
         message(STATUS "Code coverage build")
@@ -82,7 +89,6 @@ project (KD)
     message(STATUS "Windowing systems compatibility checks")
     if(ANDROID)
         set(KD_WINDOW_SUPPORTED ON)
-        list(APPEND KD_LIBRARIES EGL)
     else()
         check_include_files("X11/Xlib.h;X11/Xutil.h" KD_WINDOW_SUPPORTED)
         if(KD_WINDOW_SUPPORTED)
@@ -117,11 +123,6 @@ project (KD)
     list(APPEND KD_LIBRARIES ${CMAKE_DL_LIBS})
     list(APPEND KD_LIBRARIES m)
 
-    if(ANDROID)
-        list(APPEND KD_LIBRARIES android)
-        list(APPEND KD_LIBRARIES log)
-    endif()
-
     configure_file(${DIST_DIR}/KD/kdplatform.h.in ${DIST_DIR}/KD/kdplatform.h)
     include_directories(${KD_INCLUDE_DIRS} )
     add_library (KD SHARED ${KD_SOURCE})
@@ -136,6 +137,13 @@ if(KD_BUILD_EXAMPLES)
         include_directories(${DIST_DIR})
         if(ANDROID)
             set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/libs/${ANDROID_NDK_ABI_NAME})
+            add_library(${PROJECT_NAME} SHARED ${EXAMPLE_DIR}/${PROJECT_NAME}.c $<TARGET_OBJECTS:KD_object>)
+            target_link_libraries(${PROJECT_NAME} EGL GLESv2 android log m)
+            if(KD_BUILD_DEBUG)
+                set(MANIFEST_DEBUG_FLAG "true")
+            else()
+                set(MANIFEST_DEBUG_FLAG "false")
+            endif()
             file( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/AndroidManifest.xml
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>
 <!-- BEGIN_INCLUDE(manifest) -->
@@ -143,9 +151,9 @@ if(KD_BUILD_EXAMPLES)
         package=\"kd.${PROJECT_NAME}\"
         android:versionCode=\"1\"
         android:versionName=\"1.0\">
-    <uses-sdk android:minSdkVersion=\"9\" />
+    <uses-sdk android:minSdkVersion=\"19\" />
     <uses-feature android:glEsVersion=\"0x00020000\"></uses-feature>
-    <application android:label=\"${PROJECT_NAME}\" android:hasCode=\"false\">
+    <application android:label=\"${PROJECT_NAME}\" android:hasCode=\"false\" android:debuggable=\"${MANIFEST_DEBUG_FLAG}\">
         <activity android:name=\"android.app.NativeActivity\"
                 android:label=\"${PROJECT_NAME}\"
                 android:configChanges=\"orientation|keyboardHidden|screenSize\"
@@ -160,10 +168,14 @@ if(KD_BUILD_EXAMPLES)
     </application>
 </manifest>
 <!-- END_INCLUDE(manifest) -->")
-            add_library(${PROJECT_NAME} SHARED ${EXAMPLE_DIR}/${PROJECT_NAME}.c $<TARGET_OBJECTS:KD_object>)
             execute_process( COMMAND android update project --name ${PROJECT_NAME} --path . --target android-19 --subprojects WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
-            if(CMAKE_BUILD_TYPE MATCHES Debug)
+            if(KD_BUILD_DEBUG)
                 set(APK_NAME ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/bin/${PROJECT_NAME}-debug.apk)
+                file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/jni/Android.mk "APP_ABI := ${ANDROID_NDK_ABI_NAME}\n")
+                file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/jni/Application.mk "APP_ABI := ${ANDROID_NDK_ABI_NAME}\n")
+                file(COPY ${ANDROID_NDK}/prebuilt/android-${ANDROID_ARCH_NAME}/gdbserver/gdbserver DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+                file(WRITE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/gdb.setup "set solib-search-path ./libs/${ANDROID_NDK_ABI_NAME}\n")
+                file(APPEND ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/gdb.setup "directory ${EXAMPLE_DIR} ${SOURCE_DIR}\n")
                 add_custom_command(OUTPUT ${APK_NAME} COMMAND ant debug DEPENDS ${PROJECT_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
             else()
                 set(APK_NAME ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/bin/${PROJECT_NAME}-release-unsigned.apk)
@@ -175,8 +187,8 @@ if(KD_BUILD_EXAMPLES)
             add_dependencies(install ${PROJECT_NAME}-install)
         else()
             add_executable(${PROJECT_NAME} ${EXAMPLE_DIR}/${PROJECT_NAME}.c)
+            target_link_libraries(${PROJECT_NAME} KD EGL GLESv2)
         endif()
-        target_link_libraries(${PROJECT_NAME} KD EGL GLESv2)
     endfunction()
 
     project (example_event)

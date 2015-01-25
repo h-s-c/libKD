@@ -1122,8 +1122,10 @@ static void __kd_AndroidOnWindowFocusChanged(ANativeActivity* activity, int focu
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
+static ANativeWindow* __kd_androidwindow = KD_NULL;
 static void __kd_AndroidOnNativeWindowCreated(ANativeActivity* activity, ANativeWindow* window)
 {
+    __kd_androidwindow = window;
     /* main() pauses until it gets the initial KD_EVENT_WINDOW_FOCUS */
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_FOCUS;
@@ -1181,23 +1183,6 @@ typedef struct __KDMainArgs
 } __KDMainArgs;
 static void* __kdMainInjector( void *arg)
 {
-    __KDMainArgs* mainargs = (__KDMainArgs*)arg;
-#ifdef __ANDROID__
-    /* Wait until we get the initial KD_EVENT_WINDOW_FOCUS */
-    for(;;)
-    {
-        const KDEvent *event = kdWaitEvent(-1);
-        if(event)
-        {
-            if(event->type == KD_EVENT_WINDOW_FOCUS && event->data.windowfocus.focusstate == 1)
-            {
-                break;
-            }
-            kdDefaultEvent(event);
-        }
-    }
-#endif
-
 #ifdef KD_VFS_SUPPORTED
     struct PHYSFS_Allocator allocator= {0};
     allocator.Deinit = KD_NULL;
@@ -1215,6 +1200,22 @@ static void* __kdMainInjector( void *arg)
     PHYSFS_mkdir("/tmp");
 #endif
 
+#ifdef __ANDROID__
+    /* Wait until we get the initial KD_EVENT_WINDOW_FOCUS */
+    for(;;)
+    {
+        const KDEvent *event = kdWaitEvent(-1);
+        if(event)
+        {
+            if(event->type == KD_EVENT_WINDOW_FOCUS && event->data.windowfocus.focusstate == 1)
+            {
+                break;
+            }
+            kdDefaultEvent(event);
+        }
+    }
+    kdMain(0, KD_NULL);
+#else
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
     /* ISO C forbids assignment between function pointer and ‘void *’ */
@@ -1225,7 +1226,9 @@ static void* __kdMainInjector( void *arg)
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.");
         kdAssert(0);
     }
+    __KDMainArgs* mainargs = (__KDMainArgs*)arg;
     (*kdMain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
+#endif
 
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_deinit();
@@ -2396,6 +2399,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
 #ifdef __ANDROID__
     window->nativewindow = kdMalloc(sizeof(KDWindowAndroid));
     KDWindowAndroid *androidwindow = window->nativewindow;
+    androidwindow->window =__kd_androidwindow;
     ANativeWindow_setBuffersGeometry(androidwindow->window, 0, 0, window->format);
 #else
     window->nativewindow = kdMalloc(sizeof(KDWindowX11));
