@@ -25,7 +25,7 @@
 # Emscripten: $EMSCRIPTEN/cmake/Modules/platform/Emscripten.cmake
 ###############################################################################
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.8)
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
