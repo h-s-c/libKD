@@ -26,7 +26,9 @@
 ###############################################################################
 
 cmake_minimum_required(VERSION 2.8.8)
-cmake_policy(SET CMP0037 OLD)
+if(CMAKE_MAJOR_VERSION GREATER 2)
+    cmake_policy(SET CMP0037 OLD)
+endif()
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
