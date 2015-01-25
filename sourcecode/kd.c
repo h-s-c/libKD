@@ -1149,31 +1149,6 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity* activity, AInputQ
 {
 
 }
-
-static void* __kdMainInjector( void *arg);
-void ANativeActivity_onCreate(ANativeActivity* activity, void* savedState, size_t savedStateSize)
-{
-#ifdef KD_GC_SUPPORTED
-    GC_INIT();
-    GC_allow_register_threads();
-#endif
-
-    activity->callbacks->onDestroy = __kd_AndroidOnDestroy;
-    activity->callbacks->onStart = __kd_AndroidOnStart;
-    activity->callbacks->onResume = __kd_AndroidOnResume;
-    activity->callbacks->onSaveInstanceState = __kd_AndroidOnSaveInstanceState;
-    activity->callbacks->onPause = __kd_AndroidOnPause;
-    activity->callbacks->onStop = __kd_AndroidOnStop;
-    activity->callbacks->onConfigurationChanged = __kd_AndroidOnConfigurationChanged;
-    activity->callbacks->onLowMemory = __kd_AndroidOnLowMemory;
-    activity->callbacks->onWindowFocusChanged = __kd_AndroidOnWindowFocusChanged;
-    activity->callbacks->onNativeWindowCreated = __kd_AndroidOnNativeWindowCreated;
-    activity->callbacks->onNativeWindowDestroyed = __kd_AndroidOnNativeWindowDestroyed;
-    activity->callbacks->onInputQueueCreated = __kd_AndroidOnInputQueueCreated;
-    activity->callbacks->onInputQueueDestroyed = __kd_AndroidOnInputQueueDestroyed;
-
-    kdThreadCreate(KD_NULL, __kdMainInjector, KD_NULL);
-}
 #endif
 
 typedef struct __KDMainArgs
@@ -1183,6 +1158,11 @@ typedef struct __KDMainArgs
 } __KDMainArgs;
 static void* __kdMainInjector( void *arg)
 {
+    __KDMainArgs* mainargs = (__KDMainArgs*)arg;
+    if(mainargs == KD_NULL)
+    {
+        kdAssert(0);
+    }
 #ifdef KD_VFS_SUPPORTED
     struct PHYSFS_Allocator allocator= {0};
     allocator.Deinit = KD_NULL;
@@ -1214,7 +1194,7 @@ static void* __kdMainInjector( void *arg)
             kdDefaultEvent(event);
         }
     }
-    kdMain(0, KD_NULL);
+    kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
@@ -1226,7 +1206,6 @@ static void* __kdMainInjector( void *arg)
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.");
         kdAssert(0);
     }
-    __KDMainArgs* mainargs = (__KDMainArgs*)arg;
     (*kdMain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #endif
 
@@ -1236,7 +1215,34 @@ static void* __kdMainInjector( void *arg)
     return 0;
 }
 
-#ifndef __ANDROID__
+#ifdef __ANDROID__
+void ANativeActivity_onCreate(ANativeActivity* activity, void* savedState, size_t savedStateSize)
+{
+#ifdef KD_GC_SUPPORTED
+    GC_INIT();
+    GC_allow_register_threads();
+#endif
+
+    activity->callbacks->onDestroy = __kd_AndroidOnDestroy;
+    activity->callbacks->onStart = __kd_AndroidOnStart;
+    activity->callbacks->onResume = __kd_AndroidOnResume;
+    activity->callbacks->onSaveInstanceState = __kd_AndroidOnSaveInstanceState;
+    activity->callbacks->onPause = __kd_AndroidOnPause;
+    activity->callbacks->onStop = __kd_AndroidOnStop;
+    activity->callbacks->onConfigurationChanged = __kd_AndroidOnConfigurationChanged;
+    activity->callbacks->onLowMemory = __kd_AndroidOnLowMemory;
+    activity->callbacks->onWindowFocusChanged = __kd_AndroidOnWindowFocusChanged;
+    activity->callbacks->onNativeWindowCreated = __kd_AndroidOnNativeWindowCreated;
+    activity->callbacks->onNativeWindowDestroyed = __kd_AndroidOnNativeWindowDestroyed;
+    activity->callbacks->onInputQueueCreated = __kd_AndroidOnInputQueueCreated;
+    activity->callbacks->onInputQueueDestroyed = __kd_AndroidOnInputQueueDestroyed;
+
+    __KDMainArgs mainargs = {0};
+    mainargs.argc = 0;
+    mainargs.argv = KD_NULL;
+    kdThreadCreate(KD_NULL, __kdMainInjector, &mainargs);
+}
+#else
 int main(int argc, char **argv)
 {
 #ifdef KD_GC_SUPPORTED
