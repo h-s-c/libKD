@@ -12,7 +12,6 @@
 
 [![Waffle Ready](https://badge.waffle.io/h-s-c/libKD.png?label=ready&title=Ready)](https://waffle.io/h-s-c/libKD)
 [![Waffle In Progress](https://badge.waffle.io/h-s-c/libKD.png?label=In%20Progress&title=In%20Progress )](https://waffle.io/h-s-c/libKD)
-[![Waffle Ready](https://badge.waffle.io/h-s-c/libKD.png?label=done&title=Done)](https://waffle.io/h-s-c/libKD)
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
