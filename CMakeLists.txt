@@ -54,11 +54,13 @@ add_custom_target(install)
 add_custom_target(package)
 
 project (KD)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
-
-    # TODO: This is an not an Android issue but an ARM one
-    if(NOT ANDROID)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcx16")
+    if(${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
+    else()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
+        if(NOT ANDROID)
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcx16")
+        endif()
     endif()
 
     if(KD_BUILD_COVERAGE)
