@@ -24,7 +24,6 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdnoreturn.h>
 
 #define MESA_EGL_NO_X11_HEADERS
 #include <KHR/khrplatform.h>
@@ -39,7 +38,7 @@
 
 #define KD_API KHRONOS_APICALL
 #define KD_APIENTRY KHRONOS_APIENTRY
-#define KD_NORETURN noreturn
+#define KD_NORETURN _Noreturn
 
 #ifdef NDEBUG
 #define KD_NDEBUG
