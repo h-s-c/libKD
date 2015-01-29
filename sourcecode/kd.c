@@ -21,7 +21,7 @@
 /******************************************************************************
  * Implementation notes
  *
- * - KD_EVENT_QUIT received by threads other then the mainthread
+ * - KD_EVENT_QUIT events received by threads other then the mainthread
  *   only exit the thread
  * - Android needs this in its manifest for libKD to get orientation changes:
  *   android:configChanges="orientation|keyboardHidden|screenSize"
@@ -31,13 +31,13 @@
 #define __STDC_WANT_LIB_EXT1__ 1
 
 #ifdef __unix__
-#ifdef __linux__
-#define _GNU_SOURCE
-#endif
-#include <sys/param.h>
-#ifdef BSD
-#define _BSD_SOURCE
-#endif
+    #ifdef __linux__
+        #define _GNU_SOURCE
+    #endif
+    #include <sys/param.h>
+    #ifdef BSD
+        #define _BSD_SOURCE
+    #endif
 #endif
 
 /******************************************************************************
@@ -51,11 +51,12 @@
 
 /* This needs to be included early */
 #ifdef KD_GC_SUPPORTED
-#ifndef KD_NDEBUG
-#define GC_DEBUG
-#endif
-#define GC_THREADS
-#include <gc.h>
+    #ifndef KD_NDEBUG
+        #define GC_DEBUG
+    #endif
+
+    #define GC_THREADS
+    #include <gc.h>
 #endif
 
 /******************************************************************************
@@ -73,67 +74,69 @@
 
 #if __STDC_VERSION__ >= 201112L
 
-#if !__STDC_NO_ATOMICS__
-#ifdef __ANDROID__
-typedef uint32_t char32_t;
-typedef uint16_t char16_t;
-#endif
-#include <stdatomic.h>
+    #if !__STDC_NO_ATOMICS__
+        #ifdef __ANDROID__
+        typedef uint32_t char32_t;
+        typedef uint16_t char16_t;
+        #endif
+        #include <stdatomic.h>
+    #else
+        #pragma GCC error "C11 atomics are required by libKD."
+    #endif
+
+    /* Removed check because we use an alternative C11 threads implementation on some Platforms */
+    /* #if !__STDC_NO_THREADS__ */
+    #if 1
+        #include <threads.h>
+    #else
+        #pragma GCC error "C11 threads are required by libKD."
+    #endif
+
+    #ifndef __STDC_LIB_EXT1__
+        size_t strlcpy(char *dst, const char *src, size_t dstsize);
+        size_t strlcat(char *dst, const char *src, size_t dstsize);
+        #define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
+        #define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
+        #define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
+    #endif
 #else
-#pragma GCC error "C11 atomics are required by libKD."
+    #pragma GCC error "C11 is required by libKD."
 #endif
-
-/* Removed check because we use an alternative C11 threads implementation on some Platforms */
-/* #if !__STDC_NO_THREADS__ */
-#if 1
-#include <threads.h>
-#else
-#pragma GCC error "C11 threads are required by libKD."
-#endif
-
-#ifndef __STDC_LIB_EXT1__
-size_t strlcpy(char *dst, const char *src, size_t dstsize);
-size_t strlcat(char *dst, const char *src, size_t dstsize);
-#define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
-#define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
-#define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
-#endif
-
-#else
-#pragma GCC error "C11 is required by libKD."
-#endif
-
-
-/******************************************************************************
- * POSIX includes
- ******************************************************************************/
-
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <sys/utsname.h>
-#include <sys/vfs.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <dlfcn.h>
-#include <unistd.h>
 
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
+#ifdef __unix__
+    #include <unistd.h>
+
+    #ifdef _POSIX_VERSION
+        #include <sys/stat.h>
+        #include <sys/syscall.h>
+        #include <sys/utsname.h>
+        #include <sys/vfs.h>
+        #include <fcntl.h>
+        #include <dirent.h>
+        #include <dlfcn.h>
+
+        /* POSIX reserved but OpenKODE uses this */
+        #undef st_mtime
+    #endif
+
+    #ifdef __ANDROID__
+        #include <android/log.h>
+        #include <android/native_activity.h>
+        #include <android/native_window.h>
+    #else
+        #ifdef KD_WINDOW_SUPPORTED
+            #include <X11/Xlib.h>
+            #include <X11/Xutil.h>
+        #endif
+    #endif
 #endif
 
-#ifdef __ANDROID__
-#include <android/log.h>
-#include <android/native_activity.h>
-#include <android/native_window.h>
-#else
-#ifdef KD_WINDOW_SUPPORTED
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#endif
+#ifdef __EMSCRIPTEN__
+    #include <emscripten/emscripten.h>
 #endif
 
 /******************************************************************************
@@ -141,15 +144,8 @@ size_t strlcat(char *dst, const char *src, size_t dstsize);
 ******************************************************************************/
 
 #ifdef KD_VFS_SUPPORTED
-#include <physfs.h>
+    #include <physfs.h>
 #endif
-
-/******************************************************************************
- * Workarrounds
- ******************************************************************************/
-
-/* POSIX reserved but OpenKODE uses this */
-#undef st_mtime
 
 /******************************************************************************
  * Internal eventqueue
