@@ -84,7 +84,7 @@
         #pragma GCC error "C11 atomics are required by libKD."
     #endif
 
-    /* Removed check because we use an alternative C11 threads implementation on some Platforms */
+    /* Removed check because we use an alternative C11 threads implementation on most Platforms */
     /* #if !__STDC_NO_THREADS__ */
     #if 1
         #include <threads.h>
@@ -92,7 +92,7 @@
         #pragma GCC error "C11 threads are required by libKD."
     #endif
 
-    #ifndef __STDC_LIB_EXT1__
+    #if !defined(__STDC_LIB_EXT1__) && !defined(_MSC_VER)
         size_t strlcpy(char *dst, const char *src, size_t dstsize);
         size_t strlcat(char *dst, const char *src, size_t dstsize);
         #define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
