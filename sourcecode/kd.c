@@ -80,16 +80,12 @@
         typedef uint16_t char16_t;
         #endif
         #include <stdatomic.h>
-    #else
-        #pragma GCC error "C11 atomics are required by libKD."
     #endif
 
     /* Removed check because we use an alternative C11 threads implementation on most Platforms */
     /* #if !__STDC_NO_THREADS__ */
     #if 1
         #include <threads.h>
-    #else
-        #pragma GCC error "C11 threads are required by libKD."
     #endif
 
     #if !defined(__STDC_LIB_EXT1__) && !defined(_MSC_VER)
@@ -99,8 +95,6 @@
         #define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
         #define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
     #endif
-#else
-    #pragma GCC error "C11 is required by libKD."
 #endif
 
 /******************************************************************************
@@ -137,6 +131,13 @@
 
 #ifdef __EMSCRIPTEN__
     #include <emscripten/emscripten.h>
+#endif
+
+#ifdef _MSC_VER
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
 #endif
 
 /******************************************************************************
@@ -228,7 +229,7 @@ static struct __KDQueueNode *__kdQueuePop(_Atomic __KDQueueHead *head)
 static void  __kdQueuePush(_Atomic __KDQueueHead *head, struct __KDQueueNode *node)
 {
     __KDQueueHead next = {0};
-    __KDQueueHead orig = atomic_load(head);
+__KDQueueHead orig = atomic_load(head);
     do {
         node->next = orig.node;
         next.aba = orig.aba + 1;

@@ -40,8 +40,9 @@
 #else
     #ifdef _MSC_VER
         #define KD_NORETURN
+    #else
+        #define KD_NORETURN __declspec(noreturn)
     #endif
-    #define KD_NORETURN __declspec(noreturn)
 #endif
 
 #ifdef NDEBUG
