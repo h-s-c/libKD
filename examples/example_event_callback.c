@@ -115,24 +115,13 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
                 }
                 case(KD_EVENT_WINDOW_REDRAW):
                 {
-                    if(eglSwapBuffers(egl_display, egl_surface) == EGL_FALSE)
-                    {
-                        EGLint error = eglGetError();
-                        if( error == EGL_BAD_SURFACE )
-                        {
-                            egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
-                            if(eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context) == EGL_FALSE)
-                            {
-                                error = eglGetError();
-                                if( error == EGL_BAD_MATCH || error == EGL_CONTEXT_LOST || error == EGL_BAD_CONTEXT )
-                                {
-                                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
-                                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-                                }
-                            }
-                        }
-                        eglSwapBuffers(egl_display, egl_surface);
-                    }
+                    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                    eglDestroyContext(egl_display, egl_context);
+                    eglDestroySurface(egl_display, egl_surface);
+                    egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
+                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+                    eglSwapBuffers(egl_display, egl_surface);
                     break;
                 }
                 default:
