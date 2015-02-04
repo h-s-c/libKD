@@ -29,11 +29,11 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-/* Simple event with callback example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Alt-F4)*/
+/* Simple event with callback example (KD_EVENT_QUIT is triggered by pressing Alt-F4)*/
 static KDboolean quit = 0;
 void callback(const KDEvent *event)
 {
-    if(event->type == KD_EVENT_WINDOW_CLOSE)
+    if(event->type == KD_EVENT_QUIT)
     {
         quit = 1;
         return;
@@ -85,39 +85,76 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
 
     KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
     EGLNativeWindowType egl_native_window;
-    kdRealizeWindow(kd_window, &egl_native_window);
+    EGLSurface egl_surface = EGL_NO_SURFACE;
+    EGLContext egl_context = EGL_NO_CONTEXT;
 
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);  
-    EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+    kdInstallCallback(callback, KD_EVENT_QUIT, KD_NULL);
 
-    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-
-    eglSurfaceAttrib(egl_display, egl_surface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
-    eglSwapInterval(egl_display, 1);
-
-    kdLogMessage("-----GLES2-----\n");
-    kdLogMessage("Vendor: "); kdLogMessage((const char*)glGetString(GL_VENDOR)); kdLogMessage("\n");
-    kdLogMessage("Version: "); kdLogMessage((const char*)glGetString(GL_VERSION)); kdLogMessage("\n");
-    kdLogMessage("Renderer: "); kdLogMessage((const char*)glGetString(GL_RENDERER)); kdLogMessage("\n");
-    kdLogMessage("Extensions: "); kdLogMessage((const char*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
-
-    kdInstallCallback(callback, KD_EVENT_WINDOW_CLOSE, KD_NULL);
-
-    for(;;)
+    KDboolean pause = 0;
+    while(!quit)
     {
-        kdPumpEvents();
-        if(quit)
+        const KDEvent *event = kdWaitEvent(-1);
+        if(event)
         {
-            break;
+            switch(event->type)
+            {
+                case(KD_EVENT_PAUSE):
+                {
+                    pause = 1;
+                    break;
+                }
+                case(KD_EVENT_RESUME):
+                {
+                    pause = 0;
+                    break;
+                }
+                case(KD_EVENT_WINDOWPROPERTY_CHANGE):
+                {
+                    kdRealizeWindow(kd_window, &egl_native_window);
+                    break;
+                }
+                case(KD_EVENT_WINDOW_REDRAW):
+                {
+                    if(eglSwapBuffers(egl_display, egl_surface) == EGL_FALSE)
+                    {
+                        EGLint error = eglGetError();
+                        if( error == EGL_BAD_SURFACE )
+                        {
+                            egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
+                            if(eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context) == EGL_FALSE)
+                            {
+                                error = eglGetError();
+                                if( error == EGL_BAD_MATCH || error == EGL_CONTEXT_LOST || error == EGL_BAD_CONTEXT )
+                                {
+                                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+                                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+                                }
+                            }
+                        }
+                        eglSwapBuffers(egl_display, egl_surface);
+                    }
+                    break;
+                }
+                default:
+                {
+                    kdDefaultEvent(event);
+                }
+            }
         }
 
-        glClearColor(0, 1, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-        eglSwapBuffers(egl_display, egl_surface);
+        if(!pause)
+        {
+            if(eglSwapBuffers(egl_display, egl_surface) == EGL_TRUE)
+            {
+                glClearColor(0, 1, 0, 1.0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+            }
+        }
     }
     eglDestroyContext(egl_display, egl_context);
     eglDestroySurface(egl_display, egl_surface);
     eglTerminate(egl_display);
+
     kdDestroyWindow(kd_window);
 
     return 0;

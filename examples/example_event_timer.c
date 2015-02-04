@@ -29,9 +29,11 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-/* Simple timer example (KD_EVENT_WINDOW_CLOSE is triggered by pressing Alt-F4)*/
+/* Simple timer example (KD_EVENT_QUIT is triggered by pressing Alt-F4)*/
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
+    kdLogMessage("Starting example\n");
+
     kdLogMessage("Starting example\n");
 
     kdLogMessage("-----KD-----\n");
@@ -40,25 +42,25 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Platform: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_PLATFORM)); kdLogMessage("\n");
 
     const EGLint egl_attributes[] =
-    {
-        EGL_SURFACE_TYPE,                EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
-        EGL_RENDERABLE_TYPE,             EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,                    8,
-        EGL_GREEN_SIZE,                  8,
-        EGL_BLUE_SIZE,                   8,
-        EGL_ALPHA_SIZE,                  8,
-        EGL_DEPTH_SIZE,                  24,
-        EGL_STENCIL_SIZE,                8,
-        EGL_NONE
-    };
-    
-    const EGLint egl_context_attributes[] =
-    { 
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-        EGL_NONE,
-    };
+            {
+                    EGL_SURFACE_TYPE,                EGL_WINDOW_BIT,
+                    EGL_RENDERABLE_TYPE,             EGL_OPENGL_ES2_BIT,
+                    EGL_RED_SIZE,                    8,
+                    EGL_GREEN_SIZE,                  8,
+                    EGL_BLUE_SIZE,                   8,
+                    EGL_ALPHA_SIZE,                  8,
+                    EGL_DEPTH_SIZE,                  24,
+                    EGL_STENCIL_SIZE,                8,
+                    EGL_NONE
+            };
 
-    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);   
+    const EGLint egl_context_attributes[] =
+            {
+                    EGL_CONTEXT_CLIENT_VERSION, 2,
+                    EGL_NONE,
+            };
+
+    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
 
@@ -74,53 +76,97 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
 
     KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
     EGLNativeWindowType egl_native_window;
-    kdRealizeWindow(kd_window, &egl_native_window);
+    EGLSurface egl_surface = EGL_NO_SURFACE;
+    EGLContext egl_context = EGL_NO_CONTEXT;
 
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);  
-    EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+    KDTimer* kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
 
-    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+    float r = 0.0f;
+    float g = 1.0f;
+    float b = 0.0f;
 
-    eglSurfaceAttrib(egl_display, egl_surface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
-    eglSwapInterval(egl_display, 1);
-
-    kdLogMessage("-----GLES2-----\n");
-    kdLogMessage("Vendor: "); kdLogMessage((const char*)glGetString(GL_VENDOR)); kdLogMessage("\n");
-    kdLogMessage("Version: "); kdLogMessage((const char*)glGetString(GL_VERSION)); kdLogMessage("\n");
-    kdLogMessage("Renderer: "); kdLogMessage((const char*)glGetString(GL_RENDERER)); kdLogMessage("\n");
-    kdLogMessage("Extensions: "); kdLogMessage((const char*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
-
-    KDTimer* timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
-    glClearColor(0, 1, 0, 0);
-    
-    for(;;)
+    KDboolean quit = 0;
+    KDboolean pause = 0;
+    while(!quit)
     {
         const KDEvent *event = kdWaitEvent(-1);
         if(event)
         {
-            if(event->type == KD_EVENT_WINDOW_CLOSE)
+            switch(event->type)
             {
-                kdCancelTimer(timer);
-                break;
+                case(KD_EVENT_QUIT):
+                {
+                    quit = 1;
+                    pause = 1;
+                    break;
+                }
+                case(KD_EVENT_PAUSE):
+                {
+                    pause = 1;
+                    break;
+                }
+                case(KD_EVENT_RESUME):
+                {
+                    pause = 0;
+                    break;
+                }
+                case(KD_EVENT_WINDOWPROPERTY_CHANGE):
+                {
+                    kdRealizeWindow(kd_window, &egl_native_window);
+                    break;
+                }
+                case(KD_EVENT_WINDOW_REDRAW):
+                {
+                    if(eglSwapBuffers(egl_display, egl_surface) == EGL_FALSE)
+                    {
+                        EGLint error = eglGetError();
+                        if( error == EGL_BAD_SURFACE )
+                        {
+                            egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
+                            if(eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context) == EGL_FALSE)
+                            {
+                                error = eglGetError();
+                                if( error == EGL_BAD_MATCH || error == EGL_CONTEXT_LOST || error == EGL_BAD_CONTEXT )
+                                {
+                                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+                                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+                                }
+                            }
+                        }
+                        eglSwapBuffers(egl_display, egl_surface);
+                    }
+                    break;
+                }
+                case(KD_EVENT_TIMER):
+                {
+                    KDuint8 buffer[3] = {0};
+                    kdCryptoRandom(buffer, 3);
+                    r = buffer[0]%256 / 255.0f;
+                    g = buffer[1]%256 / 255.0f;
+                    b = buffer[2]%256 / 255.0f;
+                    break;
+                }
+                default:
+                {
+                    kdDefaultEvent(event);
+                }
             }
-            else if(event->type == KD_EVENT_TIMER)
-            {
-                KDuint8 buffer[3] = {0};
-                kdCryptoRandom(buffer, 3);
-                float r = buffer[0]%256 / 255.0f;
-                float g = buffer[1]%256 / 255.0f;
-                float b = buffer[2]%256 / 255.0f;
-                glClearColor(r, g, b, 1.0);
-            }
-            kdDefaultEvent(event);
         }
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-        eglSwapBuffers(egl_display, egl_surface);
+        if(!pause)
+        {
+            if(eglSwapBuffers(egl_display, egl_surface) == EGL_TRUE)
+            {
+                glClearColor(r, g, b, 1.0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+            }
+        }
     }
     eglDestroyContext(egl_display, egl_context);
     eglDestroySurface(egl_display, egl_surface);
     eglTerminate(egl_display);
+
+    kdCancelTimer(kd_timer);
     kdDestroyWindow(kd_window);
 
     return 0;

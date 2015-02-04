@@ -924,10 +924,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 {
                     case KeyPress:
                     {
-                        /* Alt-F4 fires a close window event */
                         if(XLookupKeysym(&xevent.xkey, 0) == XK_F4 && (xevent.xkey.state & Mod1Mask))
                         {
-                            event->type      = KD_EVENT_WINDOW_CLOSE;
+                            event->type      = KD_EVENT_QUIT;
                             if(!__kdExecCallback(event))
                             {
                                 kdPostEvent(event);
@@ -959,7 +958,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         if((Atom)xevent.xclient.data.l[0] == XInternAtom(x11window->display, "WM_DELETE_WINDOW", False))
                         {
-                            event->type      = KD_EVENT_WINDOW_CLOSE;
+                            event->type      = KD_EVENT_QUIT;
                             if(!__kdExecCallback(event))
                             {
                                 kdPostEvent(event);
@@ -1058,60 +1057,60 @@ const char* __kdAppName(const char *argv0)
 
 #ifdef __ANDROID__
 /* All Android events are send to the mainthread */
-static void __kd_AndroidOnDestroy(ANativeActivity* activity)
+static void __kd_AndroidOnDestroy(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_QUIT;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void __kd_AndroidOnStart(ANativeActivity* activity)
+static void __kd_AndroidOnStart(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void __kd_AndroidOnResume(ANativeActivity* activity)
+static void __kd_AndroidOnResume(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void* __kd_AndroidOnSaveInstanceState(ANativeActivity* activity, size_t* outLen)
+static void* __kd_AndroidOnSaveInstanceState(ANativeActivity *activity, size_t *len)
 {
     /* TODO: Save state */
     return KD_NULL;
 }
 
-static void __kd_AndroidOnPause(ANativeActivity* activity)
+static void __kd_AndroidOnPause(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void __kd_AndroidOnStop(ANativeActivity* activity)
+static void __kd_AndroidOnStop(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void __kd_AndroidOnConfigurationChanged(ANativeActivity* activity)
+static void __kd_AndroidOnConfigurationChanged(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_ORIENTATION;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void __kd_AndroidOnLowMemory(ANativeActivity* activity)
+static void __kd_AndroidOnLowMemory(ANativeActivity *activity)
 {
     /* TODO: Avoid getting killed by Android */
 }
 
-static void __kd_AndroidOnWindowFocusChanged(ANativeActivity* activity, int focused)
+static void __kd_AndroidOnWindowFocusChanged(ANativeActivity *activity, int focused)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_FOCUS;
@@ -1119,30 +1118,31 @@ static void __kd_AndroidOnWindowFocusChanged(ANativeActivity* activity, int focu
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static ANativeWindow* __kd_androidwindow = KD_NULL;
-static void __kd_AndroidOnNativeWindowCreated(ANativeActivity* activity, ANativeWindow* window)
+static ANativeWindow *__kd_androidwindow =  KD_NULL;
+static void __kd_AndroidOnNativeWindowCreated(ANativeActivity *activity, ANativeWindow *window)
 {
     __kd_androidwindow = window;
-    /* main() pauses until it gets the initial KD_EVENT_WINDOW_FOCUS */
     KDEvent *event = kdCreateEvent();
-    event->type = KD_EVENT_WINDOW_FOCUS;
-    event->data.windowfocus.focusstate = 1;
+    event->type = KD_EVENT_WINDOW_REDRAW;
+    kdPostThreadEvent(event, &__kd_threads[0]);
+    event = kdCreateEvent();
+    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity* activity, ANativeWindow* window)
+static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANativeWindow *window)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_CLOSE;
     kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
-static void __kd_AndroidOnInputQueueCreated(ANativeActivity* activity, AInputQueue* queue)
+static void __kd_AndroidOnInputQueueCreated(ANativeActivity *activity, AInputQueue *queue)
 {
 
 }
 
-static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity* activity, AInputQueue* queue)
+static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQueue *queue)
 {
 
 }
@@ -1178,19 +1178,6 @@ static void* __kdMainInjector( void *arg)
 #endif
 
 #ifdef __ANDROID__
-    /* Wait until we get the initial KD_EVENT_WINDOW_FOCUS */
-    for(;;)
-    {
-        const KDEvent *event = kdWaitEvent(-1);
-        if(event)
-        {
-            if(event->type == KD_EVENT_WINDOW_FOCUS && event->data.windowfocus.focusstate == 1)
-            {
-                break;
-            }
-            kdDefaultEvent(event);
-        }
-    }
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
     void *app = dlopen(NULL, RTLD_NOW);
@@ -1213,7 +1200,7 @@ static void* __kdMainInjector( void *arg)
 }
 
 #ifdef __ANDROID__
-void ANativeActivity_onCreate(ANativeActivity* activity, void* savedState, size_t savedStateSize)
+void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_t savedStateSize)
 {
 #ifdef KD_GC_SUPPORTED
     GC_INIT();
@@ -2401,9 +2388,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #ifdef __ANDROID__
     window->nativewindow = kdMalloc(sizeof(KDWindowAndroid));
-    KDWindowAndroid *androidwindow = window->nativewindow;
-    androidwindow->window =__kd_androidwindow;
-    ANativeWindow_setBuffersGeometry(androidwindow->window, 0, 0, window->format);
 #else
     window->nativewindow = kdMalloc(sizeof(KDWindowX11));
     KDWindowX11 *x11window = window->nativewindow;
@@ -2427,8 +2411,12 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
-    XMapWindow(x11window->display, x11window->window);
-    XFlush(x11window->display);
+    KDEvent *event = kdCreateEvent();
+    event->type = KD_EVENT_WINDOW_REDRAW;
+    kdPostThreadEvent(event, &__kd_threads[0]);
+    event = kdCreateEvent();
+    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+    kdPostThreadEvent(event, &__kd_threads[0]);
 #endif
     for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
     {
@@ -2473,6 +2461,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 #else
         KDWindowX11 *x11window = window->nativewindow;
         XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        kdPostThreadEvent(event, kdThreadSelf());
 #endif
         return 0;
     }
@@ -2489,6 +2480,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 #else
         KDWindowX11 *x11window = window->nativewindow;
         XStoreName(x11window->display, x11window->window, param);
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        kdPostThreadEvent(event, kdThreadSelf());
 #endif
         return 0;
     }
@@ -2542,14 +2536,15 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 {
 #ifdef __ANDROID__
     KDWindowAndroid *androidwindow = window->nativewindow;
+    androidwindow->window = __kd_androidwindow;
+    ANativeWindow_setBuffersGeometry(androidwindow->window, 0, 0, window->format);
     *nativewindow = androidwindow->window;
 #else
     KDWindowX11 *x11window = window->nativewindow;
+    XMapWindow(x11window->display, x11window->window);
+    XFlush(x11window->display);
     *nativewindow = x11window->window;
 #endif
-    KDEvent *event = kdCreateEvent();
-    event->type = KD_EVENT_WINDOW_REDRAW;
-    kdPostThreadEvent(event, kdThreadSelf());
     return 0;
 }
 #endif
@@ -2568,7 +2563,7 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
 KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 {
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, __kdAppName(KD_NULL), string);
+    __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), string);
 #else
     printf(string);
     fflush(stdout);
