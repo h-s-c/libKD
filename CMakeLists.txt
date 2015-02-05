@@ -203,13 +203,7 @@ if(KD_BUILD_EXAMPLES)
         endif()
     endfunction()
 
-    project (example_event)
-        example_helper()
-
-    project (example_event_callback)
-        example_helper()
-
-    project (example_event_timer)
+    project (example_overview)
         example_helper()
 endif()
 

@@ -29,20 +29,38 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-/* Simple event with callback example (KD_EVENT_QUIT is triggered by pressing Alt-F4)*/
+/* Example with eventloop, timer and callback*/
 static KDboolean quit = 0;
+static KDboolean pause = 0;
 void callback(const KDEvent *event)
 {
-    if(event->type == KD_EVENT_QUIT)
+    switch(event->type)
     {
-        quit = 1;
-        return;
+        case(KD_EVENT_QUIT):
+        {
+            quit = 1;
+            return;
+        }
+        case(KD_EVENT_PAUSE):
+        {
+            pause = 1;
+            return;
+        }
+        case(KD_EVENT_RESUME):
+        {
+            pause = 0;
+            return;
+        }
+        default:
+        {
+            kdDefaultEvent(event);
+        }
     }
-    kdDefaultEvent(event);
 }
-
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
+    kdLogMessage("Starting example\n");
+
     kdLogMessage("Starting example\n");
 
     kdLogMessage("-----KD-----\n");
@@ -51,25 +69,25 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Platform: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_PLATFORM)); kdLogMessage("\n");
 
     const EGLint egl_attributes[] =
-    {
-        EGL_SURFACE_TYPE,                EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
-        EGL_RENDERABLE_TYPE,             EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,                    8,
-        EGL_GREEN_SIZE,                  8,
-        EGL_BLUE_SIZE,                   8,
-        EGL_ALPHA_SIZE,                  8,
-        EGL_DEPTH_SIZE,                  24,
-        EGL_STENCIL_SIZE,                8,
-        EGL_NONE
-    };
-    
-    const EGLint egl_context_attributes[] =
-    { 
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-        EGL_NONE,
-    };
+            {
+                    EGL_SURFACE_TYPE,                EGL_WINDOW_BIT,
+                    EGL_RENDERABLE_TYPE,             EGL_OPENGL_ES2_BIT,
+                    EGL_RED_SIZE,                    8,
+                    EGL_GREEN_SIZE,                  8,
+                    EGL_BLUE_SIZE,                   8,
+                    EGL_ALPHA_SIZE,                  8,
+                    EGL_DEPTH_SIZE,                  24,
+                    EGL_STENCIL_SIZE,                8,
+                    EGL_NONE
+            };
 
-    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);   
+    const EGLint egl_context_attributes[] =
+            {
+                    EGL_CONTEXT_CLIENT_VERSION, 2,
+                    EGL_NONE,
+            };
+
+    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
 
@@ -89,8 +107,12 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     EGLContext egl_context = EGL_NO_CONTEXT;
 
     kdInstallCallback(callback, KD_EVENT_QUIT, KD_NULL);
+    KDTimer* kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
 
-    KDboolean pause = 0;
+    float r = 0.0f;
+    float g = 1.0f;
+    float b = 0.0f;
+
     while(!quit)
     {
         const KDEvent *event = kdWaitEvent(-1);
@@ -98,30 +120,25 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         {
             switch(event->type)
             {
-                case(KD_EVENT_PAUSE):
-                {
-                    pause = 1;
-                    break;
-                }
-                case(KD_EVENT_RESUME):
-                {
-                    pause = 0;
-                    break;
-                }
-                case(KD_EVENT_WINDOWPROPERTY_CHANGE):
-                {
-                    kdRealizeWindow(kd_window, &egl_native_window);
-                    break;
-                }
                 case(KD_EVENT_WINDOW_REDRAW):
                 {
                     eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
                     eglDestroyContext(egl_display, egl_context);
                     eglDestroySurface(egl_display, egl_surface);
+                    kdRealizeWindow(kd_window, &egl_native_window);
                     egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
                     egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
                     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
                     eglSwapBuffers(egl_display, egl_surface);
+                    break;
+                }
+                case(KD_EVENT_TIMER):
+                {
+                    KDuint8 buffer[3] = {0};
+                    kdCryptoRandom(buffer, 3);
+                    r = buffer[0]%256 / 255.0f;
+                    g = buffer[1]%256 / 255.0f;
+                    b = buffer[2]%256 / 255.0f;
                     break;
                 }
                 default:
@@ -135,7 +152,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         {
             if(eglSwapBuffers(egl_display, egl_surface) == EGL_TRUE)
             {
-                glClearColor(0, 1, 0, 1.0);
+                glClearColor(r, g, b, 1.0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
             }
         }
@@ -144,6 +161,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     eglDestroySurface(egl_display, egl_surface);
     eglTerminate(egl_display);
 
+    kdCancelTimer(kd_timer);
     kdDestroyWindow(kd_window);
 
     return 0;

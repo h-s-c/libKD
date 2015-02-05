@@ -1125,9 +1125,6 @@ static void __kd_AndroidOnNativeWindowCreated(ANativeActivity *activity, ANative
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
     kdPostThreadEvent(event, &__kd_threads[0]);
-    event = kdCreateEvent();
-    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-    kdPostThreadEvent(event, &__kd_threads[0]);
 }
 
 static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANativeWindow *window)
@@ -2413,9 +2410,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
-    kdPostThreadEvent(event, &__kd_threads[0]);
-    event = kdCreateEvent();
-    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
     kdPostThreadEvent(event, &__kd_threads[0]);
 #endif
     for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
