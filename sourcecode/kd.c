@@ -121,6 +121,7 @@
         #include <android/log.h>
         #include <android/native_activity.h>
         #include <android/native_window.h>
+        #include <android/window.h>
     #else
         #ifdef KD_WINDOW_SUPPORTED
             #include <X11/Xlib.h>
@@ -884,6 +885,10 @@ static KDboolean __kdExecCallback(KDEvent* event)
     return 0;
 }
 
+#ifdef __ANDROID__
+static AInputQueue *__kd_androidinputqueue = KD_NULL;
+static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
+#endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
 #ifdef __EMSCRIPTEN__
@@ -908,6 +913,47 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
 #ifdef KD_WINDOW_SUPPORTED
 #ifdef __ANDROID__
+    AInputEvent* aevent = NULL;
+    kdThreadMutexLock(__kd_androidinputqueue_mutex);
+    if(__kd_androidinputqueue != KD_NULL)
+    {
+        while (AInputQueue_getEvent(__kd_androidinputqueue, &aevent) >= 0)
+        {
+            AInputQueue_preDispatchEvent(__kd_androidinputqueue, aevent);
+            KDEvent *event = kdCreateEvent();
+            switch(AInputEvent_getType(aevent))
+            {
+                case(AINPUT_EVENT_TYPE_KEY):
+                {
+                    switch(AKeyEvent_getKeyCode(aevent))
+                    {
+                        case(AKEYCODE_BACK):
+                        {
+                            event->type      = KD_EVENT_QUIT;
+                            if(!__kdExecCallback(event))
+                            {
+                                kdPostEvent(event);
+                            }
+                            break;
+                        }
+                        default:
+                        {
+                            kdFreeEvent(event);
+                            break;
+                        }
+                    }
+                    break;
+                }
+                default:
+                {
+                    kdFreeEvent(event);
+                    break;
+                }
+            }
+            AInputQueue_finishEvent(__kd_androidinputqueue, aevent, 1);
+        }
+    }
+    kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 #else
     for(KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
     {
@@ -1057,6 +1103,8 @@ const char* __kdAppName(const char *argv0)
 
 #ifdef __ANDROID__
 /* All Android events are send to the mainthread */
+static ANativeActivity *__kd_androidactivity =  KD_NULL;
+static KDThreadMutex *__kd_androidactivity_mutex =  KD_NULL;
 static void __kd_AndroidOnDestroy(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
@@ -1119,9 +1167,12 @@ static void __kd_AndroidOnWindowFocusChanged(ANativeActivity *activity, int focu
 }
 
 static ANativeWindow *__kd_androidwindow =  KD_NULL;
+static KDThreadMutex *__kd_androidwindow_mutex =  KD_NULL;
 static void __kd_AndroidOnNativeWindowCreated(ANativeActivity *activity, ANativeWindow *window)
 {
+    kdThreadMutexLock(__kd_androidwindow_mutex);
     __kd_androidwindow = window;
+    kdThreadMutexUnlock(__kd_androidwindow_mutex);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
     kdPostThreadEvent(event, &__kd_threads[0]);
@@ -1129,6 +1180,9 @@ static void __kd_AndroidOnNativeWindowCreated(ANativeActivity *activity, ANative
 
 static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANativeWindow *window)
 {
+    kdThreadMutexLock(__kd_androidwindow_mutex);
+    __kd_androidwindow = KD_NULL;
+    kdThreadMutexUnlock(__kd_androidwindow_mutex);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_CLOSE;
     kdPostThreadEvent(event, &__kd_threads[0]);
@@ -1136,12 +1190,16 @@ static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANati
 
 static void __kd_AndroidOnInputQueueCreated(ANativeActivity *activity, AInputQueue *queue)
 {
-
+    kdThreadMutexLock(__kd_androidinputqueue_mutex);
+    __kd_androidinputqueue = queue;
+    kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 }
 
 static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQueue *queue)
 {
-
+    kdThreadMutexLock(__kd_androidinputqueue_mutex);
+    __kd_androidinputqueue = KD_NULL;
+    kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 }
 #endif
 
@@ -1152,8 +1210,8 @@ typedef struct __KDMainArgs
 } __KDMainArgs;
 static void* __kdMainInjector( void *arg)
 {
-    __KDMainArgs* mainargs = (__KDMainArgs*)arg;
-    if(mainargs == KD_NULL)
+    __KDMainArgs *mainargs = (__KDMainArgs *) arg;
+    if (mainargs == KD_NULL)
     {
         kdAssert(0);
     }
@@ -1176,6 +1234,17 @@ static void* __kdMainInjector( void *arg)
 
 #ifdef __ANDROID__
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
+
+    kdThreadMutexLock(__kd_androidactivity_mutex);
+    if(__kd_androidactivity != KD_NULL)
+    {
+        ANativeActivity_finish(__kd_androidactivity);
+    }
+    kdThreadMutexUnlock(__kd_androidactivity_mutex);
+
+    kdThreadMutexFree(__kd_androidwindow_mutex);
+    kdThreadMutexFree(__kd_androidinputqueue_mutex);
+    kdThreadMutexFree(__kd_androidactivity_mutex);
 #else
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
@@ -1204,6 +1273,10 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     GC_allow_register_threads();
 #endif
 
+    __kd_androidwindow_mutex = kdThreadMutexCreate(KD_NULL);
+    __kd_androidinputqueue_mutex = kdThreadMutexCreate(KD_NULL);
+    __kd_androidactivity_mutex = kdThreadMutexCreate(KD_NULL);
+
     activity->callbacks->onDestroy = __kd_AndroidOnDestroy;
     activity->callbacks->onStart = __kd_AndroidOnStart;
     activity->callbacks->onResume = __kd_AndroidOnResume;
@@ -1217,6 +1290,11 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     activity->callbacks->onNativeWindowDestroyed = __kd_AndroidOnNativeWindowDestroyed;
     activity->callbacks->onInputQueueCreated = __kd_AndroidOnInputQueueCreated;
     activity->callbacks->onInputQueueDestroyed = __kd_AndroidOnInputQueueDestroyed;
+
+    kdThreadMutexLock(__kd_androidactivity_mutex);
+    __kd_androidactivity = activity;
+    ANativeActivity_setWindowFlags(__kd_androidactivity, AWINDOW_FLAG_KEEP_SCREEN_ON, AWINDOW_FLAG_KEEP_SCREEN_ON);
+    kdThreadMutexUnlock(__kd_androidactivity_mutex);
 
     __KDMainArgs mainargs = {0};
     mainargs.argc = 0;
@@ -2530,7 +2608,17 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 {
 #ifdef __ANDROID__
     KDWindowAndroid *androidwindow = window->nativewindow;
-    androidwindow->window = __kd_androidwindow;
+    for(;;)
+    {
+        kdThreadMutexLock(__kd_androidwindow_mutex);
+        if(__kd_androidwindow != KD_NULL)
+        {
+            androidwindow->window = __kd_androidwindow;
+            kdThreadMutexUnlock(__kd_androidwindow_mutex);
+            break;
+        }
+        kdThreadMutexUnlock(__kd_androidwindow_mutex);
+    }
     ANativeWindow_setBuffersGeometry(androidwindow->window, 0, 0, window->format);
     *nativewindow = androidwindow->window;
 #else
