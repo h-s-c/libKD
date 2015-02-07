@@ -72,9 +72,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if __STDC_VERSION__ >= 201112L
-
-    #if !__STDC_NO_ATOMICS__
+/* Removed checks because we use alternative threads/atomics implementations on some Platforms */
+/* #if __STDC_VERSION__ >= 201112L */
+#if 1
+    /* #if !__STDC_NO_ATOMICS__ */
+    #if 1
         #ifdef __ANDROID__
         typedef uint32_t char32_t;
         typedef uint16_t char16_t;
@@ -82,7 +84,6 @@
         #include <stdatomic.h>
     #endif
 
-    /* Removed check because we use an alternative C11 threads implementation on most Platforms */
     /* #if !__STDC_NO_THREADS__ */
     #if 1
         #include <threads.h>
