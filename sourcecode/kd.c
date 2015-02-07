@@ -621,10 +621,7 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 #ifndef KD_NO_STATIC_DATA
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
-    if(!atomic_flag_test_and_set((atomic_flag**)&once_control->impl))
-    {
-        init_routine();
-    };
+    call_once((once_flag*)once_control,init_routine);
     return 0;
 }
 #endif /* ndef KD_NO_STATIC_DATA */
@@ -811,10 +808,8 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     return __kd_lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
-static atomic_intptr_t __kd_globaleventuserptr;
 KD_API void KD_APIENTRY kdSetEventUserptr(void *userptr)
 {
-    atomic_store(&__kd_globaleventuserptr, userptr);
 }
 
 /* kdDefaultEvent: Perform default processing on an unrecognized event. */
