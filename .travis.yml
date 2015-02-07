@@ -27,6 +27,8 @@ script:
   - cmake -DCMAKE_BUILD_TYPE=Debug -DKD_BUILD_TESTS=On -DKD_BUILD_COVERAGE=On .
   - cmake --build . --config Debug
   - ctest
+  - if [ "$CC" = "gcc" ]; then export CC=gcc && export CXX=g++; fi
+  - if [ "$CC" = "clang" ]; then export CC=clang && export CXX=clang++; fi
 
 after_success:
   - if [ "$CC" = "gcc" ]; then lcov --gcov-tool gcov-4.9 --compat-libtool --directory . --capture --output-file=coverage.info; fi
