@@ -1,4 +1,5 @@
 language: c
+
 compiler:
   - gcc
   - clang
@@ -56,4 +57,4 @@ addons:
     notification_email: h-s-c@users.noreply.github.com
     build_command_prepend: "cmake -DCMAKE_BUILD_TYPE=Debug -DKD_BUILD_TESTS=On -DKD_BUILD_COVERAGE=On ."
     build_command:   "cmake --build . --config Debug"
-    branch_pattern: master
+    branch_pattern: coverity
