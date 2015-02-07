@@ -924,14 +924,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     switch(AKeyEvent_getKeyCode(aevent))
                     {
                         case(AKEYCODE_BACK):
-                        {
-                            event->type      = KD_EVENT_QUIT;
-                            if(!__kdExecCallback(event))
-                            {
-                                kdPostEvent(event);
-                            }
-                            break;
-                        }
                         default:
                         {
                             kdFreeEvent(event);
@@ -1230,17 +1222,9 @@ static void* __kdMainInjector( void *arg)
 
 #ifdef __ANDROID__
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
-
-    kdThreadMutexLock(__kd_androidactivity_mutex);
-    if(__kd_androidactivity != KD_NULL)
-    {
-        ANativeActivity_finish(__kd_androidactivity);
-    }
-    kdThreadMutexUnlock(__kd_androidactivity_mutex);
-
+    kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
-    kdThreadMutexFree(__kd_androidactivity_mutex);
 #else
     void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
@@ -1289,7 +1273,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
 
     kdThreadMutexLock(__kd_androidactivity_mutex);
     __kd_androidactivity = activity;
-    ANativeActivity_setWindowFlags(__kd_androidactivity, AWINDOW_FLAG_KEEP_SCREEN_ON, AWINDOW_FLAG_KEEP_SCREEN_ON);
+    ANativeActivity_setWindowFlags(__kd_androidactivity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
     kdThreadMutexUnlock(__kd_androidactivity_mutex);
 
     __KDMainArgs mainargs = {0};

@@ -167,7 +167,7 @@ if(KD_BUILD_EXAMPLES)
         package=\"kd.${PROJECT_NAME}\"
         android:versionCode=\"1\"
         android:versionName=\"1.0\">
-    <uses-sdk android:minSdkVersion=\"19\" />
+    <uses-sdk android:minSdkVersion=\"9\" />
     <uses-feature android:glEsVersion=\"0x00020000\"></uses-feature>
     <application android:label=\"${PROJECT_NAME}\" android:hasCode=\"false\" android:debuggable=\"${MANIFEST_DEBUG_FLAG}\">
         <activity android:name=\"android.app.NativeActivity\"
