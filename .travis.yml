@@ -1,20 +1,21 @@
 language: c
 compiler:
   - gcc
-#  - clang
+  - clang
 
 before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo add-apt-repository -y ppa:kalakris/cmake
   - sudo apt-get update -qq
+  - sudo apt-get install -qq cmake
   - if [ "$CC" = "gcc" ]; then sudo apt-get install -qq g++-4.9; fi
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 90; fi
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 90; fi
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-4.9 90; fi
-  - sudo apt-get install -qq cmake lcov
-  - wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz && tar xzf lcov-1.11.tar.gz
-  - cd lcov-1.11 && make && sudo make install && cd ..
-  - gem install coveralls-lcov
+  - if [ "$CC" = "gcc" ]; then sudo apt-get install -qq lcov; fi
+  - if [ "$CC" = "gcc" ]; then wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz && tar xzf lcov-1.11.tar.gz; fi
+  - if [ "$CC" = "gcc" ]; then cd lcov-1.11 && make && sudo make install && cd ..; fi
+  - if [ "$CC" = "gcc" ]; then gem install coveralls-lcov; fi
 
 install:
   - sudo apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
@@ -25,9 +26,9 @@ script:
   - ctest
 
 after_success:
-  - lcov --compat-libtool --directory . --capture --output-file=coverage.info
-  - lcov --remove coverage.info 'distribution/*' 'examples/*' 'sourcecode/thirdparty/*' 'tests/*' 'cov-int/*' 'CMakeFiles/*' '/usr*' -o coverage.info
-  - coveralls-lcov coverage.info
+  - if [ "$CC" = "gcc" ]; then lcov --compat-libtool --directory . --capture --output-file=coverage.info; fi
+  - if [ "$CC" = "gcc" ]; then lcov --remove coverage.info 'distribution/*' 'examples/*' 'sourcecode/thirdparty/*' 'tests/*' 'cov-int/*' 'CMakeFiles/*' '/usr*' -o coverage.info; fi
+  - if [ "$CC" = "gcc" ]; then coveralls-lcov coverage.info; fi
 
 notifications:
   email:
@@ -45,6 +46,6 @@ addons:
     project:
       name: "h-s-c/libKD"
     notification_email: h-s-c@users.noreply.github.com
-    build_command_prepend: "cmake ."
-    build_command:   "make -j4"
+    build_command_prepend: "cmake -DCMAKE_BUILD_TYPE=Debug -DKD_BUILD_TESTS=On -DKD_BUILD_COVERAGE=On ."
+    build_command:   "cmake --build . --config Debug"
     branch_pattern: master
