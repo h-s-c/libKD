@@ -38,7 +38,7 @@ before_install:
   - sudo apt-get update -qq
 
 install:
-  - sudo apt-get install -qq cmake
+  - sudo apt-get install -qq cmake valgrind
   - if [ "$CC" = "gcc-4.9" ]; then sudo apt-get install -qq gcc-4.9 g++-4.9 lcov; fi
   - if [ "$CC" = "gcc-4.9" ]; then wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz && tar xzf lcov-1.11.tar.gz; fi
   - if [ "$CC" = "gcc-4.9" ]; then cd lcov-1.11 && make && sudo make install && cd ..; fi
