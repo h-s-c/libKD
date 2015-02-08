@@ -67,6 +67,7 @@ project (KD)
 
     if(KD_BUILD_CI)
         message(STATUS "Continous integration build")
+        include(CTest)
         if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
@@ -215,8 +216,9 @@ endif()
 
 # Tests
 if(KD_BUILD_CI)
+    enable_testing()
     function(test_helper)
-        enable_testing()
+        include(CTest)
         if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
@@ -226,7 +228,6 @@ if(KD_BUILD_CI)
         target_link_libraries(${PROJECT_NAME} KD)
         add_test(${PROJECT_NAME} ${PROJECT_NAME})
         set_tests_properties(${PROJECT_NAME} PROPERTIES TIMEOUT 5)
-        include(CTest)
     endfunction()
 
 
