@@ -1,5 +1,3 @@
-set(KD_BUILD_CI "On")
-
 set(CTEST_SOURCE_DIRECTORY ".")
 set(CTEST_BINARY_DIRECTORY "${CTEST_SOURCE_DIRECTORY}/build")
 
@@ -29,7 +27,7 @@ set(CTEST_BUILD_CONFIGURATION ${CONFIGURATION})
 set(CTEST_CONFIGURATION_TYPE ${CONFIGURATION})
 
 ctest_start(Continuous)
-ctest_configure()
+ctest_configure(OPTIONS "-DKD_BUILD_CI=On")
 ctest_build()
 ctest_test()
 ctest_submit()
