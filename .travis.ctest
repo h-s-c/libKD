@@ -27,7 +27,7 @@ ctest_build()
 
 ctest_test()
 
-if(VALGRIND AND $ENV{CXX} MATCHES "clang-3.5")
+if(VALGRIND AND $ENV{CC} MATCHES "clang-3.5")
   ctest_memcheck()
 endif()
 
