@@ -215,18 +215,18 @@ endif()
 
 # Tests
 if(KD_BUILD_CI)
-    enable_testing()
     function(test_helper)
+        enable_testing()
         if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
         endif()
-        include(CTest)
         include_directories(${DIST_DIR})
         add_executable(${PROJECT_NAME} ${TEST_DIR}/${PROJECT_NAME}.c)
         target_link_libraries(${PROJECT_NAME} KD)
         add_test(${PROJECT_NAME} ${PROJECT_NAME})
         set_tests_properties(${PROJECT_NAME} PROPERTIES TIMEOUT 5)
+        include(CTest)
     endfunction()
 
 

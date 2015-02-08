@@ -47,7 +47,7 @@ install:
   - sudo apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
 
 script:
-  - ctest -V --output-on-failure -S .travis.ctest
+  - ctest -VV --output-on-failure -S .travis.ctest
 
 after_success:
   - if [ "$CC" = "gcc-4.9" ]; then lcov --gcov-tool gcov-4.9 --compat-libtool --directory build --capture --output-file=coverage.info; fi
