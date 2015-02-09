@@ -38,8 +38,6 @@ matrix:
       env: CLANG_VERSION=3.5
     - compiler: clang
       env: CLANG_VERSION=3.4
-    - compiler: clang
-      env: CLANG_VERSION=3.3
 
 before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
