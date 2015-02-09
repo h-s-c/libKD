@@ -77,7 +77,7 @@
 #endif
 
 #if !defined(__CLANG_ATOMICS)
-#define	_Atomic(T)			struct { volatile __typeof__(T) __val; }
+#define	_Atomic volatile
 #endif
 
 /*
