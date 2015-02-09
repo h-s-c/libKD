@@ -28,7 +28,7 @@
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
-_Atomic (KDint) test_once_count = ATOMIC_VAR_INIT(0);
+_Atomic KDint test_once_count = ATOMIC_VAR_INIT(0);
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func()
 {
