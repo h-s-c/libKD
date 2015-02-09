@@ -72,7 +72,7 @@
 #else
 #define	ATOMIC_VAR_INIT(value)		(value)
 #define	atomic_init(obj, value) do {					\
-	(obj) = (value);						\
+	obj = (value);						\
 } while (0)
 #endif
 
@@ -298,7 +298,7 @@ typedef _Atomic uintmax_t		atomic_uintmax_t;
 	__sync_fetch_and_add(object, 0)
 #define	atomic_store_explicit(object, desired, order) do {		\
 	__sync_synchronize();						\
-	(object) = (desired);					\
+	object = (desired);					\
 	__sync_synchronize();						\
 } while (0)
 #endif

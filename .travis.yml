@@ -57,7 +57,7 @@ install:
   - if [ "$CC" = "gcc" ]; then wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz && tar xzf lcov-1.11.tar.gz; fi
   - if [ "$CC" = "gcc" ]; then cd lcov-1.11 && make && sudo make install && cd ..; fi
   - if [ "$CC" = "gcc" ]; then gem install coveralls-lcov; fi
-  - if [ "$CC" = "clang" ]; then sudo apt-get install --allow-unauthenticated -qq clang-$CLANG_VERSION; fi
+  - if [ "$CC" = "clang" ]; then sudo apt-get install --allow-unauthenticated -qq clang-$CLANG_VERSION libclang-$CLANG_VERSION-dev; fi
   - if [ "$CC" = "clang" ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CLANG_VERSION 90; fi
   - if [ "$CC" = "clang" ]; then sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CLANG_VERSION 90; fi
   - sudo apt-get install -qq libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev

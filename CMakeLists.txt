@@ -135,6 +135,10 @@ project (KD)
         list(APPEND KD_LIBRARIES log)
     endif()
 
+    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+        list(APPEND KD_LIBRARIES clang)
+    endif()
+
     configure_file(${DIST_DIR}/KD/kdplatform.h.in ${DIST_DIR}/KD/kdplatform.h)
     include_directories(${KD_INCLUDE_DIRS} )
     if(ANDROID)
