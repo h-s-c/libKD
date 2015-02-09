@@ -30,6 +30,10 @@ matrix:
   include:
     - compiler: gcc
       env: GCC_VERSION=4.9
+    - compiler: gcc
+      env: GCC_VERSION=4.8
+    - compiler: gcc
+      env: GCC_VERSION=4.7
     - compiler: clang
       env: CLANG_VERSION=3.5
     - compiler: clang
