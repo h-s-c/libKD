@@ -245,17 +245,17 @@ typedef _Atomic uintmax_t		atomic_uintmax_t;
 })
 #endif
 #define	atomic_fetch_add_explicit(object, operand, order)		\
-	__sync_fetch_and_add(&object, operand)
+	__sync_fetch_and_add(object, operand)
 #define	atomic_fetch_and_explicit(object, operand, order)		\
-	__sync_fetch_and_and(&object, operand)
+	__sync_fetch_and_and(object, operand)
 #define	atomic_fetch_or_explicit(object, operand, order)		\
-	__sync_fetch_and_or(&object, operand)
+	__sync_fetch_and_or(object, operand)
 #define	atomic_fetch_sub_explicit(object, operand, order)		\
-	__sync_fetch_and_sub(&object, operand)
+	__sync_fetch_and_sub(object, operand)
 #define	atomic_fetch_xor_explicit(object, operand, order)		\
-	__sync_fetch_and_xor(&object, operand)
+	__sync_fetch_and_xor(object, operand)
 #define	atomic_load_explicit(object, order)				\
-	__sync_fetch_and_add(&object, 0)
+	__sync_fetch_and_add(object, 0)
 #define	atomic_store_explicit(object, desired, order) do {		\
 	__sync_synchronize();						\
 	*(object) = (desired);					\
