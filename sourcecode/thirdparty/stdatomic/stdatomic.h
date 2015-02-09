@@ -72,7 +72,7 @@
 #else
 #define	ATOMIC_VAR_INIT(value)		(value)
 #define	atomic_init(obj, value) do {					\
-	obj = (value);						\
+    *(obj) = (value);						\
 } while (0)
 #endif
 
