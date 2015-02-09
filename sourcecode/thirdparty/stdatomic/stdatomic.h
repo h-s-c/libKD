@@ -36,21 +36,30 @@
 #if !defined(__has_feature)
 #define __has_feature(x) 0
 #endif
-
 #if !defined(__has_builtin)
 #define __has_builtin(x) 0
+#endif
+#if !defined(__GNUC_PREREQ__)
+#if defined(__GNUC__) && defined(__GNUC_MINOR__)
+#define __GNUC_PREREQ__(maj, min)					\
+	((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+#else
+#define __GNUC_PREREQ__(maj, min) 0
+#endif
 #endif
 
 #if !defined(__CLANG_ATOMICS) && !defined(__GNUC_ATOMICS)
 #if __has_feature(c_atomic)
 #define	__CLANG_ATOMICS
+#elif __GNUC_PREREQ__(4, 7)
+#define	__GNUC_ATOMICS
 #elif !defined(__GNUC__)
 #error "stdatomic.h does not support your compiler"
 #endif
 #endif
 
 #if !defined(__CLANG_ATOMICS)
-#define	_Atomic			volatile
+#define	_Atomic
 #endif
 
 /*
@@ -117,6 +126,9 @@ typedef enum memory_order memory_order;
 #ifdef __CLANG_ATOMICS
 #define	atomic_thread_fence(order)	__c11_atomic_thread_fence(order)
 #define	atomic_signal_fence(order)	__c11_atomic_signal_fence(order)
+#elif defined(__GNUC_ATOMICS)
+#define	atomic_thread_fence(order)	__atomic_thread_fence(order)
+#define	atomic_signal_fence(order)	__atomic_signal_fence(order)
 #else
 #define	atomic_thread_fence(order)	__sync_synchronize()
 #define	atomic_signal_fence(order)	__asm volatile ("" : : : "memory")
@@ -129,6 +141,9 @@ typedef enum memory_order memory_order;
 #if defined(__CLANG_ATOMICS)
 #define	atomic_is_lock_free(obj) \
 	__c11_atomic_is_lock_free(sizeof(obj))
+#elif defined(__GNUC_ATOMICS)
+#define	atomic_is_lock_free(obj) \
+	__atomic_is_lock_free(sizeof(obj))
 #else
 #define	atomic_is_lock_free(obj) \
 	(sizeof(obj) <= sizeof(void *))
@@ -211,6 +226,31 @@ typedef _Atomic uintmax_t		atomic_uintmax_t;
 	__c11_atomic_load(object, order)
 #define	atomic_store_explicit(object, desired, order)			\
 	__c11_atomic_store(object, desired, order)
+#elif defined(__GNUC_ATOMICS)
+#define	atomic_compare_exchange_strong_explicit(object, expected,	\
+    desired, success, failure)						\
+	__atomic_compare_exchange_n(object, expected,		\
+	    desired, 0, success, failure)
+#define	atomic_compare_exchange_weak_explicit(object, expected,		\
+    desired, success, failure)						\
+	__atomic_compare_exchange_n(object, expected,		\
+	    desired, 1, success, failure)
+#define	atomic_exchange_explicit(object, desired, order)		\
+	__atomic_exchange_n(object, desired, order)
+#define	atomic_fetch_add_explicit(object, operand, order)		\
+	__atomic_fetch_add(object, operand, order)
+#define	atomic_fetch_and_explicit(object, operand, order)		\
+	__atomic_fetch_and(object, operand, order)
+#define	atomic_fetch_or_explicit(object, operand, order)		\
+	__atomic_fetch_or(object, operand, order)
+#define	atomic_fetch_sub_explicit(object, operand, order)		\
+	__atomic_fetch_sub(object, operand, order)
+#define	atomic_fetch_xor_explicit(object, operand, order)		\
+	__atomic_fetch_xor(object, operand, order)
+#define	atomic_load_explicit(object, order)				\
+	__atomic_load_n(object, order)
+#define	atomic_store_explicit(object, desired, order)			\
+	__atomic_store_n(object, desired, order)
 #else
 #define	atomic_compare_exchange_strong_explicit(object, expected,	\
     desired, success, failure) ({					\
