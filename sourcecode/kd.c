@@ -170,9 +170,9 @@ typedef struct __KDQueueHead {
 
 typedef struct __KDQueue {
     struct __KDQueueNode *node_buffer;
-    _Atomic(__KDQueueHead) head;
-    _Atomic(__KDQueueHead) free;
-    _Atomic(KDsize) size;
+    _Atomic __KDQueueHead head;
+    _Atomic __KDQueueHead free;
+    _Atomic KDsize size;
 } __KDQueue;
 
 static inline size_t __kdQueueSize(__KDQueue *queue)
@@ -216,7 +216,7 @@ static __KDQueue *__kdQueueCreate(KDsize max_size)
     return queue;
 }
 
-static struct __KDQueueNode *__kdQueuePop(_Atomic(__KDQueueHead) *head)
+static struct __KDQueueNode *__kdQueuePop(_Atomic __KDQueueHead *head)
 {
     __KDQueueHead next = {0};
     __KDQueueHead orig = atomic_load(head);
@@ -231,7 +231,7 @@ static struct __KDQueueNode *__kdQueuePop(_Atomic(__KDQueueHead) *head)
     return orig.node;
 }
 
-static void  __kdQueuePush(_Atomic(__KDQueueHead) *head, struct __KDQueueNode *node)
+static void  __kdQueuePush(_Atomic __KDQueueHead *head, struct __KDQueueNode *node)
 {
     __KDQueueHead next = {0};
 __KDQueueHead orig = atomic_load(head);
