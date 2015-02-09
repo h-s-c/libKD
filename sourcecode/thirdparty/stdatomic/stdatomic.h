@@ -1,21 +1,3 @@
-/*
- * An implementation of C11 stdatomic.h directly borrowed from FreeBSD
- * (original copyright follows), with minor modifications for
- * portability to other systems. Works for recent Clang (that
- * implement the feature c_atomic) and GCC 4.7+; includes
- * compatibility for GCC below 4.7 but I wouldn't recommend it.
- *
- * Caveats and limitations:
- * - Only the ``_Atomic parentheses'' notation is implemented, while
- *   the ``_Atomic space'' one is not.
- * - _Atomic types must be typedef'ed, or programs using them will
- *   not type check correctly (incompatible anonymous structure
- *   types).
- * - Non-scalar _Atomic types would require runtime support for
- *   runtime locking, which, as far as I know, is not currently
- *   available on any system.
- */
-
 /*-
  * Copyright (c) 2011 Ed Schouten <ed@FreeBSD.org>
  *                    David Chisnall <theraven@FreeBSD.org>
