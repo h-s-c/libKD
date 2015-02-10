@@ -50,8 +50,6 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
 {
     kdLogMessage("Starting example\n");
 
-    kdLogMessage("Starting example\n");
-
     kdLogMessage("-----KD-----\n");
     kdLogMessage("Vendor: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VENDOR)); kdLogMessage("\n");
     kdLogMessage("Version: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VERSION)); kdLogMessage("\n");
