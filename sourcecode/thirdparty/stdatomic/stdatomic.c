@@ -24,6 +24,10 @@
  *
  *===----------------------------------------------------------------------===
  */
+
+/* ISO C requires a translation unit to contain at least one declaration */
+static void nothings() {}
+
 #if defined(__clang__)
 
 #include <stdint.h>
