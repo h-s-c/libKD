@@ -23,8 +23,13 @@
 
 language: c
 
+#TARGET_OS: android, linux
+#TARGET_ARCH: x86, x86_64, armeabi-v7a, arm64-v8a, mips, mips64
 matrix:
   include:
+    - os: linux
+      compiler: gcc
+      env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
     - os: linux
       compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.9
@@ -35,10 +40,10 @@ matrix:
       compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.7
     - os: linux
-      compiler: gcc
+      compiler: clang
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.5
     - os: linux
-      compiler: gcc
+      compiler: clang
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.4
   allow_failures:
     - os: linux
@@ -50,8 +55,10 @@ matrix:
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo apt-add-repository -y "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-$CC_VERSION main";
-      wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -;
+      if [ "$CC" = "clang" ]; then
+        sudo apt-add-repository -y "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-$CC_VERSION main";
+        wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -;
+      fi;
       sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test;
       sudo apt-get update -qq;
     fi;
@@ -75,11 +82,41 @@ install:
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90;
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
         fi;
+      elif [ "$TARGET_OS" = "android" ]; then
+        git clone https://github.com/taka-no-me/android-cmake.git
+        wget -nc --no-check-certificate http://dl.google.com/android/android-sdk_r24.0.2-linux.tgz;
+        wget -nc --no-check-certificate http://dl.google.com/android/ndk/android-ndk-r10d-linux-$TARGET_ARCH.bin;
+        tar xzf android-sdk_r24.0.2-linux;
+        chmod a+x android-ndk-r10d-linux-$TARGET_ARCH.bin
+        ./android-ndk-r10d-linux-$TARGET_ARCH.bin -y | grep -v Extracting;
+        export PATH=`pwd`/android-ndk:`pwd`/android-sdk-linux/tools:`pwd`/android-sdk-linux/platform-tools:$PATH;
       fi;
     fi;
 
 script:
-  - ctest -VV --output-on-failure -S .travis.ctest
+  - if [ "$TARGET_OS" = "android" ]; then
+      if [ "$CC" = "gcc" ]; then
+        export ANDROID_COMPILER_NAME=$CC_VERSION;
+      elif [ "$CC" = "clang" ]; then
+        export ANDROID_COMPILER_NAME=$CC$CC_VERSION;
+      fi;
+      if [ "$TARGET_ARCH" = "x86" ]; then
+        export ANDROID_TOOLCHAIN_NAME=x86-$ANDROID_COMPILER_NAME;
+      elif [ "$TARGET_ARCH" = "x86_64" ]; then
+        export ANDROID_TOOLCHAIN_NAME=x86_64-$ANDROID_COMPILER_NAME;
+      elif [ "$TARGET_ARCH" = "armeabi-v7a" ]; then
+        export ANDROID_TOOLCHAIN_NAME=arm-linux-androideabi-$ANDROID_COMPILER_NAME;
+      elif [ "$TARGET_ARCH" = "arm64-v8a" ]; then
+        export ANDROID_TOOLCHAIN_NAME=aarch64-linux-android-$ANDROID_COMPILER_NAME;
+      elif [ "$TARGET_ARCH" = "mips" ]; then
+        export ANDROID_TOOLCHAIN_NAME=mipsel-linux-android-$ANDROID_COMPILER_NAME;
+      elif [ "$TARGET_ARCH" = "mips64" ]; then
+        export ANDROID_TOOLCHAIN_NAME=mips64el-linux-android-$ANDROID_COMPILER_NAME;
+      fi;
+      cmake -DCMAKE_TOOLCHAIN_FILE=android-cmake/android.toolchain.cmake -DANDROID_NATIVE_API_LEVEL=9 -DANDROID_ABI=$TARGET_ARCH -DANDROID_TOOLCHAIN_NAME=$ANDROID_TOOLCHAIN_NAME .;
+    else
+      ctest -VV --output-on-failure -S .travis.ctest;
+    fi;
 
 after_success:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
