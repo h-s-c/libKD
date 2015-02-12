@@ -50,30 +50,30 @@ matrix:
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo apt-add-repository -y "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-$CC_VERSION main"
-      wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -
-      sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-      sudo apt-get update -qq
+      sudo apt-add-repository -y "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-$CC_VERSION main" && \
+      wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add - && \
+      sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+      sudo apt-get update -qq; \
     fi
 
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       if [ "$TARGET_OS" = "linux" ]; then
-        sudo apt-get install -qq valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
+        sudo apt-get install -qq valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev_
         wget -nc --no-check-certificate http://www.cmake.org/files/v3.1/cmake-3.1.2-Linux-$TARGET_ARCH.tar.gz
         tar xf cmake-3.1.2-Linux-$TARGET_ARCH.tar.gz && sudo cp -fR cmake-3.1.2-Linux-$TARGET_ARCH/* /usr
         if [ "$CC" = "gcc" ]; then
-          sudo apt-get install -qq gcc-$CC_VERSION g++-$CC_VERSION
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$CC_VERSION 90
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$CC_VERSION 90
-          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-$CC_VERSION 90
-          wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz && tar xzf lcov-1.11.tar.gz
-          cd lcov-1.11 && make && sudo make install && cd ..
-          gem install coveralls-lcov
+          sudo apt-get install -qq gcc-$CC_VERSION g++-$CC_VERSION &&
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$CC_VERSION 90 &&
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$CC_VERSION 90 &&
+          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-$CC_VERSION 90 &&
+          wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz && tar xzf lcov-1.11.tar.gz &&
+          cd lcov-1.11 && make && sudo make install && cd .. &&
+          gem install coveralls-lcov;
          elif [ "$CC" = "clang" ]; then
-          sudo apt-get install --allow-unauthenticated -qq clang-$CC_VERSION libclang-$CC_VERSION-dev
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90
+          sudo apt-get install --allow-unauthenticated -qq clang-$CC_VERSION libclang-$CC_VERSION-dev &&
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90 &&
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
         fi
       fi
     fi
