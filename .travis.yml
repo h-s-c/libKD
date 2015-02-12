@@ -46,13 +46,14 @@ matrix:
 
 before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo add-apt-repository -y ppa:kalakris/cmake
   - if [ "$CC" = "clang" ]; then sudo apt-add-repository -y "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-$CC_VERSION main"; fi
   - if [ "$CC" = "clang" ]; then wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -; fi
   - sudo apt-get update -qq
 
 install:
-  - sudo apt-get install -qq cmake valgrind
+  - sudo apt-get install -qq valgrind
+  - wget "http://www.cmake.org/files/v3.1/cmake-3.1.2-Linux-x86_64.tar.gz"
+  - tar xf "cmake-3.1.2-Linux-x86_64.tar.gz" && sudo cp -fR cmake-3.1.2-Linux-x86_64/* /usr
   - if [ "$CC" = "gcc" ]; then sudo apt-get install -qq gcc-$CC_VERSION g++-$CC_VERSION; fi
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$CC_VERSION 90; fi
   - if [ "$CC" = "gcc" ]; then sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$CC_VERSION 90; fi
