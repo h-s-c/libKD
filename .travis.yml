@@ -104,8 +104,8 @@ install:
         tar xzf android-sdk_r24.0.2-linux.tgz;
         chmod a+x android-ndk-r10d-linux-x86_64.bin;
         ./android-ndk-r10d-linux-x86_64.bin -y | grep -v Extracting;
-        rm android-ndk-r10d-linux-x86_64.bin
-        rm android-sdk_r24.0.2-linux.tgz
+        rm android-ndk-r10d-linux-x86_64.bin;
+        rm android-sdk_r24.0.2-linux.tgz;
         mv android-ndk-r10d android-ndk;
         mv android-sdk-linux android-sdk;
         export ANDROID_NDK=`pwd`/android-ndk;
