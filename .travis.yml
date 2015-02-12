@@ -64,11 +64,14 @@ before_install:
     fi;
 
 install:
+  - if [ "$TARGET_OS" = "android" ]; then
+      git clone https://github.com/taka-no-me/android-cmake.git;
+    fi;
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      wget -nc --no-check-certificate http://www.cmake.org/files/v3.1/cmake-3.1.2-Linux-x86_64.tar.gz;
+      tar xf cmake-3.1.2-Linux-x86_64.tar.gz && sudo cp -fR cmake-3.1.2-Linux-x86_64/* /usr;
       if [ "$TARGET_OS" = "linux" ]; then
         sudo apt-get install -qq valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev;
-        wget -nc --no-check-certificate http://www.cmake.org/files/v3.1/cmake-3.1.2-Linux-$TARGET_ARCH.tar.gz;
-        tar xf cmake-3.1.2-Linux-$TARGET_ARCH.tar.gz && sudo cp -fR cmake-3.1.2-Linux-$TARGET_ARCH/* /usr;
         if [ "$CC" = "gcc" ]; then
           sudo apt-get install -qq gcc-$CC_VERSION g++-$CC_VERSION;
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$CC_VERSION 90;
@@ -77,18 +80,18 @@ install:
           wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz;
           tar xzf lcov-1.11.tar.gz && cd lcov-1.11 && make && sudo make install && cd ..;
           gem install coveralls-lcov;
-         elif [ "$CC" = "clang" ]; then
+        elif [ "$CC" = "clang" ]; then
           sudo apt-get install --allow-unauthenticated -qq clang-$CC_VERSION;
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90;
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
         fi;
       elif [ "$TARGET_OS" = "android" ]; then
-        git clone https://github.com/taka-no-me/android-cmake.git
         wget -nc --no-check-certificate http://dl.google.com/android/android-sdk_r24.0.2-linux.tgz;
-        wget -nc --no-check-certificate http://dl.google.com/android/ndk/android-ndk-r10d-linux-$TARGET_ARCH.bin;
+        wget -nc --no-check-certificate http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin;
         tar xzf android-sdk_r24.0.2-linux;
-        chmod a+x android-ndk-r10d-linux-$TARGET_ARCH.bin
-        ./android-ndk-r10d-linux-$TARGET_ARCH.bin -y | grep -v Extracting;
+        chmod a+x android-ndk-r10d-linux-x86_64.bin;
+        ./android-ndk-r10d-linux-x86_64.bin -y | grep -v Extracting;
+        mv android-ndk-r10d android-ndk;
         export PATH=`pwd`/android-ndk:`pwd`/android-sdk-linux/tools:`pwd`/android-sdk-linux/platform-tools:$PATH;
       fi;
     fi;
