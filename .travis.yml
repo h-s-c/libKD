@@ -89,7 +89,7 @@ install:
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
         fi;
       elif [ "$TARGET_OS" = "android" ]; then
-        sudo apt-get install -qq openjdk-7-jdk ant;
+        sudo apt-get install -qq openjdk-7-jdk ant lib32z1-dev lib32stdc++6 lib32ncurses5;
         wget -nc --no-check-certificate http://dl.google.com/android/android-sdk_r24.0.2-linux.tgz;
         wget -nc --no-check-certificate http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin;
         tar xzf android-sdk_r24.0.2-linux.tgz;
@@ -101,6 +101,7 @@ install:
         export ANDROID_HOME=`pwd`/android-sdk;
         export ANDROID_SWT=/usr/share/java;
         export PATH=$ANDROID_NDK:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH;
+        echo yes | android update sdk -a -t tools,platform-tools,android-19,source-19,build-tools-21.1.2 --force --no-ui;
       fi;
     fi;
 
