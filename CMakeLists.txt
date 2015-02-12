@@ -225,7 +225,4 @@ if(KD_BUILD_EXAMPLES)
 
     project (example_overview)
         example_helper()
-
-    project (example_ui)
-        example_helper(${EXAMPLE_DIR}/thirdparty/glimgui.c)
 endif()
