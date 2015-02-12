@@ -104,13 +104,15 @@ install:
         tar xzf android-sdk_r24.0.2-linux.tgz;
         chmod a+x android-ndk-r10d-linux-x86_64.bin;
         ./android-ndk-r10d-linux-x86_64.bin -y | grep -v Extracting;
+        rm android-ndk-r10d-linux-x86_64.bin
+        rm android-sdk_r24.0.2-linux.tgz
         mv android-ndk-r10d android-ndk;
         mv android-sdk-linux android-sdk;
         export ANDROID_NDK=`pwd`/android-ndk;
         export ANDROID_HOME=`pwd`/android-sdk;
         export ANDROID_SWT=/usr/share/java;
         export PATH=$ANDROID_NDK:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH;
-        'echo "Update Android SDK"; echo yes | android update sdk -a -t tools,platform-tools,android-19,source-19,build-tools-21.1.2 --force --no-ui';
+        'echo "Update Android SDK"; echo yes | android update sdk -a -t tools,platform-tools,android-19,source-19,build-tools-21.1.2 --force --no-ui;'
       fi;
     fi;
 
