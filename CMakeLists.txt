@@ -126,7 +126,7 @@ project (KD)
         endif()
     endif()
 
-    find_package(Threads REQUIRED)
+    find_package(Threads)
     list(APPEND KD_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
     list(APPEND KD_LIBRARIES ${CMAKE_DL_LIBS})
     list(APPEND KD_LIBRARIES m)
