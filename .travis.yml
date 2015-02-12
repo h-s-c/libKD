@@ -22,6 +22,7 @@
 ###############################################################################
 
 language: c
+cache: apt
 
 #TARGET_OS: android, linux
 #TARGET_ARCH: x86, x86_64, armeabi-v7a, arm64-v8a, mips, mips64
@@ -81,6 +82,7 @@ install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       wget -nc --no-check-certificate http://www.cmake.org/files/v3.1/cmake-3.1.2-Linux-x86_64.tar.gz;
       tar xf cmake-3.1.2-Linux-x86_64.tar.gz && sudo cp -fR cmake-3.1.2-Linux-x86_64/* /usr;
+      rm cmake-3.1.2-Linux-x86_64.tar.gz;
       if [ "$TARGET_OS" = "linux" ]; then
         sudo apt-get install -qq valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev;
         if [ "$CC" = "gcc" ]; then
