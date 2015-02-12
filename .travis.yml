@@ -114,8 +114,8 @@ install:
         export ANDROID_HOME=`pwd`/android-sdk;
         export ANDROID_SWT=/usr/share/java;
         export PATH=$ANDROID_NDK:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH;
-        echo yes | android update sdk -u -t tool || true;
         echo yes | android update sdk -u -t platform-tools || true;
+        echo yes | android update sdk -u -t tool || true;
         echo yes | android update sdk -u -t build-tools-21.1.2 || true;
         echo yes | android update sdk -u -t android-19 || true;
       fi;
