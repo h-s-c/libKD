@@ -117,6 +117,7 @@ script:
         export ANDROID_TOOLCHAIN_NAME=mips64el-linux-android-$ANDROID_COMPILER_NAME;
       fi;
       cmake -DCMAKE_TOOLCHAIN_FILE=android-cmake/android.toolchain.cmake -DANDROID_NATIVE_API_LEVEL=9 -DANDROID_ABI=$TARGET_ARCH -DANDROID_TOOLCHAIN_NAME=$ANDROID_TOOLCHAIN_NAME .;
+      make package;
     else
       ctest -VV --output-on-failure -S .travis.ctest;
     fi;
