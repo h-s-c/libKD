@@ -38,6 +38,7 @@
 /** \brief The state of the IMGUI and the input devices */
 struct GLIMGUIState {
     long inittime;
+    float textscale;
 
     /// \brief Id of the item on which the mouse is currently
     int hotitem;
@@ -100,6 +101,6 @@ void glimgui_label (int id, const char *caption, int x, int y, int w, int h);
 /** \brief Draws a button with a given caption (returns 1 if it was pressed) */
 int glimgui_button (int id, const char* caption, int x, int y, int w, int h);
 /** \brief Draws a one-lined textfiled that modifies the given string */
-int glimgui_lineedit (int id, char *text_value, size_t maxlength, int x, int y, int w, int h);
+int glimgui_lineedit (int id, char *text_value, int maxlength, int x, int y, int w, int h);
 
 #endif /* _GLIMGUI_H */

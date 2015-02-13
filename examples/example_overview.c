@@ -56,23 +56,23 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Platform: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_PLATFORM)); kdLogMessage("\n");
 
     const EGLint egl_attributes[] =
-            {
-                    EGL_SURFACE_TYPE,                EGL_WINDOW_BIT,
-                    EGL_RENDERABLE_TYPE,             EGL_OPENGL_ES2_BIT,
-                    EGL_RED_SIZE,                    8,
-                    EGL_GREEN_SIZE,                  8,
-                    EGL_BLUE_SIZE,                   8,
-                    EGL_ALPHA_SIZE,                  8,
-                    EGL_DEPTH_SIZE,                  24,
-                    EGL_STENCIL_SIZE,                8,
-                    EGL_NONE
-            };
+    {
+        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE,           8,
+        EGL_GREEN_SIZE,         8,
+        EGL_BLUE_SIZE,          8,
+        EGL_ALPHA_SIZE,         8,
+        EGL_DEPTH_SIZE,         24,
+        EGL_STENCIL_SIZE,       8,
+        EGL_NONE
+    };
 
     const EGLint egl_context_attributes[] =
-            {
-                    EGL_CONTEXT_CLIENT_VERSION, 2,
-                    EGL_NONE,
-            };
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE,
+    };
 
     EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     eglInitialize(egl_display, 0, 0);

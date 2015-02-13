@@ -35,26 +35,34 @@
 /* Example with ui*/
 static KDboolean quit = 0;
 int gui_layout = 0;
-void draw_ui () {
-    glimgui_prepare ();
+void draw_ui (KDWindow* kd_window) {
+    KDint32 window_size[2];
+    kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, window_size);
+    int width = window_size[0];
+    int height = window_size[1];
+
+    /* Optimized for 16/9 */
+    uistate.textscale = (width / 640)*1.5;
+
+    glimgui_prepare();
 
     if (gui_layout == 0)
     {
-        glimgui_label (99, "Main Menu", 20, 20, 1, 1);
+        glimgui_label(99, "Main Menu", 20, 20, 1, 1);
 
-        if (glimgui_button (1, "Some Button", 220, 100, 180, 50))
+        if (glimgui_button(1, "Start Game", (width / 2) - (width / 10)  , (height / 7) , width / 5, height / 9))
         {
-            kdLogMessage("Some Button was pressed!\n");
+            kdLogMessage("Start Game was pressed!\n");
         }
 
-        if (glimgui_button (2, "Options", 220, 180, 180, 50))
+        if (glimgui_button(2, "Options", (width / 2) - (width / 10), (height / 7) * 2, width / 5, height / 9))
         {
             glimgui_clear();
             gui_layout = 1;
             kdLogMessage("Switching to Options!\n");
         }
 
-        if (glimgui_button (3, "Quit", 220, 380, 180, 50))
+        if (glimgui_button(3, "Quit",  (width / 2) - (width / 10), (height / 7) * 5, width / 5, height / 9))
         {
             kdLogMessage("Quit!\n");
             quit = 1;
@@ -62,32 +70,18 @@ void draw_ui () {
     }
     else
     {
-        glimgui_label (99, "Options", 20, 20, 1, 1);
+        glimgui_label(99, "Options", 20, 20, 1, 1);
 
-        if (glimgui_button (1, "Some Other Button", 220, 100, 180, 50))
-        {
-            kdLogMessage("Some Other Button was pressed!\n");
-        }
-
-        glimgui_label (98, "Enter your name:", 150, 180, 1, 50);
+        glimgui_label(98, "Player Name:", (width / 2) - (width/6), (height / 7), 1, height / 14);
 
         static char name[32] = { "IMGUI fan\0" };
 
-        if (glimgui_lineedit (2, name, 16, 290, 195, -1, 20))
+        if (glimgui_lineedit(2, name, 16, (width / 2), (height / 7), (width/6), height / 14))
         {
             kdLogMessage("Changed name value: "); kdLogMessage(name); kdLogMessage("\n");
         }
 
-        glimgui_label (97, "Enter your age:", 150, 210, 1, 50);
-
-        static char age[32] = { "99\0" };
-
-        if (glimgui_lineedit (3, age, 3, 290, 225, -1, 20))
-        {
-            kdLogMessage("Changed age value: "); kdLogMessage(age); kdLogMessage("\n");
-        }
-
-        if (glimgui_button (4, "Back", 220, 380, 180, 50))
+        if (glimgui_button(4, "Back", (width / 2) - (width / 10) , (height / 7) * 5, width / 5, height / 9))
         {
             kdLogMessage("Switching back!\n");
             glimgui_clear();
@@ -95,7 +89,7 @@ void draw_ui () {
         }
     }
 
-    glimgui_finish ();
+    glimgui_finish();
 }
 
 void callback_pointer(const KDEvent *event)
@@ -149,23 +143,23 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Platform: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_PLATFORM)); kdLogMessage("\n");
 
     const EGLint egl_attributes[] =
-            {
-                    EGL_SURFACE_TYPE,                EGL_WINDOW_BIT,
-                    EGL_RED_SIZE,                    8,
-                    EGL_GREEN_SIZE,                  8,
-                    EGL_BLUE_SIZE,                   8,
-                    EGL_ALPHA_SIZE,                  8,
-                    EGL_DEPTH_SIZE,                  24,
-                    EGL_STENCIL_SIZE,                8,
-                    EGL_NONE
-            };
+    {
+        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
+        EGL_RED_SIZE,           8,
+        EGL_GREEN_SIZE,         8,
+        EGL_BLUE_SIZE,          8,
+        EGL_ALPHA_SIZE,         8,
+        EGL_DEPTH_SIZE,         24,
+        EGL_STENCIL_SIZE,       8,
+        EGL_NONE
+    };
 
     const EGLint egl_context_attributes[] =
-            {
-                    EGL_CONTEXT_MAJOR_VERSION_KHR, 2,
-                    EGL_CONTEXT_MINOR_VERSION_KHR, 1,
-                    EGL_NONE,
-            };
+    {
+        EGL_CONTEXT_MAJOR_VERSION_KHR, 2,
+        EGL_CONTEXT_MINOR_VERSION_KHR, 1,
+        EGL_NONE,
+    };
 
     EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     eglInitialize(egl_display, 0, 0);
@@ -196,7 +190,8 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
 
     kdInstallCallback(callback_pointer, KD_EVENT_INPUT_POINTER, KD_NULL);
 
-    glClearColor (0.3, 0.3, 0.3, 1.);
+    glClearColor (0.3f, 0.3f, 0.3f, 1.0f);
+    glimgui_init ();
 
     while(!quit)
     {
@@ -266,7 +261,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         else
         {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-            draw_ui();
+            draw_ui(kd_window);
         }
     }
     eglDestroyContext(egl_display, egl_context);

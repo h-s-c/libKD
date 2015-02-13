@@ -43,7 +43,6 @@
 struct GLIMGUIState uistate;
 
 /* utility functions */
-static float text_scale = 1.5f;
 void glimgui_printxy (float x, float y, float r, float g, float b, const char *str, ...) {
     // we constrain ourselves to strings shorter than 256 characters
     static char msg[256];
@@ -60,11 +59,11 @@ void glimgui_printxy (float x, float y, float r, float g, float b, const char *s
 
     static char buffer[99999]; // ~500 chars
     int num_quads;
-
-    num_quads = stb_easy_font_print(x/text_scale, y/text_scale, msg, NULL, buffer, sizeof(buffer));
+    
+    num_quads = stb_easy_font_print(x/uistate.textscale, y/uistate.textscale, msg, NULL, buffer, sizeof(buffer));
     glPushMatrix();
-    glColor3f (r, g, b);
-    glScalef(text_scale, text_scale, 1.0f);
+    glColor4f(r, g, b, 1.0f);
+    glScalef(uistate.textscale, uistate.textscale, 1.0f);
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(2, GL_FLOAT, 16, buffer);
     glDrawArrays(GL_QUADS, 0, num_quads*4);
@@ -80,10 +79,10 @@ void glimgui_draw_rect (int x, int y, int w, int h, float r, float g, float b) {
             x + w, y, 0
     };
     glPushMatrix();
-    glColor3f (r, g, b);
+    glColor4f(r, g, b, 1.0f);
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_INT, 0, rect);
-    glDrawArrays(GL_QUADS,0,4);
+    glDrawArrays(GL_TRIANGLE_FAN,0,4);
     glDisableClientState(GL_VERTEX_ARRAY);
     glPopMatrix();
 }
@@ -132,6 +131,7 @@ static long systemtime() {
 /* Initialization, etc. */
 void glimgui_init() {
     uistate.inittime = systemtime();
+    uistate.textscale = 1.0f;
 
     // Here we reset the state of the global GLIMGUIState
     uistate.hotitem = 0;
@@ -185,7 +185,7 @@ void glimgui_finish() {
 
 void glimgui_label (int id, const char *caption, int x, int y, int w, int h) {
 
-    glimgui_printxy(x , y + h * 0.5 + -8 * text_scale * 0.3, 1.0f, 1.0f, 1.0f, caption);
+    glimgui_printxy(x , y + h * 0.5 + -8 * uistate.textscale * 0.3, 1.0f, 1.0f, 1.0f, caption);
 }
 
 int glimgui_button (int id, const char* caption, int x, int y, int w, int h) {
@@ -233,8 +233,8 @@ int glimgui_button (int id, const char* caption, int x, int y, int w, int h) {
 
     // Caption
     if (caption != NULL) {
-        float str_width = stb_easy_font_width((char*)caption)*text_scale;
-        glimgui_printxy(x + w * 0.5 - str_width * 0.5, y + h * 0.5 + -8 * text_scale * 0.3, 1.0f, 1.0f, 1.0f, caption);
+        float str_width = stb_easy_font_width((char*)caption)*uistate.textscale;
+        glimgui_printxy(x + w * 0.5 - str_width * 0.5, y + h * 0.5 + -8 * uistate.textscale * 0.3, 1.0f, 1.0f, 1.0f, caption);
     }
 
     // Mouse Logic
@@ -287,8 +287,9 @@ int glimgui_button (int id, const char* caption, int x, int y, int w, int h) {
     return 0;
 }
 
-int glimgui_lineedit (int id, char *text_value, size_t maxlength, int x, int y, int w, int h) {
+int glimgui_lineedit (int id, char *text_value, int maxlength, int x, int y, int w, int h) {
     // abort if we are about to switch to another widget layout
+
     if (uistate.clear_state)
         return 0;
 
@@ -300,7 +301,7 @@ int glimgui_lineedit (int id, char *text_value, size_t maxlength, int x, int y, 
         h = 16;
     }
 
-    size_t text_length = strlen(text_value);
+    int text_length = strlen(text_value);
 
     // Check for hotness
     if (regionhit (x, y, w, h)) {
@@ -348,7 +349,7 @@ int glimgui_lineedit (int id, char *text_value, size_t maxlength, int x, int y, 
         uistate.redraw_flag = 1;
     }
 
-    glimgui_printxy(x + 5, y + h * 0.5 + -9 * text_scale * 0.3, 1.0f, 1.0f, 1.0f, text_copy);
+    glimgui_printxy(x + 5, y + h * 0.5 + -9 * uistate.textscale * 0.3, 1.0f, 1.0f, 1.0f, text_copy);
 
     free (text_copy);
 
