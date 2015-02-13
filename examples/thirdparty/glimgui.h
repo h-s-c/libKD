@@ -37,7 +37,7 @@
 
 /** \brief The state of the IMGUI and the input devices */
 struct GLIMGUIState {
-    int inittime;
+    long inittime;
 
     /// \brief Id of the item on which the mouse is currently
     int hotitem;
@@ -73,9 +73,9 @@ extern struct GLIMGUIState uistate;
 /* helper function */
 
 /** \brief Draws the string at the given position */
-void glimgui_printxy (float x, float y, const char *str, ...);
+void glimgui_printxy (float x, float y, float r, float g, float b, const char *str, ...);
 /** \brief Draws a filled 2D recangle at given position and size */
-void glimgui_draw_rect (int x, int y, int w, int h);
+void glimgui_draw_rect (int x, int y, int w, int h, float r, float g, float b);
 /** \brief Draws a rectangular decoration for the widget with id
  * Performs the decoration dependent on hotness and activeness. 
  * */
@@ -100,6 +100,6 @@ void glimgui_label (int id, const char *caption, int x, int y, int w, int h);
 /** \brief Draws a button with a given caption (returns 1 if it was pressed) */
 int glimgui_button (int id, const char* caption, int x, int y, int w, int h);
 /** \brief Draws a one-lined textfiled that modifies the given string */
-int glimgui_lineedit (int id, char *text_value, int maxlength, int x, int y, int w, int h);
+int glimgui_lineedit (int id, char *text_value, size_t maxlength, int x, int y, int w, int h);
 
 #endif /* _GLIMGUI_H */
