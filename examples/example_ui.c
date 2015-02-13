@@ -76,7 +76,7 @@ void draw_ui () {
 
         if (glimgui_lineedit (2, name, 16, 290, 195, -1, 20))
         {
-            //kdLogMessage("Changed name value: '%s'\n", name);
+            kdLogMessage("Changed name value: "); kdLogMessage(name); kdLogMessage("\n");
         }
 
         glimgui_label (97, "Enter your age:", 150, 210, 1, 50);
@@ -85,7 +85,7 @@ void draw_ui () {
 
         if (glimgui_lineedit (3, age, 3, 290, 225, -1, 20))
         {
-            //kdLogMessage("Changed age value: '%s'\n", age);
+            kdLogMessage("Changed age value: "); kdLogMessage(age); kdLogMessage("\n");
         }
 
         if (glimgui_button (4, "Back", 220, 380, 180, 50))

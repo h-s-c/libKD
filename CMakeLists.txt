@@ -227,7 +227,10 @@ if(KD_BUILD_EXAMPLES)
         example_helper()
         target_link_libraries(${PROJECT_NAME} GLESv2)
 
-    project (example_ui)
-        example_helper(${EXAMPLE_DIR}/thirdparty/glimgui.c)
-        target_link_libraries(${PROJECT_NAME} GL)
+    if(NOT ANDROID)
+    # OpenGL 2.1 example
+        project (example_ui)
+            example_helper(${EXAMPLE_DIR}/thirdparty/glimgui.c)
+            target_link_libraries(${PROJECT_NAME} GL)
+    endif()
 endif()
