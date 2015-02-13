@@ -113,9 +113,19 @@ static int regionhit (int x, int y, int w, int h) {
 }
 
 static int systemtime() {
+#ifdef CLOCK_MONOTONIC
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return now.tv_nsec/1000000 + now.tv_sec*1000;
+#elif defined(HAVE_GETTIMEOFDAY)
+    struct timeval now;
+    gettimeofday( &now, NULL );
+    return now.tv_usec/1000 + now.tv_sec*1000;
+#else
     struct timespec now;
     timespec_get(&now, TIME_UTC);
     return now.tv_nsec/1000000 + now.tv_sec*1000;
+#endif
 }
 
 /* Initialization, etc. */

@@ -31,7 +31,6 @@
 #include <GL/gl.h>
 
 #include "thirdparty/glimgui.h"
-#include "../distribution/KD/kd.h"
 
 /* Example with ui*/
 static KDboolean quit = 0;
