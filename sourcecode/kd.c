@@ -951,13 +951,12 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         if(windows[window].nativewindow)
         {
             KDWindowX11 *x11window = windows[window].nativewindow;
-            XSelectInput(x11window->display, x11window->window, KeyPressMask|ButtonPressMask|SubstructureRedirectMask);
+            XSelectInput(x11window->display, x11window->window, KeyPressMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
             while(XPending(x11window->display) > 0)
             {
                 KDEvent *event = kdCreateEvent();
                 XEvent xevent = {0};
-                XNextEvent(x11window->display,&xevent);
-                switch(xevent.type)
+                XNextEvent(x11window->display,&xevent);switch(xevent.type)
                 {
                     case KeyPress:
                     {
@@ -975,12 +974,44 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         event->type                     = KD_EVENT_INPUT_POINTER;
                         event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                        event->data.inputpointer.select = 1;
                         event->data.inputpointer.x      = xevent.xbutton.x;
                         event->data.inputpointer.y      = xevent.xbutton.y;
-                        event->data.inputpointer.select = 1;
                         if(!__kdExecCallback(event))
                         {
                             kdPostEvent(event);
+                        }
+                        break;
+                    }
+                    case ButtonRelease:
+                    {
+                        event->type                     = KD_EVENT_INPUT_POINTER;
+                        event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                        event->data.inputpointer.select = 0;
+                        event->data.inputpointer.x      = xevent.xbutton.x;
+                        event->data.inputpointer.y      = xevent.xbutton.y;
+                        if(!__kdExecCallback(event))
+                        {
+                            kdPostEvent(event);
+                        }
+                        break;
+                    }
+                    case MotionNotify:
+                    {
+                        event->type                     = KD_EVENT_INPUT_POINTER;
+                        event->data.inputpointer.index  = KD_INPUT_POINTER_X;
+                        event->data.inputpointer.x      = xevent.xmotion.x;
+                        if(!__kdExecCallback(event))
+                        {
+                            kdPostEvent(event);
+                        }
+                        KDEvent *event2 = kdCreateEvent();
+                        event2->type                     = KD_EVENT_INPUT_POINTER;
+                        event2->data.inputpointer.index  = KD_INPUT_POINTER_Y;
+                        event2->data.inputpointer.y      = xevent.xmotion.y;
+                        if(!__kdExecCallback(event2))
+                        {
+                            kdPostEvent(event2);
                         }
                         break;
                     }
@@ -988,7 +1019,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
 
-                        kdPostEvent(event);
+                        if(!__kdExecCallback(event))
+                        {
+                            kdPostEvent(event);
+                        }
                         break;
                     }
                     case ClientMessage:
@@ -1002,6 +1036,11 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             }
                             break;
                         }
+                    }
+                    case MappingNotify:
+                    {
+                        XRefreshKeyboardMapping((XMappingEvent*)&xevent);
+                        break;
                     }
                     default:
                     {
@@ -2468,6 +2507,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
     netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_FOCUSED", False);
     XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
@@ -2516,6 +2556,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 #else
         KDWindowX11 *x11window = window->nativewindow;
         XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
+        XFlush(x11window->display);
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostThreadEvent(event, kdThreadSelf());
@@ -2535,6 +2576,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 #else
         KDWindowX11 *x11window = window->nativewindow;
         XStoreName(x11window->display, x11window->window, param);
+        XFlush(x11window->display);
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostThreadEvent(event, kdThreadSelf());
