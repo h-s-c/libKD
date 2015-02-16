@@ -61,6 +61,7 @@ void glimgui_printxy (float x, float y, float r, float g, float b, const char *s
     int num_quads;
     
     num_quads = stb_easy_font_print(x/uistate.textscale, y/uistate.textscale, msg, NULL, buffer, sizeof(buffer));
+
     glPushMatrix();
     glColor4f(r, g, b, 1.0f);
     glScalef(uistate.textscale, uistate.textscale, 1.0f);
@@ -71,23 +72,23 @@ void glimgui_printxy (float x, float y, float r, float g, float b, const char *s
     glPopMatrix();
 }
 
-void glimgui_draw_rect (int x, int y, int w, int h, float r, float g, float b) {
-    GLint rect[] = {
-            x, y, 0,
-            x, y + h, 0,
-            x + w, y + h, 0,
-            x + w, y, 0
+void glimgui_draw_rect (float x, float y, float w, float h, float r, float g, float b) {
+    GLfloat rect[] = {
+            x, y, 0.0f,
+            x, y + h, 0.0f,
+            x + w, y + h, 0.0f,
+            x + w, y, 0.0f
     };
     glPushMatrix();
     glColor4f(r, g, b, 1.0f);
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_INT, 0, rect);
+    glVertexPointer(3, GL_FLOAT, 0, rect);
     glDrawArrays(GL_TRIANGLE_FAN,0,4);
     glDisableClientState(GL_VERTEX_ARRAY);
     glPopMatrix();
 }
 
-void glimgui_draw_rect_decoration (int id, int x, int y, int w, int h) {
+void glimgui_draw_rect_decoration (int id, float x, float y, float w, float h) {
     glimgui_draw_rect (x + 4, y + 4, w, h, 0.2, 0.2, 0.2);
 
     if (uistate.hotitem == id
@@ -103,7 +104,7 @@ void glimgui_draw_rect_decoration (int id, int x, int y, int w, int h) {
 }
 
 /** \brief Returns 1 if the mouse is in the specified rectangle */
-static int regionhit (int x, int y, int w, int h) {
+static int regionhit (float x, float y, float w, float h) {
     if (uistate.mousepos_x < x ||
             uistate.mousepos_y < y ||
             uistate.mousepos_x >= x + w ||
@@ -132,6 +133,8 @@ static long systemtime() {
 void glimgui_init() {
     uistate.inittime = systemtime();
     uistate.textscale = 1.0f;
+    uistate.width = 0;
+    uistate.height = 0;
 
     // Here we reset the state of the global GLIMGUIState
     uistate.hotitem = 0;
@@ -183,12 +186,12 @@ void glimgui_finish() {
     uistate.last_specialkey = 0;
 }
 
-void glimgui_label (int id, const char *caption, int x, int y, int w, int h) {
+void glimgui_label (int id, const char *caption, float x, float y, float w, float h) {
 
     glimgui_printxy(x , y + h * 0.5 + -8 * uistate.textscale * 0.3, 1.0f, 1.0f, 1.0f, caption);
 }
 
-int glimgui_button (int id, const char* caption, int x, int y, int w, int h) {
+int glimgui_button (int id, const char* caption, float x, float y, float w, float h) {
     // abort if we are about to switch to another widget layout
     if (uistate.clear_state)
         return 0;
@@ -287,7 +290,7 @@ int glimgui_button (int id, const char* caption, int x, int y, int w, int h) {
     return 0;
 }
 
-int glimgui_lineedit (int id, char *text_value, int maxlength, int x, int y, int w, int h) {
+int glimgui_lineedit (int id, char *text_value, int maxlength, float x, float y, float w, float h) {
     // abort if we are about to switch to another widget layout
 
     if (uistate.clear_state)

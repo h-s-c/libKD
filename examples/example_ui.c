@@ -26,6 +26,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
+#include <KD/ATX_keyboard.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GL/gl.h>
@@ -42,7 +43,9 @@ void draw_ui (KDWindow* kd_window) {
     int height = window_size[1];
 
     /* Optimized for 16/9 */
-    uistate.textscale = (width / 640)*1.5;
+    uistate.textscale = (width / height)*3.0;
+    uistate.width = width;
+    uistate.height = height;
 
     glimgui_prepare();
 
@@ -92,37 +95,37 @@ void draw_ui (KDWindow* kd_window) {
     glimgui_finish();
 }
 
-void callback_pointer(const KDEvent *event)
+void callback_input(const KDEvent *event)
 {
     switch(event->type)
     {
         case(KD_EVENT_INPUT_POINTER):
         {
-            switch(event->data.inputpointer.index)
+            if (event->data.inputpointer.index == KD_INPUT_POINTER_SELECT)
             {
-                case(KD_INPUT_POINTER_SELECT):
-                {
-                    uistate.left_mousebutton_state = event->data.inputpointer.select;
-                    uistate.mousepos_x = event->data.inputpointer.x;
-                    uistate.mousepos_y = event->data.inputpointer.y;
-                    break;
-                }
-                case(KD_INPUT_POINTER_X):
-                {
-                    uistate.mousepos_x = event->data.inputpointer.x;
-                    break;
-                }
-                case(KD_INPUT_POINTER_Y):
-                {
-                    uistate.mousepos_y = event->data.inputpointer.y;
-                    break;
-                }
-                default:
-                {
-                    break;
-                }
+                uistate.left_mousebutton_state = event->data.inputpointer.select;
+            }
+            uistate.mousepos_x = event->data.inputpointer.x;
+            uistate.mousepos_y = event->data.inputpointer.y;
+        }
+        case(KD_EVENT_INPUT_KEY_ATX):
+        {
+            const KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+            if(keyevent->keycode == KD_KEY_UP_ATX)
+            {
+                uistate.last_specialkey = GLIMGUI_KEY_UP;
+
+            }
+            else if (keyevent->keycode == KD_KEY_DOWN_ATX)
+            {
+                uistate.last_specialkey = GLIMGUI_KEY_DOWN;
             }
             break;
+        }
+        case(KD_EVENT_INPUT_KEYCHAR_ATX):
+        {
+            const KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
+            uistate.last_character = (char)keycharevent->character;
         }
         default:
         {
@@ -188,7 +191,9 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Renderer: "); kdLogMessage((const char*)glGetString(GL_RENDERER)); kdLogMessage("\n");
     kdLogMessage("Extensions: "); kdLogMessage((const char*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
 
-    kdInstallCallback(callback_pointer, KD_EVENT_INPUT_POINTER, KD_NULL);
+    kdInstallCallback(callback_input, KD_EVENT_INPUT_POINTER, KD_NULL);
+    kdInstallCallback(callback_input, KD_EVENT_INPUT_KEY_ATX, KD_NULL);
+    kdInstallCallback(callback_input, KD_EVENT_INPUT_KEYCHAR_ATX, KD_NULL);
 
     glClearColor (0.3f, 0.3f, 0.3f, 1.0f);
     glimgui_init ();
@@ -204,14 +209,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
                 {
                     KDint32 window_size[2];
                     kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, window_size);
-                    glViewport (0, 0, window_size[0],window_size[1]);
-
-                    glMatrixMode (GL_PROJECTION);
-                    glLoadIdentity ();
-
                     glOrtho(0, window_size[0],window_size[1], 0, -1.0f, 1.0f);
-                    glMatrixMode (GL_MODELVIEW);
-                    glLoadIdentity();
                     break;
                 }
                 case(KD_EVENT_QUIT):

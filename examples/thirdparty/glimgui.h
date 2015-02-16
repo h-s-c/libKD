@@ -39,6 +39,8 @@
 struct GLIMGUIState {
     long inittime;
     float textscale;
+    int width;
+    int height;
 
     /// \brief Id of the item on which the mouse is currently
     int hotitem;
@@ -76,11 +78,11 @@ extern struct GLIMGUIState uistate;
 /** \brief Draws the string at the given position */
 void glimgui_printxy (float x, float y, float r, float g, float b, const char *str, ...);
 /** \brief Draws a filled 2D recangle at given position and size */
-void glimgui_draw_rect (int x, int y, int w, int h, float r, float g, float b);
+void glimgui_draw_rect (float x, float y, float w, float h, float r, float g, float b);
 /** \brief Draws a rectangular decoration for the widget with id
  * Performs the decoration dependent on hotness and activeness. 
  * */
-void glimgui_draw_rect_decoration (int id, int x, int y, int w, int h);
+void glimgui_draw_rect_decoration (int id, float x, float y, float w, float h);
 
 /* initialization */
 void glimgui_init ();
@@ -97,10 +99,10 @@ void glimgui_clear ();
 /* widgets */
 
 /** \brief Draws a label with the given position and caption */
-void glimgui_label (int id, const char *caption, int x, int y, int w, int h);
+void glimgui_label (int id, const char *caption, float x, float y, float w, float h);
 /** \brief Draws a button with a given caption (returns 1 if it was pressed) */
-int glimgui_button (int id, const char* caption, int x, int y, int w, int h);
+int glimgui_button (int id, const char* caption, float x, float y, float w, float h);
 /** \brief Draws a one-lined textfiled that modifies the given string */
-int glimgui_lineedit (int id, char *text_value, int maxlength, int x, int y, int w, int h);
+int glimgui_lineedit (int id, char *text_value, int maxlength, float x, float y, float w, float h);
 
 #endif /* _GLIMGUI_H */

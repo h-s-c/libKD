@@ -48,7 +48,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/KHR_float64.h>
+#include <KD/ATX_keyboard.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -951,25 +951,13 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         if(windows[window].nativewindow)
         {
             KDWindowX11 *x11window = windows[window].nativewindow;
-            XSelectInput(x11window->display, x11window->window, KeyPressMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
+            XSelectInput(x11window->display, x11window->window, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
             while(XPending(x11window->display) > 0)
             {
                 KDEvent *event = kdCreateEvent();
                 XEvent xevent = {0};
                 XNextEvent(x11window->display,&xevent);switch(xevent.type)
                 {
-                    case KeyPress:
-                    {
-                        if(XLookupKeysym(&xevent.xkey, 0) == XK_F4 && (xevent.xkey.state & Mod1Mask))
-                        {
-                            event->type      = KD_EVENT_QUIT;
-                            if(!__kdExecCallback(event))
-                            {
-                                kdPostEvent(event);
-                            }
-                            break;
-                        }
-                    }
                     case ButtonPress:
                     {
                         event->type                     = KD_EVENT_INPUT_POINTER;
@@ -994,6 +982,55 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         {
                             kdPostEvent(event);
                         }
+                        break;
+                    }
+                    case KeyPress:
+                    {
+                        KeySym keysym;
+                        XLookupString(&xevent.xkey, NULL, 25, &keysym, NULL);
+                        event->type = KD_EVENT_INPUT_KEY_ATX;
+                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                        switch(keysym)
+                        {
+                            case(XK_Up):
+                            {
+
+                                keyevent->keycode = KD_KEY_UP_ATX;
+                                break;
+                            }
+                            case(XK_Down):
+                            {
+
+                                keyevent->keycode = KD_KEY_DOWN_ATX;
+                                break;
+                            }
+                            case(XK_Left):
+                            {
+
+                                keyevent->keycode = KD_KEY_LEFT_ATX;
+                                break;
+                            }
+                            case(XK_Right):
+                            {
+
+                                keyevent->keycode = KD_KEY_RIGHT_ATX;
+                                break;
+                            }
+                            default:
+                            {
+                                event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                                KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *) (&event->data);
+                                keycharevent->character = (KDint32) keysym;
+                                break;
+                            }
+                        }
+                        if(!__kdExecCallback(event))
+                        {
+                            kdPostEvent(event);
+                        }
+                    }
+                    case KeyRelease:
+                    {
                         break;
                     }
                     case MotionNotify:
