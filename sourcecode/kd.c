@@ -163,6 +163,8 @@
     #endif
     #include <stdatomic.h>
     #define __KDatomic                                              _Atomic
+    #define __KDatomic_acquire                                      memory_order_acquire
+    #define __KDatomic_release                                      memory_order_release
     #define __KD_ATOMIC_VAR_INIT(value)                             ATOMIC_VAR_INIT(value)
     #define __kdAtomicInit(object, value)                           atomic_init(object, value)
     #define __kdAtomicLoad(object)                                  atomic_load(object)
@@ -174,6 +176,8 @@
 #else
     #if defined (__clang__) && __has_feature(c_atomic)
         #define __KDatomic                                              _Atomic
+        #define __KDatomic_acquire                                      __ATOMIC_ACQUIRE
+        #define __KDatomic_release                                      __ATOMIC_RELEASE
         #define __KD_ATOMIC_VAR_INIT(value)                             (value)
         #define __kdAtomicInit(object, value)                           __c11_atomic_init(object, value)
         #define __kdAtomicLoad(object)                                  __c11_atomic_load(object, __ATOMIC_SEQ_CST)
@@ -481,7 +485,7 @@ static _Atomic KDuint __kd_threads_index =  __KD_ATOMIC_VAR_INIT(0);
 static KDThread* __kdThreadRegister(KDuint64 threadid, const KDThreadAttr* threadattr, void* cleanup)
 {
     KDuint slot = __kdAtomicLoadAdd(&__kd_threads_index, 1);
-    __kdAtomicBarrier(memory_order_acquire);
+    __kdAtomicBarrier(__KDatomic_acquire);
     __kd_threads[slot].threadid = threadid;
     __kd_threads[slot].threadattr = kdThreadAttrCreate();
     if(threadattr != KD_NULL)
@@ -492,7 +496,7 @@ static KDThread* __kdThreadRegister(KDuint64 threadid, const KDThreadAttr* threa
     }
     __kd_threads[slot].cleanup = cleanup;
     __kd_threads[slot].eventqueue = __kdQueueCreate(__kd_threads[slot].threadattr->stacksize);
-    __kdAtomicBarrier(memory_order_release);
+    __kdAtomicBarrier(__KDatomic_release);
     return &__kd_threads[slot];
 }
 
@@ -500,7 +504,7 @@ static void __kdThreadUnregister(KDThread *thread)
 {
     if(thread != KD_NULL)
     {
-        __kdAtomicBarrier(memory_order_acquire);
+        __kdAtomicBarrier(__KDatomic_acquire);
         thread->threadid = 0;
         if (thread->threadattr != KD_NULL)
         {
@@ -517,7 +521,7 @@ static void __kdThreadUnregister(KDThread *thread)
             __kdQueueFree(thread->eventqueue);
             thread->eventqueue = KD_NULL;
         }
-        __kdAtomicBarrier(memory_order_release);
+        __kdAtomicBarrier(__KDatomic_release);
     }
 }
 
