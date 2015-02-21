@@ -153,13 +153,6 @@
 #define __has_feature(x) 0
 #endif
 
-#if !defined(__GNUC_PREREQ__)
-#if defined(__GNUC__) && defined(__GNUC_MINOR__)
-#define __GNUC_PREREQ__(maj, min) ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
-#else
-#define __GNUC_PREREQ__(maj, min) 0
-#endif
-
 #if !defined (__cplusplus) && (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
     #ifdef __ANDROID__
         typedef uint32_t char32_t;
