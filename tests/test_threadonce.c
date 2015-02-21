@@ -22,7 +22,20 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <stdatomic.h> /* _Atomic */
+
+#if !defined(__has_include)
+#define __has_include(x) 0
+#endif
+
+#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__) && __has_include(<stdatomic.h>)
+#include <stdatomic.h>
+#else
+    #if defined (__clang__) && __has_feature(c_atomic)
+        #define ATOMIC_VAR_INIT(value)          (value)
+        #define atomic_load(object)             __c11_atomic_load(object, __ATOMIC_SEQ_CST)
+        #define atomic_fetch_add(object, value) __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
+    #endif
+#endif
 
 #include <stdio.h>
 
