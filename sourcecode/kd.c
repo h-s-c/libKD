@@ -251,8 +251,6 @@ static __KDQueue *__kdQueueCreate(KDsize max_size)
 static struct __KDQueueNode *__kdQueuePop(__KDatomic __KDQueueHead *head)
 {
     __KDQueueHead next = {0};
-    __KDQueueHead test;
-    test = __kdAtomicLoad(&test);
     __KDQueueHead orig = __kdAtomicLoad(head);
     do {
         if (orig.node == KD_NULL)
