@@ -149,10 +149,21 @@
  * Assorted helper functions
  ******************************************************************************/
 
-#if !__STDC_NO_ATOMICS__
+#if !defined(__has_feature)
+#define __has_feature(x) 0
+#endif
+
+#if !defined(__GNUC_PREREQ__)
+#if defined(__GNUC__) && defined(__GNUC_MINOR__)
+#define __GNUC_PREREQ__(maj, min) ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+#else
+#define __GNUC_PREREQ__(maj, min) 0
+#endif
+
+//#if !defined (__cplusplus) && (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
     #ifdef __ANDROID__
-    typedef uint32_t char32_t;
-    typedef uint16_t char16_t;
+        typedef uint32_t char32_t;
+        typedef uint16_t char16_t;
     #endif
     #include <stdatomic.h>
     #define __KDatomic                                              _Atomic
@@ -165,7 +176,7 @@
     #define __kdAtomicCompareExchange(object, expected, desired)    atomic_compare_exchange_weak(object, expected, desired)
     #define __kdAtomicBarrier(order)                                atomic_thread_fence(order)
 #else
-    #ifdef __clang__ && __has_feature(c_atomic)
+    #if defined (__clang__) && __has_feature(c_atomic)
         #define __KDatomic                                              _Atomic
         #define __KD_ATOMIC_VAR_INIT(value)                             (value)
         #define __kdAtomicInit(object, value)                           __c11_atomic_init(object, value)
@@ -175,16 +186,6 @@
         #define __kdAtomicStore(object, desired)                        __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
         #define __kdAtomicCompareExchange(object, expected, desired)    __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
         #define __kdAtomicBarrier(order)                                __c11_atomic_thread_fence(order)
-    #elif __GNUC_PREREQ__(4, 7)
-        #define __KDatomic                                              volatile
-        #define __KD_ATOMIC_VAR_INIT(value)                             (value)
-        #define __kdAtomicInit(object, value)                           do { (obj) = (value); } while (0)
-        #define __kdAtomicLoad(object)                                  __atomic_load_n(&object, __ATOMIC_SEQ_CST)
-        #define __kdAtomicLoadAdd(object, value)                        __atomic_fetch_add(&object, value, __ATOMIC_SEQ_CST)
-        #define __kdAtomicLoadSub(object, value)                        __atomic_fetch_sub(&object, value, __ATOMIC_SEQ_CST)
-        #define __kdAtomicStore(object, desired)                        __atomic_store_n(&object, desired, __ATOMIC_SEQ_CST)
-        #define __kdAtomicCompareExchange(object, expected, desired)    __atomic_compare_exchange_n(&object, expected, desired, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
-        #define __kdAtomicBarrier(order)                                __atomic_thread_fence(order)
     #endif
 #endif
 
@@ -210,7 +211,7 @@ typedef struct __KDQueue {
     __KDatomic KDsize size;
 } __KDQueue;
 
-static inline size_t __kdQueueSize(__KDQueue *queue)
+static inline KDsize __kdQueueSize(__KDQueue *queue)
 {
     return __kdAtomicLoad(&queue->size);
 }
@@ -254,6 +255,8 @@ static __KDQueue *__kdQueueCreate(KDsize max_size)
 static struct __KDQueueNode *__kdQueuePop(__KDatomic __KDQueueHead *head)
 {
     __KDQueueHead next = {0};
+    __KDQueueHead test;
+    test = __kdAtomicLoad(&test);
     __KDQueueHead orig = __kdAtomicLoad(head);
     do {
         if (orig.node == KD_NULL)
@@ -269,7 +272,7 @@ static struct __KDQueueNode *__kdQueuePop(__KDatomic __KDQueueHead *head)
 static void  __kdQueuePush(__KDatomic __KDQueueHead *head, struct __KDQueueNode *node)
 {
     __KDQueueHead next = {0};
-__KDQueueHead orig = __kdAtomicLoad(head);
+    __KDQueueHead orig = __kdAtomicLoad(head);
     do {
         node->next = orig.node;
         next.aba = orig.aba + 1;
