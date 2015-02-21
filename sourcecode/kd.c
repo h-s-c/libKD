@@ -160,7 +160,7 @@
 #define __GNUC_PREREQ__(maj, min) 0
 #endif
 
-//#if !defined (__cplusplus) && (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if !defined (__cplusplus) && (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
     #ifdef __ANDROID__
         typedef uint32_t char32_t;
         typedef uint16_t char16_t;
