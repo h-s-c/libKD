@@ -75,7 +75,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Removed checks because we use alternative threads/atomics implementations on some Platforms */
+/* Removed checks because we use alternative threads implementations on some Platforms */
 /* #if __STDC_VERSION__ >= 201112L */
 #if 1
 
@@ -152,8 +152,11 @@
 #if !defined(__has_feature)
 #define __has_feature(x) 0
 #endif
+#if !defined(__has_include)
+#define __has_include(x) 0
+#endif
 
-#if !defined (__cplusplus) && (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if !defined (__cplusplus) && (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__) && __has_include(<stdatomic.h>)
     #ifdef __ANDROID__
         typedef uint32_t char32_t;
         typedef uint16_t char16_t;
