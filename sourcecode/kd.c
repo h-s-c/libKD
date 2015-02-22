@@ -186,6 +186,18 @@
         #define __kdAtomicStore(object, desired)                        __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
         #define __kdAtomicCompareExchange(object, expected, desired)    __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
         #define __kdAtomicBarrier(order)                                __c11_atomic_thread_fence(order)
+    #elif defined (_MSC_VER)
+        #define __KDatomic                                              volatile
+        #define __KDatomic_acquire
+        #define __KDatomic_release
+        #define __KD_ATOMIC_VAR_INIT(value)                             (value)
+        #define __kdAtomicInit(object, value)                           InterlockedExchange(object, value)
+        #define __kdAtomicLoad(object)                                  InterlockedCompareExchange(object, 0, 0)
+        #define __kdAtomicLoadAdd(object, value)                        InterlockedExchangeAdd(object, value)
+        #define __kdAtomicLoadSub(object, value)                        InterlockedExchangeSubtract(object, value)
+        #define __kdAtomicStore(object, desired)                        InterlockedExchange(object, desired)
+        #define __kdAtomicCompareExchange(object, expected, desired)    InterlockedCompareExchange(object, desired, expected)
+        #define __kdAtomicBarrier(order)                                MemoryBarrier()
     #endif
 #endif
 

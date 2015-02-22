@@ -94,6 +94,9 @@ install:
           tar xzf lcov-1.11.tar.gz && cd lcov-1.11 && make && sudo make install && cd ..;
           gem install coveralls-lcov;
         elif [ "$CC" = "clang" ]; then
+          sudo apt-get install -qq gcc-4.9 g++-4.9;
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 90;
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 90;
           sudo apt-get install --allow-unauthenticated -qq clang-$CC_VERSION;
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90;
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
