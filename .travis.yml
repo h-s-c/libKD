@@ -30,9 +30,6 @@ matrix:
   include:
     - os: linux
       compiler: gcc
-      env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
-    - os: linux
-      compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.9
     - os: linux
       compiler: gcc
@@ -46,16 +43,25 @@ matrix:
     - os: linux
       compiler: clang
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.4
-  allow_failures:
     - os: linux
       compiler: gcc
       env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
+  allow_failures:
     - os: linux
       compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.8
     - os: linux
       compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.7
+    - os: linux
+      compiler: clang
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.5
+    - os: linux
+      compiler: clang
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.4
+    - os: linux
+      compiler: gcc
+      env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
 
 before_install:
   - sudo service postgresql stop || true
