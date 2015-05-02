@@ -135,6 +135,7 @@
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <windows.h>
+	#include <VersionHelpers.h>
 #endif
 
 /******************************************************************************
@@ -416,9 +417,28 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     }
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
-        static struct utsname name;
-        uname(&name);
-        return name.sysname;
+#ifdef _MSC_VER
+		if (IsWindows10OrGreater())
+		{
+			return "Windows 10";
+		}
+		else if (IsWindows8Point1OrGreater())
+		{
+			return "Windows 8.1";
+		}
+		else if (IsWindows8OrGreater())
+		{
+			return "Windows 8";
+		}
+		if (IsWindows7OrGreater())
+		{
+			return "Windows 7";
+		}
+#else
+		static struct utsname name;
+		uname(&name);
+		return name.sysname;
+#endif
     }
     kdSetError(KD_EINVAL);
     return KD_NULL;

@@ -1,0 +1,4 @@
+find_path(KHR_INCLUDE_DIR NAMES KHR/KHR.h)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(KHR DEFAULT_MSG KHR_INCLUDE_DIR)

@@ -35,7 +35,16 @@
 
 #cmakedefine KD_NO_STATIC_DATA
 
-#define KD_API KHRONOS_APICALL
+/* This is bugged in some versions of khrplatform.h */
+#ifdef _MSC_VER
+#   if defined (_DLL_EXPORTS)
+#       define KD_API __declspec(dllexport)
+#   else
+#       define KD_API __declspec(dllimport)
+#   endif
+#else
+#   define KD_API KHRONOS_APICALL
+#endif
 #define KD_APIENTRY KHRONOS_APIENTRY
 
 #if __STDC_VERSION__ >= 201112L
