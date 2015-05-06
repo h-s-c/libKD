@@ -41,7 +41,7 @@ set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sourcecode)
 set(EXAMPLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
-set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
+set(KD_BUILD_EXAMPLES "Off" CACHE BOOL "Build with examples")
 set(KD_BUILD_CI "Off" CACHE BOOL "Build with continous integration")
 set(KD_BUILD_GC "Off" CACHE BOOL "Build with gargabe collection")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
