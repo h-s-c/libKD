@@ -67,6 +67,11 @@
  ******************************************************************************/
 
 #include <errno.h>
+/* XSI streams are optional and not supported by MinGW */
+#ifdef __MINGW32__
+#define ENODATA    61
+#endif
+
 #include <inttypes.h>
 #include <locale.h>
 #include <math.h>
@@ -130,12 +135,18 @@
     #include <emscripten/emscripten.h>
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW32__)
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <windows.h>
 	#include <VersionHelpers.h>
+	#define inline __inline
+    /* Check NuGet for this package*/
+	#include <dirent.h>
+    /* Windows has some POSIX support */
+    #include <sys/types.h>
+    #include <sys/stat.h>
 #endif
 
 /******************************************************************************
@@ -188,17 +199,17 @@
         #define __kdAtomicCompareExchange(object, expected, desired)    __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
         #define __kdAtomicBarrier(order)                                __c11_atomic_thread_fence(order)
     #elif defined (_MSC_VER)
-        #define __KDatomic                                              volatile
-        #define __KDatomic_acquire
-        #define __KDatomic_release
-        #define __KD_ATOMIC_VAR_INIT(value)                             (value)
-        #define __kdAtomicInit(object, value)                           InterlockedExchange(object, value)
-        #define __kdAtomicLoad(object)                                  InterlockedCompareExchange(object, 0, 0)
-        #define __kdAtomicLoadAdd(object, value)                        InterlockedExchangeAdd(object, value)
-        #define __kdAtomicLoadSub(object, value)                        InterlockedExchangeSubtract(object, value)
-        #define __kdAtomicStore(object, desired)                        InterlockedExchange(object, desired)
-        #define __kdAtomicCompareExchange(object, expected, desired)    InterlockedCompareExchange(object, desired, expected)
-        #define __kdAtomicBarrier(order)                                MemoryBarrier()
+		#define __KDatomic                                              volatile
+		#define __KDatomic_acquire                                      
+		#define __KDatomic_release                                      
+		#define __KD_ATOMIC_VAR_INIT(value)                             
+		#define __kdAtomicInit(object, value)                           object = value
+		#define __kdAtomicLoad(object)                                  InterlockedCompareExchange((long *)object, 0, 0)
+		#define __kdAtomicLoadAdd(object, value)						InterlockedExchangeAdd((long *)object, value)
+		#define __kdAtomicLoadSub(object, value)                        InterlockedExchangeSubtract((long *)object, value)
+		#define __kdAtomicStore(object, desired)                        InterlockedExchange((long *)object, desired)
+		#define __kdAtomicCompareExchange(object, expected, desired)    InterlockedCompareExchange((long *)object, desired, expected)
+		#define __kdAtomicBarrier(order)                                MemoryBarrier()          
     #endif
 #endif
 
@@ -417,12 +428,8 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     }
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
-#ifdef _MSC_VER
-		if (IsWindows10OrGreater())
-		{
-			return "Windows 10";
-		}
-		else if (IsWindows8Point1OrGreater())
+#if defined(_MSC_VER) || defined(__MINGW32__)
+        if (IsWindows8Point1OrGreater())
 		{
 			return "Windows 8.1";
 		}
@@ -502,19 +509,15 @@ typedef struct __KDThreadStartArgs
 } __KDThreadStartArgs;
 typedef struct KDThread
 {
-#ifdef __ANDROID__
-    KDint64 threadid;
-#else
-    KDuint64 threadid;
-#endif
+	thrd_t threadid;
     KDThreadAttr* threadattr;
     void* cleanup;
     struct __KDQueue *eventqueue;
 } KDThread;
 static KDThread __kd_threads[999] = {{0}};
-static _Atomic KDuint __kd_threads_index =  __KD_ATOMIC_VAR_INIT(0);
+static __KDatomic KDuint __kd_threads_index =  __KD_ATOMIC_VAR_INIT(0);
 
-static KDThread* __kdThreadRegister(KDuint64 threadid, const KDThreadAttr* threadattr, void* cleanup)
+static KDThread* __kdThreadRegister(thrd_t threadid, const KDThreadAttr* threadattr, void* cleanup)
 {
     KDuint slot = __kdAtomicLoadAdd(&__kd_threads_index, 1);
     __kdAtomicBarrier(__KDatomic_acquire);
@@ -917,7 +920,7 @@ typedef struct KDWindowAndroid
     struct ANativeWindow *window;
     void *display;
 } KDWindowAndroid;
-#else
+#elif __unix__
 typedef struct KDWindowX11
 {
     Window window;
@@ -1013,7 +1016,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         }
     }
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
-#else
+#elif __unix__
     for(KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
     {
         if(windows[window].nativewindow)
@@ -1338,6 +1341,22 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
+#if defined(_MSC_VER) || defined(__MINGW32__)
+static HINSTANCE hModule = KD_NULL;
+BOOL WINAPI DllMain(HINSTANCE hinstDLL,  DWORD fdwReason,  LPVOID lpvReserved)
+{
+    switch (fdwReason)
+    {
+        case DLL_PROCESS_ATTACH:
+            hModule = hinstDLL;
+            break;
+        default:
+            break;
+    }
+    return KD_TRUE;
+}
+#endif
+
 typedef struct __KDMainArgs
 {
     int argc;
@@ -1373,8 +1392,13 @@ static void* __kdMainInjector( void *arg)
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
 #else
-    void *app = dlopen(NULL, RTLD_NOW);
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
+#ifdef _MSC_VER
+    kdMain = (decltype(kdMain)) GetProcAddress(hModule, "kdMain");
+#elif defined(__MINGW32__)
+    kdMain = (typeof(kdMain)) GetProcAddress(hModule, "kdMain");
+#else
+    void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
     kdMemcpy(&kdMain, &rawptr, sizeof(rawptr));
@@ -1383,6 +1407,7 @@ static void* __kdMainInjector( void *arg)
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.");
         kdAssert(0);
     }
+#endif
     (*kdMain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #endif
 
@@ -1576,6 +1601,8 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     }
     return 0;
 #endif
+    kdAssert(0);
+    return 0;
 }
 
 /******************************************************************************
@@ -2179,6 +2206,8 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
     KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     retval = PHYSFS_mkdir(pathname);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    retval = mkdir(pathname);
 #else
     retval = mkdir(pathname, S_IRWXU);
 #endif
@@ -2229,6 +2258,8 @@ KD_API KDint KD_APIENTRY kdTruncate(const KDchar *pathname, KDoff length)
 #ifdef KD_VFS_SUPPORTED
     /* TODO: Implement truncate */
     kdAssert(0);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    kdAssert(0);
 #else
     retval = truncate(pathname, length);
 #endif
@@ -2266,7 +2297,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
-#ifdef __ANDROID__
+#if  defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__)
     buf->st_mtime = posixstat.st_mtime;
 #else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
@@ -2288,7 +2319,7 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
-#ifdef __ANDROID__
+#if  defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__)
     buf->st_mtime = posixstat.st_mtime;
 #else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
@@ -2395,13 +2426,20 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
 #ifdef KD_VFS_SUPPORTED
-    const KDchar *temp = PHYSFS_getRealDir(pathname);
+     const KDchar *temp = PHYSFS_getRealDir(pathname);
 #else
-    const KDchar *temp = pathname;
+     const KDchar *temp = pathname;
 #endif
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+     KDuint64 freespace = 0;
+     GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL);
+    return freespace;
+#else
      struct statfs buf = {0};
      statfs(temp, &buf);
      return (buf.f_bsize/1024L) * buf.f_bavail;
+#endif
 }
 
  /******************************************************************************
@@ -2590,7 +2628,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #ifdef __ANDROID__
     window->nativewindow = kdMalloc(sizeof(KDWindowAndroid));
-#else
+#elif __unix__
     window->nativewindow = kdMalloc(sizeof(KDWindowX11));
     KDWindowX11 *x11window = window->nativewindow;
     XInitThreads();
@@ -2636,7 +2674,7 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 #ifdef __ANDROID__
     KDWindowAndroid *androidwindow = window->nativewindow;
     kdFree(androidwindow);
-#else
+#elif __unix__
     KDWindowX11 *x11window = window->nativewindow;
     XCloseDisplay(x11window->display);
     kdFree(x11window);
@@ -2658,7 +2696,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 #ifdef __ANDROID__
         kdSetError(KD_EOPNOTSUPP);
         return -1;
-#else
+#elif __unix__
         KDWindowX11 *x11window = window->nativewindow;
         XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
         XFlush(x11window->display);
@@ -2678,7 +2716,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 #ifdef __ANDROID__
         kdSetError(KD_EOPNOTSUPP);
         return -1;
-#else
+#elif __unix__
         KDWindowX11 *x11window = window->nativewindow;
         XStoreName(x11window->display, x11window->window, param);
         XFlush(x11window->display);
@@ -2706,7 +2744,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
         KDWindowAndroid *androidwindow = window->nativewindow;
         param[0] = ANativeWindow_getWidth(androidwindow->window);
         param[1] = ANativeWindow_getHeight(androidwindow->window);
-#else
+#elif __unix__
         KDWindowX11 *x11window = window->nativewindow;
         param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display));
         param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display));
@@ -2723,7 +2761,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 #ifdef __ANDROID__
         kdSetError(KD_EOPNOTSUPP);
         return -1;
-#else
+#elif __unix__
         KDWindowX11 *x11window = window->nativewindow;
         XFetchName(x11window->display, x11window->window, &param);
 #endif
@@ -2751,7 +2789,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
     ANativeWindow_setBuffersGeometry(androidwindow->window, 0, 0, window->format);
     *nativewindow = androidwindow->window;
-#else
+#elif __unix__
     KDWindowX11 *x11window = window->nativewindow;
     XMapWindow(x11window->display, x11window->window);
     XFlush(x11window->display);
@@ -2772,6 +2810,7 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
 }
 
 /* kdLogMessage: Output a log message. */
+#ifndef KD_NDEBUG
 KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 {
 #ifdef __ANDROID__
@@ -2781,6 +2820,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     fflush(stdout);
 #endif
 }
+#endif
 
 /******************************************************************************
  * Extensions

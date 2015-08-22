@@ -36,7 +36,7 @@
 #cmakedefine KD_NO_STATIC_DATA
 
 /* This is bugged in some versions of khrplatform.h */
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW32__)
 #   if defined (KD_EXPORTS)
 #       define KD_API __declspec(dllexport)
 #   else
