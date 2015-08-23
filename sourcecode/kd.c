@@ -140,8 +140,15 @@
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <windows.h>
+	#include <direct.h>
+	#include <io.h>
 	#include <VersionHelpers.h>
 	#define inline __inline
+	/* Fix POSIX name warning */
+	#define mkdir _mkdir
+	#define rmdir _rmdir
+	#define fileno _fileno
+	#define access _access
     /* Check NuGet for this package*/
 	#include <dirent.h>
     /* Windows has some POSIX support */
@@ -183,7 +190,7 @@
     #define __kdAtomicLoadAdd(object, value)                        atomic_fetch_add(object, value)
     #define __kdAtomicLoadSub(object, value)                        atomic_fetch_sub(object, value)
     #define __kdAtomicStore(object, desired)                        atomic_store(object, desired)
-    #define __kdAtomicCompareExchange(object, expected, desired)    atomic_compare_exchange_weak(object, expected, desired)
+    #define __kdAtomicCompareExchangePtr(object, expected, desired) atomic_compare_exchange_weak(object, expected, desired)
     #define __kdAtomicBarrier(order)                                atomic_thread_fence(order)
 #else
     #if defined (__clang__) && __has_feature(c_atomic)
@@ -196,19 +203,19 @@
         #define __kdAtomicLoadAdd(object, value)                        __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
         #define __kdAtomicLoadSub(object, value)                        __c11_atomic_fetch_sub(object, value, __ATOMIC_SEQ_CST)
         #define __kdAtomicStore(object, desired)                        __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
-        #define __kdAtomicCompareExchange(object, expected, desired)    __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+        #define __kdAtomicCompareExchangePtr(object, expected, desired) __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
         #define __kdAtomicBarrier(order)                                __c11_atomic_thread_fence(order)
     #elif defined (_MSC_VER)
 		#define __KDatomic                                              volatile
 		#define __KDatomic_acquire                                      
 		#define __KDatomic_release                                      
-		#define __KD_ATOMIC_VAR_INIT(value)                             
-		#define __kdAtomicInit(object, value)                           object = value
-		#define __kdAtomicLoad(object)                                  InterlockedCompareExchange((long *)object, 0, 0)
-		#define __kdAtomicLoadAdd(object, value)						InterlockedExchangeAdd((long *)object, value)
-		#define __kdAtomicLoadSub(object, value)                        InterlockedExchangeSubtract((long *)object, value)
-		#define __kdAtomicStore(object, desired)                        InterlockedExchange((long *)object, desired)
-		#define __kdAtomicCompareExchange(object, expected, desired)    InterlockedCompareExchange((long *)object, desired, expected)
+		#define __KD_ATOMIC_VAR_INIT(value)                             (value)
+		#define __kdAtomicInit(object, value)                           *(object) = (value)
+		#define __kdAtomicLoad(object)									(*object)
+		#define __kdAtomicLoadAdd(object, value)						InterlockedExchangeAdd((LONG *)object, value)
+		#define __kdAtomicLoadSub(object, value)                        InterlockedExchangeAdd((LONG *)object, -value)
+		#define __kdAtomicStore(object, desired)                        *(object) = (desired)
+		#define __kdAtomicCompareExchangePtr(object, expected, desired) InterlockedCompareExchangePointer((PVOID volatile *)object, (PVOID)expected, (PVOID)&desired)
 		#define __kdAtomicBarrier(order)                                MemoryBarrier()          
     #endif
 #endif
@@ -279,7 +286,7 @@ static __KDQueue *__kdQueueCreate(KDsize max_size)
 static struct __KDQueueNode *__kdQueuePop(__KDatomic __KDQueueHead *head)
 {
     __KDQueueHead next = {0};
-    __KDQueueHead orig = __kdAtomicLoad(head);
+	__KDQueueHead orig = __kdAtomicLoad(head);
     do {
         if (orig.node == KD_NULL)
         {
@@ -287,19 +294,19 @@ static struct __KDQueueNode *__kdQueuePop(__KDatomic __KDQueueHead *head)
         }
         next.aba = orig.aba + 1;
         next.node = orig.node->next;
-    } while (!__kdAtomicCompareExchange(head, &orig, next));
+    } while (!__kdAtomicCompareExchangePtr(head, &orig, next));
     return orig.node;
 }
 
 static void  __kdQueuePush(__KDatomic __KDQueueHead *head, struct __KDQueueNode *node)
 {
     __KDQueueHead next = {0};
-    __KDQueueHead orig = __kdAtomicLoad(head);
+	__KDQueueHead orig = __kdAtomicLoad(head);
     do {
         node->next = orig.node;
         next.aba = orig.aba + 1;
         next.node = node;
-    } while (!__kdAtomicCompareExchange(head, &orig, next));
+    } while (!__kdAtomicCompareExchangePtr(head, &orig, next));
 }
 
 static KDint  __kdQueuePost(__KDQueue *queue, void *value)
@@ -1394,7 +1401,7 @@ static void* __kdMainInjector( void *arg)
 #else
     KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
 #ifdef _MSC_VER
-    kdMain = (decltype(kdMain)) GetProcAddress(hModule, "kdMain");
+    //kdMain = (decltype(kdMain)) GetProcAddress(hModule, "kdMain");
 #elif defined(__MINGW32__)
     kdMain = (typeof(kdMain)) GetProcAddress(hModule, "kdMain");
 #else
@@ -2182,7 +2189,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
     {
         if (seekorigins_c[i].seekorigin_kd == origin)
         {
-            retval = fseek( file->file, offset, seekorigins_c[i].seekorigin);
+			retval = fseek(file->file, offset, seekorigins_c[i].seekorigin);
             break;
         }
     }
@@ -2260,7 +2267,7 @@ KD_API KDint KD_APIENTRY kdTruncate(const KDchar *pathname, KDoff length)
 #ifdef KD_VFS_SUPPORTED
     /* TODO: Implement kdTruncate */
     kdAssert(0);
-#elif defined(_MSC_VER) || defined(__MINGW32__)#
+#elif defined(_MSC_VER) || defined(__MINGW32__)
     /* TODO: Implement kdTruncate on Windows */
     kdAssert(0);
 #else
@@ -2337,8 +2344,15 @@ typedef struct
     int     accessmode;
 } __KDAccessMode;
 
-#ifndef KD_VFS_SUPPORTED
-static __KDAccessMode accessmode_posix[] =
+#if defined(_MSC_VER)
+static __KDAccessMode accessmode[] =
+{
+	{ KD_R_OK, 04 },
+	{ KD_W_OK, 02 },
+	{ KD_X_OK, 00 }
+};
+#else
+static __KDAccessMode accessmode[] =
 {
     {KD_R_OK, R_OK},
     {KD_W_OK, W_OK},
@@ -2354,11 +2368,11 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     /* TODO: Implement kdAccess */
     kdAssert(0);
 #else
-    for (KDuint i = 0; i < sizeof(accessmode_posix) / sizeof(accessmode_posix[0]); i++)
+    for (KDuint i = 0; i < sizeof(accessmode) / sizeof(accessmode[0]); i++)
     {
-        if (accessmode_posix[i].accessmode_kd == amode)
+        if (accessmode[i].accessmode_kd == amode)
         {
-            retval = access(pathname, accessmode_posix[i].accessmode);
+            retval = access(pathname, accessmode[i].accessmode);
             break;
         }
     }

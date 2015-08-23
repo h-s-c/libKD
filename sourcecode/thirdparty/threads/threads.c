@@ -151,7 +151,7 @@ int mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
   }
   else
   {
-    timeoutMs  = (ts->tv_sec  - current_ts.tv_sec)  * 1000;
+    timeoutMs  = (DWORD)(ts->tv_sec  - current_ts.tv_sec)  * 1000;
     timeoutMs += (ts->tv_nsec - current_ts.tv_nsec) / 1000000;
     timeoutMs += 1;
   }
@@ -446,7 +446,7 @@ int cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts)
   struct timespec now;
   if (timespec_get(&now, TIME_UTC) == 0)
   {
-    DWORD delta = (ts->tv_sec - now.tv_sec) * 1000 +
+    DWORD delta = (DWORD)(ts->tv_sec - now.tv_sec) * 1000 +
                   (ts->tv_nsec - now.tv_nsec + 500000) / 1000000;
     return _cnd_timedwait_win32(cond, mtx, delta);
   }
@@ -521,9 +521,17 @@ static void NTAPI _tinycthread_tss_callback(PVOID h, DWORD dwReason, PVOID pv)
 }
 
 #if defined(_MSC_VER)
+#ifdef _M_X64
+#pragma const_seg(".CRT$XLB")
+#else
 #pragma data_seg(".CRT$XLB")
+#endif
 PIMAGE_TLS_CALLBACK p_thread_callback = _tinycthread_tss_callback;
+#ifdef _M_X64
 #pragma data_seg()
+#else
+#pragma const_seg()
+#endif
 #else
 PIMAGE_TLS_CALLBACK p_thread_callback __attribute__((section(".CRT$XLB"))) = _tinycthread_tss_callback;
 #endif
@@ -701,7 +709,7 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining)
 
   timespec_get(&start, TIME_UTC);
 
-  t = SleepEx(duration->tv_sec * 1000 +
+  t = SleepEx((DWORD)duration->tv_sec * 1000 +
               duration->tv_nsec / 1000000 +
               (((duration->tv_nsec % 1000000) == 0) ? 0 : 1),
               TRUE);
