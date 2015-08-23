@@ -1601,6 +1601,8 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     }
     return 0;
 #endif
+
+    /* TODO: Implement kdCryptoRandom on Windows*/
     kdAssert(0);
     return 0;
 }
@@ -2231,7 +2233,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
     KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
-    /* TODO: Implement rename */
+    /* TODO: Implement kdRename */
     kdAssert(0);
 #else
     retval = rename(src, dest);
@@ -2256,9 +2258,10 @@ KD_API KDint KD_APIENTRY kdTruncate(const KDchar *pathname, KDoff length)
 {
     KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
-    /* TODO: Implement truncate */
+    /* TODO: Implement kdTruncate */
     kdAssert(0);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(_MSC_VER) || defined(__MINGW32__)#
+    /* TODO: Implement kdTruncate on Windows */
     kdAssert(0);
 #else
     retval = truncate(pathname, length);
@@ -2348,7 +2351,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
     KDint retval = -1;
 #ifdef KD_VFS_SUPPORTED
-    /* TODO: Implement access */
+    /* TODO: Implement kdAccess */
     kdAssert(0);
 #else
     for (KDuint i = 0; i < sizeof(accessmode_posix) / sizeof(accessmode_posix[0]); i++)
