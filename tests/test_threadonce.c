@@ -38,6 +38,10 @@
         #define atomic_load(object)             __c11_atomic_load(object, __ATOMIC_SEQ_CST)
         #define atomic_fetch_add(object, value) __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
 	#elif defined (_MSC_VER)
+		#ifndef WIN32_LEAN_AND_MEAN
+		#define WIN32_LEAN_AND_MEAN
+		#endif
+		#include <windows.h>
 		#define _Atomic							volatile
 		#define ATOMIC_VAR_INIT(value)          (value)
 		#define atomic_load(object)             (*object)

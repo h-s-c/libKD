@@ -1399,11 +1399,10 @@ static void* __kdMainInjector( void *arg)
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
 #else
-    KDint (*kdMain)(KDint argc, const KDchar *const *argv) = KD_NULL;
-#ifdef _MSC_VER
-    //kdMain = (decltype(kdMain)) GetProcAddress(hModule, "kdMain");
-#elif defined(__MINGW32__)
-    kdMain = (typeof(kdMain)) GetProcAddress(hModule, "kdMain");
+	typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
+	KDMAIN kdMain = KD_NULL;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    kdMain = (KDMAIN)GetProcAddress(hModule, "kdMain");
 #else
     void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
