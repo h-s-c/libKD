@@ -37,6 +37,11 @@
         #define ATOMIC_VAR_INIT(value)          (value)
         #define atomic_load(object)             __c11_atomic_load(object, __ATOMIC_SEQ_CST)
         #define atomic_fetch_add(object, value) __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
+	#elif defined (_MSC_VER)
+		#define _Atomic							volatile
+		#define ATOMIC_VAR_INIT(value)          (value)
+		#define atomic_load(object)             (*object)
+		#define atomic_fetch_add(object, value) InterlockedExchangeAdd((LONG *)object, value)
     #endif
 #endif
 
@@ -46,7 +51,7 @@
 #define THREAD_COUNT 10
 _Atomic KDint test_once_count = ATOMIC_VAR_INIT(0);
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
-static void test_once_func()
+static void test_once_func(void)
 {
     atomic_fetch_add(&test_once_count, 1);
 }
@@ -66,6 +71,7 @@ void* test_func( void *arg)
     }
     kdThreadExit(KD_NULL);
     kdAssert(0);
+	return 0;
 }
 
 KDint kdMain(KDint argc, const KDchar *const *argv)

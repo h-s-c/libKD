@@ -1461,7 +1461,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     kdThreadCreate(KD_NULL, __kdMainInjector, &mainargs);
 }
 #else
-int main(int argc, char **argv)
+KD_API int main(int argc, char **argv)
 {
 #ifdef KD_GC_SUPPORTED
     GC_INIT();

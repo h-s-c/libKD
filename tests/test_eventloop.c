@@ -40,6 +40,7 @@ void* test_func( void *arg)
         }
     }
     kdThreadExit(KD_NULL);
+	return 0;
 }
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
