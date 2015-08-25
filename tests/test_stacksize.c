@@ -48,8 +48,7 @@ static KDint32 testrecurse(KDint32 count, struct recurse *lastrecurse)
         return product;
     }
 }
-
-KDint kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     testrecurse(0, 0);
     return 0;
