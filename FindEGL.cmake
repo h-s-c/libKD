@@ -1,6 +1,11 @@
+if(MSVC)
+set(EGL_INCLUDE_DIR ${CMAKE_BINARY_DIR}/packages/ANGLE.WindowsStore/Include)
+set(EGL_LIBRARY ${CMAKE_BINARY_DIR}/packages/ANGLE.WindowsStore/bin/Windows/x64/libEGL.lib)
+else()
 find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h)
 set(EGL_NAMES ${EGL_NAMES} egl EGL)
-find_library(EGL_LIBRARY NAMES ${EGL_NAMES})
+find_library(EGL_LIBRARY NAMES ${EGL_NAMES} PATHS ${CMAKE_BINARY_DIR}/packages/ANGLE.WindowsStore/bin/Windows/x64)
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY EGL_INCLUDE_DIR)

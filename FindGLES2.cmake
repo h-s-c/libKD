@@ -1,5 +1,10 @@
+if(MSVC)
+    set(GLES2_INCLUDE_DIR ${CMAKE_BINARY_DIR}/packages/ANGLE.WindowsStore/Include)
+    set(GLES2_LIBRARY ${CMAKE_BINARY_DIR}/packages/ANGLE.WindowsStore/bin/Windows/x64/libGLESv2.lib)
+else()
 find_path(GLES2_INCLUDE_DIR NAMES GLES2/gl2.h)
 find_library(GLES2_LIBRARY NAMES GLESv2)
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_LIBRARY GLES2_INCLUDE_DIR)

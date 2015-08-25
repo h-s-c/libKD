@@ -1,3 +1,5 @@
 .idea
 build
 distribution/KD/kdplatform.h
+nuget.exe
+packages.config
