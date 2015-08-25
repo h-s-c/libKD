@@ -14,9 +14,7 @@ configure_file(${CTEST_SOURCE_DIRECTORY}/.appveyor.ctest.note.in ${CTEST_BINARY_
 set(CTEST_NOTES_FILES ${CTEST_BINARY_DIRECTORY}/.appveyor.ctest.note)
 
 
-string(COMPARE EQUAL "$ENV{PLATFORM}" "x64" IS_64)
-
-if(IS_64)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(GEN_SUFFIX " Win64")
 else()
   set(GEN_SUFFIX "")
