@@ -36,50 +36,8 @@ matrix:
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.9
     - os: linux
       compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.8
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.7
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.6
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.5
-    - os: linux
-      compiler: clang
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.6
-    - os: linux
-      compiler: clang
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.5
-    - os: linux
-      compiler: clang
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.4
-    - os: linux
-      compiler: gcc
       env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
   allow_failures:
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.8
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.7
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.6
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.5
-    - os: linux
-      compiler: clang
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.6
-    - os: linux
-      compiler: clang
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.5
-    - os: linux
-      compiler: clang
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.4
     - os: linux
       compiler: gcc
       env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
@@ -121,9 +79,9 @@ install:
           tar xzf lcov-1.11.tar.gz && cd lcov-1.11 && make && sudo make install && cd ..;
           gem install coveralls-lcov;
         elif [ "$CC" = "clang" ]; then
-          sudo apt-get install -qq gcc-5.0 g++-5.0;
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5.0 90;
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5.0 90;
+          sudo apt-get install -qq gcc-5 g++-5;
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 90;
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90;
           sudo apt-get install --allow-unauthenticated -qq clang-$CC_VERSION;
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90;
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
@@ -131,14 +89,14 @@ install:
       elif [ "$TARGET_OS" = "android" ]; then
         git clone https://github.com/taka-no-me/android-cmake.git;
         sudo apt-get install -qq openjdk-7-jdk ant lib32z1-dev lib32stdc++6 lib32ncurses5;
-        wget -nc --no-check-certificate http://dl.google.com/android/android-sdk_r24.0.2-linux.tgz;
-        wget -nc --no-check-certificate http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin;
-        tar xzf android-sdk_r24.0.2-linux.tgz;
-        chmod a+x android-ndk-r10d-linux-x86_64.bin;
-        ./android-ndk-r10d-linux-x86_64.bin -y | grep -v Extracting;
-        rm android-ndk-r10d-linux-x86_64.bin;
-        rm android-sdk_r24.0.2-linux.tgz;
-        mv android-ndk-r10d android-ndk;
+        wget -nc --no-check-certificate http://dl.google.com/android/android-sdk_r24.3.4-linux.tgz;
+        wget -nc --no-check-certificate http://dl.google.com/android/ndk/android-ndk-r10e-linux-x86_64.bin;
+        tar xzf android-sdk_r24.3.4-linux.tgz;
+        chmod a+x android-ndk-r10e-linux-x86_64.bin;
+        ./android-ndk-r10e-linux-x86_64.bin -y | grep -v Extracting;
+        rm android-ndk-r10e-linux-x86_64.bin;
+        rm android-sdk_r24.3.4-linux.tgz;
+        mv android-ndk-r10e android-ndk;
         mv android-sdk-linux android-sdk;
         export ANDROID_NDK=`pwd`/android-ndk;
         export ANDROID_HOME=`pwd`/android-sdk;
@@ -146,7 +104,7 @@ install:
         export PATH=$ANDROID_NDK:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH;
         echo yes | android update sdk -u -t platform-tools || true;
         echo yes | android update sdk -u -t tool || true;
-        echo yes | android update sdk -u -t build-tools-21.1.2 || true;
+        echo yes | android update sdk -u -t build-tools-23 || true;
         echo yes | android update sdk -u -t android-19 || true;
       fi;
     fi;
