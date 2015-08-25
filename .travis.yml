@@ -30,6 +30,9 @@ matrix:
   include:
     - os: linux
       compiler: gcc
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=5
+    - os: linux
+      compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.9
     - os: linux
       compiler: gcc
@@ -37,6 +40,15 @@ matrix:
     - os: linux
       compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.7
+    - os: linux
+      compiler: gcc
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.6
+    - os: linux
+      compiler: gcc
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.5
+    - os: linux
+      compiler: clang
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.6
     - os: linux
       compiler: clang
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.5
@@ -53,6 +65,15 @@ matrix:
     - os: linux
       compiler: gcc
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.7
+    - os: linux
+      compiler: gcc
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.6
+    - os: linux
+      compiler: gcc
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.5
+    - os: linux
+      compiler: clang
+      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.6
     - os: linux
       compiler: clang
       env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=3.5
@@ -86,9 +107,9 @@ before_install:
 
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      wget -nc --no-check-certificate http://www.cmake.org/files/v3.1/cmake-3.1.2-Linux-x86_64.tar.gz;
-      tar xf cmake-3.1.2-Linux-x86_64.tar.gz && sudo cp -fR cmake-3.1.2-Linux-x86_64/* /usr;
-      rm cmake-3.1.2-Linux-x86_64.tar.gz;
+      wget -nc --no-check-certificate http://www.cmake.org/files/v3.3/cmake-3.3.1-Linux-x86_64.tar.gz;
+      tar xf cmake-3.3.1-Linux-x86_64.tar.gz && sudo cp -fR cmake-3.3.1-Linux-x86_64/* /usr;
+      rm cmake-3.3.1-Linux-x86_64.tar.gz;
       if [ "$TARGET_OS" = "linux" ]; then
         sudo apt-get install -qq valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev;
         if [ "$CC" = "gcc" ]; then
@@ -100,9 +121,9 @@ install:
           tar xzf lcov-1.11.tar.gz && cd lcov-1.11 && make && sudo make install && cd ..;
           gem install coveralls-lcov;
         elif [ "$CC" = "clang" ]; then
-          sudo apt-get install -qq gcc-4.9 g++-4.9;
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 90;
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 90;
+          sudo apt-get install -qq gcc-5.0 g++-5.0;
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5.0 90;
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5.0 90;
           sudo apt-get install --allow-unauthenticated -qq clang-$CC_VERSION;
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90;
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
