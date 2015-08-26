@@ -78,7 +78,7 @@ void* test_func( void *arg)
 	return 0;
 }
 
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+KDint kdMain(KDint argc, const KDchar *const *argv)
 {
     static KDThread* threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0 ; i < THREAD_COUNT ; i++)

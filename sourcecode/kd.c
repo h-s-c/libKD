@@ -1348,22 +1348,6 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
-static HINSTANCE hModule = KD_NULL;
-BOOL WINAPI DllMain(HINSTANCE hinstDLL,  DWORD fdwReason,  LPVOID lpvReserved)
-{
-    switch (fdwReason)
-    {
-        case DLL_PROCESS_ATTACH:
-            hModule = hinstDLL;
-            break;
-        default:
-            break;
-    }
-    return KD_TRUE;
-}
-#endif
-
 typedef struct __KDMainArgs
 {
     int argc;
@@ -1398,22 +1382,20 @@ static void* __kdMainInjector( void *arg)
     kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
-	typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
+    typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
 	KDMAIN kdMain = KD_NULL;
-#if defined(_MSC_VER) || defined(__MINGW32__)
-    kdMain = (KDMAIN)GetProcAddress(hModule, "kdMain");
-#else
     void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
     kdMemcpy(&kdMain, &rawptr, sizeof(rawptr));
     if(dlerror() != NULL)
     {
-        kdLogMessage("Cant dlopen self. Dont strip symbols from me.");
+        kdLogMessage("Cant dlopen self. Dont strip symbols from me.\n");
         kdAssert(0);
     }
-#endif
     (*kdMain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #endif
 
