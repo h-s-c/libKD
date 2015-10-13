@@ -27,25 +27,25 @@ freely, subject to the following restrictions:
 
 /* Platform specific includes */
 #if defined(_TTHREAD_POSIX_)
-  #include <signal.h>
+#include <signal.h>
   #include <sched.h>
   #include <unistd.h>
   #include <sys/time.h>
   #include <errno.h>
 #elif defined(_TTHREAD_WIN32_)
-  #include <process.h>
+#include <process.h>
   #include <sys/timeb.h>
 #endif
 
 /* Standard, good-to-have defines */
 #ifndef NULL
-  #define NULL (void*)0
+#define NULL (void*)0
 #endif
 #ifndef TRUE
-  #define TRUE 1
+#define TRUE 1
 #endif
 #ifndef FALSE
-  #define FALSE 0
+#define FALSE 0
 #endif
 
 #ifdef __cplusplus
@@ -231,7 +231,6 @@ int mtx_trylock(mtx_t *mtx)
 {
 #if defined(_TTHREAD_WIN32_)
   int ret;
-
 
   if (!mtx->mTimed)
   {
@@ -444,10 +443,10 @@ int cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts)
 {
 #if defined(_TTHREAD_WIN32_)
   struct timespec now;
-  if (timespec_get(&now, TIME_UTC) == 0)
+  if (timespec_get(&now, TIME_UTC) == TIME_UTC)
   {
-    DWORD delta = (DWORD)(ts->tv_sec - now.tv_sec) * 1000 +
-                  (ts->tv_nsec - now.tv_nsec + 500000) / 1000000;
+    DWORD delta = (DWORD)((ts->tv_sec - now.tv_sec) * 1000 +
+                  (ts->tv_nsec - now.tv_nsec + 500000) / 1000000);
     return _cnd_timedwait_win32(cond, mtx, delta);
   }
   else
@@ -521,17 +520,9 @@ static void NTAPI _tinycthread_tss_callback(PVOID h, DWORD dwReason, PVOID pv)
 }
 
 #if defined(_MSC_VER)
-#ifdef _M_X64
-#pragma const_seg(".CRT$XLB")
-#else
 #pragma data_seg(".CRT$XLB")
-#endif
 PIMAGE_TLS_CALLBACK p_thread_callback = _tinycthread_tss_callback;
-#ifdef _M_X64
 #pragma data_seg()
-#else
-#pragma const_seg()
-#endif
 #else
 PIMAGE_TLS_CALLBACK p_thread_callback __attribute__((section(".CRT$XLB"))) = _tinycthread_tss_callback;
 #endif
@@ -539,8 +530,8 @@ PIMAGE_TLS_CALLBACK p_thread_callback __attribute__((section(".CRT$XLB"))) = _ti
 
 /** Information to pass to the new thread (what to run). */
 typedef struct {
-  thrd_start_t mFunction; /**< Pointer to the function to be executed. */
-  void * mArg;            /**< Function argument for the thread function. */
+    thrd_start_t mFunction; /**< Pointer to the function to be executed. */
+    void * mArg;            /**< Function argument for the thread function. */
 } _thread_start_info;
 
 /* Thread wrapper function. */
@@ -550,38 +541,38 @@ static DWORD WINAPI _thrd_wrapper_function(LPVOID aArg)
 static void * _thrd_wrapper_function(void * aArg)
 #endif
 {
-  thrd_start_t fun;
-  void *arg;
-  int  res;
+thrd_start_t fun;
+void *arg;
+int  res;
 #if defined(_TTHREAD_POSIX_)
-  void *pres;
+void *pres;
 #endif
 
-  /* Get thread startup information */
-  _thread_start_info *ti = (_thread_start_info *) aArg;
-  fun = ti->mFunction;
-  arg = ti->mArg;
+/* Get thread startup information */
+_thread_start_info *ti = (_thread_start_info *) aArg;
+fun = ti->mFunction;
+arg = ti->mArg;
 
-  /* The thread is responsible for freeing the startup information */
-  free((void *)ti);
+/* The thread is responsible for freeing the startup information */
+free((void *)ti);
 
-  /* Call the actual client thread function */
-  res = fun(arg);
+/* Call the actual client thread function */
+res = fun(arg);
 
 #if defined(_TTHREAD_WIN32_)
-  if (_tinycthread_tss_head != NULL)
+if (_tinycthread_tss_head != NULL)
   {
     _tinycthread_tss_cleanup();
   }
 
   return res;
 #else
-  pres = malloc(sizeof(int));
-  if (pres != NULL)
-  {
-    *(int*)pres = res;
-  }
-  return pres;
+pres = malloc(sizeof(int));
+if (pres != NULL)
+{
+*(int*)pres = res;
+}
+return pres;
 #endif
 }
 
@@ -675,8 +666,14 @@ int thrd_join(thrd_t thr, int *res)
   }
   if (res != NULL)
   {
-    GetExitCodeThread(thr, &dwRes);
-    *res = dwRes;
+    if (GetExitCodeThread(thr, &dwRes) != 0)
+    {
+      *res = dwRes;
+    }
+    else
+    {
+      return thrd_error;
+    }
   }
   CloseHandle(thr);
 #elif defined(_TTHREAD_POSIX_)
@@ -709,9 +706,9 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining)
 
   timespec_get(&start, TIME_UTC);
 
-  t = SleepEx((DWORD)duration->tv_sec * 1000 +
+  t = SleepEx((DWORD)(duration->tv_sec * 1000 +
               duration->tv_nsec / 1000000 +
-              (((duration->tv_nsec % 1000000) == 0) ? 0 : 1),
+              (((duration->tv_nsec % 1000000) == 0) ? 0 : 1)),
               TRUE);
 
   if (t == 0) {
@@ -774,9 +771,12 @@ void tss_delete(tss_t key)
     else
     {
       prev = _tinycthread_tss_head;
-      while (prev->next != data)
+      if (prev != NULL)
       {
-        prev = prev->next;
+        while (prev->next != data)
+        {
+          prev = prev->next;
+        }
       }
     }
 
@@ -869,11 +869,11 @@ int _tthread_timespec_get(struct timespec *ts, int base)
   }
 
 #if defined(_TTHREAD_WIN32_)
-  _ftime(&tb);
+  _ftime64_s(&tb);
   ts->tv_sec = (time_t)tb.time;
   ts->tv_nsec = 1000000L * (long)tb.millitm;
 #elif defined(CLOCK_REALTIME)
-  return (clock_gettime(CLOCK_REALTIME, ts) == 0) ? base : 0;
+  base = (clock_gettime(CLOCK_REALTIME, ts) == 0) ? base : 0;
 #else
   gettimeofday(&tv, NULL);
   ts->tv_sec = (time_t)tv.tv_sec;

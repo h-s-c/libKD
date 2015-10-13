@@ -31,6 +31,10 @@
  *
  ******************************************************************************/
 
+/******************************************************************************
+ * Header workarounds
+ ******************************************************************************/
+
 #define __STDC_WANT_LIB_EXT1__ 1
 
 #ifdef __unix__
@@ -80,10 +84,36 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if !defined(__has_feature)
+    #define __has_feature(x) 0
+#endif
+#if !defined(__has_include)
+    #define __has_include(x) 0
+#endif
+
+#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__) && __has_include(<stdatomic.h>)
+    #ifdef __ANDROID__
+        typedef uint32_t char32_t;
+        typedef uint16_t char16_t;
+    #endif
+
+    #include <stdatomic.h>
+#elif defined (__clang__) && __has_feature(c_atomic)
+    #define memory_order_acquire                                    __ATOMIC_ACQUIRE
+    #define memory_order_release                                    __ATOMIC_RELEASE
+    #define ATOMIC_VAR_INIT(value)                                  (value)
+    #define atomic_init(object, value)                              __c11_atomic_init(object, value)
+    #define atomic_load(object)                                     __c11_atomic_load(object, __ATOMIC_SEQ_CST)
+    #define atomic_fetch_add(object, value)                         __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
+    #define atomic_fetch_sub(object, value)                         __c11_atomic_fetch_sub(object, value, __ATOMIC_SEQ_CST)
+    #define atomic_store(object, desired)                           __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
+    #define atomic_compare_exchange_weak(object, expected, desired) __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+    #define atomic_thread_fence(order)                              __c11_atomic_thread_fence(order)
+#endif
+
 /* Removed checks because we use alternative threads implementations on some Platforms */
 /* #if __STDC_VERSION__ >= 201112L */
 #if 1
-
     /* #if !__STDC_NO_THREADS__ */
     #if 1
         #include <threads.h>
@@ -142,18 +172,16 @@
     #include <windows.h>
 	#include <direct.h>
 	#include <io.h>
-	#include <VersionHelpers.h>
 	#define inline __inline
 	/* Fix POSIX name warning */
 	#define mkdir _mkdir
 	#define rmdir _rmdir
 	#define fileno _fileno
 	#define access _access
-    /* Check NuGet for this package*/
-	#include <dirent.h>
     /* Windows has some POSIX support */
     #include <sys/types.h>
     #include <sys/stat.h>
+    #include <dirent.h>
 #endif
 
 /******************************************************************************
@@ -162,62 +190,6 @@
 
 #ifdef KD_VFS_SUPPORTED
     #include <physfs.h>
-#endif
-
-/******************************************************************************
- * Assorted helper functions
- ******************************************************************************/
-
-#if !defined(__has_feature)
-#define __has_feature(x) 0
-#endif
-#if !defined(__has_include)
-#define __has_include(x) 0
-#endif
-
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__) && __has_include(<stdatomic.h>)
-    #ifdef __ANDROID__
-        typedef uint32_t char32_t;
-        typedef uint16_t char16_t;
-    #endif
-    #include <stdatomic.h>
-    #define __KDatomic                                              _Atomic
-    #define __KDatomic_acquire                                      memory_order_acquire
-    #define __KDatomic_release                                      memory_order_release
-    #define __KD_ATOMIC_VAR_INIT(value)                             ATOMIC_VAR_INIT(value)
-    #define __kdAtomicInit(object, value)                           atomic_init(object, value)
-    #define __kdAtomicLoad(object)                                  atomic_load(object)
-    #define __kdAtomicLoadAdd(object, value)                        atomic_fetch_add(object, value)
-    #define __kdAtomicLoadSub(object, value)                        atomic_fetch_sub(object, value)
-    #define __kdAtomicStore(object, desired)                        atomic_store(object, desired)
-    #define __kdAtomicCompareExchangePtr(object, expected, desired) atomic_compare_exchange_weak(object, expected, desired)
-    #define __kdAtomicBarrier(order)                                atomic_thread_fence(order)
-#else
-    #if defined (__clang__) && __has_feature(c_atomic)
-        #define __KDatomic                                              _Atomic
-        #define __KDatomic_acquire                                      __ATOMIC_ACQUIRE
-        #define __KDatomic_release                                      __ATOMIC_RELEASE
-        #define __KD_ATOMIC_VAR_INIT(value)                             (value)
-        #define __kdAtomicInit(object, value)                           __c11_atomic_init(object, value)
-        #define __kdAtomicLoad(object)                                  __c11_atomic_load(object, __ATOMIC_SEQ_CST)
-        #define __kdAtomicLoadAdd(object, value)                        __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
-        #define __kdAtomicLoadSub(object, value)                        __c11_atomic_fetch_sub(object, value, __ATOMIC_SEQ_CST)
-        #define __kdAtomicStore(object, desired)                        __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
-        #define __kdAtomicCompareExchangePtr(object, expected, desired) __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
-        #define __kdAtomicBarrier(order)                                __c11_atomic_thread_fence(order)
-    #elif defined (_MSC_VER)
-		#define __KDatomic                                              volatile
-		#define __KDatomic_acquire                                      
-		#define __KDatomic_release                                      
-		#define __KD_ATOMIC_VAR_INIT(value)                             (value)
-		#define __kdAtomicInit(object, value)                           *(object) = (value)
-		#define __kdAtomicLoad(object)									(*object)
-		#define __kdAtomicLoadAdd(object, value)						InterlockedExchangeAdd((LONG *)object, value)
-		#define __kdAtomicLoadSub(object, value)                        InterlockedExchangeAdd((LONG *)object, -value)
-		#define __kdAtomicStore(object, desired)                        *(object) = (desired)
-		#define __kdAtomicCompareExchangePtr(object, expected, desired) InterlockedCompareExchangePointer((PVOID volatile *)object, (PVOID)expected, (PVOID)&desired)
-		#define __kdAtomicBarrier(order)                                MemoryBarrier()          
-    #endif
 #endif
 
 /******************************************************************************
@@ -237,14 +209,14 @@ typedef struct __KDQueueHead {
 
 typedef struct __KDQueue {
     struct __KDQueueNode *node_buffer;
-    __KDatomic __KDQueueHead head;
-    __KDatomic __KDQueueHead free;
-    __KDatomic KDsize size;
+    _Atomic struct __KDQueueHead head;
+    _Atomic struct __KDQueueHead free;
+    _Atomic KDsize size;
 } __KDQueue;
 
 static inline KDsize __kdQueueSize(__KDQueue *queue)
 {
-    return __kdAtomicLoad(&queue->size);
+    return atomic_load(&queue->size);
 }
 
 static inline void __kdQueueFree(__KDQueue *queue)
@@ -261,9 +233,9 @@ static inline void __kdQueueFree(__KDQueue *queue)
 static __KDQueue *__kdQueueCreate(KDsize max_size)
 {
     __KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
-    __KDQueueHead headinit = {.aba = 0, .node = KD_NULL};
-    __kdAtomicInit(&queue->head, headinit);
-    __kdAtomicInit(&queue->size, 0);
+    queue->head.aba = ATOMIC_VAR_INIT(0);
+    queue->head.node = ATOMIC_VAR_INIT(NULL);
+    queue->size = ATOMIC_VAR_INIT(0);
 
     /* Pre-allocate all nodes. */
     queue->node_buffer = kdMalloc(max_size * sizeof(struct __KDQueueNode));
@@ -277,16 +249,15 @@ static __KDQueue *__kdQueueCreate(KDsize max_size)
         queue->node_buffer[i].next = queue->node_buffer + i + 1;
     }
     queue->node_buffer[max_size - 1].next = KD_NULL;
-
-    __KDQueueHead freeinit = {.aba = 0, .node = queue->node_buffer};
-    __kdAtomicInit(&queue->free, freeinit);
+    queue->free.aba = ATOMIC_VAR_INIT(0);
+    queue->free.node = ATOMIC_VAR_INIT(queue->node_buffer);
     return queue;
 }
 
-static struct __KDQueueNode *__kdQueuePop(__KDatomic __KDQueueHead *head)
+static struct __KDQueueNode *__kdQueuePop(_Atomic struct __KDQueueHead *head)
 {
     __KDQueueHead next = {0};
-	__KDQueueHead orig = __kdAtomicLoad(head);
+    __KDQueueHead orig =atomic_load(head);
     do {
         if (orig.node == KD_NULL)
         {
@@ -294,19 +265,20 @@ static struct __KDQueueNode *__kdQueuePop(__KDatomic __KDQueueHead *head)
         }
         next.aba = orig.aba + 1;
         next.node = orig.node->next;
-    } while (!__kdAtomicCompareExchangePtr(head, &orig, next));
+    } while (!atomic_compare_exchange_weak(head, &orig, next));
     return orig.node;
 }
 
-static void  __kdQueuePush(__KDatomic __KDQueueHead *head, struct __KDQueueNode *node)
+static void  __kdQueuePush(_Atomic struct __KDQueueHead *head, struct __KDQueueNode *node)
 {
     __KDQueueHead next = {0};
-	__KDQueueHead orig = __kdAtomicLoad(head);
+    __KDQueueHead orig = atomic_load(head);
     do {
         node->next = orig.node;
         next.aba = orig.aba + 1;
         next.node = node;
-    } while (!__kdAtomicCompareExchangePtr(head, &orig, next));
+    } while (!atomic_compare_exchange_weak(head, &orig, next));
+
 }
 
 static KDint  __kdQueuePost(__KDQueue *queue, void *value)
@@ -319,7 +291,7 @@ static KDint  __kdQueuePost(__KDQueue *queue, void *value)
     }
     node->value = value;
     __kdQueuePush(&queue->head, node);
-    __kdAtomicLoadAdd(&queue->size, 1);
+    atomic_fetch_add(&queue->size, 1);
     return 0;
 }
 
@@ -330,9 +302,10 @@ void *__kdQueueGet(__KDQueue *queue)
     {
         return KD_NULL;
     }
-    __kdAtomicLoadSub(&queue->size, 1);
+    atomic_fetch_sub(&queue->size, 1);
     void *value = node->value;
     __kdQueuePush(&queue->free, node);
+
     return value;
 }
 
@@ -436,18 +409,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
 #if defined(_MSC_VER) || defined(__MINGW32__)
-        if (IsWindows8Point1OrGreater())
-		{
-			return "Windows 8.1";
-		}
-		else if (IsWindows8OrGreater())
-		{
-			return "Windows 8";
-		}
-		if (IsWindows7OrGreater())
-		{
-			return "Windows 7";
-		}
+		return "Windows";
 #else
 		static struct utsname name;
 		uname(&name);
@@ -521,13 +483,14 @@ typedef struct KDThread
     void* cleanup;
     struct __KDQueue *eventqueue;
 } KDThread;
-static KDThread __kd_threads[999] = {{0}};
-static __KDatomic KDuint __kd_threads_index =  __KD_ATOMIC_VAR_INIT(0);
+#define __KD_THREADS_NUM 999
+static KDThread __kd_threads[__KD_THREADS_NUM] = {{0}};
+static _Atomic KDint __kd_threads_index = ATOMIC_VAR_INIT(0);
 
-static KDThread* __kdThreadRegister(thrd_t threadid, const KDThreadAttr* threadattr, void* cleanup)
+static KDThread *__kdThreadRegister(thrd_t threadid, const KDThreadAttr* threadattr, void* cleanup)
 {
-    KDuint slot = __kdAtomicLoadAdd(&__kd_threads_index, 1);
-    __kdAtomicBarrier(__KDatomic_acquire);
+    KDuint slot = atomic_fetch_add(&__kd_threads_index, 1);
+    atomic_thread_fence(memory_order_release);
     __kd_threads[slot].threadid = threadid;
     __kd_threads[slot].threadattr = kdThreadAttrCreate();
     if(threadattr != KD_NULL)
@@ -538,7 +501,7 @@ static KDThread* __kdThreadRegister(thrd_t threadid, const KDThreadAttr* threada
     }
     __kd_threads[slot].cleanup = cleanup;
     __kd_threads[slot].eventqueue = __kdQueueCreate(__kd_threads[slot].threadattr->stacksize);
-    __kdAtomicBarrier(__KDatomic_release);
+    atomic_thread_fence(memory_order_release);
     return &__kd_threads[slot];
 }
 
@@ -546,7 +509,7 @@ static void __kdThreadUnregister(KDThread *thread)
 {
     if(thread != KD_NULL)
     {
-        __kdAtomicBarrier(__KDatomic_acquire);
+        atomic_thread_fence(memory_order_acquire);
         thread->threadid = 0;
         if (thread->threadattr != KD_NULL)
         {
@@ -563,7 +526,7 @@ static void __kdThreadUnregister(KDThread *thread)
             __kdQueueFree(thread->eventqueue);
             thread->eventqueue = KD_NULL;
         }
-        __kdAtomicBarrier(__KDatomic_release);
+        atomic_thread_fence(memory_order_release);
     }
 }
 
@@ -584,10 +547,6 @@ static int __kdThreadStart(void *args)
     if(retval != KD_NULL)
     {
         result = *(KDint*)retval;
-    }
-    if(kdThreadSelf()->threadattr->detachstate == KD_THREAD_CREATE_DETACHED)
-    {
-        __kdThreadUnregister(kdThreadSelf());
     }
 
 #ifdef KD_GC_SUPPORTED
@@ -689,7 +648,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-    for (KDuint i = 0; i < __kdAtomicLoad(&__kd_threads_index) ; i++)
+    for (KDint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
         if (__kd_threads[i].threadid == thrd_current())
         {
@@ -1460,7 +1419,7 @@ KD_API int main(int argc, char **argv)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
-    for(KDuint i = 0; i < __kdAtomicLoad(&__kd_threads_index) ; i++)
+    for(KDint i = 0; i < atomic_load(&__kd_threads_index) ; i++)
     {
         __kdThreadUnregister(&__kd_threads[i]);
     }
