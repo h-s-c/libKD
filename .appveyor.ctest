@@ -17,8 +17,10 @@ set(CTEST_CMAKE_GENERATOR "MinGW Makefiles")
 set(CTEST_BUILD_CONFIGURATION ${CONFIGURATION})
 set(CTEST_CONFIGURATION_TYPE ${CONFIGURATION})
 
+set(GLES_SDK_DIR ${CTEST_SOURCE_DIRECTORY}/thirdparty/GLES_SDK)
+
 ctest_start(Continuous)
-ctest_configure(OPTIONS "-DKD_BUILD_CI=On")
+ctest_configure(OPTIONS "-DKD_BUILD_CI=On -DEGL_LIBRARY=${GLES_SDK_DIR}/x86-64/libEGL.lib -DEGL_INCLUDE_DIR=${GLES_SDK_DIR}/include -DKHR_INCLUDE_DIR=${GLES_SDK_DIR}/include")
 ctest_build()
 ctest_test()
 ctest_memcheck()
