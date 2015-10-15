@@ -35,13 +35,24 @@ cache:
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
+      - gcc-5
+      - g++-5
+      - clang-3.8
       - cmake
       - valgrind
       - libegl1-mesa-dev
       - libgles2-mesa-dev
       - libx11-dev
       - libbsd-dev
+
+install:
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5
+  - sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.8
+  - sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-3.8
 
 script:
   - ctest -VV --output-on-failure -S .travis.ctest
