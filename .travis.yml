@@ -21,145 +21,25 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
+sudo: false
+
 language: c
-cache: apt
 
-#TARGET_OS: android, linux
-#TARGET_ARCH: x86, x86_64, armeabi-v7a, arm64-v8a, mips, mips64
-matrix:
-  include:
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=5
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=linux TARGET_ARCH=x86_64 CC_VERSION=4.9
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
-  allow_failures:
-    - os: linux
-      compiler: gcc
-      env: TARGET_OS=android TARGET_ARCH=armeabi-v7a CC_VERSION=4.9
+compiler:
+  - clang
+  - gcc
 
-before_install:
-  - sudo service postgresql stop || true
-  - sudo service mysql stop || true
-  - sudo service memcached stop || true
-  - sudo service bootlogd stop || true
-  - sudo service elasticsearch stop || true
-  - sudo service mongodb stop || true
-  - sudo service neo4j stop || true
-  - sudo service cassandra stop || true
-  - sudo service riak stop || true
-  - sudo service rsync stop || true
-  - sudo service x11-common stop || true
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      if [ "$CC" = "clang" ]; then
-        sudo apt-add-repository -y "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-$CC_VERSION main";
-        wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -;
-      fi;
-      sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test;
-      sudo apt-get update -qq;
-    fi;
-
-install:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      wget -nc --no-check-certificate http://www.cmake.org/files/v3.3/cmake-3.3.1-Linux-x86_64.tar.gz;
-      tar xf cmake-3.3.1-Linux-x86_64.tar.gz && sudo cp -fR cmake-3.3.1-Linux-x86_64/* /usr;
-      rm cmake-3.3.1-Linux-x86_64.tar.gz;
-      if [ "$TARGET_OS" = "linux" ]; then
-        sudo apt-get install -qq valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev;
-        if [ "$CC" = "gcc" ]; then
-          sudo apt-get install -qq gcc-$CC_VERSION g++-$CC_VERSION;
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$CC_VERSION 90;
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$CC_VERSION 90;
-          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-$CC_VERSION 90;
-          wget -nc --no-check-certificate http://downloads.sourceforge.net/ltp/lcov-1.11.tar.gz;
-          tar xzf lcov-1.11.tar.gz && cd lcov-1.11 && make && sudo make install && cd ..;
-          gem install coveralls-lcov;
-        elif [ "$CC" = "clang" ]; then
-          sudo apt-get install -qq gcc-5 g++-5;
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 90;
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90;
-          sudo apt-get install --allow-unauthenticated -qq clang-$CC_VERSION;
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CC_VERSION 90;
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CC_VERSION 90;
-        fi;
-      elif [ "$TARGET_OS" = "android" ]; then
-        git clone https://github.com/taka-no-me/android-cmake.git;
-        sudo apt-get install -qq openjdk-7-jdk ant lib32z1-dev lib32stdc++6 lib32ncurses5;
-        wget -nc --no-check-certificate http://dl.google.com/android/android-sdk_r24.3.4-linux.tgz;
-        wget -nc --no-check-certificate http://dl.google.com/android/ndk/android-ndk-r10e-linux-x86_64.bin;
-        tar xzf android-sdk_r24.3.4-linux.tgz;
-        chmod a+x android-ndk-r10e-linux-x86_64.bin;
-        ./android-ndk-r10e-linux-x86_64.bin -y | grep -v Extracting;
-        rm android-ndk-r10e-linux-x86_64.bin;
-        rm android-sdk_r24.3.4-linux.tgz;
-        mv android-ndk-r10e android-ndk;
-        mv android-sdk-linux android-sdk;
-        export ANDROID_NDK=`pwd`/android-ndk;
-        export ANDROID_HOME=`pwd`/android-sdk;
-        export ANDROID_SWT=/usr/share/java;
-        export PATH=$ANDROID_NDK:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH;
-        echo yes | android update sdk -u -t platform-tools || true;
-        echo yes | android update sdk -u -t tool || true;
-        echo yes | android update sdk -u -t build-tools-23 || true;
-        echo yes | android update sdk -u -t android-19 || true;
-      fi;
-    fi;
-
-script:
-  - if [ "$TARGET_OS" = "android" ]; then
-      if [ "$CC" = "gcc" ]; then
-        export ANDROID_COMPILER_NAME=$CC_VERSION;
-      elif [ "$CC" = "clang" ]; then
-        export ANDROID_COMPILER_NAME=$CC$CC_VERSION;
-      fi;
-      if [ "$TARGET_ARCH" = "x86" ]; then
-        export ANDROID_TOOLCHAIN_NAME=x86-$ANDROID_COMPILER_NAME;
-      elif [ "$TARGET_ARCH" = "x86_64" ]; then
-        export ANDROID_TOOLCHAIN_NAME=x86_64-$ANDROID_COMPILER_NAME;
-      elif [ "$TARGET_ARCH" = "armeabi-v7a" ]; then
-        export ANDROID_TOOLCHAIN_NAME=arm-linux-androideabi-$ANDROID_COMPILER_NAME;
-      elif [ "$TARGET_ARCH" = "arm64-v8a" ]; then
-        export ANDROID_TOOLCHAIN_NAME=aarch64-linux-android-$ANDROID_COMPILER_NAME;
-      elif [ "$TARGET_ARCH" = "mips" ]; then
-        export ANDROID_TOOLCHAIN_NAME=mipsel-linux-android-$ANDROID_COMPILER_NAME;
-      elif [ "$TARGET_ARCH" = "mips64" ]; then
-        export ANDROID_TOOLCHAIN_NAME=mips64el-linux-android-$ANDROID_COMPILER_NAME;
-      fi;
-      cmake -DCMAKE_TOOLCHAIN_FILE=android-cmake/android.toolchain.cmake -DANDROID_NATIVE_API_LEVEL=9 -DANDROID_ABI=$TARGET_ARCH -DANDROID_TOOLCHAIN_NAME=$ANDROID_TOOLCHAIN_NAME .;
-      make package;
-    else
-      ctest -VV --output-on-failure -S .travis.ctest;
-    fi;
-
-after_success:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      if [ "$CC" = "gcc" ]; then
-        lcov --gcov-tool gcov-$CC_VERSION --compat-libtool --directory build --capture --output-file=coverage.info;
-        lcov --remove coverage.info 'distribution/*' 'examples/*' 'sourcecode/thirdparty/*' 'tests/*' 'cov-int/*' 'CMakeFiles/*' '/usr*' -o coverage.info;
-        coveralls-lcov coverage.info;
-      fi;
-    fi;
-
-notifications:
-  email:
-    on_success: change
-    on_failure: always
-
-env:
-  global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
+cache:
+  - apt
 
 addons:
-  coverity_scan:
-    project:
-      name: "h-s-c/libKD"
-    notification_email: h-s-c@users.noreply.github.com
-    build_command_prepend: "cmake -DCMAKE_BUILD_TYPE=Debug ."
-    build_command:   "cmake --build . --config Debug"
-    branch_pattern: coverity
+  apt:
+    packages:
+      - valgrind
+      - libegl1-mesa-dev
+      - libgles2-mesa-dev
+      - libx11-dev
+      - libbsd-dev
+
+script:
+  - ctest -VV --output-on-failure -S .travis.ctest
