@@ -36,6 +36,7 @@ cache:
 addons:
   apt:
     packages:
+      - cmake
       - valgrind
       - libegl1-mesa-dev
       - libgles2-mesa-dev
