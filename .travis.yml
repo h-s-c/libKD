@@ -27,7 +27,6 @@ dist: trusty
 language: c
 
 compiler:
-  - clang
   - gcc
 
 cache:
@@ -40,7 +39,6 @@ addons:
     packages:
       - gcc-5
       - g++-5
-      - clang-3.8
       - cmake
       - valgrind
       - libegl1-mesa-dev
@@ -51,8 +49,6 @@ addons:
 install:
   - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 90
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90
-  - sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.8 90
-  - sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-3.8 90
 
 script:
   - ctest -VV --output-on-failure -S .travis.ctest
