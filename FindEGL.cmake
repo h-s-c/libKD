@@ -1,6 +1,6 @@
 find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h PATHS ${CMAKE_SOURCE_DIR}/thirdparty/GLES_SDK/include)
 
-set(EGL_NAMES ${EGL_NAMES} egl EGL)
+set(EGL_NAMES ${EGL_NAMES} egl EGL libEGL)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(ARCH_SUFFIX "-64")
 else()
