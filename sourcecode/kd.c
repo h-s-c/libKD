@@ -47,6 +47,13 @@
     #endif
 #endif
 
+#if !defined(__has_feature)
+#define __has_feature(x) 0
+#endif
+#if !defined(__has_include)
+#define __has_include(x) 0
+#endif
+
 /******************************************************************************
  * KD includes
  ******************************************************************************/
@@ -73,7 +80,7 @@
 
 #include <errno.h>
 /* XSI streams are optional and not supported by MinGW */
-#ifdef __MINGW32__
+#if defined(__MINGW32__)
 #define ENODATA    61
 #endif
 
@@ -85,12 +92,38 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Removed checks because we use alternative threads implementations on some Platforms */
-/* #if __STDC_VERSION__ >= 201112L */
-#if 1
-    /* #if !__STDC_NO_THREADS__ */
-    #if 1
+#if __STDC_VERSION__ >= 201112L
+    #if !__STDC_NO_THREADS__ && __has_include(<threads.h>)
         #include <threads.h>
+        #define KD_THREAD_C11
+    #else
+        #include <pthread.h>
+        #define KD_THREAD_POSIX
+    #endif
+
+    #if !__STDC_NO_ATOMICS__
+        #if __has_include(<stdatomic.h>)
+            #ifdef __ANDROID__
+                /* Some NDK versions are missing these. */
+                typedef uint32_t char32_t;
+                typedef uint16_t char16_t;
+            #endif
+            #include <stdatomic.h>
+            #define KD_ATOMIC_C11
+        #elif defined (__clang__) && __has_feature(c_atomic)
+            /* Some versions of clang are missing the header. */
+            #define memory_order_acquire                                    __ATOMIC_ACQUIRE
+            #define memory_order_release                                    __ATOMIC_RELEASE
+            #define ATOMIC_VAR_INIT(value)                                  (value)
+            #define atomic_init(object, value)                              __c11_atomic_init(object, value)
+            #define atomic_load(object)                                     __c11_atomic_load(object, __ATOMIC_SEQ_CST)
+            #define atomic_fetch_add(object, value)                         __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
+            #define atomic_fetch_sub(object, value)                         __c11_atomic_fetch_sub(object, value, __ATOMIC_SEQ_CST)
+            #define atomic_store(object, desired)                           __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
+            #define atomic_compare_exchange_weak(object, expected, desired) __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+            #define atomic_thread_fence(order)                              __c11_atomic_thread_fence(order)
+            #define KD_ATOMIC_C11
+        #endif
     #endif
 
     #if !defined(__STDC_LIB_EXT1__) && !defined(_MSC_VER)
@@ -117,6 +150,7 @@
         #include <fcntl.h>
         #include <dirent.h>
         #include <dlfcn.h>
+        #include <time.h>
 
         /* POSIX reserved but OpenKODE uses this */
         #undef st_mtime
@@ -140,13 +174,13 @@
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
+    #define KD_ATOMIC_WIN32
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <windows.h>
 	#include <direct.h>
 	#include <io.h>
-	#define inline __inline
 	/* Fix POSIX name warning */
 	#define mkdir _mkdir
 	#define rmdir _rmdir
@@ -156,6 +190,57 @@
     #include <sys/types.h>
     #include <sys/stat.h>
     #include <dirent.h>
+    #if defined(__MINGW32__)
+    #include <time.h>
+    #endif
+	/* MSVC has an internal C11 threads version which is based on an earlier draft. */
+    #if !defined(__MINGW32__)
+        #include <thr/threads.h>
+        #define KD_THREAD_C11
+        #define _Thread_local __declspec(thread)
+        #undef thrd_sleep
+        int thrd_sleep(const struct timespec* time_point, struct timespec* remaining)
+        {
+            const struct xtime time = { .sec = time_point->tv_sec, .nsec = time_point->tv_nsec};
+            _Thrd_sleep(&time);
+            return 0;
+        }
+        typedef struct {
+            LONG volatile status;
+            CRITICAL_SECTION lock;
+        } once_flag;
+        static void call_once(once_flag *flag, void(*func)(void))
+        {
+            while (flag->status < 3)
+            {
+                switch (flag->status)
+                {
+                case 0:
+                    if (InterlockedCompareExchange(&(flag->status), 1, 0) == 0) {
+                        InitializeCriticalSection(&(flag->lock));
+                        EnterCriticalSection(&(flag->lock));
+                        flag->status = 2;
+                        func();
+                        flag->status = 3;
+                        LeaveCriticalSection(&(flag->lock));
+                        return;
+                    }
+                    break;
+                case 1:
+                    break;
+                case 2:
+                    EnterCriticalSection(&(flag->lock));
+                    LeaveCriticalSection(&(flag->lock));
+                    break;
+                }
+            }
+        }
+    #endif
+
+	/* MSVC redefinition fix*/
+	#ifndef inline
+	#define inline __inline
+	#endif
 #endif
 
 /******************************************************************************
@@ -186,6 +271,7 @@ typedef struct __KDQueue {
     KDAtomicPtr* head;
     KDAtomicPtr* free;
     KDAtomicInt* size;
+	void * _head;
     void * _free;
 } __KDQueue;
 
@@ -199,6 +285,7 @@ static inline void __kdQueueFree(__KDQueue *queue)
     if(queue)
     {
         kdFree(queue->_free);
+		kdFree(queue->_head);
         kdAtomicIntFree(queue->size);
         kdAtomicPtrFree(queue->free);
         kdAtomicPtrFree(queue->head);
@@ -228,10 +315,12 @@ static __KDQueue *__kdQueueCreate(KDint max_size)
 
     queue->size = kdAtomicIntCreate(0);
 
-    __KDQueueHead head = { .aba = 0, .node = KD_NULL};
-    queue->head = kdAtomicPtrCreate(&head);
+    __KDQueueHead *head = (__KDQueueHead*)kdMalloc(sizeof(__KDQueueHead));
+	head->aba = 0;
+	head->node = KD_NULL;
+	queue->_head = head;
+    queue->head = kdAtomicPtrCreate(head);
 
-    /* HACK: Something funny going on here :( */
     __KDQueueHead *free = (__KDQueueHead*)kdMalloc(sizeof(__KDQueueHead));
     free->aba = 0;
     free->node = queue->node_buffer;
@@ -283,6 +372,7 @@ static KDint  __kdQueuePost(__KDQueue *queue, void *value)
 
 void *__kdQueueGet(__KDQueue *queue)
 {
+
     struct __KDQueueNode *node = __kdQueuePop(queue->head);
     if (node == KD_NULL)
     {
@@ -395,7 +485,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     {
 #if defined(_MSC_VER) || defined(__MINGW32__)
 		return "Windows";
-#else
+#elif __unix__
 		static struct utsname name;
 		uname(&name);
 		return name.sysname;
@@ -459,63 +549,47 @@ typedef struct __KDThreadStartArgs
 {
     void *(*start_routine)(void *);
     void *arg;
-    KDThreadSem *sem;
 } __KDThreadStartArgs;
 typedef struct KDThread
 {
-	thrd_t threadid;
+	KDboolean used;
+#if defined(KD_THREAD_C11)
+    thrd_t nativethread;
+#elif defined(KD_THREAD_POSIX)
+    pthread_t nativethread;
+#endif
     KDThreadAttr* threadattr;
-    void* cleanup;
+    void* start_args;
     struct __KDQueue *eventqueue;
 } KDThread;
 #define __KD_THREADS_NUM 999
 static KDThread __kd_threads[__KD_THREADS_NUM] = {{0}};
 static KDAtomicInt* __kd_threads_index = KD_NULL;
 
-static KDThread *__kdThreadRegister(thrd_t threadid, const KDThreadAttr* threadattr, void* cleanup)
-{
-    KDint slot = kdAtomicIntFetchAdd(__kd_threads_index, 1);
-    kdAtomicFenceAcquire();
-    __kd_threads[slot].threadid = threadid;
-    __kd_threads[slot].threadattr = kdThreadAttrCreate();
-    if(threadattr != KD_NULL)
-    {
-        /* Copy user-provided thread attributes */
-        kdThreadAttrSetStackSize(__kd_threads[slot].threadattr, threadattr->stacksize);
-        kdThreadAttrSetDetachState(__kd_threads[slot].threadattr, threadattr->detachstate);
-    }
-    __kd_threads[slot].cleanup = cleanup;
-    __kd_threads[slot].eventqueue = __kdQueueCreate((KDint)__kd_threads[slot].threadattr->stacksize);
-    kdAtomicFenceRelease();
-    return &__kd_threads[slot];
-}
-
 static void __kdThreadUnregister(KDThread *thread)
 {
     if(thread != KD_NULL)
     {
-        kdAtomicFenceAcquire();
-        thread->threadid = 0;
+		thread->used = 0;
         if (thread->threadattr != KD_NULL)
         {
             kdThreadAttrFree(thread->threadattr);
             thread->threadattr = KD_NULL;
         }
-        if (thread->cleanup != KD_NULL)
+        if (thread->start_args != KD_NULL)
         {
-            kdFree(thread->cleanup);
-            thread->cleanup = KD_NULL;
+            kdFree(thread->start_args);
+            thread->start_args = KD_NULL;
         }
         if (thread->eventqueue != KD_NULL)
         {
             __kdQueueFree(thread->eventqueue);
             thread->eventqueue = KD_NULL;
         }
-        kdAtomicFenceRelease();
     }
 }
 
-static int __kdThreadStart(void *args)
+static void* __kdThreadStart(void *args)
 {
 #ifdef KD_GC_SUPPORTED
     struct GC_stack_base sb;
@@ -524,20 +598,12 @@ static int __kdThreadStart(void *args)
 #endif
 
     __KDThreadStartArgs* start_args = (__KDThreadStartArgs*)args;
-    kdThreadSemWait(start_args->sem);
-    kdThreadSemFree(start_args->sem);
-
     void *retval = start_args->start_routine(start_args->arg);
-    KDint result = 0;
-    if(retval != KD_NULL)
-    {
-        result = *(KDint*)retval;
-    }
 
 #ifdef KD_GC_SUPPORTED
     GC_unregister_my_thread();
 #endif
-    return result;
+    return retval;
 }
 
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
@@ -545,25 +611,44 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs*)kdMalloc(sizeof(__KDThreadStartArgs));
     start_args->start_routine = start_routine;
     start_args->arg = arg;
-    start_args->sem = kdThreadSemCreate(0);
-    thrd_t threadid = 0;
-    int error = thrd_create(&threadid, (thrd_start_t)__kdThreadStart, start_args);
-    if(error == thrd_nomem)
+
+	KDint slot = kdAtomicIntFetchAdd(__kd_threads_index, 1);
+	__kd_threads[slot].used = 1;
+	__kd_threads[slot].start_args = start_args;
+	__kd_threads[slot].threadattr = kdThreadAttrCreate();
+	if (attr != KD_NULL)
+	{
+		/* Copy user-provided thread attributes */
+		kdThreadAttrSetStackSize(__kd_threads[slot].threadattr, attr->stacksize);
+		kdThreadAttrSetDetachState(__kd_threads[slot].threadattr, attr->detachstate);
+	}
+	__kd_threads[slot].eventqueue = __kdQueueCreate((KDint)__kd_threads[slot].threadattr->stacksize);
+
+    KDint error = 0;
+#if defined(KD_THREAD_C11)
+    error = thrd_create(&__kd_threads[slot].nativethread, (thrd_start_t)__kdThreadStart, start_args);
+#elif defined(KD_THREAD_POSIX)
+    /* TODO: Fix thread attributes. */
+    error = pthread_create(&__kd_threads[slot].nativethread, KD_NULL, __kdThreadStart, start_args);
+#else
+    kdAssert(0);
+#endif
+    KDint detachstate = __kd_threads[slot].threadattr->detachstate;
+
+    if(error != 0)
     {
-        kdSetError(KD_ENOMEM);
+        kdSetError(KD_EAGAIN);
+        __kdThreadUnregister(&__kd_threads[slot]);
+        return KD_NULL;
     }
-    else if(error == thrd_success)
+
+    if(detachstate == KD_THREAD_CREATE_DETACHED)
     {
-        KDThread *thread = __kdThreadRegister(threadid, attr, start_args);
-        kdThreadSemPost(start_args->sem);
-        if(thread->threadattr->detachstate == KD_THREAD_CREATE_DETACHED)
-        {
-            kdThreadDetach(thread);
-            return KD_NULL;
-        }
-        return thread;
+        kdThreadDetach(&__kd_threads[slot]);
+        return KD_NULL;
     }
-    return KD_NULL;
+
+    return &__kd_threads[slot];
 }
 
 /* kdThreadExit: Terminate this thread. */
@@ -575,22 +660,26 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
         kdExit(0);
     }
     __kdThreadUnregister(kdThreadSelf());
+#if defined(KD_THREAD_C11)
     KDint result = 0;
     if(retval != KD_NULL)
     {
         result = *(KDint*)retval;
     }
     thrd_exit(result);
+#elif defined(KD_THREAD_POSIX)
+    pthread_exit(retval);
+#else
+    kdAssert(0);
+#endif
+    /* We get a "noreturn functions returns" warning otherwise. */
+    kdExit(0);
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
-    /* Undefined by spec; we return 0 */
-    if(!thread->threadid)
-    {
-        return 0;
-    }
+#if defined(KD_THREAD_C11)
     /* Join on self */
     if(kdThreadSelf() == thread)
     {
@@ -602,32 +691,48 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     {
         result = *retval;
     }
-    int error = thrd_join(thread->threadid, result);
-    if(error == thrd_success)
-    {
-        __kdThreadUnregister(thread);
-        return 0;
-    }
-    else if(error == thrd_error)
+    int error = thrd_join(thread->nativethread, result);
+    if(error == thrd_error)
     {
         kdSetError(KD_EINVAL);
+        return -1;
     }
-    return -1;
+#elif defined(KD_THREAD_POSIX)
+    int error = pthread_join(thread->nativethread, retval);
+    if(error == EINVAL || error == ESRCH)
+    {
+        kdSetError(KD_EINVAL);
+        return -1;
+    }
+    else if(error == EDEADLK)
+    {
+        kdSetError(KD_EDEADLK);
+        return -1;
+    }
+#else
+    kdAssert(0);
+#endif
+    __kdThreadUnregister(thread);
+    return 0;
 }
 
 /* kdThreadDetach: Allow resources to be freed as soon as a thread terminates. */
 KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 {
-    int error = thrd_detach(thread->threadid);
-    if(error == thrd_success)
-    {
-        return 0;
-    }
-    else if(error == thrd_error)
+    KDint error = 0;
+#if defined(KD_THREAD_C11)
+    error = thrd_detach(thread->nativethread);
+#elif defined(KD_THREAD_POSIX)
+    error = pthread_detach(thread->nativethread);
+#else
+    kdAssert(0);
+#endif
+    if(error != 0)
     {
         kdSetError(KD_EINVAL);
+        return -1;
     }
-    return -1;
+    return 0;
 }
 
 /* kdThreadSelf: Return calling thread's ID. */
@@ -635,10 +740,19 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
     for (KDint i = 0; i < kdAtomicIntLoad(__kd_threads_index) ; i++)
     {
-        if (__kd_threads[i].threadid == thrd_current())
-        {
-            return &__kd_threads[i];
-        }
+		if (__kd_threads[i].used)
+		{
+#if defined(KD_THREAD_C11)
+			if (thrd_equal(__kd_threads[i].nativethread, thrd_current()))
+#elif defined(KD_THREAD_POSIX)
+            if (pthread_equal(__kd_threads[i].nativethread, pthread_self()))
+#else
+            kdAssert(0);
+#endif
+			{
+				return &__kd_threads[i];
+			}
+		}
     }
     return KD_NULL;
 }
@@ -647,7 +761,13 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 #ifndef KD_NO_STATIC_DATA
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
-    call_once((once_flag*)once_control,init_routine);
+#if defined(KD_THREAD_C11)
+    call_once((once_flag *)once_control, init_routine);
+#elif defined(KD_THREAD_POSIX)
+    pthread_once((pthread_once_t *)once_control, init_routine);
+#else
+    kdAssert(0);
+#endif
     return 0;
 }
 #endif /* ndef KD_NO_STATIC_DATA */
@@ -655,28 +775,55 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 /* kdThreadMutexCreate: Create a mutex. */
 typedef struct KDThreadMutex
 {
-    mtx_t mtx;
+#if defined(KD_THREAD_C11)
+    mtx_t nativemutex;
+#elif defined(KD_THREAD_POSIX)
+    pthread_mutex_t nativemutex;
+    pthread_mutexattr_t nativemutexattr;
+#endif
 } KDThreadMutex;
 KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
 {
+    /* TODO: Write KDThreadMutexAttr extension */
     KDThreadMutex *mutex = (KDThreadMutex*)kdMalloc(sizeof(KDThreadMutex));
-    int error = mtx_init(&mutex->mtx, mtx_plain);
-    if(error == thrd_success)
+    KDint error = 0;
+#if defined(KD_THREAD_C11)
+    error = mtx_init(&mutex->nativemutex, mtx_plain);
+#elif defined(KD_THREAD_POSIX)
+    error = pthread_mutexattr_init(&mutex->nativemutexattr);
+    if(error == 0)
     {
-        return mutex;
+        error = pthread_mutex_init(&mutex->nativemutex, KD_NULL);
     }
-    else if(error == thrd_error)
+    if(error == ENOMEM)
+    {
+        kdSetError(KD_ENOMEM);
+        kdFree(mutex);
+        return KD_NULL;
+    }
+#else
+    kdAssert(0);
+#endif
+    if(error != 0)
     {
         kdSetError(KD_EAGAIN);
+        kdFree(mutex);
+        return KD_NULL;
     }
-    kdFree(mutex);
-    return KD_NULL;
+    return mutex;
 }
 
 /* kdThreadMutexFree: Free a mutex. */
 KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
 {
-    mtx_destroy(&mutex->mtx);
+#if defined(KD_THREAD_C11)
+    mtx_destroy(&mutex->nativemutex);
+#elif defined(KD_THREAD_POSIX)
+    pthread_mutex_destroy(&mutex->nativemutex);
+    pthread_mutexattr_destroy(&mutex->nativemutexattr);
+#else
+    kdAssert(0);
+#endif
     kdFree(mutex);
     return 0;
 }
@@ -684,46 +831,77 @@ KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
 /* kdThreadMutexLock: Lock a mutex. */
 KD_API KDint KD_APIENTRY kdThreadMutexLock(KDThreadMutex *mutex)
 {
-    mtx_lock(&mutex->mtx);
+#if defined(KD_THREAD_C11)
+    mtx_lock(&mutex->nativemutex);
+#elif defined(KD_THREAD_POSIX)
+    pthread_mutex_lock(&mutex->nativemutex);
+#else
+    kdAssert(0);
+#endif
     return 0;
 }
 
 /* kdThreadMutexUnlock: Unlock a mutex. */
 KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 {
-    mtx_unlock(&mutex->mtx);
+#if defined(KD_THREAD_C11)
+    mtx_unlock(&mutex->nativemutex);
+#elif defined(KD_THREAD_POSIX)
+    pthread_mutex_unlock(&mutex->nativemutex);
+#else
+    kdAssert(0);
+#endif
     return 0;
 }
 
 /* kdThreadCondCreate: Create a condition variable. */
 typedef struct KDThreadCond
 {
-    cnd_t cnd;
+#if defined(KD_THREAD_C11)
+    cnd_t nativecond;
+#elif defined(KD_THREAD_POSIX)
+    pthread_cond_t nativecond;
+#endif
 } KDThreadCond;
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
 {
     KDThreadCond *cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
-    int error =  cnd_init(&cond->cnd);
-    if(error == thrd_success)
-    {
-        return cond;
-    }
-    else if(error ==  thrd_nomem)
+    KDint error = 0;
+#if defined(KD_THREAD_C11)
+    error =  cnd_init(&cond->nativecond);
+    if(error ==  thrd_nomem)
     {
         kdSetError(KD_ENOMEM);
     }
     else if(error == thrd_error)
     {
         kdSetError(KD_EAGAIN);
+        kdFree(cond);
+        return KD_NULL;
     }
-    kdFree(cond);
-    return KD_NULL;
+#elif defined(KD_THREAD_POSIX)
+    error = pthread_cond_init(&cond->nativecond, KD_NULL);
+#else
+    kdAssert(0);
+#endif
+    if(error != 0)
+    {
+        kdFree(cond);
+        return KD_NULL;
+    }
+    return cond;
 }
 
 /* kdThreadCondFree: Free a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
 {
-    cnd_destroy(&cond->cnd);
+#if defined(KD_THREAD_C11)
+    cnd_destroy(&cond->nativecond);
+#elif defined(KD_THREAD_POSIX)
+    pthread_cond_destroy(&cond->nativecond);
+#else
+    kdAssert(0);
+#endif
     kdFree(cond);
     return 0;
 }
@@ -731,20 +909,38 @@ KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
 /* kdThreadCondSignal, kdThreadCondBroadcast: Signal a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondSignal(KDThreadCond *cond)
 {
-    cnd_signal(&cond->cnd);
+#if defined(KD_THREAD_C11)
+    cnd_signal(&cond->nativecond);
+#elif defined(KD_THREAD_POSIX)
+    pthread_cond_signal(&cond->nativecond);
+#else
+    kdAssert(0);
+#endif
     return 0;
 }
 
 KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 {
-    cnd_broadcast(&cond->cnd);
+#if defined(KD_THREAD_C11)
+    cnd_broadcast(&cond->nativecond);
+#elif defined(KD_THREAD_POSIX)
+    pthread_cond_broadcast(&cond->nativecond);
+#else
+    kdAssert(0);
+#endif
     return 0;
 }
 
 /* kdThreadCondWait: Wait for a condition variable to be signalled. */
 KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mutex)
 {
-    cnd_wait(&cond->cnd, &mutex->mtx );
+#if defined(KD_THREAD_C11)
+    cnd_wait(&cond->nativecond, &mutex->nativemutex);
+#elif defined(KD_THREAD_POSIX)
+    pthread_cond_wait(&cond->nativecond, &mutex->nativemutex);
+#else
+    kdAssert(0);
+#endif
     return 0;
 }
 
@@ -814,7 +1010,13 @@ void __kd_sleep_nanoseconds(KDust timeout)
     /* Remaining nanoseconds */
     ts.tv_nsec = timeout - (ts.tv_sec * 1000000000);
 
+#if defined(KD_THREAD_C11)
     thrd_sleep(&ts, NULL);
+#elif defined(KD_THREAD_POSIX)
+    nanosleep(&ts, NULL);
+#else
+    kdAssert(0);
+#endif
 }
 
 /* kdWaitEvent: Get next event from thread's event queue. */
@@ -1166,6 +1368,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
     kdFree(event);
+	event = KD_NULL;
 }
 
 /******************************************************************************
@@ -2774,29 +2977,33 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
  * Extensions
  ******************************************************************************/
 
-KD_API KDAtomicInt* kdAtomicIntCreate(KDint value)
+ /******************************************************************************
+  * Atomics
+  ******************************************************************************/
+
+KD_API KDAtomicInt* KD_APIENTRY kdAtomicIntCreate(KDint value)
 {
     KDAtomicInt* object = (KDAtomicInt*)kdMalloc(sizeof(KDAtomicInt));
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     object->value = value;
 #endif
     return object;
 }
 
-KD_API KDAtomicPtr* kdAtomicPtrCreate(void* value)
+KD_API KDAtomicPtr* KD_APIENTRY kdAtomicPtrCreate(void* value)
 {
     KDAtomicPtr* object = (KDAtomicPtr*)kdMalloc(sizeof(KDAtomicPtr));
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     object->value = value;
 #endif
     return object;
 }
 
-KD_API void kdAtomicIntFree(KDAtomicInt *object)
+KD_API void KD_APIENTRY kdAtomicIntFree(KDAtomicInt *object)
 {
     kdFree(object);
 }
@@ -2806,11 +3013,11 @@ KD_API void kdAtomicPtrFree(KDAtomicPtr *object)
     kdFree(object);
 }
 
-KD_API KDint kdAtomicIntLoad(KDAtomicInt *object)
+KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     return atomic_load(&object->value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     int value = 0;
     do {
         value = object->value;
@@ -2819,11 +3026,11 @@ KD_API KDint kdAtomicIntLoad(KDAtomicInt *object)
 #endif
 }
 
-KD_API void* kdAtomicPtrLoad(KDAtomicPtr *object)
+KD_API void* KD_APIENTRY kdAtomicPtrLoad(KDAtomicPtr *object)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     return atomic_load(&object->value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     void* value = 0;
     do {
         value = object->value;
@@ -2834,54 +3041,54 @@ KD_API void* kdAtomicPtrLoad(KDAtomicPtr *object)
 
 KD_API void KD_APIENTRY kdAtomicIntStore(KDAtomicInt *object, KDint value)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     _InterlockedExchange((long *)&object->value, (long)value);
 #endif
 }
 
 KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
 	_InterlockedExchangePointer(&object->value, value);
 #endif
 }
 
-KD_API KDint kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value)
+KD_API KDint KD_APIENTRY kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     return atomic_fetch_add(&object->value, value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     return _InterlockedExchangeAdd((long*)&object->value, value);
 #endif
 }
 
-KD_API KDint kdAtomicIntFetchSub(KDAtomicInt *object, KDint value)
+KD_API KDint KD_APIENTRY kdAtomicIntFetchSub(KDAtomicInt *object, KDint value)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     return atomic_fetch_sub(&object->value, value);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     return _InterlockedExchangeAdd((long*)&object->value, -value);
 #endif
 }
 
-KD_API KDboolean kdAtomicIntCompareExchange(KDAtomicInt *object, KDint expected, KDint desired)
+KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchange(KDAtomicInt *object, KDint expected, KDint desired)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
 return atomic_compare_exchange_weak(&object->value, &expected, desired);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
 #endif
 }
 
-KD_API KDboolean kdAtomicPtrCompareExchange(KDAtomicPtr *object, void* expected, void* desired)
+KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchange(KDAtomicPtr *object, void* expected, void* desired)
 {
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__)
+#if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, &expected, desired);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(KD_ATOMIC_WIN32)
     return (_InterlockedCompareExchangePointer(&object->value, desired, expected) == expected);
 #endif
 }
