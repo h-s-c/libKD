@@ -61,6 +61,7 @@
 #include <KD/kd.h>
 #include <KD/ATX_keyboard.h>
 #include <KD/LKD_atomic.h>
+#include <KD/LKD_guid.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -179,6 +180,7 @@
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <windows.h>
+	#include <objbase.h>
 	#include <direct.h>
 	#include <io.h>
 	/* Fix POSIX name warning */
@@ -3091,6 +3093,58 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchange(KDAtomicPtr *object, voi
 #elif defined(KD_ATOMIC_WIN32)
     return (_InterlockedCompareExchangePointer(&object->value, desired, expected) == expected);
 #endif
+}
+
+/******************************************************************************
+ * Guid
+ ******************************************************************************/
+
+typedef struct KDGuid { KDuint8 guid[16]; } KDGuid;
+
+KD_API KDGuid* KDGuidCreate(void)
+{
+    KDGuid* guid = (KDGuid*)kdMalloc(sizeof(KDGuid));
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    GUID nativeguid;
+    CoCreateGuid(&nativeguid);
+    guid->guid[0] = (nativeguid.Data1 >> 24) & 0xFF;
+    guid->guid[1] = (nativeguid.Data1 >> 16) & 0xFF;
+    guid->guid[2] = (nativeguid.Data1 >> 8) & 0xFF;
+    guid->guid[3] = (nativeguid.Data1) & 0xff;
+    guid->guid[4] = (nativeguid.Data2 >> 8) & 0xFF;
+    guid->guid[5] = (nativeguid.Data2) & 0xff;
+    guid->guid[6] = (nativeguid.Data3 >> 8) & 0xFF;
+    guid->guid[7] = (nativeguid.Data3) & 0xFF;
+    guid->guid[8] = nativeguid.Data4[0];
+    guid->guid[9] = nativeguid.Data4[1];
+    guid->guid[10] = nativeguid.Data4[2];
+    guid->guid[11] = nativeguid.Data4[3];
+    guid->guid[12] = nativeguid.Data4[4];
+    guid->guid[13] = nativeguid.Data4[5];
+    guid->guid[14] = nativeguid.Data4[6];
+    guid->guid[15] = nativeguid.Data4[7];
+#elif __unix__
+    FILE *uuid = fopen("/proc/sys/kernel/random/uuid", "r");
+	KDsize result = fread(guid->guid, sizeof(KDuint8), sizeof(guid->guid), uuid);
+	fclose(uuid);
+	if (result != sizeof(guid->guid))
+	{
+		kdAssert(0);
+	}
+#else
+    kdAssert(0);
+#endif
+    return guid;
+}
+
+KD_API void KDGuidFree(KDGuid* guid)
+{
+    kdFree(guid);
+}
+
+KD_API KDboolean KDGuidEqual(KDGuid* guid1, KDGuid* guid2)
+{
+    return (guid1->guid == guid2->guid);
 }
 
 /******************************************************************************
