@@ -22,42 +22,17 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-
-#if !defined(__has_feature)
-#define __has_feature(x) 0
-#endif
-#if !defined(__has_include)
-#define __has_include(x) 0
-#endif
-
-#if (__STDC_VERSION__ >= 201112L) && !defined (__STDC_NO_ATOMICS__) && __has_include(<stdatomic.h>)
-#include <stdatomic.h>
-#else
-    #if defined (__clang__) && __has_feature(c_atomic)
-        #define ATOMIC_VAR_INIT(value)          (value)
-        #define atomic_load(object)             __c11_atomic_load(object, __ATOMIC_SEQ_CST)
-        #define atomic_fetch_add(object, value) __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
-	#elif defined (_MSC_VER)
-		#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-		#endif
-		#include <windows.h>
-		#define _Atomic							volatile
-		#define ATOMIC_VAR_INIT(value)          (value)
-		#define atomic_load(object)             (*object)
-		#define atomic_fetch_add(object, value) InterlockedExchangeAdd((LONG *)object, value)
-    #endif
-#endif
+#include <KD/LKD_atomic.h>
 
 #include <stdio.h>
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
-_Atomic KDint test_once_count = ATOMIC_VAR_INIT(0);
+KDAtomicInt test_once_count;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func(void)
 {
-    atomic_fetch_add(&test_once_count, 1);
+    kdAtomicIntFetchAdd(&test_once_count, 1);
 }
 
 void* test_func( void *arg)
@@ -98,7 +73,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
         threads[k] = KD_NULL;
     }
 
-    KDint test = atomic_load(&test_once_count);
+    KDint test = kdAtomicIntLoad(&test_once_count);
     if (test != 1)
     {
         kdAssert(0);

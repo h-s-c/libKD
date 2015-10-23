@@ -257,133 +257,61 @@
  * Internal eventqueue
  ******************************************************************************/
 
-/* __KDQueue based on lstack by  Chris Wellons (Public Domain/Unlicense) */
-struct __KDQueueNode {
-    void *value;
-    struct __KDQueueNode *next;
-};
-
-typedef struct __KDQueueHead {
-    KDuintptr aba;
-    struct __KDQueueNode *node;
-} __KDQueueHead;
+/* __KDQueue (lock-less FIFO)*/
+typedef struct __KDQueueItem {
+	SLIST_ENTRY entry;
+	void* data;
+} __KDQueueItem;
 
 typedef struct __KDQueue {
-    struct __KDQueueNode *node_buffer;
-    KDAtomicPtr* head;
-    KDAtomicPtr* free;
-    KDAtomicInt* size;
-	void * _head;
-    void * _free;
+	PSLIST_ENTRY	firstentry;
+	PSLIST_HEADER	head;
 } __KDQueue;
 
-static inline KDint __kdQueueSize(__KDQueue *queue)
+static __KDQueue *__kdQueueCreate(KDint max_size)
 {
-    return kdAtomicIntLoad(queue->size);
+	__KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
+	queue->head = (PSLIST_HEADER)_aligned_malloc(sizeof(SLIST_HEADER), MEMORY_ALLOCATION_ALIGNMENT);
+	InitializeSListHead(queue->head);
+	return queue;
 }
+
 
 static inline void __kdQueueFree(__KDQueue *queue)
 {
     if(queue)
     {
-        kdFree(queue->_free);
-		kdFree(queue->_head);
-        kdAtomicIntFree(queue->size);
-        kdAtomicPtrFree(queue->free);
-        kdAtomicPtrFree(queue->head);
-        kdFree(queue->node_buffer);
-        queue->node_buffer = KD_NULL;
-        kdFree(queue);
-        queue = KD_NULL;
+		InterlockedFlushSList(queue->head);
+		_aligned_free(queue->head);
+		kdFree(queue);
+		queue = KD_NULL;
     }
 }
 
-static __KDQueue *__kdQueueCreate(KDint max_size)
+static inline KDint __kdQueueSize(__KDQueue *queue)
 {
-    __KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
-
-    /* Pre-allocate all nodes. */
-    queue->node_buffer = kdMalloc(max_size * sizeof(struct __KDQueueNode));
-    if (queue->node_buffer == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    for (KDint i = 0; i < max_size - 1; i++)
-    {
-        queue->node_buffer[i].next = queue->node_buffer + i + 1;
-    }
-    queue->node_buffer[max_size - 1].next = KD_NULL;
-
-    queue->size = kdAtomicIntCreate(0);
-
-    __KDQueueHead *head = (__KDQueueHead*)kdMalloc(sizeof(__KDQueueHead));
-	head->aba = 0;
-	head->node = KD_NULL;
-	queue->_head = head;
-    queue->head = kdAtomicPtrCreate(head);
-
-    __KDQueueHead *free = (__KDQueueHead*)kdMalloc(sizeof(__KDQueueHead));
-    free->aba = 0;
-    free->node = queue->node_buffer;
-    queue->_free = free;
-    queue->free = kdAtomicPtrCreate(free);
-
-    return queue;
-}
-
-static struct __KDQueueNode *__kdQueuePop(KDAtomicPtr *head)
-{
-    __KDQueueHead next = { .aba = 0 , .node = KD_NULL};
-    __KDQueueHead *orig =  kdAtomicPtrLoad(head);
-    do {
-        if (orig->node == KD_NULL)
-        {
-            return KD_NULL;
-        }
-        next.aba = orig->aba + 1;
-        next.node = orig->node->next;
-    } while (!kdAtomicPtrCompareExchange(head, orig, &next));
-    return orig->node;
-}
-
-static void  __kdQueuePush(KDAtomicPtr *head, struct __KDQueueNode *node)
-{
-    __KDQueueHead next = { .aba = 0 , .node = KD_NULL};
-    __KDQueueHead *orig = kdAtomicPtrLoad(head);
-    do {
-        node->next = orig->node;
-        next.aba = orig->aba + 1;
-        next.node = node;
-    } while (!kdAtomicPtrCompareExchange(head, orig, &next));
+	return QueryDepthSList(queue->head);
 }
 
 static KDint  __kdQueuePost(__KDQueue *queue, void *value)
 {
-    struct __KDQueueNode *node = __kdQueuePop(queue->free);
-    if (node == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return -1;
-    }
-    node->value = value;
-    __kdQueuePush(queue->head, node);
-    kdAtomicIntFetchAdd(queue->size, 1);
+	__KDQueueItem *item = (__KDQueueItem*)_aligned_malloc(sizeof(__KDQueueItem), MEMORY_ALLOCATION_ALIGNMENT);
+	item->data = value;
+	queue->firstentry = InterlockedPushEntrySList(queue->head, &(item->entry));
     return 0;
 }
 
 void *__kdQueueGet(__KDQueue *queue)
 {
-
-    struct __KDQueueNode *node = __kdQueuePop(queue->head);
-    if (node == KD_NULL)
-    {
-        return KD_NULL;
-    }
-    kdAtomicIntFetchSub(queue->size, 1);
-    void *value = node->value;
-    __kdQueuePush(queue->free, node);
-    return value;
+	void* value = KD_NULL;
+	__KDQueueItem *item = (__KDQueueItem *)InterlockedPopEntrySList(queue->head);
+	if(item)
+	{
+		value = item->data;
+		_aligned_free(item);
+		return value;
+	}
+	return KD_NULL;
 }
 
 /******************************************************************************
