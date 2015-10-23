@@ -546,9 +546,11 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 	__kd_threads[slot].used = 1;
 	__kd_threads[slot].start_args = start_args;
 	__kd_threads[slot].threadattr = kdThreadAttrCreate();
+	KDboolean detach = 0;
 	if (attr != KD_NULL)
 	{
 		/* Copy user-provided thread attributes */
+		detach = (attr->stacksize == KD_THREAD_CREATE_DETACHED);
 		kdThreadAttrSetStackSize(__kd_threads[slot].threadattr, attr->stacksize);
 		kdThreadAttrSetDetachState(__kd_threads[slot].threadattr, attr->detachstate);
 	}
@@ -563,8 +565,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #else
     kdAssert(0);
 #endif
-    KDint detachstate = __kd_threads[slot].threadattr->detachstate;
-
     if(error != 0)
     {
         kdSetError(KD_EAGAIN);
@@ -572,7 +572,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         return KD_NULL;
     }
 
-    if(detachstate == KD_THREAD_CREATE_DETACHED)
+    if(detach == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(&__kd_threads[slot]);
         return KD_NULL;
