@@ -92,6 +92,8 @@
     #else
         #include <pthread.h>
         #define KD_THREAD_POSIX
+        #define _Thread_local __thread
+        #define thread_local _Thread_local
     #endif
 
     #if !__STDC_NO_ATOMICS__
