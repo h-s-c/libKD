@@ -39,7 +39,6 @@ void* test_func( void *arg)
             kdDefaultEvent(event);
         }
     }
-    kdThreadExit(KD_NULL);
 	return 0;
 }
 
@@ -65,11 +64,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     }
     for(KDint j = 0 ; j < THREAD_COUNT ;j++)
     {
-        if(kdThreadJoin(threads[j], KD_NULL) == -1)
-        {
-            kdAssert(0);
-        }
-        threads[j] = KD_NULL;
+		kdThreadJoin(threads[j], KD_NULL);
     }
     return 0;
 }

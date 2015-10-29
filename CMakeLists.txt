@@ -43,7 +43,6 @@ set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
 set(KD_BUILD_EXAMPLES "Off" CACHE BOOL "Build with examples")
 set(KD_BUILD_CI "Off" CACHE BOOL "Build with continous integration")
-set(KD_BUILD_GC "Off" CACHE BOOL "Build with gargabe collection")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
 
@@ -70,11 +69,6 @@ project (KD)
         endif()
     endif()
 
-    if(KD_BUILD_GC)
-        message(STATUS "Garbage collected build")
-        list(APPEND KD_LIBRARIES gc)
-        set(KD_GC_SUPPORTED ON)
-    endif()
     if(KD_BUILD_VFS)
         message(STATUS "Virtual filesystem enabled build")
         list(APPEND KD_LIBRARIES physfs)

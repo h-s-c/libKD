@@ -28,11 +28,11 @@
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
-KDAtomicInt test_once_count;
+KDAtomicInt *test_once_count = KD_NULL;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func(void)
 {
-    kdAtomicIntFetchAdd(&test_once_count, 1);
+    kdAtomicIntFetchAdd(test_once_count, 1);
 }
 
 void* test_func( void *arg)
@@ -41,21 +41,13 @@ void* test_func( void *arg)
     {
         kdThreadOnce(&test_once, test_once_func);
     }
-    if(kdThreadJoin(kdThreadSelf(), KD_NULL) == -1)
-    {
-        if (kdGetError() != KD_EDEADLK)
-        {
-            kdAssert(0);
-        }
-    }
-    kdThreadExit(KD_NULL);
-    kdAssert(0);
 	return 0;
 }
 
 KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
+    test_once_count = kdAtomicIntCreate(0);
+    KDThread* threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0 ; i < THREAD_COUNT ; i++)
     {
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
@@ -66,17 +58,15 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     }
     for(KDint k = 0 ; k < THREAD_COUNT ; k++)
     {
-        if(kdThreadJoin(threads[k], KD_NULL) == -1)
-        {
-            kdAssert(0);
-        }
-        threads[k] = KD_NULL;
+		kdThreadJoin(threads[k], KD_NULL);
     }
 
-    KDint test = kdAtomicIntLoad(&test_once_count);
+    KDint test = kdAtomicIntLoad(test_once_count);
     if (test != 1)
     {
         kdAssert(0);
     }
+
+    kdAtomicIntFree(test_once_count);
     return 0;
 }

@@ -29,19 +29,11 @@
 extern "C" {
 #endif
 
-#if (__STDC_VERSION__ >= 201112L) && !__STDC_NO_ATOMICS__
-typedef struct KDAtomicInt { _Atomic KDint value; } KDAtomicInt;
-typedef struct KDAtomicPtr { _Atomic void *value; } KDAtomicPtr;
-#define kdAtomicFenceAcquire() atomic_thread_fence(memory_order_release)
-#define kdAtomicFenceRelease() atomic_thread_fence(memory_order_release)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
-typedef struct KDAtomicInt { KDint value; } KDAtomicInt;
-typedef struct KDAtomicPtr { void *value; } KDAtomicPtr;
-void _ReadWriteBarrier();
-#pragma intrinsic(_ReadWriteBarrier)
-#define kdAtomicFenceAcquire() _ReadWriteBarrier()
-#define kdAtomicFenceRelease() _ReadWriteBarrier()
-#endif
+typedef struct KDAtomicInt KDAtomicInt;
+typedef struct KDAtomicPtr KDAtomicPtr;
+
+KD_API void KD_APIENTRY kdAtomicFenceAcquire(void);
+KD_API void KD_APIENTRY kdAtomicFenceRelease(void);
 
 KD_API KDAtomicInt* KD_APIENTRY kdAtomicIntCreate(KDint value);
 KD_API KDAtomicPtr* KD_APIENTRY kdAtomicPtrCreate(void* value);
