@@ -228,11 +228,20 @@
             }
         }
     #endif
-
 	/* MSVC redefinition fix*/
 	#ifndef inline
 	#define inline __inline
 	#endif
+    /* Debugging helpers*/
+    #pragma pack(push,8)
+    struct THREADNAME_INFO
+    {
+        DWORD   type;       // must be 0x1000
+        LPCSTR  name;       // pointer to name (in user addr space)
+        DWORD   threadid;   // thread ID (-1=caller thread)
+        DWORD   flags;      // reserved for future use, must be zero
+    };
+    #pragma pack(pop)
 #endif
 
 /******************************************************************************
@@ -429,8 +438,12 @@ KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KDint attribute, KDint i
 /* kdThreadAttrCreate: Create a thread attribute object. */
 typedef struct KDThreadAttr
 {
+#if defined(KD_THREAD_POSIX)
+    pthread_attr_t nativeattr;
+#endif
     KDint detachstate;
     KDsize stacksize;
+    KDchar debugname[256];
 } KDThreadAttr;
 KD_API KDThreadAttr *KD_APIENTRY kdThreadAttrCreate(void)
 {
@@ -439,6 +452,12 @@ KD_API KDThreadAttr *KD_APIENTRY kdThreadAttrCreate(void)
     attr->detachstate = KD_THREAD_CREATE_JOINABLE;
     /* Impl default */
     attr->stacksize = 100000;
+    kdStrcpy_s(attr->debugname, 256, "KDThread");
+#if defined(KD_THREAD_POSIX)
+    pthread_attr_init(&attr->nativeattr);
+    pthread_attr_setdetachstate(&attr->nativeattr, PTHREAD_CREATE_JOINABLE);
+    pthread_attr_setstacksize(&attr->nativeattr, attr->stacksize);
+#endif
     return attr;
 }
 
@@ -453,6 +472,20 @@ KD_API KDint KD_APIENTRY kdThreadAttrFree(KDThreadAttr *attr)
 KD_API KDint KD_APIENTRY kdThreadAttrSetDetachState(KDThreadAttr *attr, KDint detachstate)
 {
     attr->detachstate = detachstate;
+#if defined(KD_THREAD_POSIX)
+    if(detachstate == KD_THREAD_CREATE_JOINABLE)
+    {
+        pthread_attr_setdetachstate(&attr->nativeattr, PTHREAD_CREATE_JOINABLE);
+    }
+    else if(detachstate == KD_THREAD_CREATE_DETACHED)
+    {
+        pthread_attr_setdetachstate(&attr->nativeattr, PTHREAD_CREATE_DETACHED);
+    }
+    else
+    {
+        kdAssert(0);
+    }
+#endif
     return 0;
 }
 
@@ -461,6 +494,16 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDetachState(KDThreadAttr *attr, KDint de
 KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize stacksize)
 {
     attr->stacksize = stacksize;
+#if defined(KD_THREAD_POSIX)
+    pthread_attr_setstacksize(&attr->nativeattr, attr->stacksize);
+#endif
+    return 0;
+}
+
+/* __kdThreadAttrSetDebugName: Set debugname attribute. */
+static KDint __kdThreadAttrSetDebugName(KDThreadAttr *attr, const char * debugname)
+{
+    kdStrcpy_s(attr->debugname, 256, debugname);
     return 0;
 }
 
@@ -474,18 +517,48 @@ typedef struct KDThread
     pthread_t nativethread;
 #endif
 } KDThread;
+
 typedef struct __KDThreadStartArgs
 {
     void *(*start_routine)(void *);
     void *arg;
     KDThread *thread;
+    const KDThreadAttr * attr;
 } __KDThreadStartArgs;
 static void* __kdThreadStart(void *args)
 {
-    __KDThreadStartArgs* start_args = (__KDThreadStartArgs*)args;
+    __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
+
+    /* Set the thread name */
+#if defined(_MSC_VER)
+    /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
+    struct THREADNAME_INFO info =
+    {
+        .type = 0x1000 ,
+        .name = start_args->attr ? start_args->attr->debugname : "KDThread",
+        .threadid = GetCurrentThreadId(),
+        .flags = 0
+    };
+    if (IsDebuggerPresent())
+    {
+        __try
+        {
+            RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
+        }
+        __except (EXCEPTION_CONTINUE_EXECUTION)
+        {
+        }
+    }
+#elif defined(KD_THREAD_POSIX)
+#if defined(__linux__)
+    pthread_setname_np(start_args->thread, start_args->attr->debugname);
+#endif
+#endif
+
     __kd_thread = start_args->thread;
     return start_args->start_routine(start_args->arg);
 }
+
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
@@ -493,13 +566,13 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     start_args->start_routine = start_routine;
     start_args->arg = arg;
     start_args->thread = thread;
+    start_args->attr = attr;
 
-	KDint error = 0;
+    KDint error = 0;
 #if defined(KD_THREAD_C11)
-	error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadStart, start_args);
+    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadStart, start_args);
 #elif defined(KD_THREAD_POSIX)
-	/* TODO: Fix thread attributes. */
-	error = pthread_create(&thread->nativethread, KD_NULL, __kdThreadStart, start_args);
+    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, start_args);
 #else
 	kdAssert(0);
 #endif
@@ -510,29 +583,16 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         return KD_NULL;
 	}
 
-	if (attr != KD_NULL)
+#if defined(KD_THREAD_C11)
+	if (attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
 	{
-		if (attr->detachstate == KD_THREAD_CREATE_DETACHED)
-		{
-			kdThreadDetach(thread);
-			return KD_NULL;
-		}
+		kdThreadDetach(thread);
+        kdFree(thread);
+		return KD_NULL;
 	}
+#endif
 
     return thread;
-}
-
-/* __kdThreadEqual: Compare two threads. */
-static KDboolean __kdThreadEqual(KDThread *first, KDThread *second)
-{
-#if defined(KD_THREAD_C11)
-    return thrd_equal(first->nativethread, second->nativethread);
-#elif defined(KD_THREAD_POSIX)
-    return pthread_equal(first->nativethread, second->nativethread);
-#else
-    kdAssert(0);
-#endif
-    return 0;
 }
 
 /* kdThreadExit: Terminate this thread. */
@@ -600,6 +660,19 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
 	return __kd_thread;
+}
+
+/* __kdThreadEqual: Compare two threads. */
+static KDboolean __kdThreadEqual(KDThread *first, KDThread *second)
+{
+#if defined(KD_THREAD_C11)
+    return thrd_equal(first->nativethread, second->nativethread);
+#elif defined(KD_THREAD_POSIX)
+    return pthread_equal(first->nativethread, second->nativethread);
+#else
+    kdAssert(0);
+#endif
+    return 0;
 }
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
@@ -1461,8 +1534,12 @@ KD_API int main(int argc, char **argv)
     __KDMainArgs mainargs = {0};
     mainargs.argc = argc;
     mainargs.argv = argv;
-    KDThread * mainthread = kdThreadCreate(KD_NULL, __kdMainInjector, &mainargs);
+
+    KDThreadAttr *mainattr = kdThreadAttrCreate();
+    __kdThreadAttrSetDebugName(mainattr, "KDThread (Main)");
+    KDThread * mainthread = kdThreadCreate(mainattr, __kdMainInjector, &mainargs);
     kdThreadJoin(mainthread, KD_NULL);
+    kdThreadAttrFree(mainattr);
     __kdQueueFree(__kd_eventqueue);
     return 0;
 }
