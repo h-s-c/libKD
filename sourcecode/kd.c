@@ -84,6 +84,8 @@
 #include <string.h>
 
 #if __STDC_VERSION__ >= 201112L
+    #include <stdalign.h>
+
     #if !__STDC_NO_THREADS__ && __has_include(<threads.h>)
         #include <threads.h>
         #define KD_THREAD_C11
@@ -185,11 +187,12 @@
     #if defined(__MINGW32__)
     #include <time.h>
     #endif
-	/* MSVC has an internal C11 threads version which is based on an earlier draft. */
+	/* MSVC threads.h */
     #if !defined(__MINGW32__)
         #include <thr/threads.h>
         #define KD_THREAD_C11
         #define _Thread_local __declspec(thread)
+        #define thread_local _Thread_local
         #undef thrd_sleep
         int thrd_sleep(const struct timespec* time_point, struct timespec* remaining)
         {
@@ -227,6 +230,11 @@
                 }
             }
         }
+    #endif
+    /* MSVC stdalign.h */
+    #if !defined(__MINGW32__)
+        #define alignas(x) __declspec(align(x))
+        #define alignof(x) __alignof(x)
     #endif
 	/* MSVC redefinition fix*/
 	#ifndef inline
@@ -275,19 +283,20 @@ static __KDQueue *__kdQueueCreate(void)
 	return queue;
 }
 
-
-static inline void __kdQueueFree(__KDQueue *queue)
+static void __kdQueueFree(__KDQueue *queue)
 {
+    /* TODO: Fix alignment related crash. */
+    return;
     if(queue)
     {
 		InterlockedFlushSList(queue->head);
 		_aligned_free(queue->head);
-		kdFree(queue);
+        kdFree(queue);
 		queue = KD_NULL;
     }
 }
 
-static inline KDint __kdQueueSize(__KDQueue *queue)
+static KDint __kdQueueSize(__KDQueue *queue)
 {
 	return QueryDepthSList(queue->head);
 }
@@ -375,7 +384,7 @@ KDint __kdTranslateError(int errorcode)
     return 0;
 }
 
-static _Thread_local KDint lasterror = 0;
+static thread_local KDint lasterror = 0;
  /* kdGetError: Get last error indication. */
 KD_API KDint KD_APIENTRY kdGetError(void)
 {
@@ -508,7 +517,7 @@ static KDint __kdThreadAttrSetDebugName(KDThreadAttr *attr, const char * debugna
 }
 
 /* kdThreadCreate: Create a new thread. */
-static _Thread_local KDThread *__kd_thread = KD_NULL;
+static thread_local KDThread *__kd_thread = KD_NULL;
 typedef struct KDThread
 {
 #if defined(KD_THREAD_C11)
@@ -965,7 +974,7 @@ void __KDSleep(KDust timeout)
 }
 
 /* kdWaitEvent: Get next event from thread's event queue. */
-static _Thread_local KDEvent *__kd_lastevent = KD_NULL;
+static thread_local KDEvent *__kd_lastevent = KD_NULL;
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
     if(__kd_lastevent != KD_NULL)
@@ -1023,10 +1032,10 @@ typedef struct KDWindow
     void *nativewindow;
     EGLint format;
 } KDWindow;
-static _Thread_local KDWindow windows[999]= {{0}};
+static thread_local KDWindow windows[999]= {{0}};
 #endif
-static _Thread_local KDuint __kd_callbacks_index = 0;
-static _Thread_local KDCallback __kd_callbacks[999] = {{0}};
+static thread_local KDuint __kd_callbacks_index = 0;
+static thread_local KDCallback __kd_callbacks[999] = {{0}};
 static KDboolean __kdExecCallback(KDEvent* event)
 {
     for (KDuint callback = 0; callback < __kd_callbacks_index; callback++)
@@ -1696,11 +1705,7 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 /* kdMalloc: Allocate memory. */
 KD_API void *KD_APIENTRY kdMalloc(KDsize size)
 {
-#ifdef GC_DEBUG
-    return GC_MALLOC(size);
-#else
     return malloc(size);
-#endif
 }
 
 /* kdFree: Free allocated memory block. */
@@ -1719,7 +1724,7 @@ KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
  * Thread-local storage.
  ******************************************************************************/
 
-static _Thread_local void* tlsptr = KD_NULL;
+static thread_local void* tlsptr = KD_NULL;
 /* kdGetTLS: Get the thread-local storage pointer. */
 KD_API void *KD_APIENTRY kdGetTLS(void)
 {
@@ -2458,7 +2463,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 }
 
 /* kdReadDir: Return the next file in a directory. */
-static _Thread_local KDDirent *__kd_lastdirent = KD_NULL;
+static thread_local KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
 #ifdef KD_VFS_SUPPORTED
