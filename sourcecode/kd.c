@@ -260,44 +260,44 @@ typedef struct __KDQueue {
 
 static __KDQueue *__kdQueueCreate(void)
 {
-	__KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
-	queue->head = (PSLIST_HEADER)_aligned_malloc(sizeof(SLIST_HEADER), MEMORY_ALLOCATION_ALIGNMENT);
-	InitializeSListHead(queue->head);
-	return queue;
+    __KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
+    queue->head = (PSLIST_HEADER)_aligned_malloc(sizeof(SLIST_HEADER), MEMORY_ALLOCATION_ALIGNMENT);
+    InitializeSListHead(queue->head);
+    return queue;
 }
 
 static void __kdQueueFree(__KDQueue *queue)
 {
     InterlockedFlushSList(queue->head);
-	_aligned_free(queue->head);
+    _aligned_free(queue->head);
     kdFree(queue);
-	queue = KD_NULL;
+    queue = KD_NULL;
 }
 
 static KDint __kdQueueSize(__KDQueue *queue)
 {
-	return QueryDepthSList(queue->head);
+    return QueryDepthSList(queue->head);
 }
 
 static KDint  __kdQueuePost(__KDQueue *queue, void *value)
 {
-	__KDQueueItem *item = (__KDQueueItem*)_aligned_malloc(sizeof(__KDQueueItem), MEMORY_ALLOCATION_ALIGNMENT);
-	item->data = value;
-	queue->firstentry = InterlockedPushEntrySList(queue->head, &(item->entry));
+    __KDQueueItem *item = (__KDQueueItem*)_aligned_malloc(sizeof(__KDQueueItem), MEMORY_ALLOCATION_ALIGNMENT);
+    item->data = value;
+    queue->firstentry = InterlockedPushEntrySList(queue->head, &(item->entry));
     return 0;
 }
 
 void *__kdQueueGet(__KDQueue *queue)
 {
-	void* value = KD_NULL;
-	__KDQueueItem *item = (__KDQueueItem *)InterlockedPopEntrySList(queue->head);
-	if(item)
-	{
-		value = item->data;
-		_aligned_free(item);
-		return value;
-	}
-	return KD_NULL;
+    void* value = KD_NULL;
+    __KDQueueItem *item = (__KDQueueItem *)InterlockedPopEntrySList(queue->head);
+    if(item)
+    {
+        value = item->data;
+        _aligned_free(item);
+        return value;
+    }
+    return KD_NULL;
 }
 
 /******************************************************************************
@@ -400,11 +400,11 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
 #if defined(_MSC_VER) || defined(__MINGW32__)
-		return "Windows";
+        return "Windows";
 #elif __unix__
-		static struct utsname name;
-		uname(&name);
-		return name.sysname;
+        static struct utsname name;
+        uname(&name);
+        return name.sysname;
 #endif
     }
     kdSetError(KD_EINVAL);
@@ -566,22 +566,22 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #else
 	kdAssert(0);
 #endif
-	if (error != 0)
-	{
-		kdSetError(KD_EAGAIN);
+    if (error != 0)
+    {
+        kdSetError(KD_EAGAIN);
         __kdQueueFree(thread->eventqueue);
         kdFree(thread);
         return KD_NULL;
-	}
+    }
 
 #if defined(KD_THREAD_C11)
-	if (attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
-	{
-		kdThreadDetach(thread);
+    if (attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
+    {
+        kdThreadDetach(thread);
         __kdQueueFree(thread->eventqueue);
         kdFree(thread);
-		return KD_NULL;
-	}
+        return KD_NULL;
+    }
 #endif
 
     return thread;
@@ -591,16 +591,16 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
 #if defined(KD_THREAD_C11)
-	KDint result = 0;
-	if (retval != KD_NULL)
-	{
-		result = *(KDint*)retval;
-	}
-	thrd_exit(result);
+    KDint result = 0;
+    if (retval != KD_NULL)
+    {
+        result = *(KDint*)retval;
+    }
+    thrd_exit(result);
 #elif defined(KD_THREAD_POSIX)
-	pthread_exit(retval);
+    pthread_exit(retval);
 #else
-	kdAssert(0);
+    kdAssert(0);
 #endif
 }
 
@@ -621,10 +621,10 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 #else
     kdAssert(0);
 #endif
-	{
-		kdSetError(KD_EINVAL);
-		return -1;
-	}
+    {
+        kdSetError(KD_EINVAL);
+        return -1;
+    }
     __kdQueueFree(thread->eventqueue);
     kdFree(thread);
     return 0;
@@ -652,7 +652,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-	return __kd_thread;
+    return __kd_thread;
 }
 
 /* __kdThreadEqual: Compare two threads. */
@@ -949,7 +949,7 @@ KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
     {
         if(event->type == KD_EVENT_QUIT)
         {
-			kdThreadExit(KD_NULL);
+            kdThreadExit(KD_NULL);
         }
     }
 }
@@ -1248,10 +1248,6 @@ KD_API KDint KD_APIENTRY kdPostEvent(KDEvent *event)
 }
 KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 {
-	/* Undefined behavior */
-	if(thread == KD_NULL)
-	{
-	}
     if(event->timestamp == 0)
     {
         event->timestamp = kdGetTimeUST();
@@ -1264,7 +1260,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
     kdFree(event);
-	event = KD_NULL;
+    event = KD_NULL;
 }
 
 /******************************************************************************
@@ -2953,7 +2949,7 @@ KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value)
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-	_InterlockedExchangePointer(&object->value, value);
+    _InterlockedExchangePointer(&object->value, value);
 #endif
 }
 
@@ -3023,12 +3019,12 @@ KD_API KDGuid* KDGuidCreate(void)
     guid->guid[15] = nativeguid.Data4[7];
 #elif __unix__
     FILE *uuid = fopen("/proc/sys/kernel/random/uuid", "r");
-	KDsize result = fread(guid->guid, sizeof(KDuint8), sizeof(guid->guid), uuid);
-	fclose(uuid);
-	if (result != sizeof(guid->guid))
-	{
-		kdAssert(0);
-	}
+    KDsize result = fread(guid->guid, sizeof(KDuint8), sizeof(guid->guid), uuid);
+    fclose(uuid);
+    if (result != sizeof(guid->guid))
+    {
+        kdAssert(0);
+    }
 #else
     kdAssert(0);
 #endif
