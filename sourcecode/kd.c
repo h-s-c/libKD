@@ -202,35 +202,16 @@
             _Thrd_sleep(&time);
             return 0;
         }
-        typedef struct {
-            LONG volatile status;
-            CRITICAL_SECTION lock;
-        } once_flag;
-        static void call_once(once_flag *flag, void(*func)(void))
+        typedef INIT_ONCE once_flag;
+        BOOL CALLBACK call_once_callback(PINIT_ONCE flag, PVOID param, PVOID *context) 
         {
-            while (flag->status < 3)
-            {
-                switch (flag->status)
-                {
-                case 0:
-                    if (InterlockedCompareExchange(&(flag->status), 1, 0) == 0) {
-                        InitializeCriticalSection(&(flag->lock));
-                        EnterCriticalSection(&(flag->lock));
-                        flag->status = 2;
-                        func();
-                        flag->status = 3;
-                        LeaveCriticalSection(&(flag->lock));
-                        return;
-                    }
-                    break;
-                case 1:
-                    break;
-                case 2:
-                    EnterCriticalSection(&(flag->lock));
-                    LeaveCriticalSection(&(flag->lock));
-                    break;
-                }
-            }
+            void(*func)(void) = param;
+            func();
+            return TRUE;
+        }
+        void call_once(once_flag* flag, void(*func)(void))
+        {
+            InitOnceExecuteOnce(flag, call_once_callback, func, NULL);
         }
     #endif
     /* MSVC stdalign.h */
@@ -287,15 +268,10 @@ static __KDQueue *__kdQueueCreate(void)
 
 static void __kdQueueFree(__KDQueue *queue)
 {
-    /* TODO: Fix alignment related crash. */
-    return;
-    if(queue)
-    {
-		InterlockedFlushSList(queue->head);
-		_aligned_free(queue->head);
-        kdFree(queue);
-		queue = KD_NULL;
-    }
+    InterlockedFlushSList(queue->head);
+	_aligned_free(queue->head);
+    kdFree(queue);
+	queue = KD_NULL;
 }
 
 static KDint __kdQueueSize(__KDQueue *queue)
@@ -527,6 +503,7 @@ typedef struct KDThread
 #elif defined(KD_THREAD_POSIX)
     pthread_t nativethread;
 #endif
+    __KDQueue *eventqueue;
 } KDThread;
 
 typedef struct __KDThreadStartArgs
@@ -573,6 +550,8 @@ static void* __kdThreadStart(void *args)
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
+    thread->eventqueue = __kdQueueCreate();
+
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs*)kdMalloc(sizeof(__KDThreadStartArgs));
     start_args->start_routine = start_routine;
     start_args->arg = arg;
@@ -590,6 +569,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 	if (error != 0)
 	{
 		kdSetError(KD_EAGAIN);
+        __kdQueueFree(thread->eventqueue);
         kdFree(thread);
         return KD_NULL;
 	}
@@ -598,6 +578,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 	if (attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
 	{
 		kdThreadDetach(thread);
+        __kdQueueFree(thread->eventqueue);
         kdFree(thread);
 		return KD_NULL;
 	}
@@ -644,6 +625,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 		kdSetError(KD_EINVAL);
 		return -1;
 	}
+    __kdQueueFree(thread->eventqueue);
     kdFree(thread);
     return 0;
 }
@@ -914,42 +896,6 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 /******************************************************************************
  * Events
  ******************************************************************************/
-static __KDQueue *__kd_eventqueue = KD_NULL;
-typedef struct __KDEventWrapper
-{
-    KDEvent* event;
-    KDThread* thread;
-} __KDEventWrapper;
-
-/* __KDEventGet: Get event meant for the thread from global eventqeue. */
-KDEvent* __kdEventGet(KDThread* thread)
-{
-    KDEvent *event = KD_NULL;
-    __KDEventWrapper* eventwrapper = (__KDEventWrapper*)__kdQueueGet(__kd_eventqueue);
-    if (eventwrapper != KD_NULL)
-    {
-        if(__kdThreadEqual(eventwrapper->thread, thread))
-        {
-            event = eventwrapper->event;
-            kdFree(eventwrapper);
-        }
-        else
-        {
-            __kdQueuePost(__kd_eventqueue, (void*)eventwrapper);
-        }
-    }
-    return event;
-}
-
-/* __KDEventPost: Post event to global eventqeue meant for a specific thread. */
-void __kdEventPost(KDEvent* event, KDThread* thread)
-{
-    __KDEventWrapper *eventwrapper = (__KDEventWrapper*)kdMalloc(sizeof(__KDEventWrapper));
-    eventwrapper->event = event;
-    eventwrapper->thread = thread;
-    __kdQueuePost(__kd_eventqueue, (void*)eventwrapper);
-}
-
 /* __KDSleep: Sleep for nanoseconds. */
 void __KDSleep(KDust timeout)
 {
@@ -988,7 +934,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
         __KDSleep(timeout);
     }
     kdPumpEvents();
-    __kd_lastevent = __kdEventGet(kdThreadSelf());
+    __kd_lastevent = (KDEvent *)__kdQueueGet(kdThreadSelf()->eventqueue);
     return __kd_lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
@@ -1067,12 +1013,12 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     /* Give back control to the browser */
     emscripten_sleep(1);
 #endif
-    KDsize queuesize = __kdQueueSize(__kd_eventqueue);
+    KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
     if(queuesize > 0)
     {
         for (KDuint i = 0; i < 10; i++)
         {
-            KDEvent *callbackevent = __kdEventGet(kdThreadSelf());
+            KDEvent *callbackevent = __kdQueueGet(kdThreadSelf()->eventqueue);
             if (callbackevent != KD_NULL)
             {
                 if (!__kdExecCallback(callbackevent))
@@ -1310,7 +1256,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     {
         event->timestamp = kdGetTimeUST();
     }
-    __kdEventPost(event, thread);
+    __kdQueuePost(thread->eventqueue, (void*)event);
     return 0;
 }
 
@@ -1481,7 +1427,6 @@ static void* __kdMainInjector( void *arg)
     kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
-    __kdQueueFree(__kd_eventqueue);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
@@ -1508,7 +1453,6 @@ static void* __kdMainInjector( void *arg)
 #ifdef __ANDROID__
 void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_t savedStateSize)
 {
-    __kd_eventqueue = __kdQueueCreate();
     __kd_androidwindow_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_androidinputqueue_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_androidactivity_mutex = kdThreadMutexCreate(KD_NULL);
@@ -1541,7 +1485,6 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
 #else
 KD_API int main(int argc, char **argv)
 {
-    __kd_eventqueue = __kdQueueCreate();
     __KDMainArgs mainargs = {0};
     mainargs.argc = argc;
     mainargs.argv = argv;
@@ -1551,7 +1494,6 @@ KD_API int main(int argc, char **argv)
     KDThread * mainthread = kdThreadCreate(mainattr, __kdMainInjector, &mainargs);
     kdThreadJoin(mainthread, KD_NULL);
     kdThreadAttrFree(mainattr);
-    __kdQueueFree(__kd_eventqueue);
     return 0;
 }
 #endif
