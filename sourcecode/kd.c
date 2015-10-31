@@ -174,6 +174,7 @@
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <windows.h>
+    #include <wincrypt.h>
 	#include <objbase.h>
 	#include <direct.h>
 	#include <io.h>
@@ -1594,11 +1595,18 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 /* kdCryptoRandom: Return random data. */
 KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 {
-#ifdef __OpenBSD__
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    HCRYPTPROV provider = 0;
+    KDboolean error = !CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
+    if(error)
+    {
+        error = !CryptGenRandom(provider, buflen, buf);
+    }
+    CryptReleaseContext(provider, 0);
+    return error ? -1 : 0;
+#elif defined(__OpenBSD__)
     return getentropy(buf, buflen);
-#endif
-
-#ifdef __EMSCRIPTEN__
+#elif defined(__EMSCRIPTEN__)
     for(KDsize i = 0; i < buflen; i++)
     {
         buf[i] = EM_ASM_INT_V
@@ -1609,9 +1617,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
         );
     }
     return 0;
-#endif
-
-#ifdef __unix__
+#elif defined(__unix__)
     FILE *urandom = fopen("/dev/urandom", "r");
     KDsize result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
     fclose(urandom);
@@ -1623,9 +1629,8 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     return 0;
 #endif
 
-    /* TODO: Implement kdCryptoRandom on Windows*/
     kdAssert(0);
-    return 0;
+    return -1;
 }
 
 /******************************************************************************
