@@ -484,7 +484,7 @@ static void* __kdThreadStart(void *args)
     }
 #elif defined(KD_THREAD_POSIX)
 #if defined(__linux__)
-    pthread_setname_np(start_args->thread, start_args->attr->debugname);
+    pthread_setname_np(start_args->thread->nativethread, start_args->attr->debugname);
 #endif
 #endif
 
@@ -1218,6 +1218,7 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
  * Application startup and exit.
  ******************************************************************************/
 extern const char *__progname;
+static KDThread *__kd_mainthread = KD_NULL;
 const char* __kdAppName(const char *argv0)
 {
 #ifdef __GLIBC__
@@ -1233,28 +1234,27 @@ const char* __kdAppName(const char *argv0)
 
 #ifdef __ANDROID__
 /* All Android events are send to the mainthread */
-static KDThread *__kd_androidmainthread = KD_NULL;
 static ANativeActivity *__kd_androidactivity =  KD_NULL;
 static KDThreadMutex *__kd_androidactivity_mutex =  KD_NULL;
 static void __kd_AndroidOnDestroy(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_QUIT;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnStart(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnResume(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void* __kd_AndroidOnSaveInstanceState(ANativeActivity *activity, size_t *len)
@@ -1267,21 +1267,21 @@ static void __kd_AndroidOnPause(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnStop(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnConfigurationChanged(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_ORIENTATION;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnLowMemory(ANativeActivity *activity)
@@ -1294,7 +1294,7 @@ static void __kd_AndroidOnWindowFocusChanged(ANativeActivity *activity, int focu
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_FOCUS;
     event->data.windowfocus.focusstate = focused;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static ANativeWindow *__kd_androidwindow =  KD_NULL;
@@ -1306,7 +1306,7 @@ static void __kd_AndroidOnNativeWindowCreated(ANativeActivity *activity, ANative
     kdThreadMutexUnlock(__kd_androidwindow_mutex);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANativeWindow *window)
@@ -1316,7 +1316,7 @@ static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANati
     kdThreadMutexUnlock(__kd_androidwindow_mutex);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_CLOSE;
-    kdPostThreadEvent(event, __kd_androidmainthread);
+    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnInputQueueCreated(ANativeActivity *activity, AInputQueue *queue)
@@ -1363,8 +1363,9 @@ static void* __kdMainInjector( void *arg)
     PHYSFS_mkdir("/tmp");
 #endif
 
+    __kd_mainthread = __kd_thread;
+
 #ifdef __ANDROID__
-    __kd_androidmainthread = __kd_thread;
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
     kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
@@ -2623,7 +2624,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
-    kdPostThreadEvent(event, kdAtomicPtrLoad(__kd_threads[0]));
+    kdPostThreadEvent(event, __kd_mainthread);
 #endif
     for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
     {
@@ -2992,7 +2993,7 @@ KD_API KDboolean KDGuidEqual(KDGuid* guid1, KDGuid* guid2)
 }
 
 /******************************************************************************
- * Queue
+ * Queue (threadsafe)
  ******************************************************************************/
 
 typedef struct __KDQueueNode __KDQueueNode;
