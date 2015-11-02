@@ -463,12 +463,13 @@ static void* __kdThreadStart(void *args)
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
 
     /* Set the thread name */
+    const char* threadname = start_args->attr ? start_args->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
     /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
     struct THREADNAME_INFO info =
     {
         .type = 0x1000 ,
-        .name = start_args->attr ? start_args->attr->debugname : "KDThread",
+        .name = threadname,
         .threadid = GetCurrentThreadId(),
         .flags = 0
     };
@@ -484,7 +485,7 @@ static void* __kdThreadStart(void *args)
     }
 #elif defined(KD_THREAD_POSIX)
 #if defined(__linux__)
-    pthread_setname_np(start_args->thread->nativethread, start_args->attr->debugname);
+    pthread_setname_np(start_args->thread->nativethread, threadname);
 #endif
 #endif
 
