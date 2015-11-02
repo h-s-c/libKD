@@ -51,4 +51,4 @@ install:
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90
 
 script:
-  - ctest --output-on-failure -S .travis.ctest
+  - ctest -V --output-on-failure -S .travis.ctest
