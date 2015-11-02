@@ -29,12 +29,16 @@
 extern "C" {
 #endif
 
+/******************************************************************************
+ * Guid
+ ******************************************************************************/
+
 typedef struct KDGuid KDGuid;
 
-KD_API KDGuid* KDGuidCreate(void);
-KD_API void KDGuidFree(KDGuid* guid);
+KD_API KDGuid* KD_APIENTRY KDGuidCreate(void);
+KD_API void KD_APIENTRY KDGuidFree(KDGuid* guid);
 
-KD_API KDboolean KDGuidEqual(KDGuid* guid1, KDGuid* guid2);
+KD_API KDboolean KD_APIENTRY KDGuidEqual(KDGuid* guid1, KDGuid* guid2);
 
 #ifdef __cplusplus
 }

@@ -29,6 +29,10 @@
 extern "C" {
 #endif
 
+/******************************************************************************
+ * Atomics
+ ******************************************************************************/
+
 typedef struct KDAtomicInt KDAtomicInt;
 typedef struct KDAtomicPtr KDAtomicPtr;
 
