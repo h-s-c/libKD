@@ -62,6 +62,7 @@
 #include <KD/ATX_keyboard.h>
 #include <KD/LKD_atomic.h>
 #include <KD/LKD_guid.h>
+#include <KD/LKD_queue.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -243,63 +244,6 @@
 #ifdef KD_VFS_SUPPORTED
     #include <physfs.h>
 #endif
-
-/******************************************************************************
- * Internal eventqueue
- ******************************************************************************/
-
-/* __KDQueue (lock-less FIFO)*/
-typedef struct __KDQueueItem {
-	SLIST_ENTRY entry;
-	void* data;
-} __KDQueueItem;
-
-typedef struct __KDQueue {
-	PSLIST_ENTRY	firstentry;
-	PSLIST_HEADER	head;
-} __KDQueue;
-
-static __KDQueue *__kdQueueCreate(void)
-{
-    __KDQueue *queue = (__KDQueue*)kdMalloc(sizeof(__KDQueue));
-    queue->head = (PSLIST_HEADER)_aligned_malloc(sizeof(SLIST_HEADER), MEMORY_ALLOCATION_ALIGNMENT);
-    InitializeSListHead(queue->head);
-    return queue;
-}
-
-static void __kdQueueFree(__KDQueue *queue)
-{
-    InterlockedFlushSList(queue->head);
-    _aligned_free(queue->head);
-    kdFree(queue);
-    queue = KD_NULL;
-}
-
-static KDint __kdQueueSize(__KDQueue *queue)
-{
-    return QueryDepthSList(queue->head);
-}
-
-static KDint  __kdQueuePost(__KDQueue *queue, void *value)
-{
-    __KDQueueItem *item = (__KDQueueItem*)_aligned_malloc(sizeof(__KDQueueItem), MEMORY_ALLOCATION_ALIGNMENT);
-    item->data = value;
-    queue->firstentry = InterlockedPushEntrySList(queue->head, &(item->entry));
-    return 0;
-}
-
-void *__kdQueueGet(__KDQueue *queue)
-{
-    void* value = KD_NULL;
-    __KDQueueItem *item = (__KDQueueItem *)InterlockedPopEntrySList(queue->head);
-    if(item)
-    {
-        value = item->data;
-        _aligned_free(item);
-        return value;
-    }
-    return KD_NULL;
-}
 
 /******************************************************************************
  * Errors
@@ -504,7 +448,7 @@ typedef struct KDThread
 #elif defined(KD_THREAD_POSIX)
     pthread_t nativethread;
 #endif
-    __KDQueue *eventqueue;
+    KDQueue *eventqueue;
 } KDThread;
 
 typedef struct __KDThreadStartArgs
@@ -551,7 +495,7 @@ static void* __kdThreadStart(void *args)
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
-    thread->eventqueue = __kdQueueCreate();
+    thread->eventqueue = kdQueueCreate(100);
 
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs*)kdMalloc(sizeof(__KDThreadStartArgs));
     start_args->start_routine = start_routine;
@@ -570,7 +514,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if (error != 0)
     {
         kdSetError(KD_EAGAIN);
-        __kdQueueFree(thread->eventqueue);
+        kdQueueFree(thread->eventqueue);
         kdFree(thread);
         return KD_NULL;
     }
@@ -579,7 +523,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if (attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(thread);
-        __kdQueueFree(thread->eventqueue);
+        kdQueueFree(thread->eventqueue);
         kdFree(thread);
         return KD_NULL;
     }
@@ -626,7 +570,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         kdSetError(KD_EINVAL);
         return -1;
     }
-    __kdQueueFree(thread->eventqueue);
+    kdQueueFree(thread->eventqueue);
     kdFree(thread);
     return 0;
 }
@@ -929,13 +873,17 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     if(__kd_lastevent != KD_NULL)
     {
         kdFreeEvent(__kd_lastevent);
+        __kd_lastevent = KD_NULL;
     }
     if(timeout != -1)
     {
         __KDSleep(timeout);
     }
     kdPumpEvents();
-    __kd_lastevent = (KDEvent *)__kdQueueGet(kdThreadSelf()->eventqueue);
+    if (kdQueueSize(kdThreadSelf()->eventqueue) > 0)
+    {
+        __kd_lastevent = (KDEvent *)kdQueuePopHead(kdThreadSelf()->eventqueue);
+    }
     return __kd_lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
@@ -1014,19 +962,16 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     /* Give back control to the browser */
     emscripten_sleep(1);
 #endif
-    KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
-    if(queuesize > 0)
+    KDsize queuesize = kdQueueSize(kdThreadSelf()->eventqueue);
+    for (KDuint i = 0; i < queuesize; i++)
     {
-        for (KDuint i = 0; i < 10; i++)
+        KDEvent *callbackevent = kdQueuePopHead(kdThreadSelf()->eventqueue);
+        if (callbackevent != KD_NULL)
         {
-            KDEvent *callbackevent = __kdQueueGet(kdThreadSelf()->eventqueue);
-            if (callbackevent != KD_NULL)
+            if (!__kdExecCallback(callbackevent))
             {
-                if (!__kdExecCallback(callbackevent))
-                {
-                    /* Not a callback */
-                    kdPostEvent(callbackevent);
-                }
+                /* Not a callback */
+                kdPostEvent(callbackevent);
             }
         }
     }
@@ -1253,7 +1198,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     {
         event->timestamp = kdGetTimeUST();
     }
-    __kdQueuePost(thread->eventqueue, (void*)event);
+    kdQueuePushTail(thread->eventqueue, (void*)event);
     return 0;
 }
 
@@ -3000,7 +2945,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchange(KDAtomicPtr *object, voi
 
 typedef struct KDGuid { KDuint8 guid[16]; } KDGuid;
 
-KD_API KDGuid* KDGuidCreate(void)
+KD_API KDGuid* KD_APIENTRY KDGuidCreate(void)
 {
     KDGuid* guid = (KDGuid*)kdMalloc(sizeof(KDGuid));
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -3036,7 +2981,7 @@ KD_API KDGuid* KDGuidCreate(void)
     return guid;
 }
 
-KD_API void KDGuidFree(KDGuid* guid)
+KD_API void KD_APIENTRY KDGuidFree(KDGuid* guid)
 {
     kdFree(guid);
 }
@@ -3044,6 +2989,152 @@ KD_API void KDGuidFree(KDGuid* guid)
 KD_API KDboolean KDGuidEqual(KDGuid* guid1, KDGuid* guid2)
 {
     return (guid1->guid == guid2->guid);
+}
+
+/******************************************************************************
+ * Queue
+ ******************************************************************************/
+
+typedef struct __KDQueueNode __KDQueueNode;
+typedef struct __KDQueueNode
+{
+    __KDQueueNode   *next;
+    __KDQueueNode   *prev;
+    void            *value;
+} __KDQueueNode;
+
+typedef struct KDQueue
+{
+    KDThreadMutex   *mutex;
+    __KDQueueNode   *head;
+    __KDQueueNode   *tail;
+    KDsize          size;
+} KDQueue;
+
+KD_API KDQueue* KD_APIENTRY kdQueueCreate(KDsize maxsize)
+{
+    KDQueue* queue = (KDQueue*)kdMalloc(sizeof(KDQueue));
+    queue->mutex = kdThreadMutexCreate(KD_NULL);
+    queue->head = KD_NULL;
+    queue->tail = KD_NULL;
+    queue->size = 0;
+    return queue;
+}
+
+KD_API void KD_APIENTRY kdQueueFree(KDQueue* queue)
+{
+    kdThreadMutexFree(queue->mutex);
+    kdFree(queue);
+}
+
+KD_API KDsize KD_APIENTRY kdQueueSize(KDQueue *queue)
+{
+    kdThreadMutexLock(queue->mutex);
+    KDsize size = queue->size;
+    kdThreadMutexUnlock(queue->mutex);
+    return size;
+}
+
+KD_API void KD_APIENTRY kdQueuePushHead(KDQueue *queue, void *value)
+{
+    __KDQueueNode *node = (__KDQueueNode*)kdMalloc(sizeof(__KDQueueNode));
+    node->value = value;
+    node->prev = KD_NULL;
+    node->next = KD_NULL;
+
+    kdThreadMutexLock(queue->mutex);
+    if((node->next = queue->head)) 
+    {
+        node->next->prev = node;
+    }
+    queue->head = node;
+    if(!queue->tail) 
+    {
+        queue->tail = node;
+    }
+    queue->size++;
+    kdThreadMutexUnlock(queue->mutex);
+}
+
+KD_API void KD_APIENTRY kdQueuePushTail(KDQueue *queue, void *value)
+{
+    __KDQueueNode *node = (__KDQueueNode*)kdMalloc(sizeof(__KDQueueNode));
+    node->value = value;
+    node->prev = KD_NULL;
+    node->next = KD_NULL;
+
+    kdThreadMutexLock(queue->mutex);
+    if((node->prev = queue->tail)) 
+    {
+        queue->tail->next = node;
+    }
+    queue->tail = node;
+    if(!queue->head) 
+    {
+        queue->head = node;
+    }
+    queue->size++;
+    kdThreadMutexUnlock(queue->mutex);
+}
+
+KD_API void* KD_APIENTRY kdQueuePopHead(KDQueue *queue)
+{
+    __KDQueueNode *node = KD_NULL;
+    void *value = KD_NULL;
+
+    kdThreadMutexLock(queue->mutex);
+    if(queue->head) 
+    {
+        node = queue->head;
+        if ((queue->head = node->next)) 
+        {
+            queue->head->prev = NULL;
+        }
+        if (queue->tail == node) 
+        {
+            queue->tail = KD_NULL;
+        }
+        queue->size--;
+    }
+    kdThreadMutexUnlock(queue->mutex);
+
+    if(node)
+    {
+        value = node->value;
+        kdFree(node);
+    }
+
+    return value;
+}
+
+KD_API void* KD_APIENTRY kdQueuePopTail(KDQueue *queue)
+{
+    __KDQueueNode *node = KD_NULL;
+    void *value = KD_NULL;
+
+    kdThreadMutexLock(queue->mutex);
+    if(queue->head)
+    {
+        node = queue->tail;
+        if ((queue->tail = node->prev))
+        {
+            queue->tail->next = NULL;
+        }
+        if (queue->head == node)
+        {
+            queue->head = KD_NULL;
+        }
+        queue->size--;
+    }
+    kdThreadMutexUnlock(queue->mutex);
+
+    if(node)
+    {
+        value = node->value;
+        kdFree(node);
+    }
+
+    return value;
 }
 
 /******************************************************************************
