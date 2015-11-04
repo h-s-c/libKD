@@ -2802,8 +2802,8 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
  ******************************************************************************/
 
 #if defined(KD_ATOMIC_C11)
-typedef struct KDAtomicInt { _Atomic KDint value; } KDAtomicInt;
-typedef struct KDAtomicPtr { _Atomic void *value; } KDAtomicPtr;
+typedef struct KDAtomicInt { atomic_int value; } KDAtomicInt;
+typedef struct KDAtomicPtr { atomic_uintptr_t value; } KDAtomicPtr;
 #elif defined(KD_ATOMIC_WIN32)
 typedef struct KDAtomicInt { KDint value; } KDAtomicInt;
 typedef struct KDAtomicPtr { void *value; } KDAtomicPtr;
