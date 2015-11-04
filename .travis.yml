@@ -28,6 +28,7 @@ language: c
 
 compiler:
   - gcc
+  - clang
 
 cache:
   - apt
@@ -39,6 +40,7 @@ addons:
     packages:
       - gcc-5
       - g++-5
+      - clang
       - cmake
       - valgrind
       - libegl1-mesa-dev
@@ -51,4 +53,4 @@ install:
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 90
 
 script:
-  - ctest -V --output-on-failure -S .travis.ctest
+  - ctest -VV --output-on-failure -S .travis.ctest
