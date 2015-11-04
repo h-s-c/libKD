@@ -88,16 +88,17 @@
     #include <stdalign.h>
 
     #if !__STDC_NO_THREADS__ && __has_include(<threads.h>)
-        #include <threads.h>
         #define KD_THREAD_C11
+        #include <threads.h>
     #else
-        #include <pthread.h>
         #define KD_THREAD_POSIX
+        #include <pthread.h>
         #define _Thread_local __thread
         #define thread_local _Thread_local
     #endif
 
     #if !__STDC_NO_ATOMICS__
+        #define KD_ATOMIC_C11
         #if __has_include(<stdatomic.h>)
             #ifdef __ANDROID__
                 /* Some NDK versions are missing these. */
@@ -105,7 +106,6 @@
                 typedef uint16_t char16_t;
             #endif
             #include <stdatomic.h>
-            #define KD_ATOMIC_C11
         #elif defined (__clang__) && __has_feature(c_atomic)
             /* Some versions of clang are missing the header. */
             #define memory_order_acquire                                    __ATOMIC_ACQUIRE
@@ -118,7 +118,8 @@
             #define atomic_store(object, desired)                           __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
             #define atomic_compare_exchange_weak(object, expected, desired) __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
             #define atomic_thread_fence(order)                              __c11_atomic_thread_fence(order)
-            #define KD_ATOMIC_C11
+            typedef _Atomic(int)                                            atomic_int;
+            typedef _Atomic(uintptr_t)		                                atomic_uintptr_t;
         #endif
     #endif
 
