@@ -27,21 +27,56 @@
 #define MESA_EGL_NO_X11_HEADERS
 #include <KHR/khrplatform.h>
 
-#cmakedefine KD_WINDOW_SUPPORTED
+/******************************************************************************
+ * Implementation defined
+ ******************************************************************************/
 
+#cmakedefine KD_THREAD_C11
+#cmakedefine KD_THREAD_POSIX
+#cmakedefine KD_THREAD_WIN32
+#cmakedefine KD_ATOMIC_C11
+#cmakedefine KD_ATOMIC_WIN32
 #cmakedefine KD_VFS_SUPPORTED
 
+#if defined(__GNUC__)
+    #define KD_THREADLOCAL __thread
+#elif defined(_MSC_VER)
+    #define KD_THREADLOCAL __declspec(thread)
+#elif defined(KD_THREAD_C11)
+    #define KD_THREADLOCAL _Thread_local
+#else
+    #error "Platform not supported yet."
+#endif
+
+#if defined(__GNUC__)
+#define KD_UNUSED __attribute__((__unused__))
+#else
+#define KD_UNUSED
+#endif
+
+#if defined(__GNUC__)
+#define KD_TYPEOF(x) __typeof__(x)
+#elif defined(_MSC_VER)
+#define KD_TYPEOF(x) decltype(x)
+#else
+#define KD_TYPEOF(x)
+#endif
+
+/******************************************************************************
+ * Specification defined
+ ******************************************************************************/
+#cmakedefine KD_WINDOW_SUPPORTED
 #cmakedefine KD_NO_STATIC_DATA
 
 /* This is bugged in some versions of khrplatform.h */
 #if defined(_MSC_VER) || defined(__MINGW32__)
-#   if defined (KD_EXPORTS)
-#       define KD_API __declspec(dllexport)
-#   else
-#       define KD_API
-#   endif
+    #if defined (KD_EXPORTS)
+        #define KD_API __declspec(dllexport)
+    #else
+        #define KD_API
+    #endif
 #else
-#   define KD_API KHRONOS_APICALL
+    #define KD_API KHRONOS_APICALL
 #endif
 #define KD_APIENTRY KHRONOS_APIENTRY
 

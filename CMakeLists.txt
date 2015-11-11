@@ -24,7 +24,8 @@
 ###############################################################################
 # CMake toolchain file notes:
 #
-# Android: https://github.com/taka-no-me/android-cmake
+# Android:  https://github.com/taka-no-me/android-cmake
+#			or try NVIDIA Nsight Tegra Visual Studio Edition
 # Emscripten: $EMSCRIPTEN/cmake/Modules/platform/Emscripten.cmake
 ###############################################################################
 
@@ -45,11 +46,17 @@ set(KD_BUILD_EXAMPLES "Off" CACHE BOOL "Build with examples")
 set(KD_BUILD_CI "Off" CACHE BOOL "Build with continous integration")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
-
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     set(KD_BUILD_DEBUG "On")
 else()
     set(KD_BUILD_DEBUG "Off")
+endif()
+
+# Nvidia Tegra Nsight doesnt set this
+if(CMAKE_SYSTEM_NAME MATCHES Android)
+    set(ANDROID "On")
+else()
+    set(ANDROID "Off")
 endif()
 
 add_custom_target(install)
@@ -61,7 +68,6 @@ project (KD)
     else()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-format-security -Wfatal-errors -pedantic")
         if(NOT ANDROID)
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcx16")
             if(KD_BUILD_CI)
                 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
                 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
@@ -96,24 +102,28 @@ project (KD)
     endif()
 
     message(STATUS "C11 compatibility checks")
-    check_library_exists( c strncat_s "" HAVE_C11_ANNEX_K)
-    if(NOT HAVE_C11_ANNEX_K)
-        check_library_exists( c strlcat "" HAVE_BSD_STRINGS)
-        if(NOT HAVE_BSD_STRINGS)
-            check_library_exists( bsd strlcat "" HAVE_LIBBSD)
-            if(NOT HAVE_LIBBSD)
-                list(APPEND KD_SOURCE ${SOURCE_DIR}/thirdparty/bsd/strlcat.c)
-                list(APPEND KD_SOURCE ${SOURCE_DIR}/thirdparty/bsd/strlcpy.c)
-            else()
-                list(APPEND KD_LIBRARIES bsd)
-            endif()
-        endif()
+	if(MSVC)
+		check_include_files("thr/threads.h" KD_THREAD_C11)
+	else()
+		check_include_files("threads.h" KD_THREAD_C11)
+	endif()
+    if(NOT KD_THREAD_C11)
+		check_include_files("pthread.h" KD_THREAD_POSIX)
+		if(NOT KD_THREAD_POSIX)
+			check_include_files("windows.h" KD_THREAD_WIN32)
+		endif()
+    endif()
+    check_include_files("stdatomic.h" KD_ATOMIC_C11)
+    if(NOT KD_ATOMIC_C11)
+        check_include_files("windows.h" KD_ATOMIC_WIN32)
     endif()
 
     message(STATUS "POSIX compatibility checks")
     check_include_files("dirent.h" HAVE_DIRENT)
     if(NOT HAVE_DIRENT)
-        list(APPEND KD_INCLUDE_DIRS ${SOURCE_DIR}/thirdparty/dirent)
+		if(MSVC)
+			list(APPEND KD_INCLUDE_DIRS ${SOURCE_DIR}/thirdparty/dirent)
+		endif()
     endif()
 
     find_package(Threads)
@@ -123,11 +133,11 @@ project (KD)
         list(APPEND KD_LIBRARIES m)
     endif()
 
-    find_package(KHR)
-    list(APPEND KD_INCLUDE_DIRS ${KHR_INCLUDE_DIR})
-    find_package(EGL)
-    list(APPEND KD_LIBRARIES ${EGL_LIBRARY})
-    list(APPEND KD_INCLUDE_DIRS ${EGL_INCLUDE_DIR})
+	find_package(KHR)
+	list(APPEND KD_INCLUDE_DIRS ${KHR_INCLUDE_DIR})
+	find_package(EGL)
+	list(APPEND KD_LIBRARIES ${EGL_LIBRARY})
+	list(APPEND KD_INCLUDE_DIRS ${EGL_INCLUDE_DIR})
 
     if(ANDROID)
         list(APPEND KD_LIBRARIES android)
@@ -226,7 +236,7 @@ if(KD_BUILD_EXAMPLES)
 
     project (example_overview)
         example_helper()
-        find_package(GLES2)
+		find_package(GLES2)
         include_directories(${GLES2_INCLUDE_DIR})
         target_link_libraries(${PROJECT_NAME} ${GLES2_LIBRARY})
 

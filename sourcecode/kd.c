@@ -35,8 +35,6 @@
  * Header workarounds
  ******************************************************************************/
 
-#define __STDC_WANT_LIB_EXT1__ 1
-
 #ifdef __unix__
     #ifdef __linux__
         #define _GNU_SOURCE
@@ -47,11 +45,9 @@
     #endif
 #endif
 
-#if !defined(__has_feature)
-#define __has_feature(x) 0
-#endif
-#if !defined(__has_include)
-#define __has_include(x) 0
+/* XSI streams are optional and not supported by MinGW */
+#if defined(__MINGW32__)
+    #define ENODATA    61
 #endif
 
 /******************************************************************************
@@ -71,11 +67,6 @@
  ******************************************************************************/
 
 #include <errno.h>
-/* XSI streams are optional and not supported by MinGW */
-#if defined(__MINGW32__)
-#define ENODATA    61
-#endif
-
 #include <inttypes.h>
 #include <locale.h>
 #include <math.h>
@@ -83,58 +74,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #if __STDC_VERSION__ >= 201112L
     #include <stdalign.h>
-
-    #if !__STDC_NO_THREADS__ && __has_include(<threads.h>)
-        #define KD_THREAD_C11
+    #if defined(KD_THREAD_C11)
         #include <threads.h>
-    #else
-        #define KD_THREAD_POSIX
-        #include <pthread.h>
-        #define _Thread_local __thread
-        #define thread_local _Thread_local
     #endif
-
-    #if !__STDC_NO_ATOMICS__
-        #define KD_ATOMIC_C11
-        #if __has_include(<stdatomic.h>)
-            #ifdef __ANDROID__
-                /* Some NDK versions are missing these. */
-                typedef uint32_t char32_t;
-                typedef uint16_t char16_t;
-            #endif
-            #include <stdatomic.h>
-        #elif defined (__clang__) && __has_feature(c_atomic)
-            /* Some versions of clang are missing the header. */
-            #define memory_order_acquire                                    __ATOMIC_ACQUIRE
-            #define memory_order_release                                    __ATOMIC_RELEASE
-            #define ATOMIC_VAR_INIT(value)                                  (value)
-            #define atomic_init(object, value)                              __c11_atomic_init(object, value)
-            #define atomic_load(object)                                     __c11_atomic_load(object, __ATOMIC_SEQ_CST)
-            #define atomic_fetch_add(object, value)                         __c11_atomic_fetch_add(object, value, __ATOMIC_SEQ_CST)
-            #define atomic_fetch_sub(object, value)                         __c11_atomic_fetch_sub(object, value, __ATOMIC_SEQ_CST)
-            #define atomic_store(object, desired)                           __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
-            #define atomic_compare_exchange_weak(object, expected, desired) __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
-            #define atomic_thread_fence(order)                              __c11_atomic_thread_fence(order)
-            typedef _Atomic(int)                                            atomic_int;
-            typedef _Atomic(uintptr_t)		                                atomic_uintptr_t;
-        #endif
-    #endif
-
-    #if !defined(__STDC_LIB_EXT1__) && !defined(_MSC_VER)
-        size_t strlcpy(char *dst, const char *src, size_t dstsize);
-        size_t strlcat(char *dst, const char *src, size_t dstsize);
-        #define strncat_s(buf, buflen, src, srcmaxlen) strlcat(buf, src, buflen)
-        #define strncpy_s(buf, buflen, src, srcmaxlen) strlcpy(buf, src, buflen)
-        #define strcpy_s(buf, buflen, src) strlcpy(buf, src, buflen)
+    #if defined(KD_ATOMIC_C11)
+        #include <stdatomic.h>
     #endif
 #endif
 
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
+
+#if defined(KD_THREAD_POSIX)
+#include <pthread.h>
+#endif
 
 #ifdef __unix__
     #include <unistd.h>
@@ -147,7 +105,6 @@
         #include <fcntl.h>
         #include <dirent.h>
         #include <dlfcn.h>
-        #include <time.h>
 
         /* POSIX reserved but OpenKODE uses this */
         #undef st_mtime
@@ -171,7 +128,6 @@
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-    #define KD_ATOMIC_WIN32
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
@@ -189,38 +145,29 @@
     #include <sys/types.h>
     #include <sys/stat.h>
     #include <dirent.h>
-    #if defined(__MINGW32__)
-    #include <time.h>
-    #endif
-	/* MSVC threads.h */
-    #if !defined(__MINGW32__)
+    /* MSVC threads.h */
+    static BOOL CALLBACK call_once_callback(PINIT_ONCE flag, PVOID param, PVOID *context)
+    {
+        void(*func)(void) = KD_NULL;
+        kdMemcpy(&func, &param, sizeof(param));
+        func();
+        return TRUE;
+    }
+    #if defined(KD_THREAD_C11)
         #include <thr/threads.h>
-        #define KD_THREAD_C11
-        #define _Thread_local __declspec(thread)
-        #define thread_local _Thread_local
         #undef thrd_sleep
         int thrd_sleep(const struct timespec* time_point, struct timespec* remaining)
         {
-            const struct xtime time = { .sec = time_point->tv_sec, .nsec = time_point->tv_nsec};
+            const struct xtime time = { .sec = time_point->tv_sec,.nsec = time_point->tv_nsec };
             _Thrd_sleep(&time);
             return 0;
         }
         typedef INIT_ONCE once_flag;
-        BOOL CALLBACK call_once_callback(PINIT_ONCE flag, PVOID param, PVOID *context) 
-        {
-            void(*func)(void) = param;
-            func();
-            return TRUE;
-        }
+        static BOOL CALLBACK call_once_callback(PINIT_ONCE flag, PVOID param, PVOID *context);
         void call_once(once_flag* flag, void(*func)(void))
         {
             InitOnceExecuteOnce(flag, call_once_callback, func, NULL);
         }
-    #endif
-    /* MSVC stdalign.h */
-    #if !defined(__MINGW32__)
-        #define alignas(x) __declspec(align(x))
-        #define alignof(x) __alignof(x)
     #endif
 	/* MSVC redefinition fix*/
 	#ifndef inline
@@ -230,10 +177,10 @@
     #pragma pack(push,8)
     struct THREADNAME_INFO
     {
-        DWORD   type;       // must be 0x1000
-        LPCSTR  name;       // pointer to name (in user addr space)
-        DWORD   threadid;   // thread ID (-1=caller thread)
-        DWORD   flags;      // reserved for future use, must be zero
+        KDuint32    type;       // must be 0x1000
+        const KDchar* name;       // pointer to name (in user addr space)
+        KDuint32    threadid;   // thread ID (-1=caller thread)
+        KDuint32    flags;      // reserved for future use, must be zero
     };
     #pragma pack(pop)
 #endif
@@ -308,7 +255,7 @@ KDint __kdTranslateError(int errorcode)
     return 0;
 }
 
-static thread_local KDint lasterror = 0;
+static KD_THREADLOCAL KDint lasterror = 0;
  /* kdGetError: Get last error indication. */
 KD_API KDint KD_APIENTRY kdGetError(void)
 {
@@ -441,15 +388,18 @@ static KDint __kdThreadAttrSetDebugName(KDThreadAttr *attr, const char * debugna
 }
 
 /* kdThreadCreate: Create a new thread. */
-static thread_local KDThread *__kd_thread = KD_NULL;
+static KD_THREADLOCAL KDThread *__kd_thread = KD_NULL;
 typedef struct KDThread
 {
 #if defined(KD_THREAD_C11)
     thrd_t nativethread;
 #elif defined(KD_THREAD_POSIX)
     pthread_t nativethread;
+#elif defined(KD_THREAD_WIN32)
+    KDuint32 nativethread;
 #endif
     KDQueue *eventqueue;
+    const KDThreadAttr *attr;
 } KDThread;
 
 typedef struct __KDThreadStartArgs
@@ -457,14 +407,13 @@ typedef struct __KDThreadStartArgs
     void *(*start_routine)(void *);
     void *arg;
     KDThread *thread;
-    const KDThreadAttr * attr;
 } __KDThreadStartArgs;
 static void* __kdThreadStart(void *args)
 {
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
 
     /* Set the thread name */
-    const char* threadname = start_args->attr ? start_args->attr->debugname : "KDThread";
+    KD_UNUSED const char* threadname = start_args->thread->attr ? start_args->thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
     /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
     struct THREADNAME_INFO info =
@@ -476,6 +425,9 @@ static void* __kdThreadStart(void *args)
     };
     if (IsDebuggerPresent())
     {
+#pragma warning( push )
+#pragma warning( disable : 6312)
+#pragma warning( disable : 6322)
         __try
         {
             RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
@@ -483,9 +435,10 @@ static void* __kdThreadStart(void *args)
         __except (EXCEPTION_CONTINUE_EXECUTION)
         {
         }
+#pragma warning( pop )
     }
 #elif defined(KD_THREAD_POSIX)
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     pthread_setname_np(start_args->thread->nativethread, threadname);
 #endif
 #endif
@@ -498,18 +451,22 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 {
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
     thread->eventqueue = kdQueueCreate(100);
+    thread->attr = attr;
 
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs*)kdMalloc(sizeof(__KDThreadStartArgs));
     start_args->start_routine = start_routine;
     start_args->arg = arg;
     start_args->thread = thread;
-    start_args->attr = attr;
 
     KDint error = 0;
 #if defined(KD_THREAD_C11)
     error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadStart, start_args);
 #elif defined(KD_THREAD_POSIX)
     error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, start_args);
+#elif defined(KD_THREAD_WIN32)
+    HANDLE handle = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)start_args, 0, &thread->nativethread);
+    error = handle ? 0 : 1;
+    CloseHandle(handle);
 #else
 	kdAssert(0);
 #endif
@@ -521,7 +478,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         return KD_NULL;
     }
 
-#if defined(KD_THREAD_C11)
     if (attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(thread);
@@ -529,7 +485,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         kdFree(thread);
         return KD_NULL;
     }
-#endif
 
     return thread;
 }
@@ -537,34 +492,43 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
-#if defined(KD_THREAD_C11)
-    KDint result = 0;
+    KD_UNUSED KDint result = 0;
     if (retval != KD_NULL)
     {
         result = *(KDint*)retval;
     }
+#if defined(KD_THREAD_C11)
     thrd_exit(result);
 #elif defined(KD_THREAD_POSIX)
     pthread_exit(retval);
-#else
-    kdAssert(0);
+#elif defined(KD_THREAD_WIN32)
+    ExitThread(result);
 #endif
+    kdAssert(0);
+    exit(0);
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
-#if defined(KD_THREAD_C11)
-    KDint* result = KD_NULL;
-    if(retval != KD_NULL)
+    KDint error = 0;
+    KD_UNUSED KDint* result = KD_NULL;
+    if (retval != KD_NULL)
     {
         result = *retval;
     }
-    int error = thrd_join(thread->nativethread, result);
+#if defined(KD_THREAD_C11)
+    error = thrd_join(thread->nativethread, result);
     if(error == thrd_error)
 #elif defined(KD_THREAD_POSIX)
-    int error = pthread_join(thread->nativethread, retval);
+    error = pthread_join(thread->nativethread, retval);
     if(error == EINVAL || error == ESRCH)
+#elif defined(KD_THREAD_WIN32)
+    HANDLE handle = OpenThread(THREAD_ALL_ACCESS, FALSE, thread->nativethread);
+    error = WaitForSingleObject(handle, INFINITE);
+    GetExitCodeThread(handle, result);
+    CloseHandle(handle);
+    if (error != 0)
 #else
     kdAssert(0);
 #endif
@@ -584,7 +548,15 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 #if defined(KD_THREAD_C11)
     error = thrd_detach(thread->nativethread);
 #elif defined(KD_THREAD_POSIX)
-    error = pthread_detach(thread->nativethread);
+    KDint detachstate = 0;
+    error = pthread_attr_getdetachstate(&thread->attr->nativeattr, &detachstate);
+    /* Already detached */
+    if (error == 0 && detachstate == PTHREAD_CREATE_DETACHED)
+    {
+        error = pthread_detach(thread->nativethread);
+    }
+#elif defined(KD_THREAD_WIN32)
+    /* Nothing to do */
 #else
     kdAssert(0);
 #endif
@@ -609,6 +581,8 @@ static KDboolean __kdThreadEqual(KDThread *first, KDThread *second)
     return thrd_equal(first->nativethread, second->nativethread);
 #elif defined(KD_THREAD_POSIX)
     return pthread_equal(first->nativethread, second->nativethread);
+#elif defined(KD_THREAD_WIN32)
+    return first->nativethread == second->nativethread;
 #else
     kdAssert(0);
 #endif
@@ -617,12 +591,15 @@ static KDboolean __kdThreadEqual(KDThread *first, KDThread *second)
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
+
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
 #if defined(KD_THREAD_C11)
     call_once((once_flag *)once_control, init_routine);
 #elif defined(KD_THREAD_POSIX)
     pthread_once((pthread_once_t *)once_control, init_routine);
+#elif defined(KD_THREAD_WIN32)
+    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, init_routine, NULL);
 #else
     kdAssert(0);
 #endif
@@ -857,7 +834,7 @@ void __KDSleep(KDust timeout)
         ts.tv_sec = (timeout - (timeout % 1000000000)) / 1000000000;
     }
     /* Remaining nanoseconds */
-    ts.tv_nsec = timeout - (ts.tv_sec * 1000000000);
+    ts.tv_nsec = (KDint32)timeout - ((KDint32)ts.tv_sec * 1000000000);
 
 #if defined(KD_THREAD_C11)
     thrd_sleep(&ts, NULL);
@@ -869,7 +846,7 @@ void __KDSleep(KDust timeout)
 }
 
 /* kdWaitEvent: Get next event from thread's event queue. */
-static thread_local KDEvent *__kd_lastevent = KD_NULL;
+static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
     if(__kd_lastevent != KD_NULL)
@@ -912,14 +889,14 @@ typedef struct KDCallback
     KDint eventtype;
     void *eventuserptr;
 } KDCallback;
-#ifdef KD_WINDOW_SUPPORTED
-#ifdef __ANDROID__
+#if defined(KD_WINDOW_SUPPORTED)
+#if defined(__ANDROID__)
 typedef struct KDWindowAndroid
 {
     struct ANativeWindow *window;
     void *display;
 } KDWindowAndroid;
-#elif __unix__
+#elif defined(__unix__)
 typedef struct KDWindowX11
 {
     Window window;
@@ -931,10 +908,10 @@ typedef struct KDWindow
     void *nativewindow;
     EGLint format;
 } KDWindow;
-static thread_local KDWindow windows[999]= {{0}};
+static KD_THREADLOCAL KDWindow windows[999]= {{0}};
 #endif
-static thread_local KDuint __kd_callbacks_index = 0;
-static thread_local KDCallback __kd_callbacks[999] = {{0}};
+static KD_THREADLOCAL KDuint __kd_callbacks_index = 0;
+static KD_THREADLOCAL KDCallback __kd_callbacks[999] = {{0}};
 static KDboolean __kdExecCallback(KDEvent* event)
 {
     for (KDuint callback = 0; callback < __kd_callbacks_index; callback++)
@@ -1424,7 +1401,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     __KDMainArgs mainargs = {0};
     mainargs.argc = 0;
     mainargs.argv = KD_NULL;
-    KDThread thread = kdThreadCreate(KD_NULL, __kdMainInjector, &mainargs);
+    KDThread *thread = kdThreadCreate(KD_NULL, __kdMainInjector, &mainargs);
     kdThreadDetach(thread);
 }
 #else
@@ -1548,7 +1525,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     KDboolean error = !CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
     if(error)
     {
-        error = !CryptGenRandom(provider, buflen, buf);
+        error = !CryptGenRandom(provider, (KDuint32)buflen, buf);
     }
     CryptReleaseContext(provider, 0);
     return error ? -1 : 0;
@@ -1617,7 +1594,7 @@ KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
  * Thread-local storage.
  ******************************************************************************/
 
-static thread_local void* tlsptr = KD_NULL;
+static KD_THREADLOCAL void* tlsptr = KD_NULL;
 /* kdGetTLS: Get the thread-local storage pointer. */
 KD_API void *KD_APIENTRY kdGetTLS(void)
 {
@@ -1740,6 +1717,9 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  * String and memory functions
  ******************************************************************************/
 
+size_t strlcpy(char *dst, const char *src, size_t dstsize);
+size_t strlcat(char *dst, const char *src, size_t dstsize);
+
  /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
@@ -1811,7 +1791,7 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 /* kdStrncat_s: Concatenate two strings. */
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srcmaxlen)
 {
-    return (KDint)strncat_s(buf, buflen, src, srcmaxlen);
+    return (KDint)strlcat(buf, src, buflen);
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
@@ -1823,13 +1803,13 @@ KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsiz
 /* kdStrcpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
-    return (KDint)strcpy_s(buf, buflen, src);
+    return (KDint)strlcpy(buf, src, buflen);
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srclen)
 {
-    return (KDint)strncpy_s(buf, buflen, src, srclen);
+    return (KDint)strlcpy(buf, src, buflen);
 }
 
 /******************************************************************************
@@ -2144,7 +2124,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
     {
         if (seekorigins_c[i].seekorigin_kd == origin)
         {
-			retval = fseek(file->file, offset, seekorigins_c[i].seekorigin);
+			retval = fseek(file->file, (KDint32)offset, seekorigins_c[i].seekorigin);
             break;
         }
     }
@@ -2356,7 +2336,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 }
 
 /* kdReadDir: Return the next file in a directory. */
-static thread_local KDDirent *__kd_lastdirent = KD_NULL;
+static KD_THREADLOCAL KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
 #ifdef KD_VFS_SUPPORTED
@@ -2615,15 +2595,15 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     Atom wm_del_win_msg = XInternAtom(x11window->display, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(x11window->display, x11window->window, &wm_del_win_msg, 1);
     Atom mwm_prop_hints = XInternAtom(x11window->display, "_MOTIF_WM_HINTS", True);
-    long mwm_hints[5] = {2, 0, 0, 0, 0};
-    XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const unsigned char *) &mwm_hints, 5);
+    const KDuint8 mwm_hints[5] = {2, 0, 0, 0, 0};
+    XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, &mwm_hints, 5);
     Atom netwm_prop_hints = XInternAtom(x11window->display, "_NET_WM_STATE", False);
     Atom netwm_hints[3];
     netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
     netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_FOCUSED", False);
-    XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const unsigned char *) &netwm_hints, 3);
+    XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, &netwm_hints, 3);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
     kdPostThreadEvent(event, __kd_mainthread);
@@ -2893,7 +2873,7 @@ KD_API void KD_APIENTRY kdAtomicIntStore(KDAtomicInt *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    _InterlockedExchange((long *)&object->value, (long)value);
+    _InterlockedExchange((KDint32 *)&object->value, (KDint32)value);
 #endif
 }
 
@@ -2911,7 +2891,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_add(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((long*)&object->value, value);
+    return _InterlockedExchangeAdd((KDint32*)&object->value, value);
 #endif
 }
 
@@ -2920,7 +2900,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSub(KDAtomicInt *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_sub(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((long*)&object->value, -value);
+    return _InterlockedExchangeAdd((KDint32*)&object->value, -value);
 #endif
 }
 
@@ -2929,7 +2909,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchange(KDAtomicInt *object, KDi
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, &expected, desired);
 #elif defined(KD_ATOMIC_WIN32)
-    return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
+    return (_InterlockedCompareExchange((KDint32*)&object->value, (KDint32)desired, (KDint32)expected) == (KDint32)expected);
 #endif
 }
 
@@ -2951,9 +2931,10 @@ typedef struct KDGuid { KDuint8 guid[16]; } KDGuid;
 KD_API KDGuid* KD_APIENTRY KDGuidCreate(void)
 {
     KDGuid* guid = (KDGuid*)kdMalloc(sizeof(KDGuid));
+    KDint error = 0;
 #if defined(_MSC_VER) || defined(__MINGW32__)
     GUID nativeguid;
-    CoCreateGuid(&nativeguid);
+    error = CoCreateGuid(&nativeguid) == S_OK ? 0 : 1;
     guid->guid[0] = (nativeguid.Data1 >> 24) & 0xFF;
     guid->guid[1] = (nativeguid.Data1 >> 16) & 0xFF;
     guid->guid[2] = (nativeguid.Data1 >> 8) & 0xFF;
@@ -2974,13 +2955,14 @@ KD_API KDGuid* KD_APIENTRY KDGuidCreate(void)
     FILE *uuid = fopen("/proc/sys/kernel/random/uuid", "r");
     KDsize result = fread(guid->guid, sizeof(KDuint8), sizeof(guid->guid), uuid);
     fclose(uuid);
-    if (result != sizeof(guid->guid))
-    {
-        kdAssert(0);
-    }
+    error = result == sizeof(guid->guid) ? 0 : 1;
 #else
     kdAssert(0);
 #endif
+    if (error != 0)
+    {
+        return KD_NULL;
+    }
     return guid;
 }
 
@@ -3143,3 +3125,83 @@ KD_API void* KD_APIENTRY kdQueuePopTail(KDQueue *queue)
 /******************************************************************************
  * Thirdparty
  ******************************************************************************/
+
+/*
+ * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * Appends src to string dst of size siz (unlike strncat, siz is the
+ * full size of dst, not space left).  At most siz-1 characters
+ * will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
+ * Returns strlen(src) + MIN(siz, strlen(initial dst)).
+ * If retval >= siz, truncation occurred.
+ */
+size_t strlcat(char *dst, const char *src, size_t siz)
+{
+    char *d = dst;
+    const char *s = src;
+    size_t n = siz;
+    size_t dlen;
+
+    /* Find the end of dst and adjust bytes left but don't go past end */
+    while (n-- != 0 && *d != '\0')
+        d++;
+    dlen = d - dst;
+    n = siz - dlen;
+
+    if (n == 0)
+        return(dlen + strlen(s));
+    while (*s != '\0') {
+        if (n != 1) {
+            *d++ = *s;
+            n--;
+        }
+        s++;
+    }
+    *d = '\0';
+
+    return(dlen + (s - src));	/* count does not include NUL */
+}
+
+/*
+ * Copy src to string dst of size siz.  At most siz-1 characters
+ * will be copied.  Always NUL terminates (unless siz == 0).
+ * Returns strlen(src); if retval >= siz, truncation occurred.
+ */
+size_t strlcpy(char *dst, const char *src, size_t siz)
+{
+    char *d = dst;
+    const char *s = src;
+    size_t n = siz;
+
+    /* Copy as many bytes as will fit */
+    if (n != 0) {
+        while (--n != 0) {
+            if ((*d++ = *s++) == '\0')
+                break;
+        }
+    }
+
+    /* Not enough room in dst, add NUL and traverse rest of src */
+    if (n == 0) {
+        if (siz != 0)
+            *d = '\0';		/* NUL-terminate dst */
+        while (*s++)
+            ;
+    }
+
+    return(s - src - 1);	/* count does not include NUL */
+}

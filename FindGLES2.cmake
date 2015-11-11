@@ -1,11 +1,15 @@
-find_path(GLES2_INCLUDE_DIR NAMES GLES2/gl2.h PATHS ${CMAKE_SOURCE_DIR}/thirdparty/GLES_SDK/include)
-
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(ARCH_SUFFIX "-64")
 else()
     set(ARCH_SUFFIX "")
 endif()
-find_library(GLES2_LIBRARY NAMES GLESv2 PATHS ${CMAKE_SOURCE_DIR}/thirdparty/GLES_SDK/x86${ARCH_SUFFIX})
+if(MSVC)
+    set(GLES_SDK_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/thirdparty/GLES_SDK/include)
+    set(GLES_SDK_GLES2_LIBRARY ${CMAKE_SOURCE_DIR}/thirdparty/GLES_SDK/x86${ARCH_SUFFIX})
+endif()
+
+find_path(GLES2_INCLUDE_DIR NAMES GLES2/gl2.h PATHS ${GLES_SDK_INCLUDE_PATH})
+find_library(GLES2_LIBRARY NAMES GLESv2 libGLESv2 PATHS ${GLES_SDK_GLES2_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_LIBRARY GLES2_INCLUDE_DIR)
