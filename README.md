@@ -9,10 +9,9 @@
 
 ###Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
--   Only kd.c + headers are needed in case you don't want to use CMake
 
 ###Platforms
--   Linux, Android (NDK), Windows (MinGW)
+-   Linux, Android (NDK), Windows
 
 ###Dependencies
 -   EGL™, OpenGL® ES (samples)
