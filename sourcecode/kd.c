@@ -2596,14 +2596,14 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     XSetWMProtocols(x11window->display, x11window->window, &wm_del_win_msg, 1);
     Atom mwm_prop_hints = XInternAtom(x11window->display, "_MOTIF_WM_HINTS", True);
     const KDuint8 mwm_hints[5] = {2, 0, 0, 0, 0};
-    XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, &mwm_hints, 5);
+    XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8*)&mwm_hints, 5);
     Atom netwm_prop_hints = XInternAtom(x11window->display, "_NET_WM_STATE", False);
     Atom netwm_hints[3];
     netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
     netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
     netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_FOCUSED", False);
-    XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, &netwm_hints, 3);
+    XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const KDuint8*)&netwm_hints, 3);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_REDRAW;
     kdPostThreadEvent(event, __kd_mainthread);
