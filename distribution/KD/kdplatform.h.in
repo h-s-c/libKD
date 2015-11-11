@@ -36,6 +36,7 @@
 #cmakedefine KD_THREAD_WIN32
 #cmakedefine KD_ATOMIC_C11
 #cmakedefine KD_ATOMIC_WIN32
+#cmakedefine KD_ATOMIC_BUILTIN
 #cmakedefine KD_VFS_SUPPORTED
 
 #if defined(__GNUC__)
