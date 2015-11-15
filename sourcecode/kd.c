@@ -160,8 +160,15 @@
         #undef thrd_sleep
         int thrd_sleep(const struct timespec* time_point, struct timespec* remaining)
         {
-            const struct xtime time = { .sec = time_point->tv_sec,.nsec = time_point->tv_nsec };
-            _Thrd_sleep(&time);
+            KDint64 timeout = time_point->tv_sec ? time_point->tv_sec * 1000000000 : 0;
+            timeout += time_point->tv_nsec;
+            HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
+            if (!timer) kdAssert(0);
+            LARGE_INTEGER li = { 0 };
+            li.QuadPart = -(timeout / 100);
+            if (!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) kdAssert(0);
+            WaitForSingleObject(timer, INFINITE);
+            CloseHandle(timer);
             return 0;
         }
         typedef INIT_ONCE once_flag;
@@ -842,6 +849,14 @@ void __KDSleep(KDust timeout)
     thrd_sleep(&ts, NULL);
 #elif defined(KD_THREAD_POSIX)
     nanosleep(&ts, NULL);
+#elif defined(KD_THREAD_WIN32)
+    HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
+    if (!timer) kdAssert(0);
+    LARGE_INTEGER li = {0};
+    li.QuadPart = -(timeout/100);
+    if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) kdAssert(0);
+    WaitForSingleObject(timer, INFINITE);
+    CloseHandle(timer);
 #else
     kdAssert(0);
 #endif
