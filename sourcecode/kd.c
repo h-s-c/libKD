@@ -163,10 +163,10 @@
             KDint64 timeout = time_point->tv_sec ? time_point->tv_sec * 1000000000 : 0;
             timeout += time_point->tv_nsec;
             HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
-            if (!timer) kdAssert(0);
+            if(!timer) { kdAssert(0); }
             LARGE_INTEGER li = { 0 };
             li.QuadPart = -(timeout / 100);
-            if (!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) kdAssert(0);
+            if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) { kdAssert(0); }
             WaitForSingleObject(timer, INFINITE);
             CloseHandle(timer);
             return 0;
@@ -256,7 +256,7 @@ KDint __kdTranslateError(int errorcode)
 {
     for (KDuint i = 0; i < sizeof(errorcodes_posix) / sizeof(errorcodes_posix[0]); i++)
     {
-        if (errorcodes_posix[i].errorcode == errorcode)
+        if(errorcodes_posix[i].errorcode == errorcode)
         {
             return errorcodes_posix[i].errorcode_kd;
         }
@@ -432,7 +432,7 @@ static void* __kdThreadStart(void *args)
         .threadid = GetCurrentThreadId(),
         .flags = 0
     };
-    if (IsDebuggerPresent())
+    if(IsDebuggerPresent())
     {
 #pragma warning( push )
 #pragma warning( disable : 6312)
@@ -479,7 +479,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #else
 	kdAssert(0);
 #endif
-    if (error != 0)
+    if(error != 0)
     {
         kdSetError(KD_EAGAIN);
         kdQueueFree(thread->eventqueue);
@@ -487,7 +487,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         return KD_NULL;
     }
 
-    if (attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
+    if(attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(thread);
         kdQueueFree(thread->eventqueue);
@@ -502,7 +502,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
     KD_UNUSED KDint result = 0;
-    if (retval != KD_NULL)
+    if(retval != KD_NULL)
     {
         result = *(KDint*)retval;
     }
@@ -522,7 +522,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
     KDint error = 0;
     KD_UNUSED KDint* result = KD_NULL;
-    if (retval != KD_NULL)
+    if(retval != KD_NULL)
     {
         result = *retval;
     }
@@ -537,7 +537,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     error = WaitForSingleObject(handle, INFINITE);
     GetExitCodeThread(handle, result);
     CloseHandle(handle);
-    if (error != 0)
+    if(error != 0)
 #else
     kdAssert(0);
 #endif
@@ -560,7 +560,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
     KDint detachstate = 0;
     error = pthread_attr_getdetachstate(&thread->attr->nativeattr, &detachstate);
     /* Already detached */
-    if (error == 0 && detachstate == PTHREAD_CREATE_DETACHED)
+    if(error == 0 && detachstate == PTHREAD_CREATE_DETACHED)
     {
         error = pthread_detach(thread->nativethread);
     }
@@ -714,7 +714,7 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
     else if(error == thrd_error)
 #elif defined(KD_THREAD_POSIX)
     error = pthread_cond_init(&cond->nativecond, KD_NULL);
-    if (error != 0)
+    if(error != 0)
 #else
     kdAssert(0);
 #endif
@@ -834,7 +834,7 @@ void __KDSleep(KDust timeout)
 {
     struct timespec ts = {0};
     /* Determine seconds from the overall nanoseconds */
-    if ((timeout % 1000000000) == 0)
+    if((timeout % 1000000000) == 0)
     {
         ts.tv_sec = timeout / 1000000000;
     }
@@ -851,10 +851,10 @@ void __KDSleep(KDust timeout)
     nanosleep(&ts, NULL);
 #elif defined(KD_THREAD_WIN32)
     HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
-    if (!timer) kdAssert(0);
+    if(!timer) { kdAssert(0); }
     LARGE_INTEGER li = {0};
     li.QuadPart = -(timeout/100);
-    if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) kdAssert(0);
+    if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) { kdAssert(0); }
     WaitForSingleObject(timer, INFINITE);
     CloseHandle(timer);
 #else
@@ -876,7 +876,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
         __KDSleep(timeout);
     }
     kdPumpEvents();
-    if (kdQueueSize(kdThreadSelf()->eventqueue) > 0)
+    if(kdQueueSize(kdThreadSelf()->eventqueue) > 0)
     {
         __kd_lastevent = (KDEvent *)kdQueuePopHead(kdThreadSelf()->eventqueue);
     }
@@ -916,7 +916,7 @@ static KDboolean __kdExecCallback(KDEvent* event)
         {
             KDboolean typematch = __kd_callbacks[callback].eventtype == event->type || __kd_callbacks[callback].eventtype == 0;
             KDboolean userptrmatch = __kd_callbacks[callback].eventuserptr == event->userptr;
-            if (typematch && userptrmatch)
+            if(typematch && userptrmatch)
             {
                 __kd_callbacks[callback].func(event);
                 kdFreeEvent(event);
@@ -957,9 +957,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     for (KDuint i = 0; i < queuesize; i++)
     {
         KDEvent *callbackevent = kdQueuePopHead(kdThreadSelf()->eventqueue);
-        if (callbackevent != KD_NULL)
+        if(callbackevent != KD_NULL)
         {
-            if (!__kdExecCallback(callbackevent))
+            if(!__kdExecCallback(callbackevent))
             {
                 /* Not a callback */
                 kdPostEvent(callbackevent);
@@ -972,7 +972,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     if(__kd_androidinputqueue != KD_NULL)
     {
-        while (AInputQueue_getEvent(__kd_androidinputqueue, &aevent) >= 0)
+        while(AInputQueue_getEvent(__kd_androidinputqueue, &aevent) >= 0)
         {
             AInputQueue_preDispatchEvent(__kd_androidinputqueue, aevent);
             KDEvent *event = kdCreateEvent();
@@ -1005,7 +1005,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     if(__kd_window)
     {
         MSG msg = { 0 };
-        if (PeekMessage(&msg, KD_NULL, 0, 0, PM_REMOVE) > 0)
+        if(PeekMessage(&msg, KD_NULL, 0, 0, PM_REMOVE) > 0)
         {
             switch (msg.message)
             {
@@ -1016,7 +1016,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     ShowWindow(__kd_window->nativewindow, SW_HIDE);
                     KDEvent *event = kdCreateEvent();
                     event->type = KD_EVENT_QUIT;
-                    if (!__kdExecCallback(event))
+                    if(!__kdExecCallback(event))
                     {
                         kdPostEvent(event);
                     }
@@ -1358,7 +1358,7 @@ typedef struct __KDMainArgs
 static void* __kdMainInjector( void *arg)
 {
     __KDMainArgs *mainargs = (__KDMainArgs *) arg;
-    if (mainargs == KD_NULL)
+    if(mainargs == KD_NULL)
     {
         kdAssert(0);
     }
@@ -1583,7 +1583,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
     FILE *urandom = fopen("/dev/urandom", "r");
     KDsize result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
     fclose(urandom);
-    if (result != buflen)
+    if(result != buflen)
     {
         kdSetError(KD_ENOMEM);
         return -1;
@@ -2159,7 +2159,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
 #else
     for (KDuint i = 0; i < sizeof(seekorigins_c) / sizeof(seekorigins_c[0]); i++)
     {
-        if (seekorigins_c[i].seekorigin_kd == origin)
+        if(seekorigins_c[i].seekorigin_kd == origin)
         {
 			retval = fseek(file->file, (KDint32)offset, seekorigins_c[i].seekorigin);
             break;
@@ -2342,7 +2342,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 #else
     for (KDuint i = 0; i < sizeof(accessmode) / sizeof(accessmode[0]); i++)
     {
-        if (accessmode[i].accessmode_kd == amode)
+        if(accessmode[i].accessmode_kd == amode)
         {
             retval = access(pathname, accessmode[i].accessmode);
             break;
@@ -2633,7 +2633,7 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 #endif
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, void *eventuserptr)
 {
-    if (!__kd_window)
+    if(!__kd_window)
     {
         KDWindow *window = (KDWindow *)kdMalloc(sizeof(KDWindow));
         eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
@@ -2905,7 +2905,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object)
     int value = 0;
     do {
         value = object->value;
-    } while (!kdAtomicIntCompareExchange(object, value, value));
+    } while(!kdAtomicIntCompareExchange(object, value, value));
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
@@ -2920,7 +2920,7 @@ KD_API void* KD_APIENTRY kdAtomicPtrLoad(KDAtomicPtr *object)
     void* value = 0;
     do {
         value = object->value;
-    } while (!kdAtomicPtrCompareExchange(object, value, value));
+    } while(!kdAtomicPtrCompareExchange(object, value, value));
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return (void *)__atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
@@ -3030,7 +3030,7 @@ KD_API KDGuid* KD_APIENTRY KDGuidCreate(void)
 #else
     kdAssert(0);
 #endif
-    if (error != 0)
+    if(error != 0)
     {
         return KD_NULL;
     }
@@ -3142,11 +3142,11 @@ KD_API void* KD_APIENTRY kdQueuePopHead(KDQueue *queue)
     if(queue->head) 
     {
         node = queue->head;
-        if ((queue->head = node->next)) 
+        if((queue->head = node->next)) 
         {
             queue->head->prev = NULL;
         }
-        if (queue->tail == node) 
+        if(queue->tail == node) 
         {
             queue->tail = KD_NULL;
         }
@@ -3172,11 +3172,11 @@ KD_API void* KD_APIENTRY kdQueuePopTail(KDQueue *queue)
     if(queue->head)
     {
         node = queue->tail;
-        if ((queue->tail = node->prev))
+        if((queue->tail = node->prev))
         {
             queue->tail->next = NULL;
         }
-        if (queue->head == node)
+        if(queue->head == node)
         {
             queue->head = KD_NULL;
         }
@@ -3228,15 +3228,21 @@ size_t strlcat(char *dst, const char *src, size_t siz)
     size_t dlen;
 
     /* Find the end of dst and adjust bytes left but don't go past end */
-    while (n-- != 0 && *d != '\0')
+    while(n-- != 0 && *d != '\0')
+    {
         d++;
+    }
     dlen = d - dst;
     n = siz - dlen;
 
-    if (n == 0)
-        return(dlen + strlen(s));
-    while (*s != '\0') {
-        if (n != 1) {
+    if(n == 0)
+    {
+        return (dlen + strlen(s));
+    }
+    while(*s != '\0') 
+    {
+        if(n != 1) 
+        {
             *d++ = *s;
             n--;
         }
@@ -3244,7 +3250,7 @@ size_t strlcat(char *dst, const char *src, size_t siz)
     }
     *d = '\0';
 
-    return(dlen + (s - src));	/* count does not include NUL */
+    return (dlen + (s - src));	/* count does not include NUL */
 }
 
 /*
@@ -3259,20 +3265,28 @@ size_t strlcpy(char *dst, const char *src, size_t siz)
     size_t n = siz;
 
     /* Copy as many bytes as will fit */
-    if (n != 0) {
-        while (--n != 0) {
-            if ((*d++ = *s++) == '\0')
+    if(n != 0) 
+    {
+        while(--n != 0) 
+        {
+            if((*d++ = *s++) == '\0')
+            {
                 break;
+            }
         }
     }
 
     /* Not enough room in dst, add NUL and traverse rest of src */
-    if (n == 0) {
-        if (siz != 0)
+    if(n == 0) 
+    {
+        if(siz != 0)
+        {
             *d = '\0';		/* NUL-terminate dst */
-        while (*s++)
-            ;
+        }
+        while(*s++)
+        {
+        }
     }
 
-    return(s - src - 1);	/* count does not include NUL */
+    return (s - src - 1);	/* count does not include NUL */
 }
