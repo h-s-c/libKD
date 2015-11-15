@@ -90,18 +90,25 @@ project (KD)
     list(APPEND KD_SOURCE ${KD_SOURCE})
     list(APPEND KD_INCLUDE_DIRS ${DIST_DIR})
 
-    message(STATUS "Windowing systems compatibility checks")
-    if(ANDROID OR MSVC)
-        set(KD_WINDOW_SUPPORTED "On")
+    message(STATUS "API compatibility checks")
+
+	set(KD_WINDOW_SUPPORTED "On")
+    if(ANDROID)
+        set(KD_WINDOW_ANDROID "On")
+	elseif(MSVC OR MINGW)
+		set(KD_WINDOW_WIN32 "On")
     else()
-        check_include_files("X11/Xlib.h;X11/Xutil.h" KD_WINDOW_SUPPORTED)
-        if(KD_WINDOW_SUPPORTED)
-            set(KD_WINDOW_SUPPORTED "On")
-            list(APPEND KD_LIBRARIES X11)
+        check_include_files("X11/Xlib.h;X11/Xutil.h" KD_WINDOW_X11)
+        if(NOT KD_WINDOW_X11)
+			check_include_files("wayland-client.h;wayland-egl.h" KD_WINDOW_WAYLAND)
+            if(NOT KD_WINDOW_WAYLAND)
+                set(KD_WINDOW_SUPPORTED "Off")
+            endif()
+		else()
+			list(APPEND KD_LIBRARIES X11)
         endif()
     endif()
 
-    message(STATUS "API compatibility checks")
 	if(MSVC)
 		check_include_files("thr/threads.h" KD_THREAD_C11)
 	else()
@@ -152,105 +159,38 @@ project (KD)
 
     configure_file(${DIST_DIR}/KD/kdplatform.h.in ${DIST_DIR}/KD/kdplatform.h)
     include_directories(${KD_INCLUDE_DIRS} )
-    if(ANDROID)
-        add_library(KD_object OBJECT ${KD_SOURCE})
-        set_target_properties(KD_object PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-    else()
-        if(KD_BUILD_CI)
-            message(STATUS "Continous integration build")
-            include(CTest)
-            function(test_helper TEST_NAME)
-                include_directories(${DIST_DIR})
-                add_executable(${TEST_NAME} ${TEST_DIR}/${TEST_NAME}.c)
-                target_link_libraries(${TEST_NAME} KD)
-                add_test(${TEST_NAME} ${TEST_NAME})
-            endfunction()
-            test_helper(test_callback)
-            test_helper(test_eventloop)
-            test_helper(test_stacksize)
-            test_helper(test_threadonce)
-        endif()
-        if(MSVC OR MINGW)
-            add_library(KD STATIC ${KD_SOURCE})
-        else()
-            add_library(KD SHARED ${KD_SOURCE})
-        endif()
-        target_link_libraries(KD ${KD_LIBRARIES})
-        set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+
+	# Continous Integration
+    if(KD_BUILD_CI)
+        message(STATUS "Continous integration build")
+        include(CTest)
+        function(test_helper TEST_NAME)
+            add_executable(${TEST_NAME} ${TEST_DIR}/${TEST_NAME}.c)
+            target_link_libraries(${TEST_NAME} KD)
+            add_test(${TEST_NAME} ${TEST_NAME})
+        endfunction()
+        test_helper(test_callback)
+        test_helper(test_eventloop)
+        test_helper(test_stacksize)
+        test_helper(test_threadonce)
     endif()
 
-# Examples
-if(KD_BUILD_EXAMPLES)
-    function(example_helper)
-        include_directories(${DIST_DIR})
-        if(ANDROID)
-            set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/libs/${ANDROID_NDK_ABI_NAME})
-            add_library(${PROJECT_NAME} SHARED ${EXAMPLE_DIR}/${PROJECT_NAME}.c $<TARGET_OBJECTS:KD_object> ${ARGN})
-            target_link_libraries(${PROJECT_NAME} android log m)
-            if(KD_BUILD_DEBUG)
-                set(MANIFEST_DEBUG_FLAG "true")
-            else()
-                set(MANIFEST_DEBUG_FLAG "false")
-            endif()
-            file( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/AndroidManifest.xml
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<!-- BEGIN_INCLUDE(manifest) -->
-<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"
-        package=\"kd.${PROJECT_NAME}\"
-        android:versionCode=\"1\"
-        android:versionName=\"1.0\">
-    <uses-sdk android:minSdkVersion=\"9\" />
-    <uses-feature android:glEsVersion=\"0x00020000\"></uses-feature>
-    <application android:label=\"${PROJECT_NAME}\" android:hasCode=\"false\" android:debuggable=\"${MANIFEST_DEBUG_FLAG}\">
-        <activity android:name=\"android.app.NativeActivity\"
-                android:label=\"${PROJECT_NAME}\"
-                android:configChanges=\"orientation|keyboardHidden|screenSize\"
-                android:theme=\"@android:style/Theme.NoTitleBar.Fullscreen\" >
-            <meta-data android:name=\"android.app.lib_name\"
-                    android:value=\"${PROJECT_NAME}\" />
-            <intent-filter>
-                <action android:name=\"android.intent.action.MAIN\" />
-                <category android:name=\"android.intent.category.LAUNCHER\" />
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>
-<!-- END_INCLUDE(manifest) -->")
-            execute_process( COMMAND android update project --name ${PROJECT_NAME} --path . --target android-19 --subprojects WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
-            if(KD_BUILD_DEBUG)
-                set(APK_NAME ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/bin/${PROJECT_NAME}-debug.apk)
-                file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/jni/Android.mk "APP_ABI := ${ANDROID_NDK_ABI_NAME}\n")
-                file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/jni/Application.mk "APP_ABI := ${ANDROID_NDK_ABI_NAME}\n")
-                file(COPY ${ANDROID_NDK}/prebuilt/android-${ANDROID_ARCH_NAME}/gdbserver/gdbserver DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-                file(WRITE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/gdb.setup "set solib-search-path ./libs/${ANDROID_NDK_ABI_NAME}\n")
-                file(APPEND ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/gdb.setup "directory ${EXAMPLE_DIR} ${SOURCE_DIR}\n")
-                add_custom_command(OUTPUT ${APK_NAME} COMMAND ant debug DEPENDS ${PROJECT_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
-            else()
-                set(APK_NAME ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/bin/${PROJECT_NAME}-release-unsigned.apk)
-                add_custom_command(OUTPUT ${APK_NAME} COMMAND ant release DEPENDS ${PROJECT_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
-            endif()
-            add_custom_target( ${PROJECT_NAME}-package DEPENDS ${APK_NAME})
-            add_custom_target( ${PROJECT_NAME}-install COMMAND adb install -r ${APK_NAME} DEPENDS ${APK_NAME})
-            add_dependencies(package ${PROJECT_NAME}-package)
-            add_dependencies(install ${PROJECT_NAME}-install)
-        else()
-            add_executable(${PROJECT_NAME} ${EXAMPLE_DIR}/${PROJECT_NAME}.c ${ARGN})
-            target_link_libraries(${PROJECT_NAME} KD)
-        endif()
-        set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-    endfunction()
-
-    project (example_overview)
-        example_helper()
+	# Examples
+	if(KD_BUILD_EXAMPLES)
+	    function(example_helper EXAMPLE_NAME)
+        add_executable(${EXAMPLE_NAME} ${EXAMPLE_DIR}/${EXAMPLE_NAME}.c)
+        target_link_libraries(${EXAMPLE_NAME} KD)
+        endfunction()
 		find_package(GLES2)
-        include_directories(${GLES2_INCLUDE_DIR})
-        target_link_libraries(${PROJECT_NAME} ${GLES2_LIBRARY})
+		include_directories(${GLES2_INCLUDE_DIR})
+		example_helper(example_overview)
+		target_link_libraries(example_overview ${GLES2_LIBRARY})
+	endif()
 
-
-    if(NOT ANDROID)
-    # OpenGL 2.1 example
-        project (example_ui)
-            example_helper(${EXAMPLE_DIR}/thirdparty/glimgui.c)
-            target_link_libraries(${PROJECT_NAME} GL)
+    if(MSVC OR MINGW)
+        add_library(KD STATIC ${KD_SOURCE})
+    else()
+        add_library(KD SHARED ${KD_SOURCE})
     endif()
-endif()
+    target_link_libraries(KD ${KD_LIBRARIES})
+    set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE TRUE)

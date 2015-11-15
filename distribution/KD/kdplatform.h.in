@@ -38,6 +38,10 @@
 #cmakedefine KD_ATOMIC_WIN32
 #cmakedefine KD_ATOMIC_BUILTIN
 #cmakedefine KD_VFS_SUPPORTED
+#cmakedefine KD_WINDOW_X11
+#cmakedefine KD_WINDOW_WIN32
+#cmakedefine KD_WINDOW_ANDROID
+#cmakedefine KD_WINDOW_WAYLAND
 
 #if defined(__GNUC__)
     #define KD_THREADLOCAL __thread

@@ -24,9 +24,11 @@
 /******************************************************************************
  * Implementation notes
  *
+ * - Only one window is supported
+ * - Networking is not supported
  * - KD_EVENT_QUIT events received by threads other then the mainthread
  *   only exit the thread
- * - Android needs this in its manifest for libKD to get orientation changes:
+ * - To receive orientation changes AndroidManifest.xml should include
  *   android:configChanges="orientation|keyboardHidden|screenSize"
  *
  ******************************************************************************/
@@ -889,27 +891,6 @@ typedef struct KDCallback
     KDint eventtype;
     void *eventuserptr;
 } KDCallback;
-#if defined(KD_WINDOW_SUPPORTED)
-#if defined(__ANDROID__)
-typedef struct KDWindowAndroid
-{
-    struct ANativeWindow *window;
-    void *display;
-} KDWindowAndroid;
-#elif defined(__unix__)
-typedef struct KDWindowX11
-{
-    Window window;
-    Display *display;
-} KDWindowX11;
-#endif
-typedef struct KDWindow
-{
-    void *nativewindow;
-    EGLint format;
-} KDWindow;
-static KD_THREADLOCAL KDWindow windows[999]= {{0}};
-#endif
 static KD_THREADLOCAL KDuint __kd_callbacks_index = 0;
 static KD_THREADLOCAL KDCallback __kd_callbacks[999] = {{0}};
 static KDboolean __kdExecCallback(KDEvent* event)
@@ -931,9 +912,25 @@ static KDboolean __kdExecCallback(KDEvent* event)
     return 0;
 }
 
-#ifdef __ANDROID__
+#if defined(KD_WINDOW_SUPPORTED)
+typedef struct KDWindow
+{
+#if defined(KD_WINDOW_ANDROID)
+    struct ANativeWindow *nativewindow;
+    void *nativedisplay;
+#elif defined(KD_WINDOW_WIN32)
+    HWND nativewindow;
+#elif defined(KD_WINDOW_X11)
+    Window nativewindow;
+    Display *nativedisplay;
+#endif
+    EGLint format;
+} KDWindow;
+#if defined(KD_WINDOW_ANDROID)
 static AInputQueue *__kd_androidinputqueue = KD_NULL;
 static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
+#endif
+static KDWindow *__kd_window = KD_NULL;
 #endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
@@ -954,8 +951,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             }
         }
     }
-#ifdef KD_WINDOW_SUPPORTED
-#ifdef __ANDROID__
+#if defined(KD_WINDOW_SUPPORTED)
+#if defined(KD_WINDOW_ANDROID)
     AInputEvent* aevent = NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     if(__kd_androidinputqueue != KD_NULL)
@@ -989,145 +986,170 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         }
     }
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
-#elif __unix__
-    for(KDuint window = 0; window < sizeof(windows) / sizeof(windows[0]); window++)
+#elif defined(KD_WINDOW_WIN32)
+    if(__kd_window)
     {
-        if(windows[window].nativewindow)
+        MSG msg = { 0 };
+        if (PeekMessage(&msg, KD_NULL, 0, 0, PM_REMOVE) > 0)
         {
-            KDWindowX11 *x11window = windows[window].nativewindow;
-            XSelectInput(x11window->display, x11window->window, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
-            while(XPending(x11window->display) > 0)
+            switch (msg.message)
             {
-                KDEvent *event = kdCreateEvent();
-                XEvent xevent = {0};
-                XNextEvent(x11window->display,&xevent);switch(xevent.type)
+                case WM_CLOSE:
+                case WM_DESTROY:
+                case WM_QUIT:
                 {
-                    case ButtonPress:
+                    ShowWindow(__kd_window->nativewindow, SW_HIDE);
+                    KDEvent *event = kdCreateEvent();
+                    event->type = KD_EVENT_QUIT;
+                    if (!__kdExecCallback(event))
                     {
-                        event->type                     = KD_EVENT_INPUT_POINTER;
-                        event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
-                        event->data.inputpointer.select = 1;
-                        event->data.inputpointer.x      = xevent.xbutton.x;
-                        event->data.inputpointer.y      = xevent.xbutton.y;
-                        if(!__kdExecCallback(event))
-                        {
-                            kdPostEvent(event);
-                        }
-                        break;
+                        kdPostEvent(event);
                     }
-                    case ButtonRelease:
+                    break;
+                }
+                default:
+                {
+                    DispatchMessage(&msg);
+                    break;
+                }
+            }
+        }
+    }
+#elif defined(KD_WINDOW_X11)
+    if(__kd_window)
+    {
+        XSelectInput(__kd_window->nativedisplay, __kd_window->nativewindow, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
+        while(XPending(__kd_window->nativedisplay) > 0)
+        {
+            KDEvent *event = kdCreateEvent();
+            XEvent xevent = {0};
+            XNextEvent(__kd_window->nativedisplay,&xevent);switch(xevent.type)
+            {
+                case ButtonPress:
+                {
+                    event->type                     = KD_EVENT_INPUT_POINTER;
+                    event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                    event->data.inputpointer.select = 1;
+                    event->data.inputpointer.x      = xevent.xbutton.x;
+                    event->data.inputpointer.y      = xevent.xbutton.y;
+                    if(!__kdExecCallback(event))
                     {
-                        event->type                     = KD_EVENT_INPUT_POINTER;
-                        event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
-                        event->data.inputpointer.select = 0;
-                        event->data.inputpointer.x      = xevent.xbutton.x;
-                        event->data.inputpointer.y      = xevent.xbutton.y;
-                        if(!__kdExecCallback(event))
-                        {
-                            kdPostEvent(event);
-                        }
-                        break;
+                        kdPostEvent(event);
                     }
-                    case KeyPress:
+                    break;
+                }
+                case ButtonRelease:
+                {
+                    event->type                     = KD_EVENT_INPUT_POINTER;
+                    event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                    event->data.inputpointer.select = 0;
+                    event->data.inputpointer.x      = xevent.xbutton.x;
+                    event->data.inputpointer.y      = xevent.xbutton.y;
+                    if(!__kdExecCallback(event))
                     {
-                        KeySym keysym;
-                        XLookupString(&xevent.xkey, NULL, 25, &keysym, NULL);
-                        event->type = KD_EVENT_INPUT_KEY_ATX;
-                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
-                        switch(keysym)
+                        kdPostEvent(event);
+                    }
+                    break;
+                }
+                case KeyPress:
+                {
+                    KeySym keysym;
+                    XLookupString(&xevent.xkey, NULL, 25, &keysym, NULL);
+                    event->type = KD_EVENT_INPUT_KEY_ATX;
+                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                    switch(keysym)
+                    {
+                        case(XK_Up):
                         {
-                            case(XK_Up):
-                            {
 
-                                keyevent->keycode = KD_KEY_UP_ATX;
-                                break;
-                            }
-                            case(XK_Down):
-                            {
+                            keyevent->keycode = KD_KEY_UP_ATX;
+                            break;
+                        }
+                        case(XK_Down):
+                        {
 
-                                keyevent->keycode = KD_KEY_DOWN_ATX;
-                                break;
-                            }
-                            case(XK_Left):
-                            {
+                            keyevent->keycode = KD_KEY_DOWN_ATX;
+                            break;
+                        }
+                        case(XK_Left):
+                        {
 
-                                keyevent->keycode = KD_KEY_LEFT_ATX;
-                                break;
-                            }
-                            case(XK_Right):
-                            {
+                            keyevent->keycode = KD_KEY_LEFT_ATX;
+                            break;
+                        }
+                        case(XK_Right):
+                        {
 
-                                keyevent->keycode = KD_KEY_RIGHT_ATX;
-                                break;
-                            }
-                            default:
-                            {
-                                event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-                                KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *) (&event->data);
-                                keycharevent->character = (KDint32) keysym;
-                                break;
-                            }
+                            keyevent->keycode = KD_KEY_RIGHT_ATX;
+                            break;
                         }
-                        if(!__kdExecCallback(event))
+                        default:
                         {
-                            kdPostEvent(event);
-                        }
-                    }
-                    case KeyRelease:
-                    {
-                        break;
-                    }
-                    case MotionNotify:
-                    {
-                        event->type                     = KD_EVENT_INPUT_POINTER;
-                        event->data.inputpointer.index  = KD_INPUT_POINTER_X;
-                        event->data.inputpointer.x      = xevent.xmotion.x;
-                        if(!__kdExecCallback(event))
-                        {
-                            kdPostEvent(event);
-                        }
-                        KDEvent *event2 = kdCreateEvent();
-                        event2->type                     = KD_EVENT_INPUT_POINTER;
-                        event2->data.inputpointer.index  = KD_INPUT_POINTER_Y;
-                        event2->data.inputpointer.y      = xevent.xmotion.y;
-                        if(!__kdExecCallback(event2))
-                        {
-                            kdPostEvent(event2);
-                        }
-                        break;
-                    }
-                    case ConfigureNotify:
-                    {
-                        event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
-
-                        if(!__kdExecCallback(event))
-                        {
-                            kdPostEvent(event);
-                        }
-                        break;
-                    }
-                    case ClientMessage:
-                    {
-                        if((Atom)xevent.xclient.data.l[0] == XInternAtom(x11window->display, "WM_DELETE_WINDOW", False))
-                        {
-                            event->type      = KD_EVENT_QUIT;
-                            if(!__kdExecCallback(event))
-                            {
-                                kdPostEvent(event);
-                            }
+                            event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *) (&event->data);
+                            keycharevent->character = (KDint32) keysym;
                             break;
                         }
                     }
-                    case MappingNotify:
+                    if(!__kdExecCallback(event))
                     {
-                        XRefreshKeyboardMapping((XMappingEvent*)&xevent);
+                        kdPostEvent(event);
+                    }
+                }
+                case KeyRelease:
+                {
+                    break;
+                }
+                case MotionNotify:
+                {
+                    event->type                     = KD_EVENT_INPUT_POINTER;
+                    event->data.inputpointer.index  = KD_INPUT_POINTER_X;
+                    event->data.inputpointer.x      = xevent.xmotion.x;
+                    if(!__kdExecCallback(event))
+                    {
+                        kdPostEvent(event);
+                    }
+                    KDEvent *event2 = kdCreateEvent();
+                    event2->type                     = KD_EVENT_INPUT_POINTER;
+                    event2->data.inputpointer.index  = KD_INPUT_POINTER_Y;
+                    event2->data.inputpointer.y      = xevent.xmotion.y;
+                    if(!__kdExecCallback(event2))
+                    {
+                        kdPostEvent(event2);
+                    }
+                    break;
+                }
+                case ConfigureNotify:
+                {
+                    event->type      = KD_EVENT_WINDOWPROPERTY_CHANGE;
+
+                    if(!__kdExecCallback(event))
+                    {
+                        kdPostEvent(event);
+                    }
+                    break;
+                }
+                case ClientMessage:
+                {
+                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(__kd_window->nativedisplay, "WM_DELETE_WINDOW", False))
+                    {
+                        event->type      = KD_EVENT_QUIT;
+                        if(!__kdExecCallback(event))
+                        {
+                            kdPostEvent(event);
+                        }
                         break;
                     }
-                    default:
-                    {
-                        kdFreeEvent(event);
-                        break;
-                    }
+                }
+                case MappingNotify:
+                {
+                    XRefreshKeyboardMapping((XMappingEvent*)&xevent);
+                    break;
+                }
+                default:
+                {
+                    kdFreeEvent(event);
+                    break;
                 }
             }
         }
@@ -1523,7 +1545,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 #if defined(_MSC_VER) || defined(__MINGW32__)
     HCRYPTPROV provider = 0;
     KDboolean error = !CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
-    if(error)
+    if(error == 0)
     {
         error = !CryptGenRandom(provider, (KDuint32)buflen, buf);
     }
@@ -2386,7 +2408,7 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 #if defined(_MSC_VER) || defined(__MINGW32__)
      KDuint64 freespace = 0;
      GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL);
-    return freespace;
+     return freespace;
 #else
      struct statfs buf = {0};
      statfs(temp, &buf);
@@ -2572,66 +2594,85 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfl
  * Windowing
  ******************************************************************************/
 #ifdef KD_WINDOW_SUPPORTED
-
 /* kdCreateWindow: Create a window. */
+#if defined(KD_WINDOW_WIN32)
+LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+    switch (msg)
+    {
+    case WM_CLOSE:
+    case WM_DESTROY:
+    case WM_QUIT:
+    {
+        PostQuitMessage(0);
+        break;
+    }
+    default:
+    {
+        return DefWindowProc(hwnd, msg, wparam, lparam);
+        break;
+    }
+    }
+    return 0;
+}
+#endif
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, void *eventuserptr)
 {
-    KDWindow *window = (KDWindow *) kdMalloc(sizeof(KDWindow));
-    eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-#ifdef __ANDROID__
-    window->nativewindow = kdMalloc(sizeof(KDWindowAndroid));
-#elif __unix__
-    window->nativewindow = kdMalloc(sizeof(KDWindowX11));
-    KDWindowX11 *x11window = window->nativewindow;
-    XInitThreads();
-    x11window->display = XOpenDisplay(NULL);
-    x11window->window = XCreateSimpleWindow(x11window->display,
-            XRootWindow(x11window->display, XDefaultScreen(x11window->display)), 0, 0,
-            (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display)),
-            (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display)), 0,
-            XBlackPixel(x11window->display, XDefaultScreen(x11window->display)),
-            XWhitePixel(x11window->display, XDefaultScreen(x11window->display)));
-    XStoreName(x11window->display, x11window->window, "OpenKODE");
-    Atom wm_del_win_msg = XInternAtom(x11window->display, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols(x11window->display, x11window->window, &wm_del_win_msg, 1);
-    Atom mwm_prop_hints = XInternAtom(x11window->display, "_MOTIF_WM_HINTS", True);
-    const KDuint8 mwm_hints[5] = {2, 0, 0, 0, 0};
-    XChangeProperty(x11window->display, x11window->window, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8*)&mwm_hints, 5);
-    Atom netwm_prop_hints = XInternAtom(x11window->display, "_NET_WM_STATE", False);
-    Atom netwm_hints[3];
-    netwm_hints[0] = XInternAtom(x11window->display, "_NET_WM_STATE_FULLSCREEN", False);
-    netwm_hints[1] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-    netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-    netwm_hints[2] = XInternAtom(x11window->display, "_NET_WM_STATE_FOCUSED", False);
-    XChangeProperty(x11window->display, x11window->window, netwm_prop_hints, 4, 32, 0, (const KDuint8*)&netwm_hints, 3);
-    KDEvent *event = kdCreateEvent();
-    event->type = KD_EVENT_WINDOW_REDRAW;
-    kdPostThreadEvent(event, __kd_mainthread);
-#endif
-    for (KDuint i = 0; i < sizeof(windows) / sizeof(windows[0]); i++)
+    if (!__kd_window)
     {
-        if (!windows[i].nativewindow)
-        {
-            windows[i].nativewindow = window->nativewindow;
-            windows[i].format = window->format;
-            break;
-        }
+        KDWindow *window = (KDWindow *)kdMalloc(sizeof(KDWindow));
+        eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
+#if defined(KD_WINDOW_WIN32)
+        WNDCLASS windowclass = { 0 };
+        HINSTANCE instance = GetModuleHandle(KD_NULL);
+        GetClassInfo(instance, "", &windowclass);
+        windowclass.lpszClassName = "OpenKode";
+        windowclass.lpfnWndProc = windowcallback;
+        windowclass.hInstance = instance;
+        windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
+        RegisterClass(&windowclass);
+        window->nativewindow = CreateWindow("OpenKode", "OpenKode", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 480, KD_NULL, KD_NULL, instance, KD_NULL);
+#elif defined(KD_WINDOW_X11)
+        XInitThreads();
+        window->nativedisplay = XOpenDisplay(NULL);
+        window->nativewindow = XCreateSimpleWindow(window->nativedisplay,
+            XRootWindow(window->nativedisplay, XDefaultScreen(window->nativedisplay)), 0, 0,
+            (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)),
+            (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)), 0,
+            XBlackPixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)),
+            XWhitePixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)));
+        XStoreName(window->nativedisplay, window->nativewindow, "OpenKODE");
+        Atom wm_del_win_msg = XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False);
+        XSetWMProtocols(window->nativedisplay, window->nativewindow, &wm_del_win_msg, 1);
+        Atom mwm_prop_hints = XInternAtom(window->nativedisplay, "_MOTIF_WM_HINTS", True);
+        const KDuint8 mwm_hints[5] = { 2, 0, 0, 0, 0 };
+        XChangeProperty(window->nativedisplay, window->nativewindow, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8*)&mwm_hints, 5);
+        Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
+        Atom netwm_hints[3];
+        netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FULLSCREEN", False);
+        netwm_hints[1] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
+        XChangeProperty(window->nativedisplay, window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8*)&netwm_hints, 3);
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_WINDOW_REDRAW;
+        kdPostThreadEvent(event, __kd_mainthread);
+#endif
+        __kd_window = window;
     }
-    return window;
+    return __kd_window;
 }
 
 /* kdDestroyWindow: Destroy a window. */
 KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 {
-#ifdef __ANDROID__
-    KDWindowAndroid *androidwindow = window->nativewindow;
-    kdFree(androidwindow);
-#elif __unix__
-    KDWindowX11 *x11window = window->nativewindow;
-    XCloseDisplay(x11window->display);
-    kdFree(x11window);
+#if defined(KD_WINDOW_WIN32)
+    DestroyWindow(window->nativewindow);
+#elif defined(KD_WINDOW_X11)
+    XCloseDisplay(window->nativedisplay);
 #endif
     kdFree(window);
+    __kd_window = KD_NULL;
     return 0;
 }
 
@@ -2645,13 +2686,12 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#ifdef __ANDROID__
+#if defined(KD_WINDOW_ANDROID)
         kdSetError(KD_EOPNOTSUPP);
         return -1;
-#elif __unix__
-        KDWindowX11 *x11window = window->nativewindow;
-        XMoveResizeWindow(x11window->display, x11window->window, 0, 0, (KDuint)param[0], (KDuint)param[1]);
-        XFlush(x11window->display);
+#elif defined(KD_WINDOW_X11)
+        XMoveResizeWindow(window->nativedisplay, window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
+        XFlush(window->nativedisplay);
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostThreadEvent(event, kdThreadSelf());
@@ -2665,13 +2705,12 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-#ifdef __ANDROID__
+#if defined(KD_WINDOW_ANDROID)
         kdSetError(KD_EOPNOTSUPP);
         return -1;
-#elif __unix__
-        KDWindowX11 *x11window = window->nativewindow;
-        XStoreName(x11window->display, x11window->window, param);
-        XFlush(x11window->display);
+#elif defined(KD_WINDOW_X11)
+        XStoreName(window->nativedisplay, window->nativewindow, param);
+        XFlush(window->nativedisplay);
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostThreadEvent(event, kdThreadSelf());
@@ -2692,14 +2731,12 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#ifdef __ANDROID__
-        KDWindowAndroid *androidwindow = window->nativewindow;
-        param[0] = ANativeWindow_getWidth(androidwindow->window);
-        param[1] = ANativeWindow_getHeight(androidwindow->window);
-#elif __unix__
-        KDWindowX11 *x11window = window->nativewindow;
-        param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(x11window->display));
-        param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(x11window->display));
+#if defined(KD_WINDOW_ANDROID)
+        param[0] = ANativeWindow_getWidth(window->nativewindow);
+        param[1] = ANativeWindow_getHeight(window->nativewindow);
+#elif defined(KD_WINDOW_X11)
+        param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
+        param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
 #endif
         return 0;
     }
@@ -2710,12 +2747,11 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-#ifdef __ANDROID__
+#if defined(KD_WINDOW_ANDROID)
         kdSetError(KD_EOPNOTSUPP);
         return -1;
-#elif __unix__
-        KDWindowX11 *x11window = window->nativewindow;
-        XFetchName(x11window->display, x11window->window, &param);
+#elif defined(KD_WINDOW_X11)
+        XFetchName(window->nativedisplay, window->nativewindow, &param);
 #endif
         return 0;
     }
@@ -2726,27 +2762,24 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-#ifdef __ANDROID__
-    KDWindowAndroid *androidwindow = window->nativewindow;
+#if defined(KD_WINDOW_ANDROID)
     for(;;)
     {
         kdThreadMutexLock(__kd_androidwindow_mutex);
         if(__kd_androidwindow != KD_NULL)
         {
-            androidwindow->window = __kd_androidwindow;
+            window->nativewindow = __kd_androidwindow;
             kdThreadMutexUnlock(__kd_androidwindow_mutex);
             break;
         }
         kdThreadMutexUnlock(__kd_androidwindow_mutex);
     }
-    ANativeWindow_setBuffersGeometry(androidwindow->window, 0, 0, window->format);
-    *nativewindow = androidwindow->window;
-#elif __unix__
-    KDWindowX11 *x11window = window->nativewindow;
-    XMapWindow(x11window->display, x11window->window);
-    XFlush(x11window->display);
-    *nativewindow = x11window->window;
+    ANativeWindow_setBuffersGeometry(window->nativewindow, 0, 0, window->format);
+#elif defined(KD_WINDOW_X11)
+    XMapWindow(window->nativedisplay, window->nativewindow);
+    XFlush(window->nativedisplay);
 #endif
+    *nativewindow = window->nativewindow;
     return 0;
 }
 #endif

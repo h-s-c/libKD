@@ -1,4 +1,4 @@
-if(MSVC)
+if(MSVC OR MINGW)
     set(GLES_SDK_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/thirdparty/GLES_SDK/include)
 endif()
 

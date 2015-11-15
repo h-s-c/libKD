@@ -131,7 +131,6 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
             }
         }
 
-
         if(eglSwapBuffers(egl_display, egl_surface) == EGL_FALSE)
         {
             EGLint egl_error = eglGetError();
