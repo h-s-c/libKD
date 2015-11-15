@@ -25,11 +25,11 @@
 
 /* Test if we can register multiple callbacks to the same eventype/eventuserptr combo. */
 static KDboolean quit = 0;
-void callback1(const KDEvent *event)
+void KD_APIENTRY callback1(const KDEvent *event)
 {
     kdAssert(0);
 }
-void callback2(const KDEvent *event)
+void KD_APIENTRY callback2(const KDEvent *event)
 {
     if(event->type == KD_EVENT_QUIT)
     {
@@ -39,10 +39,10 @@ void callback2(const KDEvent *event)
     kdDefaultEvent(event);
 }
 
-KDint kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdInstallCallback((KDCallbackFunc *)callback1, KD_EVENT_QUIT, (void*)1234);
-    kdInstallCallback((KDCallbackFunc *)callback2, KD_EVENT_QUIT, (void*)1234);
+    kdInstallCallback(&callback1, KD_EVENT_QUIT, (void*)1234);
+    kdInstallCallback(&callback2, KD_EVENT_QUIT, (void*)1234);
     for(;;)
     {
         KDEvent *event = kdCreateEvent();

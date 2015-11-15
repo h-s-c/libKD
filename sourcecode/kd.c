@@ -78,14 +78,11 @@
 #include <string.h>
 #include <time.h>
 
-#if __STDC_VERSION__ >= 201112L
-    #include <stdalign.h>
-    #if defined(KD_THREAD_C11)
-        #include <threads.h>
-    #endif
-    #if defined(KD_ATOMIC_C11)
-        #include <stdatomic.h>
-    #endif
+#if defined(KD_THREAD_C11) && !defined(_MSC_VER)
+    #include <threads.h>
+#endif
+#if defined(KD_ATOMIC_C11)
+    #include <stdatomic.h>
 #endif
 
 /******************************************************************************
@@ -164,7 +161,7 @@
             timeout += time_point->tv_nsec;
             HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
             if(!timer) { kdAssert(0); }
-            LARGE_INTEGER li = { 0 };
+            LARGE_INTEGER li = {{ 0 }};
             li.QuadPart = -(timeout / 100);
             if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) { kdAssert(0); }
             WaitForSingleObject(timer, INFINITE);
@@ -2641,12 +2638,12 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
         WNDCLASS windowclass = { 0 };
         HINSTANCE instance = GetModuleHandle(KD_NULL);
         GetClassInfo(instance, "", &windowclass);
-        windowclass.lpszClassName = "OpenKode";
+        windowclass.lpszClassName = "OpenKODE";
         windowclass.lpfnWndProc = windowcallback;
         windowclass.hInstance = instance;
         windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
         RegisterClass(&windowclass);
-        window->nativewindow = CreateWindow("OpenKode", "OpenKode", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 480, KD_NULL, KD_NULL, instance, KD_NULL);
+        window->nativewindow = CreateWindow("OpenKODE", "OpenKODE", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 480, KD_NULL, KD_NULL, instance, KD_NULL);
 #elif defined(KD_WINDOW_X11)
         XInitThreads();
         window->nativedisplay = XOpenDisplay(NULL);
@@ -2816,7 +2813,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 #ifdef __ANDROID__
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), string);
 #else
-    printf(string);
+    printf("%s", string);
     fflush(stdout);
 #endif
 }
@@ -2892,7 +2889,7 @@ KD_API void KD_APIENTRY kdAtomicIntFree(KDAtomicInt *object)
     kdFree(object);
 }
 
-KD_API void kdAtomicPtrFree(KDAtomicPtr *object)
+KD_API void KD_APIENTRY kdAtomicPtrFree(KDAtomicPtr *object)
 {
     kdFree(object);
 }
@@ -2942,6 +2939,8 @@ KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value)
 {
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, (uintptr_t)value);
+#elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
+    _InterlockedExchange((long *)&object->value, (long) value);
 #elif defined(KD_ATOMIC_WIN32)
     _InterlockedExchangePointer(&object->value, value);
 #elif defined(KD_ATOMIC_BUILTIN)
@@ -2986,6 +2985,8 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchange(KDAtomicPtr *object, voi
 {
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, (uintptr_t*)&expected, (uintptr_t)desired);
+#elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
+    return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
 #elif defined(KD_ATOMIC_WIN32)
     return (_InterlockedCompareExchangePointer(&object->value, desired, expected) == expected);
 #elif defined(KD_ATOMIC_BUILTIN)
@@ -3042,7 +3043,7 @@ KD_API void KD_APIENTRY KDGuidFree(KDGuid* guid)
     kdFree(guid);
 }
 
-KD_API KDboolean KDGuidEqual(KDGuid* guid1, KDGuid* guid2)
+KD_API KDboolean KD_APIENTRY KDGuidEqual(KDGuid* guid1, KDGuid* guid2)
 {
     return (guid1->guid == guid2->guid);
 }

@@ -31,22 +31,23 @@
 
 /* Example with eventloop, timer and callback*/
 static KDboolean quit = 0;
-void callback(const KDEvent *event)
+void KD_APIENTRY callback(const KDEvent *event)
 {
     switch(event->type)
     {
         case(KD_EVENT_QUIT):
         {
             quit = 1;
-            return;
+            break;
         }
         default:
         {
             kdDefaultEvent(event);
+            break;
         }
     }
 }
-KDint kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     kdLogMessage("Starting example\n");
 
@@ -101,7 +102,7 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Renderer: "); kdLogMessage((const char*)glGetString(GL_RENDERER)); kdLogMessage("\n");
     kdLogMessage("Extensions: "); kdLogMessage((const char*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
 
-    kdInstallCallback(callback, KD_EVENT_QUIT, KD_NULL);
+    kdInstallCallback(&callback, KD_EVENT_QUIT, KD_NULL);
     KDTimer* kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
 
     float r = 0.0f;

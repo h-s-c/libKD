@@ -78,7 +78,7 @@
     #if defined (KD_EXPORTS)
         #define KD_API __declspec(dllexport)
     #else
-        #define KD_API
+        #define KD_API 
     #endif
 #else
     #define KD_API KHRONOS_APICALL

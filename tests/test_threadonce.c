@@ -44,7 +44,7 @@ void* test_func( void *arg)
 	return 0;
 }
 
-KDint kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     test_once_count = kdAtomicIntCreate(0);
     KDThread* threads[THREAD_COUNT] = {KD_NULL};
