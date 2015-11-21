@@ -1,0 +1,6 @@
+[submodule "thirdparty/dirent"]
+	path = thirdparty/dirent
+	url = https://github.com/tronkko/dirent.git
+[submodule "thirdparty/zahnrad"]
+	path = thirdparty/zahnrad
+	url = https://github.com/vurtun/zahnrad.git

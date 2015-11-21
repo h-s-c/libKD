@@ -1,5 +1,5 @@
 if(MSVC OR MINGW)
-    set(GLES_SDK_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/thirdparty/GLES_SDK/include)
+    set(GLES_SDK_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/thirdparty/gles_amd/include)
 endif()
 
 find_path(KHR_INCLUDE_DIR NAMES KHR/khrplatform.h PATHS ${GLES_SDK_INCLUDE_PATH})
