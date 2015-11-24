@@ -19,8 +19,10 @@ if(CC MATCHES "gcc")
     find_program(CTEST_COVERAGE_COMMAND "gcov-${CC_VERSION}")
 endif()
 
+string(SUBSTRING "$ENV{CC}" 0 5 CC)
 if($ENV{CC} MATCHES "clang")
-    find_program(CTEST_COVERAGE_COMMAND "llvm-cov")
+    string(SUBSTRING "$ENV{CC}" 6 9 CC_VERSION)
+    find_program(CTEST_COVERAGE_COMMAND "llvm-cov-${CC_VERSION}")
 endif()
 
 set(CTEST_CUSTOM_COVERAGE_EXCLUDE ${CTEST_CUSTOM_COVERAGE_EXCLUDE} "/distribution/" "/examples/" "/thirdparty/" "/tests/" "/cov-int/" "/CMakeFiles/" "/usr/")
