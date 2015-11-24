@@ -21,8 +21,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
-sudo: required
-dist: trusty
+sudo: false
 
 language: c
 
@@ -31,7 +30,9 @@ compiler:
   - gcc-4.9
   - gcc-4.8
   - gcc-4.7
-  - clang
+  - clang-3.7
+  - clang-3.6
+  - clang-3.5
 
 cache:
   - apt: true
@@ -40,6 +41,9 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.7
+      - llvm-toolchain-precise-3.6
+      - llvm-toolchain-precise-3.5
     packages:
       - gcc-5
       - g++-5
@@ -49,7 +53,9 @@ addons:
       - g++-4.8
       - gcc-4.7
       - g++-4.7
-      - clang
+      - clang-3.7
+      - clang-3.6
+      - clang-3.5
       - cmake
       - valgrind
       - libegl1-mesa-dev
