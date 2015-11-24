@@ -32,8 +32,6 @@ compiler:
   - gcc-4.8
   - gcc-4.7
   - gcc-4.6
-  - gcc-4.5
-  - gcc-4.4
   - clang
 
 cache:
@@ -54,10 +52,6 @@ addons:
       - g++-4.7
       - gcc-4.6
       - g++-4.6
-      - gcc-4.5
-      - g++-4.5
-      - gcc-4.4
-      - g++-4.4
       - clang
       - cmake
       - valgrind
