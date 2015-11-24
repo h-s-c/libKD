@@ -35,6 +35,7 @@ include(CheckIncludeFiles)
 include(CheckLibraryExists)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
+set(KD_BUILD_TESTS "On" CACHE BOOL "Build with tests")
 set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
@@ -73,13 +74,11 @@ project (KD C)
     endif()
 
     if(KD_BUILD_VFS)
-        message(STATUS "Virtual filesystem enabled build")
         list(APPEND KD_LIBRARIES physfs)
         set(KD_VFS_SUPPORTED "On")
     endif()
 
     if(EMSCRIPTEN)
-        message(STATUS "Emscripten build")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-warn-absolute-paths -s ASYNCIFY=1")
     endif()
 
@@ -88,7 +87,6 @@ project (KD C)
     list(APPEND KD_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/distribution)
 
     message(STATUS "API compatibility checks")
-
 	set(KD_WINDOW_SUPPORTED "On")
     if(ANDROID)
         set(KD_WINDOW_ANDROID "On")
@@ -158,9 +156,8 @@ project (KD C)
     configure_file(${CMAKE_SOURCE_DIR}/distribution/KD/kdplatform.h.in ${CMAKE_SOURCE_DIR}/distribution/KD/kdplatform.h)
     include_directories(${KD_INCLUDE_DIRS} )
 
-	# Continous Integration
-    if(KD_BUILD_CI)
-        message(STATUS "Continous integration build")
+	# Tests
+    if(KD_BUILD_TESTS OR KD_BUILD_CI)
         include(CTest)
         function(test_helper TEST_NAME)
             add_executable(${TEST_NAME} ${CMAKE_SOURCE_DIR}/tests/${TEST_NAME}.c)
