@@ -38,10 +38,12 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
-if($ENV{CI} OR $ENV{CONTINUOUS_INTEGRATION})
+if($ENV{CI})
     set(KD_BUILD_CI "On")
-else()
-    set(KD_BUILD_CI "Off" CACHE BOOL "Build with tests")
+endif()
+
+if($ENV{CONTINUOUS_INTEGRATION})
+    set(KD_BUILD_CI "On")
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
