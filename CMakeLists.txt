@@ -43,10 +43,6 @@ if($ENV{CI})
     set(KD_BUILD_CI "On")
 endif()
 
-if($ENV{CONTINUOUS_INTEGRATION})
-    set(KD_BUILD_CI "On")
-endif()
-
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     set(KD_BUILD_DEBUG "On")
 else()
