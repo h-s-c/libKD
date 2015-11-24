@@ -29,7 +29,7 @@
 # Emscripten: $EMSCRIPTEN/cmake/Modules/platform/Emscripten.cmake
 ###############################################################################
 
-cmake_minimum_required(VERSION 2.8.7)
+cmake_minimum_required(VERSION 2.8.9)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
