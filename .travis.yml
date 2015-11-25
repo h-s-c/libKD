@@ -69,3 +69,4 @@ install:
 
 script:
   - ctest -VV --output-on-failure -S .travis.ctest
+  - ls /home/travis/build/h-s-c/libKD/build/CMakeFiles/test_threadonce.dir/tests
