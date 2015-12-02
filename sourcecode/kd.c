@@ -401,7 +401,7 @@ typedef struct KDThread
 #elif defined(KD_THREAD_POSIX)
     pthread_t nativethread;
 #elif defined(KD_THREAD_WIN32)
-    KDuint32 nativethread;
+    HANDLE nativethread;
 #endif
     KDQueue *eventqueue;
     const KDThreadAttr *attr;
@@ -469,9 +469,8 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #elif defined(KD_THREAD_POSIX)
     error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, start_args);
 #elif defined(KD_THREAD_WIN32)
-    HANDLE handle = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)start_args, 0, &thread->nativethread);
-    error = handle ? 0 : 1;
-    CloseHandle(handle);
+    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)start_args, 0, KD_NULL);
+    error = thread->nativethread ? 0 : 1;
 #else
 	kdAssert(0);
 #endif
@@ -517,7 +516,8 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
     KDint error = 0;
-    KD_UNUSED KDint* result = KD_NULL;
+    KDint resinit = 0;
+    KD_UNUSED KDint* result = &resinit;
     if(retval != KD_NULL)
     {
         result = *retval;
@@ -529,10 +529,9 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     error = pthread_join(thread->nativethread, retval);
     if(error == EINVAL || error == ESRCH)
 #elif defined(KD_THREAD_WIN32)
-    HANDLE handle = OpenThread(THREAD_ALL_ACCESS, FALSE, thread->nativethread);
-    error = WaitForSingleObject(handle, INFINITE);
-    GetExitCodeThread(handle, result);
-    CloseHandle(handle);
+    error = WaitForSingleObject(thread->nativethread, INFINITE);
+    GetExitCodeThread(thread->nativethread, result);
+    CloseHandle(thread->nativethread);
     if(error != 0)
 #else
     kdAssert(0);
@@ -561,7 +560,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
         error = pthread_detach(thread->nativethread);
     }
 #elif defined(KD_THREAD_WIN32)
-    /* Nothing to do */
+    CloseHandle(thread->nativethread);
 #else
     kdAssert(0);
 #endif
@@ -619,6 +618,8 @@ typedef struct KDThreadMutex
     mtx_t nativemutex;
 #elif defined(KD_THREAD_POSIX)
     pthread_mutex_t nativemutex;
+#elif defined(KD_THREAD_WIN32)
+    SRWLOCK nativemutex;
 #endif
 } KDThreadMutex;
 KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
@@ -636,6 +637,8 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
         kdFree(mutex);
         return KD_NULL;
     }
+#elif defined(KD_THREAD_WIN32)
+    InitializeSRWLock(&mutex->nativemutex);
 #else
     kdAssert(0);
 #endif
@@ -655,6 +658,8 @@ KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
     mtx_destroy(&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
     pthread_mutex_destroy(&mutex->nativemutex);
+#elif defined(KD_THREAD_WIN32)
+    // No need to free anything
 #else
     kdAssert(0);
 #endif
@@ -669,6 +674,8 @@ KD_API KDint KD_APIENTRY kdThreadMutexLock(KDThreadMutex *mutex)
     mtx_lock(&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
     pthread_mutex_lock(&mutex->nativemutex);
+#elif defined(KD_THREAD_WIN32)
+    AcquireSRWLockExclusive(&mutex->nativemutex);
 #else
     kdAssert(0);
 #endif
@@ -682,6 +689,8 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
     mtx_unlock(&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
     pthread_mutex_unlock(&mutex->nativemutex);
+#elif defined(KD_THREAD_WIN32)
+    ReleaseSRWLockExclusive(&mutex->nativemutex);
 #else
     kdAssert(0);
 #endif
@@ -695,6 +704,8 @@ typedef struct KDThreadCond
     cnd_t nativecond;
 #elif defined(KD_THREAD_POSIX)
     pthread_cond_t nativecond;
+#elif defined(KD_THREAD_WIN32)
+    CONDITION_VARIABLE nativecond;
 #endif
 } KDThreadCond;
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
@@ -706,14 +717,17 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
     if(error ==  thrd_nomem)
     {
         kdSetError(KD_ENOMEM);
+        kdFree(cond);
+        return KD_NULL;
     }
-    else if(error == thrd_error)
 #elif defined(KD_THREAD_POSIX)
     error = pthread_cond_init(&cond->nativecond, KD_NULL);
-    if(error != 0)
+#elif defined(KD_THREAD_WIN32)
+    InitializeConditionVariable(&cond->nativecond);
 #else
     kdAssert(0);
 #endif
+    if(error != 0)
     {
         kdSetError(KD_EAGAIN);
         kdFree(cond);
@@ -729,6 +743,8 @@ KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
     cnd_destroy(&cond->nativecond);
 #elif defined(KD_THREAD_POSIX)
     pthread_cond_destroy(&cond->nativecond);
+#elif defined(KD_THREAD_WIN32)
+    // No need to free anything
 #else
     kdAssert(0);
 #endif
@@ -743,6 +759,8 @@ KD_API KDint KD_APIENTRY kdThreadCondSignal(KDThreadCond *cond)
     cnd_signal(&cond->nativecond);
 #elif defined(KD_THREAD_POSIX)
     pthread_cond_signal(&cond->nativecond);
+#elif defined(KD_THREAD_WIN32)
+    WakeConditionVariable(&cond->nativecond);
 #else
     kdAssert(0);
 #endif
@@ -755,6 +773,8 @@ KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
     cnd_broadcast(&cond->nativecond);
 #elif defined(KD_THREAD_POSIX)
     pthread_cond_broadcast(&cond->nativecond);
+#elif defined(KD_THREAD_WIN32)
+    WakeAllConditionVariable(&cond->nativecond);
 #else
     kdAssert(0);
 #endif
@@ -768,6 +788,8 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
     cnd_wait(&cond->nativecond, &mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
     pthread_cond_wait(&cond->nativecond, &mutex->nativemutex);
+#elif defined(KD_THREAD_WIN32)
+    SleepConditionVariableSRW(&cond->nativecond, &mutex->nativemutex, INFINITE, 0);
 #else
     kdAssert(0);
 #endif
