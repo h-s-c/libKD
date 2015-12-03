@@ -38,6 +38,7 @@
  ******************************************************************************/
 
 #ifdef __unix__
+    #define _POSIX_SOURCE
     #ifdef __linux__
         #define _GNU_SOURCE
     #endif
@@ -866,7 +867,11 @@ void __KDSleep(KDust timeout)
 #if defined(KD_THREAD_C11)
     thrd_sleep(&ts, NULL);
 #elif defined(KD_THREAD_POSIX)
+#ifdef __EMSCRIPTEN__
+    emscripten_sleep(timeout / 1000000);
+#else
     nanosleep(&ts, NULL);
+#endif
 #elif defined(KD_THREAD_WIN32)
     HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
     if(!timer) { kdAssert(0); }
@@ -1772,8 +1777,8 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  * String and memory functions
  ******************************************************************************/
 
-size_t strlcpy(char *dst, const char *src, size_t dstsize);
-size_t strlcat(char *dst, const char *src, size_t dstsize);
+size_t __strlcpy(char *dst, const char *src, size_t dstsize);
+size_t __strlcat(char *dst, const char *src, size_t dstsize);
 
  /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
@@ -1846,7 +1851,7 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 /* kdStrncat_s: Concatenate two strings. */
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srcmaxlen)
 {
-    return (KDint)strlcat(buf, src, buflen);
+    return (KDint)__strlcat(buf, src, buflen);
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
@@ -1858,13 +1863,13 @@ KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsiz
 /* kdStrcpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
-    return (KDint)strlcpy(buf, src, buflen);
+    return (KDint)__strlcpy(buf, src, buflen);
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srclen)
 {
-    return (KDint)strlcpy(buf, src, buflen);
+    return (KDint)__strlcpy(buf, src, buflen);
 }
 
 /******************************************************************************
@@ -3188,7 +3193,7 @@ KD_API void* KD_APIENTRY kdQueuePopTail(KDQueue *queue)
  * Returns strlen(src) + MIN(siz, strlen(initial dst)).
  * If retval >= siz, truncation occurred.
  */
-size_t strlcat(char *dst, const char *src, size_t siz)
+size_t __strlcat(char *dst, const char *src, size_t siz)
 {
     char *d = dst;
     const char *s = src;
@@ -3226,7 +3231,7 @@ size_t strlcat(char *dst, const char *src, size_t siz)
  * will be copied.  Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
-size_t strlcpy(char *dst, const char *src, size_t siz)
+size_t __strlcpy(char *dst, const char *src, size_t siz)
 {
     char *d = dst;
     const char *s = src;
