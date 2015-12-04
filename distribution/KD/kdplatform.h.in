@@ -81,10 +81,12 @@
 #if __STDC_VERSION__ >= 201112L
     #define KD_NORETURN _Noreturn
 #else
-    #ifdef _MSC_VER
-        #define KD_NORETURN
-    #else
+    #if defined(__GNUC__)
+        #define KD_NORETURN __attribute__((__noreturn__))
+    #elif defined(_MSC_VER)
         #define KD_NORETURN __declspec(noreturn)
+    #else
+        #define KD_NORETURN 
     #endif
 #endif
 
