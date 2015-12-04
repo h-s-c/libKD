@@ -25,7 +25,6 @@
 #define __kdplatform_h_
 
 #define MESA_EGL_NO_X11_HEADERS
-#include <KHR/khrplatform.h>
 
 /******************************************************************************
  * Implementation defined
@@ -75,17 +74,16 @@
 #cmakedefine KD_WINDOW_SUPPORTED
 #cmakedefine KD_NO_STATIC_DATA
 
-/* This is bugged in some versions of khrplatform.h */
 #if defined(_MSC_VER) || defined(__MINGW32__)
+    #define KD_APIENTRY __stdcall
     #if defined (KD_EXPORTS)
         #define KD_API __declspec(dllexport)
     #else
         #define KD_API 
     #endif
 #else
-    #define KD_API KHRONOS_APICALL
+    #define KD_API
 #endif
-#define KD_APIENTRY KHRONOS_APIENTRY
 
 #if __STDC_VERSION__ >= 201112L
     #define KD_NORETURN _Noreturn
@@ -108,26 +106,33 @@
     #define kdAssert(c) assert(c)
 #endif
 
-typedef khronos_int32_t KDint32;
-typedef khronos_uint32_t KDuint32;
-typedef khronos_int64_t KDint64;
-typedef khronos_uint64_t KDuint64;
-typedef khronos_int16_t KDint16;
-typedef khronos_uint16_t KDuint16;
-typedef khronos_uintptr_t KDuintptr;
-typedef khronos_usize_t KDsize;
-typedef khronos_ssize_t KDssize;
-#define KDINT_MIN (-0x7fffffff-1)
-#define KDINT_MAX 0x7fffffff
-#define KDUINT_MAX 0xffffffffU
-#define KDINT64_MIN (-0x8000000000000000-1)
-#define KDINT64_MAX 0x7fffffffffffffff
-#define KDUINT64_MAX 0xffffffffffffffffU
-#define KDSSIZE_MIN KDINT64_MIN
-#define KDSSIZE_MAX KDINT64_MAX
-#define KDSIZE_MAX KDUINT_MAX
-#define KDUINTPTR_MAX KDUINT_MAX
-#define KD_INFINITY 0x7f800000
+#include <stdint.h>
+typedef int32_t     KDint32;
+typedef uint32_t    KDuint32;
+typedef int64_t     KDint64;
+typedef uint64_t    KDuint64;
+typedef int16_t     KDint16;
+typedef uint16_t    KDuint16;
+#ifdef _WIN64 /* LLP64 */
+typedef unsigned long long int  KDuintptr;
+typedef unsigned long long int  KDsize;
+typedef signed   long long int  KDssize;
+#else
+typedef unsigned long int   KDuintptr;
+typedef unsigned long int   KDsize;
+typedef signed   long int   KDssize;
+#endif
+#define KDINT_MIN       (-0x7fffffff-1)
+#define KDINT_MAX       0x7fffffff
+#define KDUINT_MAX      0xffffffffU
+#define KDINT64_MIN     (-0x8000000000000000-1)
+#define KDINT64_MAX     0x7fffffffffffffff
+#define KDUINT64_MAX    0xffffffffffffffffU
+#define KDSSIZE_MIN     KDINT64_MIN
+#define KDSSIZE_MAX     KDINT64_MAX
+#define KDSIZE_MAX      KDUINT_MAX
+#define KDUINTPTR_MAX   KDUINT_MAX
+#define KD_INFINITY     0x7f800000
 
 #endif /* __kdplatform_h_ */
 
