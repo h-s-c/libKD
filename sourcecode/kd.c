@@ -428,10 +428,10 @@ static void* __kdThreadStart(void *args)
     /* Set the thread name */
     KD_UNUSED const char* threadname = start_args->thread->attr ? start_args->thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
-#pragma warning( push )
-#pragma warning( disable : 4204)
-#pragma warning( disable : 6312)
-#pragma warning( disable : 6322)
+#pragma warning(push)
+#pragma warning(disable:4204)
+#pragma warning(disable:6312)
+#pragma warning(disable:6322)
     /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
     struct THREADNAME_INFO info =
     {
@@ -449,7 +449,7 @@ static void* __kdThreadStart(void *args)
         __except (EXCEPTION_CONTINUE_EXECUTION)
         {
         }
-#pragma warning( pop )
+#pragma warning(pop)
     }
 #elif defined(KD_THREAD_POSIX)
 #if defined(__linux__) && !defined(__ANDROID__)
@@ -517,7 +517,10 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
 #endif
+#pragma warning(push)
+#pragma warning(disable:4127)
     while(1);
+#pragma warning(pop)
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
