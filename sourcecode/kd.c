@@ -516,8 +516,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
 #endif
-    kdAssert(0);
-    exit(0);
+    while(1);
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
