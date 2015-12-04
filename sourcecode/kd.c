@@ -428,6 +428,10 @@ static void* __kdThreadStart(void *args)
     /* Set the thread name */
     KD_UNUSED const char* threadname = start_args->thread->attr ? start_args->thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
+#pragma warning( push )
+#pragma warning( disable : 4204)
+#pragma warning( disable : 6312)
+#pragma warning( disable : 6322)
     /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
     struct THREADNAME_INFO info =
     {
@@ -438,9 +442,6 @@ static void* __kdThreadStart(void *args)
     };
     if(IsDebuggerPresent())
     {
-#pragma warning( push )
-#pragma warning( disable : 6312)
-#pragma warning( disable : 6322)
         __try
         {
             RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
