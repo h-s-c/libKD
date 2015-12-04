@@ -48,6 +48,10 @@
     #endif
 #endif
 
+#ifdef _MSV_VER
+#define _CRT_SECURE_NO_WARNINGS 1
+#endif
+
 /* XSI streams are optional and not supported by MinGW */
 #if defined(__MINGW32__)
     #define ENODATA    61
@@ -145,17 +149,19 @@
     #include <sys/stat.h>
     #include <dirent.h>
     /* MSVC threads.h */
-    static BOOL CALLBACK call_once_callback(PINIT_ONCE flag, PVOID param, PVOID *context)
-    {
-        void(*func)(void) = KD_NULL;
-        kdMemcpy(&func, &param, sizeof(param));
-        func();
-        return TRUE;
-    }
+    #if defined(KD_THREAD_C11) || defined(KD_THREAD_WIN32)
+        static BOOL CALLBACK call_once_callback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
+        {
+            void(*func)(void) = KD_NULL;
+            kdMemcpy(&func, &param, sizeof(param));
+            func();
+            return TRUE;
+        }
+    #endif
     #if defined(KD_THREAD_C11)
         #include <thr/threads.h>
         #undef thrd_sleep
-        int thrd_sleep(const struct timespec* time_point, struct timespec* remaining)
+        int thrd_sleep(const struct timespec* time_point, KD_UNUSED struct timespec* remaining)
         {
             KDint64 timeout = time_point->tv_sec ? time_point->tv_sec * 1000000000 : 0;
             timeout += time_point->tv_nsec;
@@ -169,10 +175,11 @@
             return 0;
         }
         typedef INIT_ONCE once_flag;
-        static BOOL CALLBACK call_once_callback(PINIT_ONCE flag, PVOID param, PVOID *context);
         void call_once(once_flag* flag, void(*func)(void))
         {
-            InitOnceExecuteOnce(flag, call_once_callback, func, NULL);
+            void* pfunc = KD_NULL;
+            kdMemcpy(&pfunc, &func, sizeof(func));
+            InitOnceExecuteOnce(flag, call_once_callback, pfunc, NULL);
         }
     #endif
 	/* MSVC redefinition fix*/
@@ -279,7 +286,7 @@ KD_API void KD_APIENTRY kdSetError(KDint error)
  ******************************************************************************/
 
 /* kdQueryAttribi: Obtain the value of a numeric OpenKODE Core attribute. */
-KD_API KDint KD_APIENTRY kdQueryAttribi(KDint attribute, KDint *value)
+KD_API KDint KD_APIENTRY kdQueryAttribi(KD_UNUSED KDint attribute, KD_UNUSED KDint *value)
 {
     kdSetError(KD_EINVAL);
     return -1;
@@ -311,7 +318,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
 }
 
 /* kdQueryIndexedAttribcv: Obtain the value of an indexed string OpenKODE Core attribute. */
-KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KDint attribute, KDint index)
+KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribute, KD_UNUSED KDint index)
 {
     kdSetError(KD_EINVAL);
     return KD_NULL;
@@ -579,21 +586,6 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
     return __kd_thread;
 }
 
-/* __kdThreadEqual: Compare two threads. */
-static KDboolean __kdThreadEqual(KDThread *first, KDThread *second)
-{
-#if defined(KD_THREAD_C11)
-    return thrd_equal(first->nativethread, second->nativethread);
-#elif defined(KD_THREAD_POSIX)
-    return pthread_equal(first->nativethread, second->nativethread);
-#elif defined(KD_THREAD_WIN32)
-    return first->nativethread == second->nativethread;
-#else
-    kdAssert(0);
-#endif
-    return 0;
-}
-
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
 
@@ -623,7 +615,7 @@ typedef struct KDThreadMutex
     SRWLOCK nativemutex;
 #endif
 } KDThreadMutex;
-KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
+KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mutexattr)
 {
     /* TODO: Write KDThreadMutexAttr extension */
     KDThreadMutex *mutex = (KDThreadMutex*)kdMalloc(sizeof(KDThreadMutex));
@@ -709,8 +701,9 @@ typedef struct KDThreadCond
     CONDITION_VARIABLE nativecond;
 #endif
 } KDThreadCond;
-KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(const void *attr)
+KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 {
+
     KDThreadCond *cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
     KDint error = 0;
 #if defined(KD_THREAD_C11)
@@ -906,7 +899,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     return __kd_lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
-KD_API void KD_APIENTRY kdSetEventUserptr(void *userptr)
+KD_API void KD_APIENTRY kdSetEventUserptr(KD_UNUSED void *userptr)
 {
 }
 
@@ -1612,10 +1605,10 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
         return -1;
     }
     return 0;
-#endif
-
+#else
     kdAssert(0);
     return -1;
+#endif
 }
 
 /******************************************************************************
@@ -1849,7 +1842,7 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 }
 
 /* kdStrncat_s: Concatenate two strings. */
-KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srcmaxlen)
+KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
 {
     return (KDint)__strlcat(buf, src, buflen);
 }
@@ -1867,7 +1860,7 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
-KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srclen)
+KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srclen)
 {
     return (KDint)__strlcpy(buf, src, buflen);
 }
@@ -2152,7 +2145,11 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 
 typedef struct
 {
+#ifdef _MSC_VER
+    KDint   seekorigin_kd;
+#else
     KDuint  seekorigin_kd;
+#endif
     int     seekorigin;
 } __KDSeekOrigin;
 
@@ -2256,7 +2253,7 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 }
 
 /* kdTruncate: Truncate or extend a file. */
-KD_API KDint KD_APIENTRY kdTruncate(const KDchar *pathname, KDoff length)
+KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
     KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
@@ -2459,14 +2456,14 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
  ******************************************************************************/
 
 /* kdNameLookup: Look up a hostname. */
-KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *eventuserptr)
+KD_API KDint KD_APIENTRY kdNameLookup(KD_UNUSED KDint af, KD_UNUSED const KDchar *hostname, KD_UNUSED void *eventuserptr)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdNameLookupCancel: Selectively cancels ongoing kdNameLookup operations. */
-KD_API void KD_APIENTRY kdNameLookupCancel(void *eventuserptr)
+KD_API void KD_APIENTRY kdNameLookupCancel(KD_UNUSED void *eventuserptr)
 {
     kdSetError(KD_EOPNOTSUPP);
 }
@@ -2476,117 +2473,117 @@ typedef struct KDSocket
 {
     int placebo;
 } KDSocket;
-KD_API KDSocket *KD_APIENTRY kdSocketCreate(KDint type, void *eventuserptr)
+KD_API KDSocket *KD_APIENTRY kdSocketCreate(KD_UNUSED KDint type, KD_UNUSED void *eventuserptr)
 {
     kdSetError(KD_EOPNOTSUPP);
     return KD_NULL; 
 }
 
 /* kdSocketClose: Closes a socket. */
-KD_API KDint KD_APIENTRY kdSocketClose(KDSocket *socket)
+KD_API KDint KD_APIENTRY kdSocketClose(KD_UNUSED KDSocket *socket)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdSocketBind: Bind a socket. */
-KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const struct KDSockaddr *addr, KDboolean reuse)
+KD_API KDint KD_APIENTRY kdSocketBind(KD_UNUSED KDSocket *socket, KD_UNUSED const struct KDSockaddr *addr, KD_UNUSED KDboolean reuse)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdSocketGetName: Get the local address of a socket. */
-KD_API KDint KD_APIENTRY kdSocketGetName(KDSocket *socket, struct KDSockaddr *addr)
+KD_API KDint KD_APIENTRY kdSocketGetName(KD_UNUSED KDSocket *socket, KD_UNUSED struct KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdSocketConnect: Connects a socket. */
-KD_API KDint KD_APIENTRY kdSocketConnect(KDSocket *socket, const KDSockaddr *addr)
+KD_API KDint KD_APIENTRY kdSocketConnect(KD_UNUSED KDSocket *socket, KD_UNUSED const KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdSocketListen: Listen on a socket. */
-KD_API KDint KD_APIENTRY kdSocketListen(KDSocket *socket, KDint backlog)
+KD_API KDint KD_APIENTRY kdSocketListen(KD_UNUSED KDSocket *socket, KD_UNUSED KDint backlog)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdSocketAccept: Accept an incoming connection. */
-KD_API KDSocket *KD_APIENTRY kdSocketAccept(KDSocket *socket, KDSockaddr *addr, void *eventuserptr)
+KD_API KDSocket *KD_APIENTRY kdSocketAccept(KD_UNUSED KDSocket *socket, KD_UNUSED KDSockaddr *addr, KD_UNUSED void *eventuserptr)
 {
     kdSetError(KD_EOPNOTSUPP);
     return KD_NULL; 
 }
 
 /* kdSocketSend, kdSocketSendTo: Send data to a socket. */
-KD_API KDint KD_APIENTRY kdSocketSend(KDSocket *socket, const void *buf, KDint len)
+KD_API KDint KD_APIENTRY kdSocketSend(KD_UNUSED KDSocket *socket, KD_UNUSED const void *buf, KD_UNUSED KDint len)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
-KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint len, const KDSockaddr *addr)
+KD_API KDint KD_APIENTRY kdSocketSendTo(KD_UNUSED KDSocket *socket, KD_UNUSED const void *buf, KD_UNUSED KDint len, KD_UNUSED const KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdSocketRecv, kdSocketRecvFrom: Receive data from a socket. */
-KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
+KD_API KDint KD_APIENTRY kdSocketRecv(KD_UNUSED KDSocket *socket, KD_UNUSED void *buf, KD_UNUSED KDint len)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
-KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len, KDSockaddr *addr)
+KD_API KDint KD_APIENTRY kdSocketRecvFrom(KD_UNUSED KDSocket *socket, KD_UNUSED void *buf, KD_UNUSED KDint len, KD_UNUSED KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdHtonl: Convert a 32-bit integer from host to network byte order. */
-KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
+KD_API KDuint32 KD_APIENTRY kdHtonl(KD_UNUSED KDuint32 hostlong)
 {
     kdSetError(KD_EOPNOTSUPP);
     return 0;
 }
 
 /* kdHtons: Convert a 16-bit integer from host to network byte order. */
-KD_API KDuint16 KD_APIENTRY kdHtons(KDuint16 hostshort)
+KD_API KDuint16 KD_APIENTRY kdHtons(KD_UNUSED KDuint16 hostshort)
 {
     kdSetError(KD_EOPNOTSUPP);
     return (KDuint16)0;
 }
 
 /* kdNtohl: Convert a 32-bit integer from network to host byte order. */
-KD_API KDuint32 KD_APIENTRY kdNtohl(KDuint32 netlong)
+KD_API KDuint32 KD_APIENTRY kdNtohl(KD_UNUSED KDuint32 netlong)
 {
     kdSetError(KD_EOPNOTSUPP);
     return 0;
 }
 
 /* kdNtohs: Convert a 16-bit integer from network to host byte order. */
-KD_API KDuint16 KD_APIENTRY kdNtohs(KDuint16 netshort)
+KD_API KDuint16 KD_APIENTRY kdNtohs(KD_UNUSED KDuint16 netshort)
 {
     kdSetError(KD_EOPNOTSUPP);
     return (KDuint16)0;
 }
 
 /* kdInetAton: Convert a &#8220;dotted quad&#8221; format address to an integer. */
-KD_API KDint KD_APIENTRY kdInetAton(const KDchar *cp, KDuint32 *inp)
+KD_API KDint KD_APIENTRY kdInetAton(KD_UNUSED const KDchar *cp, KD_UNUSED KDuint32 *inp)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
 /* kdInetNtop: Convert a network address to textual form. */
-KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *dst, KDsize cnt)
+KD_API const KDchar *KD_APIENTRY kdInetNtop(KD_UNUSED KDuint af, KD_UNUSED const void *src, KD_UNUSED KDchar *dst, KD_UNUSED KDsize cnt)
 {
     kdSetError(KD_EOPNOTSUPP);
     return KD_NULL; 
@@ -2596,19 +2593,19 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *
  * Input/output
  ******************************************************************************/
 /* kdStateGeti, kdStateGetl, kdStateGetf: get state value(s) */
-KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdStateGeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint32 *buffer)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1;  
 }
 
-KD_API KDint KD_APIENTRY kdStateGetl(KDint startidx, KDuint numidxs, KDint64 *buffer)
+KD_API KDint KD_APIENTRY kdStateGetl(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint64 *buffer)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
-KD_API KDint KD_APIENTRY kdStateGetf(KDint startidx, KDuint numidxs, KDfloat32 *buffer)
+KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDfloat32 *buffer)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
@@ -2616,13 +2613,13 @@ KD_API KDint KD_APIENTRY kdStateGetf(KDint startidx, KDuint numidxs, KDfloat32 *
 
 
 /* kdOutputSeti, kdOutputSetf: set outputs */
-KD_API KDint KD_APIENTRY kdOutputSeti(KDint startidx, KDuint numidxs, const KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdOutputSeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDint32 *buffer)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
 }
 
-KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfloat32 *buffer)
+KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDfloat32 *buffer)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1; 
@@ -2654,7 +2651,7 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
     return 0;
 }
 #endif
-KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, void *eventuserptr)
+KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, KD_UNUSED void *eventuserptr)
 {
     if(!__kd_window)
     {
@@ -2715,12 +2712,12 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 }
 
 /* kdSetWindowPropertybv, kdSetWindowPropertyiv, kdSetWindowPropertycv: Set a window property to request a change in the on-screen representation of the window. */
-KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, const KDboolean *param)
+KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED const KDboolean *param)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, const KDint32 *param)
+KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
@@ -2739,7 +2736,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
     kdSetError(KD_EOPNOTSUPP);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, const KDchar *param)
+KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDchar *param)
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
@@ -2760,12 +2757,12 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 }
 
 /* kdGetWindowPropertybv, kdGetWindowPropertyiv, kdGetWindowPropertycv: Get the current value of a window property. */
-KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KDWindow *window, KDint pname, KDboolean *param)
+KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED KDboolean *param)
 {
     kdSetError(KD_EOPNOTSUPP);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KDint32 *param)
+KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
@@ -2781,7 +2778,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
     kdSetError(KD_EOPNOTSUPP);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KDchar *param, KDsize *size)
+KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED KDchar *param, KD_UNUSED KDsize *size)
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
@@ -2827,7 +2824,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
  ******************************************************************************/
 
 /* kdHandleAssertion: Handle assertion failure. */
-KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
+KD_API void KD_APIENTRY kdHandleAssertion(KD_UNUSED const KDchar *condition, KD_UNUSED const KDchar *filename, KD_UNUSED KDint linenumber)
 {
 
 }
@@ -2955,7 +2952,7 @@ KD_API void KD_APIENTRY kdAtomicIntStore(KDAtomicInt *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    _InterlockedExchange((KDint32 *)&object->value, (KDint32)value);
+    _InterlockedExchange((long *)&object->value, (long)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     __atomic_store_n(&object->value, value, __ATOMIC_SEQ_CST);
 #endif
@@ -2979,7 +2976,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_add(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((KDint32*)&object->value, value);
+    return _InterlockedExchangeAdd((long*)&object->value, (long)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_add_fetch(&object->value, value, __ATOMIC_SEQ_CST);
 #endif
@@ -2990,7 +2987,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSub(KDAtomicInt *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_sub(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((KDint32*)&object->value, -value);
+    return _InterlockedExchangeAdd((long*)&object->value, (long)-value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_sub_fetch(&object->value, value, __ATOMIC_SEQ_CST);
 #endif
@@ -3001,7 +2998,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchange(KDAtomicInt *object, KDi
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, &expected, desired);
 #elif defined(KD_ATOMIC_WIN32)
-    return (_InterlockedCompareExchange((KDint32*)&object->value, (KDint32)desired, (KDint32)expected) == (KDint32)expected);
+    return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_compare_exchange_n(&object->value, &expected, desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 #endif
@@ -3040,7 +3037,7 @@ typedef struct KDQueue
     KDsize          size;
 } KDQueue;
 
-KD_API KDQueue* KD_APIENTRY kdQueueCreate(KDsize maxsize)
+KD_API KDQueue* KD_APIENTRY kdQueueCreate(KD_UNUSED KDsize maxsize)
 {
     KDQueue* queue = (KDQueue*)kdMalloc(sizeof(KDQueue));
     queue->mutex = kdThreadMutexCreate(KD_NULL);
@@ -3072,7 +3069,7 @@ KD_API void KD_APIENTRY kdQueuePushHead(KDQueue *queue, void *value)
     node->next = KD_NULL;
 
     kdThreadMutexLock(queue->mutex);
-    if((node->next = queue->head)) 
+    if((node->next = queue->head) != KD_NULL) 
     {
         node->next->prev = node;
     }
@@ -3093,7 +3090,7 @@ KD_API void KD_APIENTRY kdQueuePushTail(KDQueue *queue, void *value)
     node->next = KD_NULL;
 
     kdThreadMutexLock(queue->mutex);
-    if((node->prev = queue->tail)) 
+    if((node->prev = queue->tail) != KD_NULL) 
     {
         queue->tail->next = node;
     }
@@ -3115,9 +3112,9 @@ KD_API void* KD_APIENTRY kdQueuePopHead(KDQueue *queue)
     if(queue->head) 
     {
         node = queue->head;
-        if((queue->head = node->next)) 
+        if((queue->head = node->next) != KD_NULL) 
         {
-            queue->head->prev = NULL;
+            queue->head->prev = KD_NULL;
         }
         if(queue->tail == node) 
         {
@@ -3145,9 +3142,9 @@ KD_API void* KD_APIENTRY kdQueuePopTail(KDQueue *queue)
     if(queue->head)
     {
         node = queue->tail;
-        if((queue->tail = node->prev))
+        if((queue->tail = node->prev) != KD_NULL)
         {
-            queue->tail->next = NULL;
+            queue->tail->next = KD_NULL;
         }
         if(queue->head == node)
         {
