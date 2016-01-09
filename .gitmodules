@@ -4,3 +4,6 @@
 [submodule "thirdparty/zahnrad"]
 	path = thirdparty/zahnrad
 	url = https://github.com/vurtun/zahnrad.git
+[submodule "thirdparty/qfpc"]
+	path = thirdparty/qfpc
+	url = https://github.com/procedural/quatFirstPersonCamera.git
