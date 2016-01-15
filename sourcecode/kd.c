@@ -1413,17 +1413,17 @@ static void* __kdMainInjector( void *arg)
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
     typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
-	KDMAIN kdMain = KD_NULL;
+	KDMAIN kdmain = KD_NULL;
     void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
-    kdMemcpy(&kdMain, &rawptr, sizeof(rawptr));
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     if(dlerror() != NULL)
     {
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.\n");
         kdAssert(0);
     }
-    (*kdMain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
+    (*kdmain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #endif
 
 #ifdef KD_VFS_SUPPORTED
