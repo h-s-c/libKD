@@ -62,20 +62,16 @@ set(KD_EMCC_FLAGS "-s EMTERPRETIFY_ASYNC=1 -s USE_PTHREADS=1")
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8)
-        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -pedantic")
+        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -pedantic")
     else()
-        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wpedantic")
-    endif()
-
-    if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.7)
-        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wno-missing-field-initializers")
+        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -Wpedantic")
     endif()
 
     if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 5)
-        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wmisleading-indentatio")
+        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -Wmisleading-indentation")
     endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wno-missing-field-initializers")
+    set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -Wno-missing-field-initializers")
 endif()
 
 project (KD C)
@@ -154,7 +150,7 @@ project (KD C)
     endif()
 
     configure_file(${CMAKE_SOURCE_DIR}/distribution/KD/kdplatform.h.in ${CMAKE_SOURCE_DIR}/distribution/KD/kdplatform.h)
-    include_directories(${KD_INCLUDE_DIRS} )
+    include_directories(${KD_INCLUDE_DIRS})
 
 	# Tests
     if(KD_BUILD_TESTS)
