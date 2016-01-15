@@ -2652,7 +2652,6 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
     default:
     {
         return DefWindowProc(hwnd, msg, wparam, lparam);
-        break;
     }
     }
     return 0;

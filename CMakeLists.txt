@@ -56,9 +56,27 @@ else()
     set(ANDROID "Off")
 endif()
 
-set(KD_GCC_FLAGS "-std=c11 -pedantic -Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-unused-parameter")
+set(KD_GCC_FLAGS "-std=c11 -Wall -Wextra -Werror -Wshadow -Wno-unused-parameter")
 set(KD_MSVC_FLAGS "/W4 /WX /wd4100")
 set(KD_EMCC_FLAGS "-s EMTERPRETIFY_ASYNC=1 -s USE_PTHREADS=1")
+
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8)
+        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -pedantic")
+    else()
+        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wpedantic")
+    endif()
+
+    if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.7)
+        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wno-missing-field-initializers")
+    endif()
+
+    if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 5)
+        set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wmisleading-indentatio")
+    endif()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    set(KD_GCC_FLAGS "{KD_GCC_FLAGS} -Wno-missing-field-initializers")
+endif()
 
 project (KD C)
     if(KD_BUILD_VFS)
