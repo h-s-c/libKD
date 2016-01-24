@@ -7,11 +7,14 @@
 [![Travis Status](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
 [![AppVeyor Status](https://img.shields.io/appveyor/ci/h-s-c/libkd.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
 
+##About
+-   OpenKODE is alternative to [SDL](https://www.libsdl.org/) specified by Khronos
+
 ##Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
 
 ##Platforms
--   Linux, Android (NDK), Windows
+-   Linux, Android (NDK), Windows, Web (ASM.js)
 
 ##Dependencies
 -   EGL™, OpenGL® ES (samples)
