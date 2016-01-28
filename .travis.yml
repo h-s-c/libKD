@@ -25,6 +25,9 @@ sudo: false
 
 language: c
 
+os:
+- linux
+
 compiler:
   - gcc
   - gcc-5

@@ -1,21 +1,12 @@
 version: 0.1.{build}
 
-os: Windows Server 2012 R2
+os: Visual Studio 2015
 platform:
   - x64
 
-branches:
-  only:
-  - master
-clone_depth: 1
-test: off
-deploy: off
-
 build_script:
 - cmd: >-
-    git submodule init
-
-    git submodule update
+    git submodule update --init --recursive --quiet
 
     set PATH=%PATH:C:\Program Files (x86)\Git\bin;=%
 
