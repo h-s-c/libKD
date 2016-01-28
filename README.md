@@ -4,8 +4,9 @@
 [![Zlib License](http://img.shields.io/:license-zlib-blue.svg)](http://opensource.org/licenses/Zlib)
 
 ##Status
-[![Travis Status](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
-[![AppVeyor Status](https://img.shields.io/appveyor/ci/h-s-c/libkd.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
+[![Travis CI](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
+[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libkd.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
+[![Magnum CI](https://img.shields.io/magnumci/ci/96ffb83fa700f069024921b0702e76ff.svg)](https://magnum-ci.com/public/542638d0bab22cb5830b/builds)
 
 ##About
 -   OpenKODE is alternative to [SDL](https://www.libsdl.org/) specified by Khronos
