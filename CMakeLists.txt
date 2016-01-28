@@ -57,11 +57,17 @@ else()
 endif()
 
 project (KD C)
-    set(KD_GCC_FLAGS "-std=c11 -Wall -Wextra -Werror -Wshadow -Wno-unused-parameter")
+    set(KD_GCC_FLAGS "-Wall -Wextra -Werror -Wshadow -Wno-unused-parameter")
     set(KD_MSVC_FLAGS "/W4 /WX /wd4100")
     set(KD_EMCC_FLAGS "-s EMTERPRETIFY_ASYNC=1 -s USE_PTHREADS=1")
 
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.7)
+            set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -std=c99")
+        else()
+            set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -std=c11")
+        endif()
+
         if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8)
             set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -pedantic")
         else()

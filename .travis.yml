@@ -26,10 +26,12 @@ sudo: false
 language: c
 
 compiler:
+  - gcc
   - gcc-5
   - gcc-4.9
   - gcc-4.8
   - gcc-4.7
+  - clang
   - clang-3.7
   - clang-3.6
 
