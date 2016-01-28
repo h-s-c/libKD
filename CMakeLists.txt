@@ -63,7 +63,7 @@ project (KD C)
 
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
         if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.7)
-            set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -std=c1x")
+            set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -std=c1x -Wno-missing-field-initializers")
         else()
             set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -std=c11")
         endif()
