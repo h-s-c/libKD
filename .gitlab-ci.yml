@@ -1,0 +1,7 @@
+before_script:
+  - apt-get update -y
+  - sudo apt-get install -y gcc g++ cmake valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
+
+default:
+  script:
+    - ctest -VV --output-on-failure -S .gitlab-ci.ctest
