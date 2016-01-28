@@ -1,0 +1,10 @@
+language: cpp
+git:
+  submodules: true
+before_install:
+    - sudo apt-get update -y
+    - sudo apt-get install -y cmake libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
+script:
+  - cmake .
+  - cmake --build .
+  - ctest -VV --output-on-failure
