@@ -2,10 +2,8 @@ language: cpp
 git:
   submodules: true
 before_install:
-    - sudo add-apt-repository ppa:yjwong/cmake
+    - sudo add-apt-repository ppa:kalakris/cmake
     - sudo apt-get update -y
-    - sudo apt-get install -y cmake libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
+    - sudo apt-get install -y cmake valgrind libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
 script:
-  - cmake .
-  - cmake --build .
-  - ctest -VV --output-on-failure
+  - ctest -VV --output-on-failure -S .magnum.ctest
