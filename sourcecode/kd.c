@@ -3113,7 +3113,7 @@ KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value)
 #elif defined(KD_ATOMIC_WIN32)
     _InterlockedExchangePointer(&object->value, value);
 #elif defined(KD_ATOMIC_BUILTIN)
-    __atomic_store_n(&object->value, (volatile void*)value, __ATOMIC_SEQ_CST);
+    __atomic_store_n(&object->value, value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
     KD_UNUSED void* unused = __sync_lock_test_and_set(&object->value, value);
 #endif
