@@ -2,6 +2,7 @@ language: cpp
 git:
   submodules: true
 before_install:
+    - sudo add-apt-repository ppa:yjwong/cmake
     - sudo apt-get update -y
     - sudo apt-get install -y cmake libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libbsd-dev
 script:
