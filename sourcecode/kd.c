@@ -2993,14 +2993,14 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 #if defined(KD_ATOMIC_C11)
 typedef struct KDAtomicInt { atomic_int value; } KDAtomicInt;
 typedef struct KDAtomicPtr { atomic_uintptr_t value; } KDAtomicPtr;
-#elif defined(KD_ATOMIC_WIN32)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
 typedef struct KDAtomicInt { KDint value; } KDAtomicInt;
 typedef struct KDAtomicPtr { void *value; } KDAtomicPtr;
+#endif
+
+#if defined(KD_ATOMIC_WIN32)
 void _ReadWriteBarrier();
 #pragma intrinsic(_ReadWriteBarrier)
-#elif defined(KD_ATOMIC_BUILTIN)
-typedef struct KDAtomicInt { volatile KDint value; } KDAtomicInt;
-typedef struct KDAtomicPtr { volatile void *value; } KDAtomicPtr;
 #endif
 
 inline KD_API void KD_APIENTRY kdAtomicFenceAcquire(void)
@@ -3011,6 +3011,8 @@ inline KD_API void KD_APIENTRY kdAtomicFenceAcquire(void)
     _ReadWriteBarrier();
 #elif defined(KD_ATOMIC_BUILTIN)
     __atomic_thread_fence(__ATOMIC_ACQUIRE);
+#elif defined(KD_ATOMIC_LEGACY)
+    __sync_synchronize();
 #endif
 }
 
@@ -3022,6 +3024,8 @@ inline KD_API void KD_APIENTRY kdAtomicFenceRelease(void)
     _ReadWriteBarrier();
 #elif defined(KD_ATOMIC_BUILTIN)
     __atomic_thread_fence(__ATOMIC_RELEASE);
+#elif defined(KD_ATOMIC_LEGACY)
+    __sync_synchronize();
 #endif
 }
 
@@ -3030,7 +3034,7 @@ KD_API KDAtomicInt* KD_APIENTRY kdAtomicIntCreate(KDint value)
     KDAtomicInt* object = (KDAtomicInt*)kdMalloc(sizeof(KDAtomicInt));
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
     object->value = value;
 #endif
     return object;
@@ -3041,7 +3045,7 @@ KD_API KDAtomicPtr* KD_APIENTRY kdAtomicPtrCreate(void* value)
     KDAtomicPtr* object = (KDAtomicPtr*)kdMalloc(sizeof(KDAtomicPtr));
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, (uintptr_t)value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
     object->value = value;
 #endif
     return object;
@@ -3061,7 +3065,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object)
 {
 #if defined(KD_ATOMIC_C11)
     return atomic_load(&object->value);
-#elif defined(KD_ATOMIC_WIN32)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_LEGACY)
     int value = 0;
     do {
         value = object->value;
@@ -3075,15 +3079,15 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object)
 KD_API void* KD_APIENTRY kdAtomicPtrLoad(KDAtomicPtr *object)
 {
 #if defined(KD_ATOMIC_C11)
-    return (void *)atomic_load(&object->value);
-#elif defined(KD_ATOMIC_WIN32)
+    return atomic_load(&object->value);
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_LEGACY)
     void* value = 0;
     do {
         value = object->value;
     } while(!kdAtomicPtrCompareExchange(object, value, value));
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
-    return (void *)__atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
+    return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
 #endif
 }
 
@@ -3095,6 +3099,8 @@ KD_API void KD_APIENTRY kdAtomicIntStore(KDAtomicInt *object, KDint value)
     _InterlockedExchange((long *)&object->value, (long)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     __atomic_store_n(&object->value, value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_LEGACY)
+    __sync_lock_test_and_set(&object->value, value);
 #endif
 }
 
@@ -3108,6 +3114,8 @@ KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value)
     _InterlockedExchangePointer(&object->value, value);
 #elif defined(KD_ATOMIC_BUILTIN)
     __atomic_store_n(&object->value, (volatile void*)value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_LEGACY)
+    KD_UNUSED void* unused = __sync_lock_test_and_set(&object->value, value);
 #endif
 }
 
@@ -3119,6 +3127,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value)
     return _InterlockedExchangeAdd((long*)&object->value, (long)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_add_fetch(&object->value, value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_LEGACY)
+    return __sync_fetch_and_add(&object->value, value);
 #endif
 }
 
@@ -3130,6 +3140,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSub(KDAtomicInt *object, KDint value)
     return _InterlockedExchangeAdd((long*)&object->value, (long)-value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_sub_fetch(&object->value, value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_LEGACY)
+    return __sync_fetch_and_sub(&object->value, value);
 #endif
 }
 
@@ -3141,6 +3153,8 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchange(KDAtomicInt *object, KDi
     return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_compare_exchange_n(&object->value, &expected, desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_LEGACY)
+    return __sync_bool_compare_and_swap(&object->value, expected, desired);
 #endif
 }
 
@@ -3153,7 +3167,9 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchange(KDAtomicPtr *object, voi
 #elif defined(KD_ATOMIC_WIN32)
     return (_InterlockedCompareExchangePointer(&object->value, desired, expected) == expected);
 #elif defined(KD_ATOMIC_BUILTIN)
-    return __atomic_compare_exchange_n(&object->value, (volatile void**)&expected, (volatile void*)desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    return __atomic_compare_exchange_n(&object->value, &expected, desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_LEGACY)
+    return __sync_bool_compare_and_swap(&object->value, expected, desired);
 #endif
 }
 
