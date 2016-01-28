@@ -78,7 +78,7 @@ project (KD C)
             set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -Wmisleading-indentation")
         endif()
     elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
-        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -Wno-missing-field-initializers")
+        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -std=c11 -Wno-missing-field-initializers")
     endif()
 
     if(KD_BUILD_VFS)
