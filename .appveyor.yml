@@ -1,0 +1,30 @@
+version: 0.1.{build}
+
+os: Windows Server 2012 R2
+platform:
+  - x64
+
+branches:
+  only:
+  - master
+clone_depth: 1
+test: off
+deploy: off
+
+build_script:
+- cmd: >-
+    git submodule init
+    git submodule update
+    set PATH=%PATH:C:\Program Files (x86)\Git\bin;=%
+
+    cd thirdparty
+    appveyor DownloadFile https://github.com/h-s-c/libKD/releases/download/v0.0/GLES_SDK_v31.zip
+    7z x GLES_SDK_v31.zip > nul
+    ren GLES_SDK_v31 gles_amd
+    cd ..
+
+    mkdir build\Debug
+    copy thirdparty\gles_amd\x86-64\libEGL.dll build\Debug
+    copy thirdparty\gles_amd\x86-64\libGLESv2.dll build\Debug
+
+    ctest -VV --output-on-failure -S .appveyor.ctest
