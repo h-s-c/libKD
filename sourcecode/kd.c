@@ -318,8 +318,9 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
 }
 
 /* kdQueryIndexedAttribcv: Obtain the value of an indexed string OpenKODE Core attribute. */
-KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribute, KD_UNUSED KDint index)
+KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribute, KD_UNUSED KDint __index)
 {
+    /* Some C implementations define an index function in string.h which leads to errors with GCC 4.6 and -Wshadow */
     kdSetError(KD_EINVAL);
     return KD_NULL;
 }
@@ -1028,8 +1029,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     if(__kd_window)
     {
         MSG msg = { 0 };
-        if(PeekMessage(&msg, KD_NULL, 0, 0, PM_REMOVE) > 0)
+        while(PeekMessage(&msg, __kd_window->nativewindow, 0, 0, PM_REMOVE) != 0)
         {
+            KDEvent *event = kdCreateEvent();
             switch (msg.message)
             {
                 case WM_CLOSE:
@@ -1037,8 +1039,115 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case WM_QUIT:
                 {
                     ShowWindow(__kd_window->nativewindow, SW_HIDE);
-                    KDEvent *event = kdCreateEvent();
                     event->type = KD_EVENT_QUIT;
+                    if(!__kdExecCallback(event))
+                    {
+                        kdPostEvent(event);
+                    }
+                    break;
+                }
+                case WM_INPUT:
+                {
+                    KDchar buffer[sizeof(RAWINPUT)] = {0};
+                    KDsize size = sizeof(RAWINPUT);
+                    GetRawInputData((HRAWINPUT)msg.lParam, RID_INPUT, buffer, (PUINT)&size, sizeof(RAWINPUTHEADER));
+                    RAWINPUT* raw = (RAWINPUT*)buffer;
+                    if (raw->header.dwType == RIM_TYPEMOUSE)
+                    {
+                        if(raw->data.mouse.usButtonFlags == RI_MOUSE_LEFT_BUTTON_DOWN ||
+                           raw->data.mouse.usButtonFlags == RI_MOUSE_RIGHT_BUTTON_DOWN ||
+                           raw->data.mouse.usButtonFlags == RI_MOUSE_MIDDLE_BUTTON_DOWN)
+                        {
+                            event->type                     = KD_EVENT_INPUT_POINTER;
+                            event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                            event->data.inputpointer.select = 1;
+                            event->data.inputpointer.x      = raw->data.mouse.lLastX;
+                            event->data.inputpointer.y      = raw->data.mouse.lLastY;
+                            if(!__kdExecCallback(event))
+                            {
+                                kdPostEvent(event);
+                            }
+                        }
+                        else if(raw->data.mouse.usButtonFlags == RI_MOUSE_LEFT_BUTTON_UP ||
+                           raw->data.mouse.usButtonFlags == RI_MOUSE_RIGHT_BUTTON_UP ||
+                           raw->data.mouse.usButtonFlags == RI_MOUSE_MIDDLE_BUTTON_UP)
+                        {
+                            event->type                     = KD_EVENT_INPUT_POINTER;
+                            event->data.inputpointer.index  = KD_INPUT_POINTER_SELECT;
+                            event->data.inputpointer.select = 0;
+                            event->data.inputpointer.x      = raw->data.mouse.lLastX;
+                            event->data.inputpointer.y      = raw->data.mouse.lLastY;
+                            if(!__kdExecCallback(event))
+                            {
+                                kdPostEvent(event);
+                            }
+                        }
+                        else if(raw->data.keyboard.Flags & MOUSE_MOVE_ABSOLUTE)
+                        {
+                            event->type                     = KD_EVENT_INPUT_POINTER;
+                            event->data.inputpointer.index  = KD_INPUT_POINTER_X;
+                            event->data.inputpointer.x      = raw->data.mouse.lLastX;
+                            if(!__kdExecCallback(event))
+                            {
+                                kdPostEvent(event);
+                            }
+                            KDEvent *event2 = kdCreateEvent();
+                            event2->type                     = KD_EVENT_INPUT_POINTER;
+                            event2->data.inputpointer.index  = KD_INPUT_POINTER_Y;
+                            event2->data.inputpointer.y      = raw->data.mouse.lLastY;
+                            if(!__kdExecCallback(event2))
+                            {
+                                kdPostEvent(event2);
+                            }
+                        }
+                        break;
+                    }
+                    else if (raw->header.dwType == RIM_TYPEKEYBOARD)
+                    {
+                        event->type = KD_EVENT_INPUT_KEY_ATX;
+                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+
+                        /* Press or release */
+                        if(raw->data.keyboard.Flags & RI_KEY_MAKE)
+                        {
+                            keyevent->flags = KD_KEY_PRESS_ATX;
+                        }
+                        else
+                        {
+                            keyevent->flags = 0;
+                        }
+
+                        switch (raw->data.keyboard.VKey)
+                        {
+                            case(VK_UP):
+                            {
+                                keyevent->keycode = KD_KEY_UP_ATX;
+                                break;
+                            }
+                            case(VK_DOWN):
+                            {
+                                keyevent->keycode = KD_KEY_DOWN_ATX;
+                                break;
+                            }
+                            case(VK_LEFT):
+                            {
+                                keyevent->keycode = KD_KEY_LEFT_ATX;
+                                break;
+                            }
+                            case(VK_RIGHT):
+                            {
+                                keyevent->keycode = KD_KEY_RIGHT_ATX;
+                                break;
+                            }
+                            default:
+                            {
+                                event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                                KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *) (&event->data);
+                                GetKeyNameText(MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (char*)&keycharevent->character, sizeof(KDint32));
+                                break;
+                            }
+                        }
+                    }
                     if(!__kdExecCallback(event))
                     {
                         kdPostEvent(event);
@@ -1047,6 +1156,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 }
                 default:
                 {
+                    kdFreeEvent(event);
                     DispatchMessage(&msg);
                     break;
                 }
@@ -1061,7 +1171,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         {
             KDEvent *event = kdCreateEvent();
             XEvent xevent = {0};
-            XNextEvent(__kd_window->nativedisplay,&xevent);switch(xevent.type)
+            XNextEvent(__kd_window->nativedisplay,&xevent);
+            switch(xevent.type)
             {
                 case ButtonPress:
                 {
@@ -1089,12 +1200,24 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     }
                     break;
                 }
+                case KeyRelease:
                 case KeyPress:
                 {
                     KeySym keysym;
                     XLookupString(&xevent.xkey, NULL, 25, &keysym, NULL);
                     event->type = KD_EVENT_INPUT_KEY_ATX;
                     KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+
+                    /* Press or release */
+                    if(xevent.type == KeyPress)
+                    {
+                        keyevent->flags = KD_KEY_PRESS_ATX;
+                    }
+                    else
+                    {
+                        keyevent->flags = 0;
+                    }
+
                     switch(keysym)
                     {
                         case(XK_Up):
@@ -1133,10 +1256,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         kdPostEvent(event);
                     }
-                }
-                case KeyRelease:
-                {
-                    break;
                 }
                 case MotionNotify:
                 {
@@ -2642,17 +2761,17 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 {
     switch (msg)
     {
-    case WM_CLOSE:
-    case WM_DESTROY:
-    case WM_QUIT:
-    {
-        PostQuitMessage(0);
-        break;
-    }
-    default:
-    {
-        return DefWindowProc(hwnd, msg, wparam, lparam);
-    }
+        case WM_CLOSE:
+        case WM_DESTROY:
+        case WM_QUIT:
+        {
+            PostQuitMessage(0);
+            break;
+        }
+        default:
+        {
+            return DefWindowProc(hwnd, msg, wparam, lparam);
+        }
     }
     return 0;
 }
@@ -2672,7 +2791,22 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
         windowclass.hInstance = instance;
         windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
         RegisterClass(&windowclass);
-        window->nativewindow = CreateWindow("OpenKODE", "OpenKODE", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 640, 480, KD_NULL, KD_NULL, instance, KD_NULL);
+        window->nativewindow = CreateWindow("OpenKODE", "OpenKODE", WS_POPUP|WS_VISIBLE, 0, 0,
+                                            GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+                                            KD_NULL, KD_NULL, instance, KD_NULL);
+        /* Activate raw input */
+        RAWINPUTDEVICE device[2];
+        /* Mouse */
+        device[0].usUsagePage = 1;
+        device[0].usUsage = 2;
+        device[0].dwFlags = RIDEV_NOLEGACY;
+        device[0].hwndTarget = window->nativewindow;
+        /* Keyboard */
+        device[1].usUsagePage = 1;
+        device[1].usUsage = 6;
+        device[1].dwFlags = RIDEV_NOLEGACY;
+        device[1].hwndTarget = window->nativewindow;
+        RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
 #elif defined(KD_WINDOW_X11)
         XInitThreads();
         window->nativedisplay = XOpenDisplay(NULL);
