@@ -6,7 +6,7 @@
 ##Status
 [![Travis CI](https://img.shields.io/travis/h-s-c/libKD.svg)](https://travis-ci.org/h-s-c/libKD)
 [![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libkd.svg)](https://ci.appveyor.com/project/h-s-c/libkd)
-[![Magnum CI](https://img.shields.io/magnumci/ci/96ffb83fa700f069024921b0702e76ff.svg)](https://magnum-ci.com/public/542638d0bab22cb5830b/builds)
+[![Magnum CI](https://img.shields.io/magnumci/ci/72eef1b2f0a1a72b29a26fa659555fa1.svg)](https://magnum-ci.com/public/542638d0bab22cb5830b/builds)
 
 ##About
 -   OpenKODE is alternative to [SDL](https://www.libsdl.org/) specified by Khronos
