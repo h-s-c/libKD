@@ -3079,7 +3079,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object)
 KD_API void* KD_APIENTRY kdAtomicPtrLoad(KDAtomicPtr *object)
 {
 #if defined(KD_ATOMIC_C11)
-    return atomic_load(&object->value);
+    return (void*)atomic_load(&object->value);
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_LEGACY)
     void* value = 0;
     do {
