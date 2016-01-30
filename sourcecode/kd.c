@@ -62,9 +62,9 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/ATX_keyboard.h>
-#include <KD/LKD_atomic.h>
-#include <KD/LKD_queue.h>
+#include <KD/VEN_keyboard.h>
+#include <KD/VEN_atomic.h>
+#include <KD/VEN_queue.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -412,7 +412,7 @@ typedef struct KDThread
 #elif defined(KD_THREAD_WIN32)
     HANDLE nativethread;
 #endif
-    KDQueue *eventqueue;
+    KDQueueVEN *eventqueue;
     const KDThreadAttr *attr;
 } KDThread;
 
@@ -465,7 +465,7 @@ static void* __kdThreadStart(void *args)
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
-    thread->eventqueue = kdQueueCreate(100);
+    thread->eventqueue = kdQueueCreateVEN(100);
     thread->attr = attr;
 
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs*)kdMalloc(sizeof(__KDThreadStartArgs));
@@ -487,7 +487,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if(error != 0)
     {
         kdSetError(KD_EAGAIN);
-        kdQueueFree(thread->eventqueue);
+        kdQueueFreeVEN(thread->eventqueue);
         kdFree(thread);
         return KD_NULL;
     }
@@ -495,7 +495,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if(attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(thread);
-        kdQueueFree(thread->eventqueue);
+        kdQueueFreeVEN(thread->eventqueue);
         kdFree(thread);
         return KD_NULL;
     }
@@ -556,7 +556,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         kdSetError(KD_EINVAL);
         return -1;
     }
-    kdQueueFree(thread->eventqueue);
+    kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
     return 0;
 }
@@ -900,9 +900,9 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
         __KDSleep(timeout);
     }
     kdPumpEvents();
-    if(kdQueueSize(kdThreadSelf()->eventqueue) > 0)
+    if(kdQueueSizeVEN(kdThreadSelf()->eventqueue) > 0)
     {
-        __kd_lastevent = (KDEvent *)kdQueuePopHead(kdThreadSelf()->eventqueue);
+        __kd_lastevent = (KDEvent *)kdQueuePopHeadVEN(kdThreadSelf()->eventqueue);
     }
     return __kd_lastevent;
 }
@@ -977,10 +977,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     /* Give back control to the browser */
     emscripten_sleep(1);
 #endif
-    KDsize queuesize = kdQueueSize(kdThreadSelf()->eventqueue);
+    KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
     for (KDuint i = 0; i < queuesize; i++)
     {
-        KDEvent *callbackevent = kdQueuePopHead(kdThreadSelf()->eventqueue);
+        KDEvent *callbackevent = kdQueuePopHeadVEN(kdThreadSelf()->eventqueue);
         if(callbackevent != KD_NULL)
         {
             if(!__kdExecCallback(callbackevent))
@@ -1104,13 +1104,13 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     }
                     else if (raw->header.dwType == RIM_TYPEKEYBOARD)
                     {
-                        event->type = KD_EVENT_INPUT_KEY_ATX;
-                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                        event->type = KD_EVENT_INPUT_KEY_VEN;
+                        KDEventInputKeyVEN *keyevent = (KDEventInputKeyVEN *)(&event->data);
 
                         /* Press or release */
                         if(raw->data.keyboard.Flags & RI_KEY_MAKE)
                         {
-                            keyevent->flags = KD_KEY_PRESS_ATX;
+                            keyevent->flags = KD_KEY_PRESS_VEN;
                         }
                         else
                         {
@@ -1121,28 +1121,28 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         {
                             case(VK_UP):
                             {
-                                keyevent->keycode = KD_KEY_UP_ATX;
+                                keyevent->keycode = KD_KEY_UP_VEN;
                                 break;
                             }
                             case(VK_DOWN):
                             {
-                                keyevent->keycode = KD_KEY_DOWN_ATX;
+                                keyevent->keycode = KD_KEY_DOWN_VEN;
                                 break;
                             }
                             case(VK_LEFT):
                             {
-                                keyevent->keycode = KD_KEY_LEFT_ATX;
+                                keyevent->keycode = KD_KEY_LEFT_VEN;
                                 break;
                             }
                             case(VK_RIGHT):
                             {
-                                keyevent->keycode = KD_KEY_RIGHT_ATX;
+                                keyevent->keycode = KD_KEY_RIGHT_VEN;
                                 break;
                             }
                             default:
                             {
-                                event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-                                KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *) (&event->data);
+                                event->type = KD_EVENT_INPUT_KEYCHAR_VEN;
+                                KDEventInputKeyCharVEN *keycharevent = (KDEventInputKeyCharVEN *) (&event->data);
                                 GetKeyNameText(MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (char*)&keycharevent->character, sizeof(KDint32));
                                 break;
                             }
@@ -1356,7 +1356,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     {
         event->timestamp = kdGetTimeUST();
     }
-    kdQueuePushTail(thread->eventqueue, (void*)event);
+    kdQueuePushTailVEN(thread->eventqueue, (void*)event);
     return 0;
 }
 
@@ -2991,11 +2991,11 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
  ******************************************************************************/
 
 #if defined(KD_ATOMIC_C11)
-typedef struct KDAtomicInt { atomic_int value; } KDAtomicInt;
-typedef struct KDAtomicPtr { atomic_uintptr_t value; } KDAtomicPtr;
+typedef struct KDAtomicIntVEN { atomic_int value; } KDAtomicIntVEN;
+typedef struct KDAtomicPtrVEN { atomic_uintptr_t value; } KDAtomicPtrVEN;
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
-typedef struct KDAtomicInt { KDint value; } KDAtomicInt;
-typedef struct KDAtomicPtr { void *value; } KDAtomicPtr;
+typedef struct KDAtomicIntVEN { KDint value; } KDAtomicIntVEN;
+typedef struct KDAtomicPtrVEN { void *value; } KDAtomicPtr;
 #endif
 
 #if defined(KD_ATOMIC_WIN32)
@@ -3003,7 +3003,7 @@ void _ReadWriteBarrier();
 #pragma intrinsic(_ReadWriteBarrier)
 #endif
 
-inline KD_API void KD_APIENTRY kdAtomicFenceAcquire(void)
+inline KD_API void KD_APIENTRY kdAtomicFenceAcquireVEN(void)
 {
 #if defined(KD_ATOMIC_C11)
     atomic_thread_fence(memory_order_acquire);
@@ -3016,7 +3016,7 @@ inline KD_API void KD_APIENTRY kdAtomicFenceAcquire(void)
 #endif
 }
 
-inline KD_API void KD_APIENTRY kdAtomicFenceRelease(void)
+inline KD_API void KD_APIENTRY kdAtomicFenceReleaseVEN(void)
 {
 #if defined(KD_ATOMIC_C11)
     atomic_thread_fence(memory_order_release);
@@ -3029,9 +3029,9 @@ inline KD_API void KD_APIENTRY kdAtomicFenceRelease(void)
 #endif
 }
 
-KD_API KDAtomicInt* KD_APIENTRY kdAtomicIntCreate(KDint value)
+KD_API KDAtomicIntVEN* KD_APIENTRY kdAtomicIntCreateVEN(KDint value)
 {
-    KDAtomicInt* object = (KDAtomicInt*)kdMalloc(sizeof(KDAtomicInt));
+    KDAtomicIntVEN* object = (KDAtomicIntVEN*)kdMalloc(sizeof(KDAtomicIntVEN));
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
@@ -3040,9 +3040,9 @@ KD_API KDAtomicInt* KD_APIENTRY kdAtomicIntCreate(KDint value)
     return object;
 }
 
-KD_API KDAtomicPtr* KD_APIENTRY kdAtomicPtrCreate(void* value)
+KD_API KDAtomicPtrVEN* KD_APIENTRY kdAtomicPtrCreateVEN(void* value)
 {
-    KDAtomicPtr* object = (KDAtomicPtr*)kdMalloc(sizeof(KDAtomicPtr));
+    KDAtomicPtrVEN* object = (KDAtomicPtrVEN*)kdMalloc(sizeof(KDAtomicPtrVEN));
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, (uintptr_t)value);
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
@@ -3051,17 +3051,17 @@ KD_API KDAtomicPtr* KD_APIENTRY kdAtomicPtrCreate(void* value)
     return object;
 }
 
-KD_API void KD_APIENTRY kdAtomicIntFree(KDAtomicInt *object)
+KD_API void KD_APIENTRY kdAtomicIntFreeVEN(KDAtomicIntVEN *object)
 {
     kdFree(object);
 }
 
-KD_API void KD_APIENTRY kdAtomicPtrFree(KDAtomicPtr *object)
+KD_API void KD_APIENTRY kdAtomicPtrFreeVEN(KDAtomicPtrVEN *object)
 {
     kdFree(object);
 }
 
-KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object)
+KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object)
 {
 #if defined(KD_ATOMIC_C11)
     return atomic_load(&object->value);
@@ -3076,7 +3076,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object)
 #endif
 }
 
-KD_API void* KD_APIENTRY kdAtomicPtrLoad(KDAtomicPtr *object)
+KD_API void* KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
 {
 #if defined(KD_ATOMIC_C11)
     return (void*)atomic_load(&object->value);
@@ -3091,7 +3091,7 @@ KD_API void* KD_APIENTRY kdAtomicPtrLoad(KDAtomicPtr *object)
 #endif
 }
 
-KD_API void KD_APIENTRY kdAtomicIntStore(KDAtomicInt *object, KDint value)
+KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
 {
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
@@ -3104,7 +3104,7 @@ KD_API void KD_APIENTRY kdAtomicIntStore(KDAtomicInt *object, KDint value)
 #endif
 }
 
-KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value)
+KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void* value)
 {
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, (uintptr_t)value);
@@ -3119,7 +3119,7 @@ KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value)
 #endif
 }
 
-KD_API KDint KD_APIENTRY kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value)
+KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint value)
 {
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_add(&object->value, value);
@@ -3132,7 +3132,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value)
 #endif
 }
 
-KD_API KDint KD_APIENTRY kdAtomicIntFetchSub(KDAtomicInt *object, KDint value)
+KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint value)
 {
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_sub(&object->value, value);
@@ -3145,7 +3145,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSub(KDAtomicInt *object, KDint value)
 #endif
 }
 
-KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchange(KDAtomicInt *object, KDint expected, KDint desired)
+KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *object, KDint expected, KDint desired)
 {
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, &expected, desired);
@@ -3158,7 +3158,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchange(KDAtomicInt *object, KDi
 #endif
 }
 
-KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchange(KDAtomicPtr *object, void* expected, void* desired)
+KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void* expected, void* desired)
 {
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, (uintptr_t*)&expected, (uintptr_t)desired);
@@ -3185,17 +3185,17 @@ typedef struct __KDQueueNode
     void            *value;
 } __KDQueueNode;
 
-typedef struct KDQueue
+typedef struct KDQueueVEN
 {
     KDThreadMutex   *mutex;
     __KDQueueNode   *head;
     __KDQueueNode   *tail;
     KDsize          size;
-} KDQueue;
+} KDQueueVEN;
 
-KD_API KDQueue* KD_APIENTRY kdQueueCreate(KD_UNUSED KDsize maxsize)
+KD_API KDQueueVEN* KD_APIENTRY kdQueueCreateVEN(KD_UNUSED KDsize maxsize)
 {
-    KDQueue* queue = (KDQueue*)kdMalloc(sizeof(KDQueue));
+    KDQueueVEN* queue = (KDQueueVEN*)kdMalloc(sizeof(KDQueueVEN));
     queue->mutex = kdThreadMutexCreate(KD_NULL);
     queue->head = KD_NULL;
     queue->tail = KD_NULL;
@@ -3203,13 +3203,13 @@ KD_API KDQueue* KD_APIENTRY kdQueueCreate(KD_UNUSED KDsize maxsize)
     return queue;
 }
 
-KD_API void KD_APIENTRY kdQueueFree(KDQueue* queue)
+KD_API void KD_APIENTRY kdQueueFreeVEN(KDQueueVEN* queue)
 {
     kdThreadMutexFree(queue->mutex);
     kdFree(queue);
 }
 
-KD_API KDsize KD_APIENTRY kdQueueSize(KDQueue *queue)
+KD_API KDsize KD_APIENTRY kdQueueSizeVEN(KDQueueVEN *queue)
 {
     kdThreadMutexLock(queue->mutex);
     KDsize size = queue->size;
@@ -3217,7 +3217,7 @@ KD_API KDsize KD_APIENTRY kdQueueSize(KDQueue *queue)
     return size;
 }
 
-KD_API void KD_APIENTRY kdQueuePushHead(KDQueue *queue, void *value)
+KD_API void KD_APIENTRY kdQueuePushHeadVEN(KDQueueVEN *queue, void *value)
 {
     __KDQueueNode *node = (__KDQueueNode*)kdMalloc(sizeof(__KDQueueNode));
     node->value = value;
@@ -3238,7 +3238,7 @@ KD_API void KD_APIENTRY kdQueuePushHead(KDQueue *queue, void *value)
     kdThreadMutexUnlock(queue->mutex);
 }
 
-KD_API void KD_APIENTRY kdQueuePushTail(KDQueue *queue, void *value)
+KD_API void KD_APIENTRY kdQueuePushTailVEN(KDQueueVEN *queue, void *value)
 {
     __KDQueueNode *node = (__KDQueueNode*)kdMalloc(sizeof(__KDQueueNode));
     node->value = value;
@@ -3259,7 +3259,7 @@ KD_API void KD_APIENTRY kdQueuePushTail(KDQueue *queue, void *value)
     kdThreadMutexUnlock(queue->mutex);
 }
 
-KD_API void* KD_APIENTRY kdQueuePopHead(KDQueue *queue)
+KD_API void* KD_APIENTRY kdQueuePopHeadVEN(KDQueueVEN *queue)
 {
     __KDQueueNode *node = KD_NULL;
     void *value = KD_NULL;
@@ -3289,7 +3289,7 @@ KD_API void* KD_APIENTRY kdQueuePopHead(KDQueue *queue)
     return value;
 }
 
-KD_API void* KD_APIENTRY kdQueuePopTail(KDQueue *queue)
+KD_API void* KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
 {
     __KDQueueNode *node = KD_NULL;
     void *value = KD_NULL;

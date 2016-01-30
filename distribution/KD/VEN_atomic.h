@@ -21,8 +21,8 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
-#ifndef __kd_LKD_atomic_h_
-#define __kd_LKD_atomic_h_
+#ifndef __kd_VEN_atomic_h_
+#define __kd_VEN_atomic_h_
 #include <KD/kd.h>
 
 #ifdef __cplusplus
@@ -33,33 +33,33 @@ extern "C" {
  * Atomics
  ******************************************************************************/
 
-typedef struct KDAtomicInt KDAtomicInt;
-typedef struct KDAtomicPtr KDAtomicPtr;
+typedef struct KDAtomicIntVEN KDAtomicIntVEN;
+typedef struct KDAtomicPtrVEN KDAtomicPtrVEN;
 
-KD_API void KD_APIENTRY kdAtomicFenceAcquire(void);
-KD_API void KD_APIENTRY kdAtomicFenceRelease(void);
+KD_API void KD_APIENTRY kdAtomicFenceAcquireVEN(void);
+KD_API void KD_APIENTRY kdAtomicFenceReleaseVEN(void);
 
-KD_API KDAtomicInt* KD_APIENTRY kdAtomicIntCreate(KDint value);
-KD_API KDAtomicPtr* KD_APIENTRY kdAtomicPtrCreate(void* value);
+KD_API KDAtomicIntVEN* KD_APIENTRY kdAtomicIntCreateVEN(KDint value);
+KD_API KDAtomicPtrVEN* KD_APIENTRY kdAtomicPtrCreateVEN(void* value);
 
-KD_API void KD_APIENTRY kdAtomicIntFree(KDAtomicInt *object);
-KD_API void KD_APIENTRY kdAtomicPtrFree(KDAtomicPtr *object);
+KD_API void KD_APIENTRY kdAtomicIntFreeVEN(KDAtomicIntVEN *object);
+KD_API void KD_APIENTRY kdAtomicPtrFreeVEN(KDAtomicPtrVEN *object);
 
-KD_API KDint KD_APIENTRY kdAtomicIntLoad(KDAtomicInt *object);
-KD_API void* KD_APIENTRY kdAtomicPtrLoad(KDAtomicPtr *object);
+KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object);
+KD_API void* KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object);
 
-KD_API void KD_APIENTRY kdAtomicIntStore(KDAtomicInt *object, KDint value);
-KD_API void KD_APIENTRY kdAtomicPtrStore(KDAtomicPtr *object, void* value);
+KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value);
+KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void* value);
 
-KD_API KDint KD_APIENTRY kdAtomicIntFetchAdd(KDAtomicInt *object, KDint value);
-KD_API KDint KD_APIENTRY kdAtomicIntFetchSub(KDAtomicInt *object, KDint value);
+KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint value);
+KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint value);
 
-KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchange(KDAtomicInt *object, KDint expected, KDint desired);
-KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchange(KDAtomicPtr *object, void* expected, void* desired);
+KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *object, KDint expected, KDint desired);
+KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void* expected, void* desired);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __kd_LKD_atomic_h_ */
+#endif /* __kd_VEN_atomic_h_ */
 

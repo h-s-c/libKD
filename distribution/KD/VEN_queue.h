@@ -33,18 +33,18 @@ extern "C" {
  * Queue (threadsafe)
  ******************************************************************************/
 
-typedef struct KDQueue KDQueue;
+typedef struct KDQueueVEN KDQueueVEN;
 
-KD_API KDQueue* KD_APIENTRY kdQueueCreate(KDsize maxsize);
-KD_API void KD_APIENTRY kdQueueFree(KDQueue* queue);
+KD_API KDQueueVEN* KD_APIENTRY kdQueueCreateVEN(KDsize maxsize);
+KD_API void KD_APIENTRY kdQueueFreeVEN(KDQueueVEN* queue);
 
-KD_API KDsize KD_APIENTRY kdQueueSize(KDQueue *queue);
+KD_API KDsize KD_APIENTRY kdQueueSizeVEN(KDQueueVEN *queue);
 
-KD_API void KD_APIENTRY kdQueuePushHead(KDQueue *queue, void *value);
-KD_API void KD_APIENTRY kdQueuePushTail(KDQueue *queue, void *value);
+KD_API void KD_APIENTRY kdQueuePushHeadVEN(KDQueueVEN *queue, void *value);
+KD_API void KD_APIENTRY kdQueuePushTailVEN(KDQueueVEN *queue, void *value);
 
-KD_API void* KD_APIENTRY kdQueuePopHead(KDQueue *queue);
-KD_API void* KD_APIENTRY kdQueuePopTail(KDQueue *queue);
+KD_API void* KD_APIENTRY kdQueuePopHeadVEN(KDQueueVEN *queue);
+KD_API void* KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue);
 
 #ifdef __cplusplus
 }

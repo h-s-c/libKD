@@ -21,52 +21,35 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
+#ifndef __kd_VEN_keyboard_h
+#define __kd_VEN_keyboard_h
 #include <KD/kd.h>
-#include <KD/VEN_atomic.h>
 
-#include <stdio.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* Test if we can call test_func more than once. */
-#define THREAD_COUNT 10
-KDAtomicIntVEN* test_once_count = KD_NULL;
-static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
-static void test_once_func(void)
-{
-    kdAtomicIntFetchAddVEN(test_once_count, 1);
+typedef struct KDEventInputKeyVEN {
+    KDuint32 flags;
+    KDint32 keycode;
+} KDEventInputKeyVEN;
+
+typedef struct KDEventInputKeyCharVEN {
+    KDuint32 flags;
+    KDint32 character;
+} KDEventInputKeyCharVEN;
+
+#define KD_EVENT_INPUT_KEY_VEN      101
+#define KD_EVENT_INPUT_KEYCHAR_VEN  102
+
+#define KD_KEY_PRESS_VEN    0x300000
+#define KD_KEY_UP_VEN       0x300001
+#define KD_KEY_DOWN_VEN     0x300002
+#define KD_KEY_LEFT_VEN     0x300003
+#define KD_KEY_RIGHT_VEN    0x300004
+
+#ifdef __cplusplus
 }
+#endif
 
-void* test_func( void *arg)
-{
-    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
-    {
-        kdThreadOnce(&test_once, test_once_func);
-    }
-	return 0;
-}
-
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
-{
-    test_once_count = kdAtomicIntCreateVEN(0);
-    KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint i = 0 ; i < THREAD_COUNT ; i++)
-    {
-        threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if (threads[i] == KD_NULL)
-        {
-            kdAssert(0);
-        }
-    }
-    for(KDint k = 0 ; k < THREAD_COUNT ; k++)
-    {
-		kdThreadJoin(threads[k], KD_NULL);
-    }
-
-    KDint test = kdAtomicIntLoadVEN(test_once_count);
-    if (test != 1)
-    {
-        kdAssert(0);
-    }
-
-    kdAtomicIntFreeVEN(test_once_count);
-    return 0;
-}
+#endif /* __kd_VEN_keyboard_h */

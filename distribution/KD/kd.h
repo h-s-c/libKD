@@ -945,6 +945,14 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
 KD_API void KD_APIENTRY kdLogMessage(const KDchar *string);
 #endif
 
+/******************************************************************************
+ * Extensions
+ ******************************************************************************/
+
+#define KD_VEN_atomic
+#define KD_VEN_keyboard
+#define KD_VEN_queue
+
 /* struct KDEvent delayed to the end as it uses event data structs from
  * other parts of the .h file. */
 struct KDEvent {
