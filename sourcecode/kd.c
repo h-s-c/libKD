@@ -2999,37 +2999,6 @@ typedef struct KDAtomicIntVEN { KDint value; } KDAtomicIntVEN;
 typedef struct KDAtomicPtrVEN { void *value; } KDAtomicPtr;
 #endif
 
-#if defined(KD_ATOMIC_WIN32)
-void _ReadWriteBarrier();
-#pragma intrinsic(_ReadWriteBarrier)
-#endif
-
-inline void KD_APIENTRY kdAtomicFenceAcquireVEN(void)
-{
-#if defined(KD_ATOMIC_C11)
-    atomic_thread_fence(memory_order_acquire);
-#elif defined(KD_ATOMIC_WIN32)
-    _ReadWriteBarrier();
-#elif defined(KD_ATOMIC_BUILTIN)
-    __atomic_thread_fence(__ATOMIC_ACQUIRE);
-#elif defined(KD_ATOMIC_LEGACY)
-    __sync_synchronize();
-#endif
-}
-
-inline void KD_APIENTRY kdAtomicFenceReleaseVEN(void)
-{
-#if defined(KD_ATOMIC_C11)
-    atomic_thread_fence(memory_order_release);
-#elif defined(KD_ATOMIC_WIN32)
-    _ReadWriteBarrier();
-#elif defined(KD_ATOMIC_BUILTIN)
-    __atomic_thread_fence(__ATOMIC_RELEASE);
-#elif defined(KD_ATOMIC_LEGACY)
-    __sync_synchronize();
-#endif
-}
-
 KD_API KDAtomicIntVEN* KD_APIENTRY kdAtomicIntCreateVEN(KDint value)
 {
     KDAtomicIntVEN* object = (KDAtomicIntVEN*)kdMalloc(sizeof(KDAtomicIntVEN));
