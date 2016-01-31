@@ -35,13 +35,16 @@ include(CheckIncludeFiles)
 include(CheckLibraryExists)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
-set(KD_BUILD_TESTS "On" CACHE BOOL "Build with tests")
-set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
-set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
-
-if($ENV{CI})
+if(DEFINED ENV{CI})
     set(KD_BUILD_CI "On")
+    set(KD_BUILD_EXAMPLES "Off" CACHE BOOL "Build with examples")
+else()
+    set(KD_BUILD_CI "Off")
+    set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
 endif()
+
+set(KD_BUILD_TESTS "On" CACHE BOOL "Build with tests")
+set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(KD_BUILD_DEBUG "On")
