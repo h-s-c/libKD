@@ -3039,7 +3039,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object)
     int value = 0;
     do {
         value = object->value;
-    } while(!kdAtomicIntCompareExchange(object, value, value));
+    } while(!kdAtomicIntCompareExchangeVEN(object, value, value));
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
@@ -3054,7 +3054,7 @@ KD_API void* KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
     void* value = 0;
     do {
         value = object->value;
-    } while(!kdAtomicPtrCompareExchange(object, value, value));
+    } while(!kdAtomicPtrCompareExchangeVEN(object, value, value));
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
