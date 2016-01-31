@@ -53,7 +53,7 @@ if(UNIX)
 
     if(DEFINED ENV{SHIPPABLE})
         set(CTEST_COVERAGE_COMMAND "gcov")
-    if(DEFINED ENV{TRAVIS})
+    elseif(DEFINED ENV{TRAVIS})
         string(SUBSTRING "$ENV{CC}" 0 3 CC)
         if(CC STREQUAL "gcc")
             string(SUBSTRING "$ENV{CC}" 4 -1 CC_VERSION)
