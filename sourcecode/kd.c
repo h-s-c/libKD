@@ -3004,7 +3004,7 @@ void _ReadWriteBarrier();
 #pragma intrinsic(_ReadWriteBarrier)
 #endif
 
-inline KD_API void KD_APIENTRY kdAtomicFenceAcquireVEN(void)
+inline void KD_APIENTRY kdAtomicFenceAcquireVEN(void)
 {
 #if defined(KD_ATOMIC_C11)
     atomic_thread_fence(memory_order_acquire);
@@ -3017,7 +3017,7 @@ inline KD_API void KD_APIENTRY kdAtomicFenceAcquireVEN(void)
 #endif
 }
 
-inline KD_API void KD_APIENTRY kdAtomicFenceReleaseVEN(void)
+inline void KD_APIENTRY kdAtomicFenceReleaseVEN(void)
 {
 #if defined(KD_ATOMIC_C11)
     atomic_thread_fence(memory_order_release);

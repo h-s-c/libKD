@@ -98,11 +98,15 @@
  * This precedes the return type of the function in the function prototype.
  */
 #if defined(_WIN32) && !defined(__SCITECH_SNAP__)
-#   define KHRONOS_APICALL __declspec(dllimport)
+    #if defined(KHRONOS_DLL_EXPORTS)
+        #define KHRONOS_APICALL __declspec(dllexport)
+    #else
+        #define KHRONOS_APICALL __declspec(dllimport)
+    #endif
 #elif defined (__SYMBIAN32__)
-#   define KHRONOS_APICALL IMPORT_C
+    #define KHRONOS_APICALL IMPORT_C
 #else
-#   define KHRONOS_APICALL
+    #define KHRONOS_APICALL
 #endif
 
 /*-------------------------------------------------------------------------
@@ -113,9 +117,9 @@
  */
 #if defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__SCITECH_SNAP__)
     /* Win32 but not WinCE */
-#   define KHRONOS_APIENTRY __stdcall
+    #define KHRONOS_APIENTRY __stdcall
 #else
-#   define KHRONOS_APIENTRY
+    #define KHRONOS_APIENTRY
 #endif
 
 /*-------------------------------------------------------------------------
@@ -124,9 +128,9 @@
  * This follows the closing parenthesis of the function prototype arguments.
  */
 #if defined (__ARMCC_2__)
-#define KHRONOS_APIATTRIBUTES __softfp
+    #define KHRONOS_APIATTRIBUTES __softfp
 #else
-#define KHRONOS_APIATTRIBUTES
+    #define KHRONOS_APIATTRIBUTES
 #endif
 
 /*-------------------------------------------------------------------------

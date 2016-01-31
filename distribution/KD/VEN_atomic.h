@@ -36,8 +36,8 @@ extern "C" {
 typedef struct KDAtomicIntVEN KDAtomicIntVEN;
 typedef struct KDAtomicPtrVEN KDAtomicPtrVEN;
 
-KD_API void KD_APIENTRY kdAtomicFenceAcquireVEN(void);
-KD_API void KD_APIENTRY kdAtomicFenceReleaseVEN(void);
+inline void KD_APIENTRY kdAtomicFenceAcquireVEN(void);
+inline void KD_APIENTRY kdAtomicFenceReleaseVEN(void);
 
 KD_API KDAtomicIntVEN* KD_APIENTRY kdAtomicIntCreateVEN(KDint value);
 KD_API KDAtomicPtrVEN* KD_APIENTRY kdAtomicPtrCreateVEN(void* value);

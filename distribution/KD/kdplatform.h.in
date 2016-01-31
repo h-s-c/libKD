@@ -26,6 +26,12 @@
 
 #define MESA_EGL_NO_X11_HEADERS
 
+#if defined (KD_EXPORTS)
+    #define KHRONOS_DLL_EXPORTS
+#endif
+
+#include <KHR/khrplatform.h>
+
 /******************************************************************************
  * Implementation defined
  ******************************************************************************/
@@ -54,11 +60,11 @@
 #endif
 
 #if defined(__GNUC__)
-#   define KD_UNUSED __attribute__((__unused__))
+    #define KD_UNUSED __attribute__((__unused__))
 #elif defined(_MSC_VER)
-#   define KD_UNUSED __pragma(warning(suppress: 4100 4101))
+    #define KD_UNUSED __pragma(warning(suppress: 4100 4101))
 #else
-#   define KD_UNUSED
+    #define KD_UNUSED
 #endif
 
 /******************************************************************************
@@ -67,17 +73,8 @@
 #cmakedefine KD_WINDOW_SUPPORTED
 #cmakedefine KD_NO_STATIC_DATA
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
-    #define KD_APIENTRY __stdcall
-    #if defined (KD_EXPORTS)
-        #define KD_API __declspec(dllexport)
-    #else
-        #define KD_API
-    #endif
-#else
-    #define KD_APIENTRY
-    #define KD_API
-#endif
+#define KD_APIENTRY KHRONOS_APIENTRY
+#define KD_API KHRONOS_APICALL
 
 #if __STDC_VERSION__ >= 201112L
     #define KD_NORETURN _Noreturn
@@ -102,22 +99,16 @@
     #define kdAssert(c) assert(c)
 #endif
 
-#include <stdint.h>
-typedef int32_t     KDint32;
-typedef uint32_t    KDuint32;
-typedef int64_t     KDint64;
-typedef uint64_t    KDuint64;
-typedef int16_t     KDint16;
-typedef uint16_t    KDuint16;
-#ifdef _WIN64 /* LLP64 */
-typedef unsigned long long int  KDuintptr;
-typedef unsigned long long int  KDsize;
-typedef signed   long long int  KDssize;
-#else
-typedef unsigned long int   KDuintptr;
-typedef unsigned long int   KDsize;
-typedef signed   long int   KDssize;
-#endif
+typedef khronos_int32_t     KDint32;
+typedef khronos_uint32_t    KDuint32;
+typedef khronos_int64_t     KDint64;
+typedef khronos_uint64_t    KDuint64;
+typedef khronos_int16_t     KDint16;
+typedef khronos_uint16_t    KDuint16;
+typedef khronos_uintptr_t   KDuintptr;
+typedef khronos_usize_t     KDsize;
+typedef khronos_ssize_t     KDssize;
+
 #define KDINT_MIN       (-0x7fffffff-1)
 #define KDINT_MAX       0x7fffffff
 #define KDUINT_MAX      0xffffffffU

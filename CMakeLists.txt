@@ -202,6 +202,7 @@ project (KD C)
 	endif()
 
     if(MSVC OR MINGW)
+        add_definitions(-DKD_EXPORTS)
         add_library(KD STATIC ${KD_SOURCE})
     else()
         add_library(KD SHARED ${KD_SOURCE})
