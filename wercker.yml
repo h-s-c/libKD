@@ -1,0 +1,14 @@
+box: debian
+
+build:
+  steps:
+    - script:
+        name: install dependencies
+        code: |
+          apt-get update -y
+          apt-get install -y gcc cmake valgrind
+
+    - script:
+        name: build code
+        code: |
+          ctest -VV --output-on-failure -S CTestRun.cmake
