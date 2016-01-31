@@ -87,7 +87,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
-          packages: ['gcc-4.4'], 'cmake', 'valgrind']
+          packages: ['gcc-4.4', 'cmake', 'valgrind']
 
     - os: linux
       compiler: clang-3.7
