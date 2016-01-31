@@ -2781,8 +2781,9 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config
     if(!__kd_window)
     {
         KDWindow *window = (KDWindow *)kdMalloc(sizeof(KDWindow));
+#if defined(KD_WINDOW_ANDROID)
         eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-#if defined(KD_WINDOW_WIN32)
+#elif defined(KD_WINDOW_WIN32)
         WNDCLASS windowclass = { 0 };
         HINSTANCE instance = GetModuleHandle(KD_NULL);
         GetClassInfo(instance, "", &windowclass);
