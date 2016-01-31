@@ -1205,13 +1205,13 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 {
                     KeySym keysym;
                     XLookupString(&xevent.xkey, NULL, 25, &keysym, NULL);
-                    event->type = KD_EVENT_INPUT_KEY_ATX;
-                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                    event->type = KD_EVENT_INPUT_KEY_VEN;
+                    KDEventInputKeyVEN *keyevent = (KDEventInputKeyVEN *)(&event->data);
 
                     /* Press or release */
                     if(xevent.type == KeyPress)
                     {
-                        keyevent->flags = KD_KEY_PRESS_ATX;
+                        keyevent->flags = KD_KEY_PRESS_VEN;
                     }
                     else
                     {
@@ -1223,31 +1223,31 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         case(XK_Up):
                         {
 
-                            keyevent->keycode = KD_KEY_UP_ATX;
+                            keyevent->keycode = KD_KEY_UP_VEN;
                             break;
                         }
                         case(XK_Down):
                         {
 
-                            keyevent->keycode = KD_KEY_DOWN_ATX;
+                            keyevent->keycode = KD_KEY_DOWN_VEN;
                             break;
                         }
                         case(XK_Left):
                         {
 
-                            keyevent->keycode = KD_KEY_LEFT_ATX;
+                            keyevent->keycode = KD_KEY_LEFT_VEN;
                             break;
                         }
                         case(XK_Right):
                         {
 
-                            keyevent->keycode = KD_KEY_RIGHT_ATX;
+                            keyevent->keycode = KD_KEY_RIGHT_VEN;
                             break;
                         }
                         default:
                         {
-                            event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-                            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *) (&event->data);
+                            event->type = KD_EVENT_INPUT_KEYCHAR_VEN;
+                            KDEventInputKeyCharVEN *keycharevent = (KDEventInputKeyCharVEN *) (&event->data);
                             keycharevent->character = (KDint32) keysym;
                             break;
                         }
