@@ -1,6 +1,7 @@
 language: python
 
 before_script:
+  - shippable_retry sudo add-apt-repository -y ppa:kalakris/cmake
   - shippable_retry sudo apt-get update -y
   - shippable_retry sudo apt-get install -y gcc cmake valgrind
 
