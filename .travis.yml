@@ -33,12 +33,12 @@ matrix:
 #   - os: osx
 #     compiler: clang
 
-    - os: linux
-      compiler: gcc-6
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
-          packages: ['gcc-6', 'cmake', 'valgrind']
+#   - os: linux
+#     compiler: gcc-6
+#     addons:
+#       apt:
+#         sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
+#         packages: ['gcc-6', 'cmake', 'valgrind']
 
     - os: linux
       compiler: gcc-5
@@ -76,20 +76,6 @@ matrix:
           packages: ['gcc-4.6', 'cmake', 'valgrind']
 
     - os: linux
-      compiler: gcc-4.5
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
-          packages: ['gcc-4.5', 'cmake', 'valgrind']
-
-    - os: linux
-      compiler: gcc-4.4
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
-          packages: ['gcc-4.4', 'cmake', 'valgrind']
-
-    - os: linux
       compiler: clang-3.7
       addons:
         apt:
@@ -109,13 +95,6 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.5', 'kalakris-cmake']
           packages: ['clang-3.5', 'llvm-3.5', 'cmake', 'valgrind']
-
-    - os: linux
-      compiler: clang-3.4
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.4', 'kalakris-cmake']
-          packages: ['clang-3.4', 'llvm-3.4', 'cmake', 'valgrind']
 
 script:
   - ctest -VV --output-on-failure -S CTestRun.cmake
