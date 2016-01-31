@@ -51,7 +51,7 @@ if(UNIX)
     set(CTEST_MEMORYCHECK_TYPE "Valgrind")
     set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--track-origins=yes --leak-check=yes")
 
-    if(DEFINED ENV{TRAVIS})
+    if(DEFINED ENV{TRAVIS} AND NOT ENV{SHIPPABLE})
         string(SUBSTRING "$ENV{CC}" 0 3 CC)
         if(CC STREQUAL "gcc")
             string(SUBSTRING "$ENV{CC}" 4 -1 CC_VERSION)
