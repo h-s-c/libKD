@@ -2,6 +2,11 @@ box: debian
 
 build:
   steps:
+    - flenter/generate-version:
+        api_key: $VERSIONING_API_KEY
+        username: h-s-c
+        for_app: 1
+
     - script:
         name: install dependencies
         code: |
