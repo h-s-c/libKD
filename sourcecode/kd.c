@@ -888,7 +888,7 @@ void __KDSleep(KDust timeout)
 #define LONG_CAST (long)
 #else
 #define LONG_CAST
-#undef
+#endif
     struct timespec ts = {0};
     /* Determine seconds from the overall nanoseconds */
     if((timeout % 1000000000) == 0)
