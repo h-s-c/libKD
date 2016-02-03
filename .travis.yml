@@ -28,10 +28,34 @@ language: c
 matrix:
   allow_failures:
     - os: osx
+
   include:
     - os: osx
+      compiler: clang
+
+    - os: osx
       compiler: gcc-6
-      before_install: ['brew update', 'brew install homebrew/versions/gcc6']
+      before_script: ['brew update', 'brew install homebrew/versions/gcc6']
+
+    - os: osx
+      compiler: gcc-5
+      before_script: ['brew update', 'brew install homebrew/versions/gcc5']
+
+    - os: osx
+      compiler: gcc-4.9
+      before_script: ['brew update', 'brew install homebrew/versions/gcc49']
+
+    - os: osx
+      compiler: gcc-4.8
+      before_script: ['brew update', 'brew install homebrew/versions/gcc48']
+
+    - os: osx
+      compiler: gcc-4.7
+      before_script: ['brew update', 'brew install homebrew/versions/gcc47']
+
+    - os: osx
+      compiler: gcc-4.6
+      before_script: ['brew update', 'brew install homebrew/versions/gcc46']
 
 #   - os: linux
 #     compiler: gcc-6
