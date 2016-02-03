@@ -37,6 +37,10 @@
  * Header workarounds
  ******************************************************************************/
 
+#ifdef __APPLE__
+    #define __unix__
+#endif
+
 #ifdef __unix__
     #define _POSIX_SOURCE
     #ifdef __linux__
