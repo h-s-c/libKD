@@ -57,9 +57,6 @@ matrix:
       osx_image: xcode6.2
 
     - os: osx
-      compiler: clang
-
-    - os: osx
       compiler: gcc-6
       before_script: ['brew update', 'brew install homebrew/versions/gcc6']
 
