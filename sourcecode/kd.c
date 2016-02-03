@@ -2460,7 +2460,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
-#if  defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__)
+#if  defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__) || defined(__APPLE__)
     buf->st_mtime = posixstat.st_mtime;
 #else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
@@ -2482,7 +2482,7 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 
     buf->st_mode  = posixstat.st_mode;
     buf->st_size  = posixstat.st_size;
-#if  defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__)
+#if  defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__) || defined(__APPLE__)
     buf->st_mtime = posixstat.st_mtime;
 #else
     buf->st_mtime = posixstat.st_mtim.tv_sec;

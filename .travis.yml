@@ -31,54 +31,61 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode7.3
+      before_script: ['brew update', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode7.2
+      before_script: ['brew update', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode7.1
+      before_script: ['brew update', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode7
+      before_script: ['brew update', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode6.4
+      before_script: ['brew update', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode6.3
+      before_script: ['brew update', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode6.2
+      before_script: ['brew update', 'brew install cmake']
 
     - os: osx
       compiler: gcc-6
-      before_script: ['brew update', 'brew install homebrew/versions/gcc6']
+      before_script: ['brew update', 'brew install homebrew/versions/gcc6', 'brew install cmake']
 
     - os: osx
       compiler: gcc-5
-      before_script: ['brew update', 'brew install homebrew/versions/gcc5']
+      before_script: ['brew update', 'brew install homebrew/versions/gcc5', 'brew install cmake']
 
     - os: osx
       compiler: gcc-4.9
-      before_script: ['brew update', 'brew install homebrew/versions/gcc49']
+      before_script: ['brew update', 'brew install homebrew/versions/gcc49', 'brew install cmake']
 
     - os: osx
       compiler: gcc-4.8
-      before_script: ['brew update', 'brew install homebrew/versions/gcc48']
+      before_script: ['brew update', 'brew install homebrew/versions/gcc48', 'brew install cmake']
 
     - os: osx
       compiler: gcc-4.7
-      before_script: ['brew update', 'brew install homebrew/versions/gcc47']
+      before_script: ['brew update', 'brew install homebrew/versions/gcc47', 'brew install cmake']
 
     - os: osx
       compiler: gcc-4.6
-      before_script: ['brew update', 'brew install homebrew/versions/gcc46']
+      before_script: ['brew update', 'brew install homebrew/versions/gcc46', 'brew install cmake']
 
 #   - os: linux
 #     compiler: gcc-6
