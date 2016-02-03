@@ -1641,23 +1641,25 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
+#if _MSC_VER == 1800
+/* Warning is function scope */
+#pragma warning(push)
+#pragma warning(disable:4756)
+#endif
 KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 {
     KDfloat32 retval = strtof(s, endptr);
-    #if _MSC_VER == 1800
-    #pragma warning(push)
-    #pragma warning(disable:4756)
-    #endif
+
     if(retval == HUGE_VALF)
     {
         kdSetError(KD_ERANGE);
         return copysignf(KD_HUGE_VALF, retval );
     }
-    #if _MSC_VER == 1800
-    #pragma warning(pop)
-    #endif
     return retval;
 }
+#if _MSC_VER == 1800
+#pragma warning(pop)
+#endif
 
 /* kdStrtol, kdStrtoul: Convert a string to an integer. */
 KD_API KDint KD_APIENTRY kdStrtol(const KDchar *s, KDchar **endptr, KDint base)
