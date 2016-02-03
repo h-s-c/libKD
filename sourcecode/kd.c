@@ -148,6 +148,36 @@
     #include <sys/types.h>
     #include <sys/stat.h>
     #include <dirent.h>
+    /* MSVC 13 is missing some things */
+    #if _MSC_VER == 1800
+        struct timespec
+        {
+            long tv_sec;
+            long tv_nsec;
+        };
+        int vsnprintf (char * s, size_t n, const char * format, va_list arg )
+        {
+            int ret = -1;
+            if (n != 0)
+            {
+                ret = _vsnprintf_s(s, n, _TRUNCATE, format, arg);
+            }
+            if (ret == -1)
+            {
+                ret = _vscprintf(format, arg);
+            }
+            return ret;
+        }
+        int snprintf ( char * s, size_t n, const char * format, ... )
+        {
+            int ret;
+            va_list arg;
+            va_start(arg, format);
+            ret = vsnprintf(s, n, format, arg);
+            va_end(arg);
+            return ret;
+        }
+    #endif
     /* MSVC threads.h */
     #if defined(KD_THREAD_C11) || defined(KD_THREAD_WIN32)
         static BOOL CALLBACK call_once_callback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
@@ -161,13 +191,6 @@
     #if defined(KD_THREAD_C11)
         #include <thr/threads.h>
         #undef thrd_sleep
-        #if _MSC_VER == 1800
-        struct timespec
-        {
-            long tv_sec;
-            long tv_nsec;
-        };
-        #endif
         int thrd_sleep(const struct timespec* time_point, KD_UNUSED struct timespec* remaining)
         {
             KDint64 timeout = time_point->tv_sec ? time_point->tv_sec * 1000000000 : 0;
@@ -194,7 +217,7 @@
 	/* MSVC redefinition fix*/
 	#ifndef inline
 	#define inline __inline
-	#endif
+    #endif
     /* Debugging helpers*/
     #pragma pack(push,8)
     struct THREADNAME_INFO
@@ -861,16 +884,22 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 /* __KDSleep: Sleep for nanoseconds. */
 void __KDSleep(KDust timeout)
 {
+#if _MSC_VER == 1900
+#define LONG_CAST (long)
+#else
+#define LONG_CAST
+#undef
     struct timespec ts = {0};
     /* Determine seconds from the overall nanoseconds */
     if((timeout % 1000000000) == 0)
     {
-        ts.tv_sec = timeout / 1000000000;
+        ts.tv_sec = LONG_CAST timeout / 1000000000;
     }
     else
     {
-        ts.tv_sec = (timeout - (timeout % 1000000000)) / 1000000000;
+        ts.tv_sec = LONG_CAST (timeout - (timeout % 1000000000)) / 1000000000;
     }
+#undef LONG_CAST
     /* Remaining nanoseconds */
     ts.tv_nsec = (KDint32)timeout - ((KDint32)ts.tv_sec * 1000000000);
 
