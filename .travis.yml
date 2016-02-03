@@ -26,10 +26,12 @@ sudo: false
 language: c
 
 matrix:
+  allow_failures:
+    - os: osx
   include:
     - os: osx
-      compiler: gcc-5
-      install: ['brew update', 'brew install homebrew/versions/gcc5']
+      compiler: gcc-6
+      before_install: ['brew update', 'brew install homebrew/versions/gcc6']
 
 #   - os: linux
 #     compiler: gcc-6
