@@ -51,11 +51,15 @@ matrix:
 
     - os: osx
       compiler: clang
-      osx_image: xcode6.3
+      osx_image: beta-xcode6.3
 
     - os: osx
       compiler: clang
-      osx_image: xcode6.2
+      osx_image: beta-xcode6.2
+
+    - os: osx
+      compiler: clang
+      osx_image: xcode6.1
 
 #   - os: linux
 #     compiler: gcc-6
