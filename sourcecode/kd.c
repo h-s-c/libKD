@@ -148,7 +148,7 @@
     #include <sys/types.h>
     #include <sys/stat.h>
     #include <dirent.h>
-    /* MSVC 13 is missing some things */
+    /* MSVC 12 is missing some things */
     #if _MSC_VER == 1800
         struct timespec
         {
@@ -1644,11 +1644,18 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 {
     KDfloat32 retval = strtof(s, endptr);
+    #if _MSC_VER == 1800
+    #pragma warning(push)
+    #pragma warning(disable:4756)
+    #endif
     if(retval == HUGE_VALF)
     {
         kdSetError(KD_ERANGE);
         return copysignf(KD_HUGE_VALF, retval );
     }
+    #if _MSC_VER == 1800
+    #pragma warning(pop)
+    #endif
     return retval;
 }
 
