@@ -155,19 +155,6 @@
             long tv_sec;
             long tv_nsec;
         };
-        int vsnprintf (char * s, size_t n, const char * format, va_list arg )
-        {
-            int ret = -1;
-            if (n != 0)
-            {
-                ret = _vsnprintf_s(s, n, _TRUNCATE, format, arg);
-            }
-            if (ret == -1)
-            {
-                ret = _vscprintf(format, arg);
-            }
-            return ret;
-        }
         int snprintf ( char * s, size_t n, const char * format, ... )
         {
             int ret;
@@ -884,7 +871,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 /* __KDSleep: Sleep for nanoseconds. */
 void __KDSleep(KDust timeout)
 {
-#if _MSC_VER == 1900
+#if _MSC_VER == 1800
 #define LONG_CAST (long)
 #else
 #define LONG_CAST
