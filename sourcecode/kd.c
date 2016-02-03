@@ -161,7 +161,7 @@
     #if defined(KD_THREAD_C11)
         #include <thr/threads.h>
         #undef thrd_sleep
-        #if MSC_VER < 1900
+        #if _MSC_VER == 1800
         struct timespec
         {
             long tv_sec;
@@ -181,6 +181,7 @@
             CloseHandle(timer);
             return 0;
         }
+        #if _MSC_VER == 1900
         typedef INIT_ONCE once_flag;
         void call_once(once_flag* flag, void(*func)(void))
         {
@@ -188,6 +189,7 @@
             kdMemcpy(&pfunc, &func, sizeof(func));
             InitOnceExecuteOnce(flag, call_once_callback, pfunc, NULL);
         }
+        #endif
     #endif
 	/* MSVC redefinition fix*/
 	#ifndef inline
