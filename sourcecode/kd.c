@@ -161,6 +161,13 @@
     #if defined(KD_THREAD_C11)
         #include <thr/threads.h>
         #undef thrd_sleep
+        #if MSC_VER < 1900
+        struct timespec
+        {
+            long tv_sec;
+            long tv_nsec;
+        };
+        #endif
         int thrd_sleep(const struct timespec* time_point, KD_UNUSED struct timespec* remaining)
         {
             KDint64 timeout = time_point->tv_sec ? time_point->tv_sec * 1000000000 : 0;
