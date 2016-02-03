@@ -37,12 +37,7 @@
  * Header workarounds
  ******************************************************************************/
 
-#ifdef __APPLE__
-    #define __unix__
-#endif
-
 #ifdef __unix__
-    #define _POSIX_SOURCE
     #ifdef __linux__
         #define _GNU_SOURCE
     #endif
@@ -101,25 +96,23 @@
 #include <pthread.h>
 #endif
 
-#ifdef __unix__
+#if  defined(__unix__) || defined(__APPLE__)
     #include <unistd.h>
 
-    #ifdef _POSIX_VERSION
-        #include <sys/stat.h>
-        #include <sys/syscall.h>
-        #include <sys/utsname.h>
-        #ifdef __APPLE__
-            #include<sys/mount.h>
-        #else
-            #include<sys/vfs.h>
-        #endif
-        #include <fcntl.h>
-        #include <dirent.h>
-        #include <dlfcn.h>
-
-        /* POSIX reserved but OpenKODE uses this */
-        #undef st_mtime
+    #include <sys/stat.h>
+    #include <sys/syscall.h>
+    #include <sys/utsname.h>
+    #ifdef __APPLE__
+        #include<sys/mount.h>
+    #else
+        #include<sys/vfs.h>
     #endif
+    #include <fcntl.h>
+    #include <dirent.h>
+    #include <dlfcn.h>
+
+    /* POSIX reserved but OpenKODE uses this */
+    #undef st_mtime
 
     #ifdef __ANDROID__
         #include <android/log.h>
@@ -334,7 +327,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     {
 #if defined(_MSC_VER) || defined(__MINGW32__)
         return "Windows";
-#elif __unix__
+#elif defined(__unix__) || defined(__APPLE__)
         static struct utsname name;
         uname(&name);
         return name.sysname;
@@ -1763,7 +1756,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
         );
     }
     return 0;
-#elif defined(__unix__)
+#elif defined(__unix__) || defined(__APPLE__)
     FILE *urandom = fopen("/dev/urandom", "r");
     KDsize result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
     fclose(urandom);
