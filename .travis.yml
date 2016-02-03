@@ -27,11 +27,9 @@ language: c
 
 matrix:
   include:
-#   - os: osx
-#     compiler: gcc
-
-#   - os: osx
-#     compiler: clang
+    - os: osx
+      compiler: gcc-5
+      install: ['brew update', 'brew install homebrew/versions/gcc5']
 
 #   - os: linux
 #     compiler: gcc-6
