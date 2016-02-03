@@ -48,17 +48,14 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode6.4
-      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode6.3
-      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake']
 
     - os: osx
       compiler: clang
       osx_image: xcode6.2
-      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake']
 
 #   - os: linux
 #     compiler: gcc-6
