@@ -99,6 +99,8 @@ else()
     set(CTEST_CMAKE_GENERATOR "$ENV{CMAKE_GENERATOR}")
 endif()
 
+set(CTEST_TEST_TIMEOUT 30)
+
 ctest_start(Continuous)
 ctest_configure()
 ctest_build()
