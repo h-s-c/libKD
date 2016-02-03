@@ -12,7 +12,7 @@
 [![Magnum CI](https://img.shields.io/magnumci/ci/72eef1b2f0a1a72b29a26fa659555fa1.svg)](https://magnum-ci.com/public/542638d0bab22cb5830b/builds)
 
 ##About
--   OpenKODE is alternative to [SDL](https://www.libsdl.org/) specified by Khronos
+-   OpenKODE is an alternative to [SDL](https://www.libsdl.org/) specified by Khronos
 
 ##Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
