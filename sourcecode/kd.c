@@ -108,7 +108,11 @@
         #include <sys/stat.h>
         #include <sys/syscall.h>
         #include <sys/utsname.h>
-        #include <sys/vfs.h>
+        #ifdef __APPLE__
+            #include<sys/mount.h>
+        #else
+            #include<sys/vfs.h>
+        #endif
         #include <fcntl.h>
         #include <dirent.h>
         #include <dlfcn.h>
