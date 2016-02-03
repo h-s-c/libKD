@@ -538,9 +538,13 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     ExitThread(result);
 #endif
 #if defined(_MSC_VER)
-#pragma warning( once : 4127 )
+#pragma warning(push)
+#pragma warning(disable:4127)
 #endif
     while(1);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
@@ -1641,13 +1645,17 @@ KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 {
     KDfloat32 retval = strtof(s, endptr);
     #if _MSC_VER == 1800
-    #pragma warning( once : 4756 )
+    #pragma warning(push)
+    #pragma warning(disable:4756)
     #endif
     if(retval == HUGE_VALF)
     {
         kdSetError(KD_ERANGE);
         return copysignf(KD_HUGE_VALF, retval );
     }
+    #if _MSC_VER == 1800
+    #pragma warning(pop)
+    #endif
     return retval;
 }
 
