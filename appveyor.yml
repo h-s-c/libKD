@@ -5,8 +5,10 @@ environment:
   matrix:
     - CMAKE_GENERATOR: Visual Studio 14 2015
     - CMAKE_GENERATOR: Visual Studio 14 2015 Win64
+    - CMAKE_GENERATOR: Visual Studio 14 2015 ARM
     - CMAKE_GENERATOR: Visual Studio 12 2013
     - CMAKE_GENERATOR: Visual Studio 12 2013 Win64
+    - CMAKE_GENERATOR: Visual Studio 12 2013 ARM
     - CMAKE_GENERATOR: Visual Studio 11 2012
     - CMAKE_GENERATOR: Visual Studio 11 2012 Win64
     - CMAKE_GENERATOR: Visual Studio 10 2010
@@ -16,6 +18,8 @@ environment:
 
 matrix:
   allow_failures:
+    - CMAKE_GENERATOR: Visual Studio 14 2015 ARM
+    - CMAKE_GENERATOR: Visual Studio 12 2013 ARM
     - CMAKE_GENERATOR: Visual Studio 11 2012
     - CMAKE_GENERATOR: Visual Studio 11 2012 Win64
     - CMAKE_GENERATOR: Visual Studio 10 2010
