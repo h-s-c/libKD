@@ -30,7 +30,7 @@ else()
         set(CC_ARCH "x86_64")
     else()
         set(CC_ARCH "x86")
-    endif
+    endif()
 endif()
 
 if(DEFINED ENV{APPVEYOR})
