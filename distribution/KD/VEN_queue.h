@@ -21,8 +21,8 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
-#ifndef __kd_LKD_queue_h_
-#define __kd_LKD_queue_h_
+#ifndef __kd_VEN_queue_h_
+#define __kd_VEN_queue_h_
 #include <KD/kd.h>
 
 #ifdef __cplusplus
@@ -50,4 +50,4 @@ KD_API void* KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue);
 }
 #endif
 
-#endif /* __kd_LKD_queue_h_ */
+#endif /* __kd_VEN_queue_h_ */
