@@ -1169,7 +1169,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             {
                                 event->type = KD_EVENT_INPUT_KEYCHAR_VEN;
                                 KDEventInputKeyCharVEN *keycharevent = (KDEventInputKeyCharVEN *) (&event->data);
-                                GetKeyNameText(MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (char*)&keycharevent->character, sizeof(KDint32));
+                                GetKeyNameText((long)MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (char*)&keycharevent->character, sizeof(KDint32));
                                 break;
                             }
                         }
@@ -2815,7 +2815,7 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
     return 0;
 }
 #endif
-KD_API KDWindow *KD_APIENTRY kdCreateWindow(EGLDisplay display, EGLConfig config, KD_UNUSED void *eventuserptr)
+KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
     if(!__kd_window)
     {
