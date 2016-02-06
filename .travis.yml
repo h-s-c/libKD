@@ -149,7 +149,6 @@ matrix:
 
   allow_failures:
     - compiler: gcc-6
-    - compiler: clang-3.7
     - compiler: icc
     - osx_image: xcode6.4
 
