@@ -28,46 +28,50 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode7.3
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode7.2
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode7.1
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode7
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode6.4
+      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: beta-xcode6.3
+      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: beta-xcode6.2
+      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode6.1
+      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
 
-#   - os: linux
-#     compiler: gcc-6
-#     sudo: false
-#     addons:
-#       apt:
-#         sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
-#         packages: ['gcc-6', 'cmake', 'valgrind']
+    - os: linux
+      compiler: gcc-6
+      sudo: false
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
+          packages: ['gcc-6', 'cmake', 'valgrind']
 
     - os: linux
       compiler: gcc-5
@@ -137,14 +141,17 @@ matrix:
       compiler: icc
       sudo: false
       before_install: ['wget -q -O /dev/stdout "https://raw.githubusercontent.com/nemequ/icc-travis/master/install-icc.sh" | /bin/sh']
+      before_script: ['source ~/.bashrc']
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'kalakris-cmake']
           packages: ['cmake', 'valgrind']
 
   allow_failures:
+    - osx_image: xcode6.4
+    - compiler: gcc-6
+    - compiler: clang-3.7
     - compiler: icc
 
 script:
-  - source ~/.bashrc
   - ctest -VV --output-on-failure -S CTestRun.cmake
