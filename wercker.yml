@@ -6,7 +6,7 @@ build:
         name: install dependencies
         code: |
           apt-get update -y
-          apt-get install -y gcc cmake valgrind
+          apt-get install -y gcc cmake
 
     - script:
         name: build code

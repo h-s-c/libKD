@@ -1,6 +1,6 @@
 before_script:
   - apt-get update -y
-  - apt-get install -y cmake valgrind
+  - apt-get install -y cmake
 
 default:
   script:
