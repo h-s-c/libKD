@@ -156,11 +156,11 @@ matrix:
       before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
 
   allow_failures:
-    - compiler: gcc-6
-    - compiler: clang-3.8
-    - compiler: clang-3.7
-    - compiler: icc
-    - osx_image: xcode6.4
+    - compiler: gcc-6       # Upstream Travis
+    - compiler: clang-3.8   # Upstream LLVM
+    - compiler: clang-3.7   # Upstream LLVM
+    - compiler: icc         # On me
+    - osx_image: xcode6.4   # Upstream Travis
 
 script:
   - ctest -VV --output-on-failure -S CTestRun.cmake

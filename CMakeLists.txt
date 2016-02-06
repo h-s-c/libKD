@@ -85,7 +85,7 @@ project (KD C)
     endif()
 
     if(KD_BUILD_CI)
-        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} --coverage")
+        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} --coverage -fno-omit-frame-pointer")
         if(CMAKE_C_COMPILER_ID STREQUAL "Intel")
             set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -prof-gen=srcpos")
         endif()
