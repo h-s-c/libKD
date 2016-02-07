@@ -1,4 +1,4 @@
-#OpenKODE® Core implementation
+#OpenKODE Core implementation
 
 ##License
 [![Zlib License](http://img.shields.io/:license-zlib-blue.svg)](http://opensource.org/licenses/Zlib)
@@ -21,9 +21,4 @@
 -   Linux, Android (NDK), Windows, Web (ASM.js)
 
 ##Dependencies
--   EGL™, OpenGL® ES (samples)
-
-##Trademark Notices
--   EGL and the EGL logo are trademarks of the Khronos Group Inc.
--   OpenKODE and the OpenKODE logo are trademarks of the Khronos Group Inc.
--   OpenGL is a registered trademark and the OpenGL ES logo is a trademark of Silicon Graphics Inc. used by permission by Khronos.
+-   EGL, OpenGL ES (samples)
