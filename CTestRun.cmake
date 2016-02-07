@@ -1,4 +1,4 @@
-if(DEFINED ENV{CI})
+if(NOT DEFINED ENV{CI})
     message( FATAL_ERROR "Not a CI server." )
 endif()
 
