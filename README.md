@@ -18,7 +18,8 @@
 -   [Specification](https://www.khronos.org/registry/kode/)
 
 ##Platforms
--   Linux, Android (NDK), Windows, Web (ASM.js)
+-   Windows, Android, Linux, Web (ASM.js) support
+-   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
 
 ##Dependencies
 -   EGL, OpenGL ES (samples)
