@@ -1396,6 +1396,7 @@ KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype
 KD_API KDEvent *KD_APIENTRY kdCreateEvent(void)
 {
     KDEvent *event = (KDEvent*)kdMalloc(sizeof(KDEvent));
+    event->timestamp = 0;
     event->type = -1;
     event->userptr = KD_NULL;
     return event;
