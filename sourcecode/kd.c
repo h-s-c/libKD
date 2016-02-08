@@ -429,6 +429,7 @@ typedef struct __KDThreadStartArgs
     void *arg;
     KDThread *thread;
 } __KDThreadStartArgs;
+
 typedef struct KDThread
 {
 #if defined(KD_THREAD_C11)
@@ -442,6 +443,17 @@ typedef struct KDThread
     const KDThreadAttr *attr;
     __KDThreadStartArgs *start_args;
 } KDThread;
+
+static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
+static void* __kdThreadCleanup(KD_UNUSED void *args)
+{
+    if(__kd_lastevent != KD_NULL)
+    {
+        kdFreeEvent(__kd_lastevent);
+        __kd_lastevent = KD_NULL;
+    }
+    return 0;
+}
 static void* __kdThreadStart(void *args)
 {
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
@@ -484,7 +496,20 @@ static void* __kdThreadStart(void *args)
     start_args->thread->start_args = start_args;
 
     __kd_thread = start_args->thread;
-    return start_args->start_routine(start_args->arg);
+
+    void* result = KD_NULL;
+#if defined(KD_THREAD_POSIX)
+    pthread_cleanup_push(__kdThreadCleanup, KD_NULL);
+#endif
+
+    result = start_args->start_routine(start_args->arg);
+
+#if defined(KD_THREAD_POSIX)
+    pthread_cleanup_pop(1);
+#else
+    __kdThreadCleanup(KD_NULL);
+#endif
+    return result;
 }
 
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
@@ -920,7 +945,6 @@ void __KDSleep(KDust timeout)
 }
 
 /* kdWaitEvent: Get next event from thread's event queue. */
-static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
     if(__kd_lastevent != KD_NULL)
