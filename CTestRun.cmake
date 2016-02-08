@@ -177,7 +177,7 @@ if(CTEST_MEMORYCHECK_COMMAND)
     ctest_memcheck()
     ctest_submit(PARTS MemCheck)
     set(CTEST_MEMORYCHECK_COMMAND "")
-    set(CTEST_MEMORYCHECK_COMMAND_OPTIONS"")
+    set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "")
 endif()
 
 # Memory check (ASan)
