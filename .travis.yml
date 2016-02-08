@@ -31,7 +31,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['gcc-6', 'cmake', 'cmake-data']
+          packages: ['gcc-6', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: gcc-5
@@ -39,7 +39,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['gcc-5', 'cmake', 'cmake-data']
+          packages: ['gcc-5', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: gcc-4.9
@@ -47,7 +47,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['gcc-4.9', 'cmake', 'cmake-data']
+          packages: ['gcc-4.9', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: gcc-4.8
@@ -55,7 +55,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['gcc-4.8', 'cmake', 'cmake-data']
+          packages: ['gcc-4.8', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: gcc-4.7
@@ -71,7 +71,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['gcc-4.6', 'cmake', 'cmake-data', 'valgrind']
+          packages: ['gcc-4.6', 'cmake', 'cmake-data', 'valgrind', 'valgrind']
 
     - os: linux
       compiler: clang-3.8
@@ -79,7 +79,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise', 'george-edison55-precise-backports']
-          packages: ['clang-3.8', 'llvm-3.8', 'cmake', 'cmake-data']
+          packages: ['clang-3.8', 'llvm-3.8', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: clang-3.7
@@ -87,7 +87,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.7', 'george-edison55-precise-backports']
-          packages: ['clang-3.7', 'llvm-3.7', 'cmake', 'cmake-data']
+          packages: ['clang-3.7', 'llvm-3.7', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: clang-3.6
@@ -95,7 +95,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.6', 'george-edison55-precise-backports']
-          packages: ['clang-3.6', 'llvm-3.6', 'cmake', 'cmake-data']
+          packages: ['clang-3.6', 'llvm-3.6', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: clang-3.5
@@ -103,7 +103,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.5', 'george-edison55-precise-backports']
-          packages: ['clang-3.5', 'llvm-3.5', 'cmake', 'cmake-data']
+          packages: ['clang-3.5', 'llvm-3.5', 'cmake', 'cmake-data', 'valgrind']
 
     - os: linux
       compiler: icc
@@ -118,22 +118,22 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode7.3
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode7.2
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode7.1
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
       osx_image: xcode7
-      before_script: ['brew update', 'brew install cmake']
+      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
 
     - os: osx
       compiler: clang
