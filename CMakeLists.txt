@@ -42,21 +42,15 @@ set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 
 if(DEFINED ENV{CI})
     set(KD_BUILD_CI "On")
-else()
-    set(KD_BUILD_CI "Off")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(KD_BUILD_DEBUG "On")
-else()
-    set(KD_BUILD_DEBUG "Off")
 endif()
 
 # Nvidia Tegra Nsight doesnt set this
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(ANDROID "On")
-else()
-    set(ANDROID "Off")
 endif()
 
 project (KD C)
