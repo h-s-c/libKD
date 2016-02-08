@@ -14,5 +14,4 @@ build:
     - script:
         name: build code
         code: |
-          echo 2 >/proc/sys/kernel/randomize_va_space
           ctest -VV --output-on-failure -S CTestRun.cmake
