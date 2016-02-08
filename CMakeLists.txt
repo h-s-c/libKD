@@ -66,7 +66,7 @@ project (KD C)
         endif()
 
         if(CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8)
-            set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -pedantic")
+            set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -pedantic -Wno-attributes")
         else()
             set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -Wpedantic")
         endif()
