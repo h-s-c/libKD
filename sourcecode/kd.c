@@ -473,8 +473,10 @@ static void* __kdThreadStart(void *args)
 #pragma warning(pop)
     }
 #elif defined(KD_THREAD_POSIX)
-#if defined(__linux__) && !defined(__ANDROID__)
+#if defined(__linux__)
     pthread_setname_np(start_args->thread->nativethread, threadname);
+#elif defined(__APPLE__)
+    pthread_setname_np(threadname);
 #endif
 #endif
 
