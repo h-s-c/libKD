@@ -445,14 +445,13 @@ typedef struct KDThread
 } KDThread;
 
 static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
-static void* __kdThreadCleanup(KD_UNUSED void *args)
+static void __kdThreadCleanup(KD_UNUSED void *args)
 {
     if(__kd_lastevent != KD_NULL)
     {
         kdFreeEvent(__kd_lastevent);
         __kd_lastevent = KD_NULL;
     }
-    return 0;
 }
 static void* __kdThreadStart(void *args)
 {
