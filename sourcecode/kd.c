@@ -423,6 +423,12 @@ static KDint __kdThreadAttrSetDebugName(KDThreadAttr *attr, const char * debugna
 
 /* kdThreadCreate: Create a new thread. */
 static KD_THREADLOCAL KDThread *__kd_thread = KD_NULL;
+typedef struct __KDThreadStartArgs
+{
+    void *(*start_routine)(void *);
+    void *arg;
+    KDThread *thread;
+} __KDThreadStartArgs;
 typedef struct KDThread
 {
 #if defined(KD_THREAD_C11)
@@ -434,14 +440,8 @@ typedef struct KDThread
 #endif
     KDQueueVEN *eventqueue;
     const KDThreadAttr *attr;
+    __KDThreadStartArgs *start_args;
 } KDThread;
-
-typedef struct __KDThreadStartArgs
-{
-    void *(*start_routine)(void *);
-    void *arg;
-    KDThread *thread;
-} __KDThreadStartArgs;
 static void* __kdThreadStart(void *args)
 {
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
@@ -478,6 +478,9 @@ static void* __kdThreadStart(void *args)
 #endif
 #endif
 
+    /* We have to clean up start_args somehow */
+    start_args->thread->start_args = start_args;
+
     __kd_thread = start_args->thread;
     return start_args->start_routine(start_args->arg);
 }
@@ -504,6 +507,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #else
 	kdAssert(0);
 #endif
+
     if(error != 0)
     {
         kdSetError(KD_EAGAIN);
@@ -577,6 +581,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         return -1;
     }
     kdQueueFreeVEN(thread->eventqueue);
+    kdFree(thread->start_args);
     kdFree(thread);
     return 0;
 }
