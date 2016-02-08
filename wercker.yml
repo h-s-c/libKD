@@ -5,6 +5,8 @@ build:
     - script:
         name: install dependencies
         code: |
+          apt-get update -y
+          apt-get install -y gcc wget
           CMAKE_URL="https://cmake.org/files/v3.5/cmake-3.5.0-rc1-Linux-x86_64.tar.gz"
           mkdir cmake && wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
           export PATH=`pwd`/cmake/bin:${PATH}
