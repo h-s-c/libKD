@@ -49,10 +49,6 @@ static KDint32 testrecurse(KDint32 count, struct recurse *lastrecurse)
     }
 }
 
-/* AddressSanitizer uses more stack memory */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((__no_sanitize_address__))
-#endif
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     testrecurse(0, 0);
