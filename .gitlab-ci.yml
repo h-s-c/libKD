@@ -1,10 +1,11 @@
 before_script:
   - apt-get update -y
-  - apt-get install -y build-essential wget valgrind libubsan0 libasan0 libtsan0
+  - apt-get install -y build-essential wget valgrind
   - CMAKE_URL="https://cmake.org/files/v3.5/cmake-3.5.0-rc1-Linux-x86_64.tar.gz"
   - mkdir cmake && wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
   - export PATH=`pwd`/cmake/bin:${PATH}
 
 default:
   script:
+    - echo 2 >/proc/sys/kernel/randomize_va_space
     - ctest -VV --output-on-failure -S CTestRun.cmake
