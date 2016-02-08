@@ -49,7 +49,7 @@
 #cmakedefine KD_WINDOW_ANDROID
 #cmakedefine KD_WINDOW_WAYLAND
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
     #define KD_THREADLOCAL __thread
 #elif defined(_MSC_VER)
     #define KD_THREADLOCAL __declspec(thread)
@@ -59,7 +59,7 @@
     #error "Platform not supported yet."
 #endif
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
     #define KD_UNUSED __attribute__((__unused__))
 #elif defined(_MSC_VER)
     #define KD_UNUSED __pragma(warning(suppress: 4100 4101))
@@ -79,7 +79,7 @@
 #if __STDC_VERSION__ >= 201112L
     #define KD_NORETURN _Noreturn
 #else
-    #if defined(__GNUC__)
+    #if defined(__GNUC__) || defined(__clang__)
         #define KD_NORETURN __attribute__((__noreturn__))
     #elif defined(_MSC_VER)
         #define KD_NORETURN __declspec(noreturn)
