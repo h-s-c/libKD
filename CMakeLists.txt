@@ -74,10 +74,6 @@ project (KD C)
         set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -std=c11 -Wno-missing-field-initializers")
     endif()
 
-    if(APPLE )
-        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} -stdlib=libc++")
-    endif()
-
     if(KD_BUILD_CI)
         set(KD_GCC_FLAGS "${KD_GCC_FLAGS} ${KD_BUILD_CI_FLAGS}")
     endif()
