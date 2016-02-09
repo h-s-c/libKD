@@ -163,7 +163,7 @@ matrix:
     - compiler: gcc-6       # Upstream Travis
     - compiler: clang-3.8   # Upstream LLVM
     - compiler: clang-3.7   # Upstream LLVM
-    - compiler: icc         # On me
+    - compiler: icc         # Needs debugging
     - osx_image: xcode6.4   # Upstream Travis
 
 script:
