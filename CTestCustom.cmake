@@ -7,5 +7,4 @@ set(CTEST_CUSTOM_COVERAGE_EXCLUDE
     "/CMakeFiles/"
     "/usr/")
 
-set(CTEST_CUSTOM_ERROR_EXCEPTION
-    "Cannot find memory tester output file:")
+#set(CTEST_CUSTOM_ERROR_EXCEPTION "Cannot find memory tester output file:")

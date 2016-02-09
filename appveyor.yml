@@ -10,6 +10,7 @@ environment:
     - CTEST_CMAKE_GENERATOR: Visual Studio 12 2013 ARM
     - CTEST_CMAKE_GENERATOR: Visual Studio 11 2012
     - CTEST_CMAKE_GENERATOR: Visual Studio 11 2012 Win64
+    - CTEST_CMAKE_GENERATOR: Visual Studio 11 2011 ARM
     - CTEST_CMAKE_GENERATOR: Visual Studio 10 2010
     - CTEST_CMAKE_GENERATOR: Visual Studio 10 2010 Win64
 
@@ -19,6 +20,7 @@ matrix:
     - CTEST_CMAKE_GENERATOR: Visual Studio 12 2013 ARM
     - CTEST_CMAKE_GENERATOR: Visual Studio 11 2012
     - CTEST_CMAKE_GENERATOR: Visual Studio 11 2012 Win64
+    - CTEST_CMAKE_GENERATOR: Visual Studio 11 2012 ARM
     - CTEST_CMAKE_GENERATOR: Visual Studio 10 2010
     - CTEST_CMAKE_GENERATOR: Visual Studio 10 2010 Win64
 
