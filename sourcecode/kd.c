@@ -570,9 +570,13 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     ExitThread(result);
 #endif
 #if defined(_MSC_VER)
-    #pragma warning(suppress:4127)
+#pragma warning(push)
+#pragma warning(disable:4127)
 #endif
     while(1);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
@@ -1765,7 +1769,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 #if defined(_MSC_VER) && defined(_M_ARM)
     kdSetError(KD_EOPNOTSUPP);
     return -1;
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(_MSC_VER) && defined(__MINGW32__)
     HCRYPTPROV provider = 0;
     KDboolean error = !CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
     if(error == 0)
