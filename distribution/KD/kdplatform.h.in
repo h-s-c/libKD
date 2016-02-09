@@ -99,9 +99,9 @@
 #endif
 
 #ifdef KD_NDEBUG
-    #define kdAssert(c) do { (void) sizeof ((c)) ; } \
+    #define kdAssert(c) do { (void) sizeof ((c)) ; \
                         KD_SUPPRESS_C4127_WARNING \
-                        while (0)
+                        } while (0)
 #else
     #include <assert.h>
     #define kdAssert(c) assert(c)
