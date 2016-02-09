@@ -569,9 +569,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
 #endif
-#if defined(_MSC_VER)
-#pragma warning(suppress:4127)
-#endif
+    KD_SUPPRESS_C4127_WARNING
     while(1);
 }
 
