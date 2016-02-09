@@ -570,7 +570,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     ExitThread(result);
 #endif
 #if defined(_MSC_VER)
-    __pragma warning(suppress:4127)
+    #pragma warning(suppress:4127)
 #endif
     while(1);
 }

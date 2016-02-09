@@ -94,9 +94,11 @@
 
 #ifdef KD_NDEBUG
     #if defined(_MSC_VER)
-        #define kdAssert(c) do { (void) sizeof ((c)) ;} while ((-1 == __LINE__))
+        #define kdAssert(c) do { (void) sizeof ((c)) ; \
+                            __pragma warning(suppress:4127) \
+                            } while (0)
     #else
-        #define kdAssert(c) do { (void) sizeof ((c)) ;} while ((0))
+        #define kdAssert(c) do { (void) sizeof ((c)) ; } while (0)
     #endif
 #else
     #include <assert.h>
