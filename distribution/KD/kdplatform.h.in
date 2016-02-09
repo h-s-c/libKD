@@ -92,18 +92,8 @@
     #define KD_NDEBUG
 #endif
 
-#ifdef KD_NDEBUG
-    #if defined(_MSC_VER)
-        #define kdAssert(c) do { (void) sizeof ((c)) ; \
-                            __pragma warning(suppress:4127) \
-                            } while (0)
-    #else
-        #define kdAssert(c) do { (void) sizeof ((c)) ; } while (0)
-    #endif
-#else
-    #include <assert.h>
-    #define kdAssert(c) assert(c)
-#endif
+#include <assert.h>
+#define kdAssert(c) assert(c)
 
 typedef khronos_int32_t     KDint32;
 typedef khronos_uint32_t    KDuint32;
