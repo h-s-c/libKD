@@ -1766,12 +1766,10 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 /* kdCryptoRandom: Return random data. */
 KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
 {
-#if defined(_MSC_VER) && !defined(_M_ARM)
-    BCRYPT_ALG_HANDLE alg_handle = KD_NULL;
-    BCryptOpenAlgorithmProvider(&alg_handle, BCRYPT_RNG_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
-    BCryptGenRandom(alg_handle, buf, buflen, 0);
-    return 0;
-#elif defined(__MINGW32__)
+#if defined(_MSC_VER) && defined(_M_ARM)
+    kdSetError(KD_EOPNOTSUPP);
+    return -1;
+#elif defined(_MSC_VER) || defined(__MINGW32__)
     HCRYPTPROV provider = 0;
     KDboolean error = !CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
     if(error == 0)
@@ -1803,9 +1801,6 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
         return -1;
     }
     return 0;
-#else
-    kdAssert(0);
-    return -1;
 #endif
 }
 
