@@ -128,7 +128,7 @@ ctest_build()
 ctest_test()
 ctest_submit(PARTS Start Configure Build Test)
 
-# Code coverage
+# Code coverage analysis
 set(CTEST_CUSTOM_COVERAGE_EXCLUDE ${CTEST_CUSTOM_COVERAGE_EXCLUDE} "/distribution/" "/examples/" "/thirdparty/" "/tests/" "/cov-int/" "/CMakeFiles/" "/usr/")
 if(CC_NAME STREQUAL "gcc")
     find_program(CTEST_COVERAGE_COMMAND NAMES gcov-${CC_VERSION})
@@ -164,7 +164,7 @@ if(CTEST_COVERAGE_COMMAND)
     ctest_submit(PARTS Coverage)
 endif()
 
-# Memory check (Valgrind)
+# Dynamic analysis (Valgrind)
 find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
 if(CTEST_MEMORYCHECK_COMMAND)
     set(CTEST_MEMORYCHECK_TYPE "Valgrind")
@@ -180,7 +180,8 @@ if(CTEST_MEMORYCHECK_COMMAND)
     set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "")
 endif()
 
-# Memory check (ASan)
+# Dynamic analysis (ASan)
+# ASan was introduced in GCC 4.8 / Clang 3.1
 if(CC_NAME STREQUAL "gcc")
     if(CC_VERSION VERSION_GREATER 4.8 OR CC_VERSION VERSION_EQUAL 4.8)
         set(CTEST_MEMORYCHECK_TYPE "AddressSanitizer")
@@ -198,7 +199,9 @@ if(CTEST_MEMORYCHECK_TYPE STREQUAL "AddressSanitizer")
     ctest_submit(PARTS MemCheck)
 endif()
 
-# Memory check (TSan)
+# Dynamic analysis(TSan)
+# TSan was introduced in GCC 4.8 / Clang 3.2
+# TSan works with non-pie builds starting GCC 5 / Clang 3.7
 if(CC_NAME STREQUAL "gcc")
     if(CC_VERSION VERSION_GREATER 5 OR CC_VERSION VERSION_EQUAL 5)
         set(CTEST_MEMORYCHECK_TYPE "ThreadSanitizer")
@@ -217,7 +220,9 @@ if(CTEST_MEMORYCHECK_TYPE STREQUAL "ThreadSanitizer")
     ctest_submit(PARTS MemCheck)
 endif()
 
-# Memory check (UBSan)
+# Dynamic analysis (UBSan)
+# UBan was introduced in GCC 4.9 / Clang 3.3
+# UBSan respects log_path starting Clang 3.7
 if(CC_NAME STREQUAL "gcc")
     if(CC_VERSION VERSION_GREATER 4.9 OR CC_VERSION VERSION_EQUAL 4.9)
         #set(CTEST_MEMORYCHECK_TYPE "UndefinedBehaviorSanitizer")
@@ -237,7 +242,8 @@ if(CTEST_MEMORYCHECK_TYPE STREQUAL "UndefinedBehaviorSanitizer")
     ctest_submit(PARTS MemCheck)
 endif()
 
-# Memory check (MSan)
+# Dynamic analysis (MSan)
+# MSan was introduced in Clang 3.3
 if(CC_NAME STREQUAL "clang")
     if(CC_VERSION VERSION_GREATER 3.3 OR CC_VERSION VERSION_EQUAL 3.3)
         set(CTEST_MEMORYCHECK_TYPE "MemorySanitizer")
