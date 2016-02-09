@@ -23,6 +23,11 @@
 
 language: c
 
+env:
+  global:
+    #Intel C compiler
+    secure: "Un22uiwuvLR2IA7YNW1VDSEP8OG3q6N4bZDg5Dyrm5a9t2yeFQR7qr4WEvLGTH1CN274XsrKRyDpW7VT24QLsBGo9TQ1gJBijt3a+cxlNn7ABdPcQTRGT32q5g+QKNMpgKWyJ5TRIRPdfnjp2KSwDt/YSx3Hest4K6JSRMwTbU4="
+
 matrix:
   include:
     - os: linux
