@@ -570,13 +570,9 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     ExitThread(result);
 #endif
 #if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable:4127)
+#pragma warning(suppress:4127)
 #endif
     while(1);
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */

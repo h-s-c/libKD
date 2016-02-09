@@ -93,7 +93,15 @@
 #endif
 
 #ifdef KD_NDEBUG
-    #define kdAssert(c) do { (void) sizeof ((c)) ; } while (0)
+    #if defined(_MSC_VER)
+        #define SUPRESS_WARNING __pragma warning(suppress:4127)
+    #else
+        #define SUPRESS_WARNING
+    #endif
+    #define kdAssert(c) do { (void) sizeof ((c)) ; } \
+                        SUPRESS_WARNING \
+                        while (0)
+    #undef SUPRESS_WARNING
 #else
     #include <assert.h>
     #define kdAssert(c) assert(c)
