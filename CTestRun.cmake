@@ -126,7 +126,7 @@ ctest_start(Continuous)
 ctest_configure()
 ctest_build()
 ctest_test()
-ctest_submit(PARTS Start Configure Build Test)
+ctest_submit(PARTS Configure Build Test)
 
 # Coverage
 set(CTEST_CUSTOM_COVERAGE_EXCLUDE ${CTEST_CUSTOM_COVERAGE_EXCLUDE} "/distribution/" "/examples/" "/thirdparty/" "/tests/" "/cov-int/" "/CMakeFiles/" "/usr/")
@@ -256,5 +256,3 @@ if(CTEST_MEMORYCHECK_TYPE STREQUAL "UndefinedBehaviorSanitizer")
     ctest_memcheck(APPEND)
     ctest_submit(PARTS MemCheck)
 endif()
-
-ctest_submit(PARTS Submit)
