@@ -23,11 +23,6 @@
 
 language: c
 
-env:
-  global:
-    #Intel C compiler
-    secure: "Un22uiwuvLR2IA7YNW1VDSEP8OG3q6N4bZDg5Dyrm5a9t2yeFQR7qr4WEvLGTH1CN274XsrKRyDpW7VT24QLsBGo9TQ1gJBijt3a+cxlNn7ABdPcQTRGT32q5g+QKNMpgKWyJ5TRIRPdfnjp2KSwDt/YSx3Hest4K6JSRMwTbU4="
-
 matrix:
   include:
     - os: linux
@@ -112,13 +107,17 @@ matrix:
 
     - os: linux
       compiler: icc
-      sudo: false
-      before_install: ['wget -q -O /dev/stdout "https://raw.githubusercontent.com/nemequ/icc-travis/master/install-icc.sh" | /bin/sh']
-      before_script: ['source ~/.bashrc']
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['cmake', 'cmake-data', 'valgrind']
+      sudo: required
+      dist: trusty
+      env:
+        secure: "Un22uiwuvLR2IA7YNW1VDSEP8OG3q6N4bZDg5Dyrm5a9t2yeFQR7qr4WEvLGTH1CN274XsrKRyDpW7VT24QLsBGo9TQ1gJBijt3a+cxlNn7ABdPcQTRGT32q5g+QKNMpgKWyJ5TRIRPdfnjp2KSwDt/YSx3Hest4K6JSRMwTbU4="
+      before_install:
+        - sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
+        - sudo apt-get -y update
+        - sudo apt-get install -y cmake valgrind
+        - wget -q -O /dev/stdout "https://raw.githubusercontent.com/nemequ/icc-travis/master/install-icc.sh" | /bin/sh
+      before_script:
+        - source ~/.bashrc
 
     - os: osx
       compiler: clang
