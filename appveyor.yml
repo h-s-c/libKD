@@ -26,8 +26,9 @@ matrix:
 
 before_build:
   - git submodule update --init --recursive --quiet
-  - appveyor DownloadFile http://opencppcoverage.codeplex.com/downloads/get/1539055 -Filename OpenCppCoverageSetup-x64-0.9.4.1.exe
-  - OpenCppCoverageSetup-x64-0.9.4.1.exe /verysilent /norestart /suppressmsgboxes
+  - appveyor DownloadFile https://github.com/h-s-c/libKD/releases/download/v0.0/OpenCppCoverage.7z
+  - 7z x > nul
+  - set PATH=%PATH%;%cd%\OpenCppCoverage
 
 build_script:
   - ctest -VV --output-on-failure -S CTestRun.cmake
