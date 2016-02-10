@@ -196,7 +196,7 @@ if(CTEST_MEMORYCHECK_COMMAND)
     ctest_configure(OPTIONS "-DKD_BUILD_CI_FLAGS=-fno-omit-frame-pointer")
     ctest_build()
     ctest_test()
-    ctest_memcheck(PARTS Configure Build Test Memcheck)
+    ctest_memcheck()
     ctest_submit()
 
     set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=helgrind --read-var-info=yes")
