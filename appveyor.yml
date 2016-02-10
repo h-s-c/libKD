@@ -26,7 +26,7 @@ matrix:
 
 before_build:
   - git submodule update --init --recursive --quiet
-  - curl -fsSLJO http://opencppcoverage.codeplex.com/downloads/get/1539055
+  - appveyor DownloadFile http://opencppcoverage.codeplex.com/downloads/get/1539055 -Filename OpenCppCoverageSetup-x64-0.9.4.1.exe
   - OpenCppCoverageSetup-x64-0.9.4.1.exe /verysilent /norestart
 
 build_script:
