@@ -26,6 +26,8 @@ matrix:
 
 before_build:
   - git submodule update --init --recursive --quiet
+  - appveyor DownloadFile https://opencppcoverage.codeplex.com/downloads/get/1539055
+  - OpenCppCoverageSetup-x64-0.9.4.1.exe /verysilent /norestart
 
 build_script:
   - ctest -VV --output-on-failure -S CTestRun.cmake
