@@ -27,7 +27,7 @@ matrix:
 before_build:
   - git submodule update --init --recursive --quiet
   - appveyor DownloadFile https://github.com/h-s-c/libKD/releases/download/v0.0/OpenCppCoverage.7z
-  - 7z x > nul
+  - 7z x OpenCppCoverage.7z > nul
   - set PATH=%PATH%;%cd%\OpenCppCoverage
 
 build_script:
