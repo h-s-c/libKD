@@ -1,8 +1,8 @@
 set(CTEST_CUSTOM_COVERAGE_EXCLUDE
-    "/distribution/"
-    "/examples/"
+    "/example/"
+    "/include/"
+    "/test/"
     "/thirdparty/"
-    "/tests/"
     "/cov-int/"
     "/CMakeFiles/"
     "/usr/")

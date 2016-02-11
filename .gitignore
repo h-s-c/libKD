@@ -1,6 +1,5 @@
 /.idea
 /build
-/distribution/KD/kdplatform.h
 /thirdparty/gles_amd
 /thirdparty/gles_angle
 /thirdparty/gles_mali
