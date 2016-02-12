@@ -1771,7 +1771,7 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 }
 
 /* kdCryptoRandom: Return random data. */
-KD_API KDint KD_APIENTRY kdCryptoRandom(KDuint8 *buf, KDsize buflen)
+KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize buflen)
 {
 #if defined(_MSC_VER) && defined(_M_ARM)
     kdSetError(KD_EOPNOTSUPP);
