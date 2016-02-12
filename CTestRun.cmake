@@ -1,3 +1,11 @@
+if(UNIX)
+    # # Required by CTEST_COVERAGE_EXTRA_FLAGS
+    cmake_minimum_required(VERSION 3.1)
+else()
+    # # Required by COBERTURADIR
+    cmake_minimum_required(VERSION 3.5)
+endif()
+
 if(NOT DEFINED ENV{CI})
     message(FATAL_ERROR "Not a CI server.")
 endif()
@@ -102,11 +110,7 @@ elseif(DEFINED ENV{GIT_COMMIT} AND DEFINED ENV{BUILD_NUMBER} AND DEFINED ENV{WOR
 endif()
 set(CI_BUILD_NAME "${CC_NAME}-${CC_VERSION}-${CC_ARCH}")
 
-if(WIN32)
-    set(CTEST_BINARY_DIRECTORY "${CTEST_SOURCE_DIRECTORY}\\build")
-else()
-    set(CTEST_BINARY_DIRECTORY "${CTEST_SOURCE_DIRECTORY}/build")
-endif()
+set(CTEST_BINARY_DIRECTORY "${CTEST_SOURCE_DIRECTORY}/build")
 
 set(CTEST_CONFIGURATION_TYPE "Release")
 set(CTEST_BUILD_NAME "${CI_BUILD_NAME}-release")
@@ -176,8 +180,8 @@ if(CTEST_COVERAGE_COMMAND)
             file(WRITE ${CTEST_BINARY_DIRECTORY}/Debug/${OCC_TEST}Coverage.xml ${OCC_TESTXML})
             string(FIND ${OCC_TESTS} "#" OCC_ABORT)
         endwhile()
-        exec_program(python ${CTEST_SOURCE_DIRECTORY} ARGS coverage_merge_script.py -p "${CTEST_BINARY_DIRECTORY}\\Debug" -o "${CTEST_BINARY_DIRECTORY}\\Debug\\coverage.xml")
-        set(ENV{COBERTURADIR} "${CTEST_BINARY_DIRECTORY}\\Debug")
+        exec_program(python ${CTEST_SOURCE_DIRECTORY} ARGS coverage_merge_script.py -p "${CTEST_BINARY_DIRECTORY}/Debug" -o "${CTEST_BINARY_DIRECTORY}/Debug/coverage.xml")
+        set(ENV{COBERTURADIR} "${CTEST_BINARY_DIRECTORY}/Debug")
     endif()
     ctest_coverage()
     ctest_submit()

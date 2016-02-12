@@ -29,7 +29,7 @@
 # Emscripten: $EMSCRIPTEN/cmake/Modules/platform/Emscripten.cmake
 ###############################################################################
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.0)
 cmake_policy(SET CMP0025 NEW)
 
 include(CheckIncludeFiles)
