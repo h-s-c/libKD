@@ -1165,7 +1165,14 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         KDEventInputKeyVEN *keyevent = (KDEventInputKeyVEN *)(&event->data);
 
                         /* Press or release */
+                        #if defined (_MSC_VER)
+                        #pragma warning(push)
+                        #pragma warning(disable:6313)
+                        #endif
                         if(raw->data.keyboard.Flags & RI_KEY_MAKE)
+                        #if defined (_MSC_VER)
+                        #pragma warning(pop)
+                        #endif
                         {
                             keyevent->flags = KD_KEY_PRESS_VEN;
                         }
