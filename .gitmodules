@@ -7,3 +7,6 @@
 [submodule "thirdparty/qfpc"]
 	path = thirdparty/qfpc
 	url = https://github.com/procedural/quatFirstPersonCamera.git
+[submodule "thirdparty/inttypes"]
+	path = thirdparty/inttypes
+	url = https://github.com/h-s-c/inttypes.git
