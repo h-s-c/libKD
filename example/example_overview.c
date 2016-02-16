@@ -22,12 +22,15 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
+#include <KD/kdext.h>
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 
 /* Example with eventloop, timer and callback*/
 static KDboolean quit = 0;
-void KD_APIENTRY callback(const KDEvent *event)
+static void KD_APIENTRY kd_callback(const KDEvent *event)
 {
     switch(event->type)
     {
@@ -43,6 +46,11 @@ void KD_APIENTRY callback(const KDEvent *event)
         }
     }
 }
+static void gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+    kdLogMessage(message); kdLogMessage("\n");
+}
+
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     kdLogMessage("Starting example\n");
@@ -68,6 +76,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     const EGLint egl_context_attributes[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
         EGL_NONE,
     };
 
@@ -93,17 +102,25 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
 
     kdLogMessage("-----GLES2-----\n");
-    kdLogMessage("Vendor: "); kdLogMessage((const char*)glGetString(GL_VENDOR)); kdLogMessage("\n");
-    kdLogMessage("Version: "); kdLogMessage((const char*)glGetString(GL_VERSION)); kdLogMessage("\n");
-    kdLogMessage("Renderer: "); kdLogMessage((const char*)glGetString(GL_RENDERER)); kdLogMessage("\n");
-    kdLogMessage("Extensions: "); kdLogMessage((const char*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
+    kdLogMessage("Vendor: "); kdLogMessage((const KDchar*)glGetString(GL_VENDOR)); kdLogMessage("\n");
+    kdLogMessage("Version: "); kdLogMessage((const KDchar*)glGetString(GL_VERSION)); kdLogMessage("\n");
+    kdLogMessage("Renderer: "); kdLogMessage((const KDchar*)glGetString(GL_RENDERER)); kdLogMessage("\n");
+    kdLogMessage("Extensions: "); kdLogMessage((const KDchar*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
 
-    kdInstallCallback(&callback, KD_EVENT_QUIT, KD_NULL);
+    if(kdStrstrVEN((const KDchar*)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
+    {
+        glEnable(GL_DEBUG_OUTPUT_KHR);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+        PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
+        glDebugMessageCallback(&gl_callback, KD_NULL);
+    }
+
+    kdInstallCallback(&kd_callback, KD_EVENT_QUIT, KD_NULL);
     KDTimer* kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
 
-    float r = 0.0f;
-    float g = 1.0f;
-    float b = 0.0f;
+    KDfloat32 r = 0.0f;
+    KDfloat32 g = 1.0f;
+    KDfloat32 b = 0.0f;
 
     while(!quit)
     {

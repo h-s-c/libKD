@@ -3368,6 +3368,16 @@ KD_API void* KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
 }
 
 /******************************************************************************
+ * String and memory functions (extensions)
+ ******************************************************************************/
+
+/* kdStrstr: Locate substring. */
+KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
+{
+    return strstr(str1, str2);
+}
+
+/******************************************************************************
  * Thirdparty
  ******************************************************************************/
 
