@@ -1676,7 +1676,7 @@ int WINAPI WinMainCRTStartup(void)
 #else
 KD_API int main(int argc, char **argv)
 {
-    return __KDPreMain(0, KD_NULL);
+    return __KDPreMain(argc, argv);
 }
 #endif
 
