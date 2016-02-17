@@ -151,7 +151,7 @@
     #include <sys/stat.h>
     #include <dirent.h>
     /* MSVC 12 and lower is missing some things */
-    #if _MSC_VER <= 1800
+    #if defined(_MSC_VER) && _MSC_VER <= 1800
         struct timespec
         {
             long tv_sec;
@@ -193,7 +193,7 @@
             CloseHandle(timer);
             return 0;
         }
-        #if _MSC_VER == 1900
+        #if defined(_MSC_VER) && _MSC_VER == 1900
         typedef INIT_ONCE once_flag;
         void call_once(once_flag* flag, void(*func)(void))
         {
@@ -904,7 +904,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 /* __KDSleep: Sleep for nanoseconds. */
 void __KDSleep(KDust timeout)
 {
-#if _MSC_VER <= 1800
+#if defined(_MSC_VER) && _MSC_VER <= 1800
 #define LONG_CAST (long)
 #else
 #define LONG_CAST
@@ -1649,7 +1649,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     kdThreadDetach(thread);
 }
 #else
-KD_API int main(int argc, char **argv)
+KD_API int __KDPreMain(int argc, char **argv)
 {
     __KDMainArgs mainargs = {0};
     mainargs.argc = argc;
@@ -1667,11 +1667,16 @@ KD_API int main(int argc, char **argv)
 #if defined(KD_FREESTANDING) && defined(__MINGW32__)
 int WINAPI mainCRTStartup(void)
 {
-    return main(0, KD_NULL);
+    return __KDPreMain(0, KD_NULL);
 }
 int WINAPI WinMainCRTStartup(void)
 {
-    return main(0, KD_NULL);
+    return __KDPreMain(0, KD_NULL);
+}
+#else
+KD_API int main(int argc, char **argv)
+{
+    return __KDPreMain(0, KD_NULL);
 }
 #endif
 
@@ -1692,7 +1697,7 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
-#if _MSC_VER <= 1800
+#if defined(_MSC_VER) && _MSC_VER <= 1800
 /* Warning is function scope */
 #pragma warning(push)
 #pragma warning(disable:4756)
@@ -1708,7 +1713,7 @@ KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
     }
     return retval;
 }
-#if _MSC_VER <= 1800
+#if defined(_MSC_VER) && _MSC_VER <= 1800
 #pragma warning(pop)
 #endif
 
