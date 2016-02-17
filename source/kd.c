@@ -1649,7 +1649,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     kdThreadDetach(thread);
 }
 #else
-KD_API int __KDPreMain(int argc, char **argv)
+static KDint __KDPreMain(KDint argc, KDchar **argv)
 {
     __KDMainArgs mainargs = {0};
     mainargs.argc = argc;
@@ -1674,7 +1674,7 @@ int WINAPI WinMainCRTStartup(void)
     return __KDPreMain(0, KD_NULL);
 }
 #else
-KD_API int main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     return __KDPreMain(argc, argv);
 }
