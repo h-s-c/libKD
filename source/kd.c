@@ -597,7 +597,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     if(error == EINVAL || error == ESRCH)
 #elif defined(KD_THREAD_WIN32)
     error = WaitForSingleObject(thread->nativethread, INFINITE);
-    GetExitCodeThread(thread->nativethread, result);
+    GetExitCodeThread(thread->nativethread, (LPDWORD)result);
     CloseHandle(thread->nativethread);
     if(error != 0)
 #else
@@ -656,7 +656,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #elif defined(KD_THREAD_POSIX)
     pthread_once((pthread_once_t *)once_control, init_routine);
 #elif defined(KD_THREAD_WIN32)
-    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, init_routine, NULL);
+    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, &init_routine, NULL);
 #else
     kdAssert(0);
 #endif
@@ -1661,6 +1661,17 @@ KD_API int main(int argc, char **argv)
     kdThreadJoin(mainthread, KD_NULL);
     kdThreadAttrFree(mainattr);
     return 0;
+}
+#endif
+
+#if defined(KD_FREESTANDING) && defined(__MINGW32__)
+int WINAPI mainCRTStartup(void)
+{
+    return main(0, KD_NULL);
+}
+int WINAPI WinMainCRTStartup(void)
+{
+    return main(0, KD_NULL);
 }
 #endif
 
