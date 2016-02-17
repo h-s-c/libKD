@@ -1594,10 +1594,13 @@ static void* __kdMainInjector( void *arg)
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
+    typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
+    HMODULE handle = GetModuleHandle(0);
+    KDMAIN kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
+    (*kdmain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
     typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
-	KDMAIN kdmain = KD_NULL;
+    KDMAIN kdmain = KD_NULL;
     void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
@@ -1674,7 +1677,7 @@ int WINAPI WinMainCRTStartup(void)
     return __KDPreMain(0, KD_NULL);
 }
 #else
-int main(int argc, char **argv)
+KD_API int KD_APIENTRY main(int argc, char **argv)
 {
     return __KDPreMain(argc, argv);
 }

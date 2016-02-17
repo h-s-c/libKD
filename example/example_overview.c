@@ -51,7 +51,7 @@ static void gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, 
     kdLogMessage(message); kdLogMessage("\n");
 }
 
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+KDint kdMain(KDint argc, const KDchar *const *argv)
 {
     kdLogMessage("Starting example\n");
 
