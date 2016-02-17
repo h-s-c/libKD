@@ -150,8 +150,8 @@
     #include <sys/types.h>
     #include <sys/stat.h>
     #include <dirent.h>
-    /* MSVC 12 is missing some things */
-    #if _MSC_VER == 1800
+    /* MSVC 12 and lower is missing some things */
+    #if _MSC_VER <= 1800
         struct timespec
         {
             long tv_sec;
@@ -904,7 +904,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 /* __KDSleep: Sleep for nanoseconds. */
 void __KDSleep(KDust timeout)
 {
-#if _MSC_VER == 1800
+#if _MSC_VER <= 1800
 #define LONG_CAST (long)
 #else
 #define LONG_CAST
@@ -1692,7 +1692,7 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
-#if _MSC_VER == 1800
+#if _MSC_VER <= 1800
 /* Warning is function scope */
 #pragma warning(push)
 #pragma warning(disable:4756)
@@ -1708,7 +1708,7 @@ KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
     }
     return retval;
 }
-#if _MSC_VER == 1800
+#if _MSC_VER <= 1800
 #pragma warning(pop)
 #endif
 
