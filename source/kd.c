@@ -656,7 +656,9 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #elif defined(KD_THREAD_POSIX)
     pthread_once((pthread_once_t *)once_control, init_routine);
 #elif defined(KD_THREAD_WIN32)
-    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, &init_routine, NULL);
+    void* pfunc = KD_NULL;
+    kdMemcpy(&pfunc, &init_routine, sizeof(init_routine));
+    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, pfunc, NULL);
 #else
     kdAssert(0);
 #endif
@@ -934,7 +936,7 @@ void __KDSleep(KDust timeout)
 #elif defined(KD_THREAD_WIN32)
     HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
     if(!timer) { kdAssert(0); }
-    LARGE_INTEGER li = {0};
+    LARGE_INTEGER li = {{0}};
     li.QuadPart = -(timeout/100);
     if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) { kdAssert(0); }
     WaitForSingleObject(timer, INFINITE);
@@ -1677,7 +1679,7 @@ int WINAPI WinMainCRTStartup(void)
     return __KDPreMain(0, KD_NULL);
 }
 #else
-KD_API int KD_APIENTRY main(int argc, char **argv)
+KD_API int main(int argc, char **argv)
 {
     return __KDPreMain(argc, argv);
 }
