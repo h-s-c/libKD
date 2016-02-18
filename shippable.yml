@@ -6,4 +6,4 @@ before_script:
   - shippable_retry sudo apt-get install -y gcc cmake valgrind
 
 script:
-  - ctest -VV --output-on-failure -S CTestRun.cmake
+  - ctest -VV -S CTestRun.cmake

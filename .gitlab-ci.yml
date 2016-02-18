@@ -7,4 +7,4 @@ before_script:
 
 default:
   script:
-    - ctest -VV --output-on-failure -S CTestRun.cmake
+    - ctest -VV -S CTestRun.cmake

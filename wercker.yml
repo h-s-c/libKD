@@ -14,4 +14,4 @@ build:
     - script:
         name: build code
         code: |
-          ctest -VV --output-on-failure -S CTestRun.cmake
+          ctest -VV -S CTestRun.cmake
