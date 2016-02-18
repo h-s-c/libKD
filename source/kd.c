@@ -1590,18 +1590,17 @@ static void* __kdMainInjector( void *arg)
 
     __kd_mainthread = __kd_thread;
 
+    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
 #ifdef __ANDROID__
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
     kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
     HMODULE handle = GetModuleHandle(0);
     KDMAIN kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
     (*kdmain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
-    typedef KDint(*KDMAIN)(KDint argc, const KDchar *const *argv);
     KDMAIN kdmain = KD_NULL;
     void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
@@ -1654,7 +1653,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     kdThreadDetach(thread);
 }
 #else
-static KDint __KDPreMain(KDint argc, KDchar **argv)
+KD_API int main(int argc, char **argv)
 {
     __KDMainArgs mainargs = {0};
     mainargs.argc = argc;
@@ -1669,20 +1668,17 @@ static KDint __KDPreMain(KDint argc, KDchar **argv)
 }
 #endif
 
-#if defined(KD_FREESTANDING) && defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(KD_FREESTANDING)
 int WINAPI mainCRTStartup(void)
 {
-    return __KDPreMain(0, KD_NULL);
+    return main(0, KD_NULL);
 }
 int WINAPI WinMainCRTStartup(void)
 {
-    return __KDPreMain(0, KD_NULL);
+    return main(0, KD_NULL);
 }
-#else
-KD_API int main(int argc, char **argv)
-{
-    return __KDPreMain(argc, argv);
-}
+#endif
 #endif
 
 /* kdExit: Exit the application. */

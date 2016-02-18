@@ -46,7 +46,7 @@ static void KD_APIENTRY kd_callback(const KDEvent *event)
         }
     }
 }
-static void gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
     kdLogMessage(message); kdLogMessage("\n");
 }
