@@ -41,7 +41,7 @@ void* test_func( void *arg)
     {
         kdThreadOnce(&test_once, test_once_func);
     }
-	return 0;
+    return 0;
 }
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
@@ -58,7 +58,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     }
     for(KDint k = 0 ; k < THREAD_COUNT ; k++)
     {
-		kdThreadJoin(threads[k], KD_NULL);
+        kdThreadJoin(threads[k], KD_NULL);
     }
 
     KDint test = kdAtomicIntLoadVEN(test_once_count);
