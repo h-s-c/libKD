@@ -28,14 +28,14 @@
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
-KDAtomicIntVEN* test_once_count = KD_NULL;
+static KDAtomicIntVEN* test_once_count = KD_NULL;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func(void)
 {
     kdAtomicIntFetchAddVEN(test_once_count, 1);
 }
 
-void* test_func( void *arg)
+static void* test_func( void *arg)
 {
     for(KDint i = 0 ; i < THREAD_COUNT ;i++)
     {
@@ -44,7 +44,7 @@ void* test_func( void *arg)
 	return 0;
 }
 
-KDint kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     test_once_count = kdAtomicIntCreateVEN(0);
     KDThread* threads[THREAD_COUNT] = {KD_NULL};

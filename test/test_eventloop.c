@@ -25,7 +25,7 @@
 
 /* Test if we can can communicate properly with event loops in different threads. */
 #define THREAD_COUNT 10
-void* test_func( void *arg)
+static void* test_func( void *arg)
 {
     for(;;)
     {
@@ -42,7 +42,7 @@ void* test_func( void *arg)
 	return 0;
 }
 
-KDint kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     static KDThread* threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0 ; i < THREAD_COUNT ;i++)
