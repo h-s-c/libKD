@@ -94,7 +94,7 @@ matrix:
         - sudo ./install-icc.sh --dest /opt/intel
       before_script:
         - source /opt/intel/bin/compilervars.sh intel64
-        - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/lib/intel64_lin:$LD_LIBRARY_PATH
+        - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/opt/intel/lib/intel64_lin:$LD_LIBRARY_PATH
 
     - os: osx
       compiler: clang
