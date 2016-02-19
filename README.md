@@ -4,6 +4,8 @@
 [![Zlib License](http://img.shields.io/:license-zlib-blue.svg)](http://opensource.org/licenses/Zlib)  
 
 ###Status
+[![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=Coverity Scan)](https://scan.coverity.com/projects/h-s-c-libkd)  
+  
 [![Travis CI](https://img.shields.io/travis/h-s-c/libKD.svg?label=Travis CI)](https://travis-ci.org/h-s-c/libKD)  
 [![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libkd.svg?label=AppVeyor CI)](https://ci.appveyor.com/project/h-s-c/libkd)  
 [![Shippable CI](https://img.shields.io/shippable/54d725b35ab6cc13528b3229.svg?label=Shippable CI)](https://app.shippable.com/projects/54d725b35ab6cc13528b3229)  
