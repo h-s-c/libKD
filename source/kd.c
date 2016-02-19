@@ -1322,6 +1322,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         kdPostEvent(event);
                     }
+                    break;
                 }
                 case MotionNotify:
                 {
@@ -1448,13 +1449,14 @@ const char* __kdAppName(const char *argv0)
 {
 #ifdef __GLIBC__
     return __progname;
-#endif
+#else
     /* TODO: argv[0] is not a reliable way to get the appname */
     if(argv0 == KD_NULL)
     {
         return "";
     }
     return argv0;
+#endif
 }
 
 #ifdef __ANDROID__
@@ -1612,6 +1614,7 @@ static void* __kdMainInjector( void *arg)
         kdAssert(0);
     }
     (*kdmain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
+    dlclose(app);
 #endif
 
 #ifdef KD_VFS_SUPPORTED
