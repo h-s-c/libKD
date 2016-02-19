@@ -91,9 +91,10 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['cmake', 'cmake-data', 'valgrind']
       before_install:
-        - wget -q -O /dev/stdout "https://raw.githubusercontent.com/nemequ/icc-travis/master/install-icc.sh" | /bin/sh
+        - sudo ./install-icc.sh --dest /opt/intel
       before_script:
-        - source ~/.bashrc
+        - source /opt/intel/bin/compilervars.sh intel64
+        - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/lib/intel64_lin:$LD_LIBRARY_PATH
 
     - os: osx
       compiler: clang
