@@ -204,6 +204,9 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode6.4
+      before_install:
+        - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall)" --force
+        - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
       install: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
       script: ctest -VV -S CTestRun.cmake
 
