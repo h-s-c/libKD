@@ -3,6 +3,7 @@ language: c
 matrix:
   include:
     - os: linux
+      compiler: gcc
       dist: precise
       sudo: false
       deploy:
@@ -15,10 +16,15 @@ matrix:
         on:
           tag: true
         skip_cleanup: true
-      before_script: cmake --build . --config Release
-      script: cpack -C Release
+      script:
+        - if[$TRAVIS_TAG]; then 
+            mkdir build && cd build;
+            cmake .. && cmake --build . --config Release;
+            cpack -C Release;
+          fi
 
     - os: linux
+      compiler: gcc
       dist: trusty
       sudo: required
       deploy:
@@ -31,8 +37,12 @@ matrix:
         on:
           tag: true
         skip_cleanup: true
-      before_script: cmake --build . --config Release
-      script: cpack -C Release
+      script:
+        - if[$TRAVIS_TAG]; then 
+            mkdir build && cd build;
+            cmake .. && cmake --build . --config Release;
+            cpack -C Release;
+          fi
 
     - os: linux
       compiler: gcc-6
