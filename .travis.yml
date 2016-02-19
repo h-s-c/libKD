@@ -208,7 +208,7 @@ matrix:
       before_install:
         - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall)" < /dev/null
         - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
-      install: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew install cmake', 'brew install valgrind']
       script: ctest -VV -S CTestRun.cmake
 
     - os: osx
@@ -233,4 +233,3 @@ matrix:
     - compiler: gcc-6       # Upstream Travis
     - compiler: clang-3.8   # Upstream LLVM
     - compiler: clang-3.7   # Upstream LLVM
-    - osx_image: xcode6.4   # Upstream Travis
