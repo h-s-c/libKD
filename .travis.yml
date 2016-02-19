@@ -35,7 +35,7 @@ matrix:
         skip_cleanup: true
       before_script: mkdir build && cd build
       script:
-        - if[$TRAVIS_TAG]; then 
+        - if [ $TRAVIS_TAG ]; then 
             cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .. && cmake --build . --config Release;
             cpack -C Release;
           else exit 0; fi;
@@ -56,7 +56,7 @@ matrix:
         skip_cleanup: true
       before_script: mkdir build && cd build
       script:
-        - if[$TRAVIS_TAG]; then 
+        - if [ $TRAVIS_TAG ]; then 
             cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .. && cmake --build . --config Release;
             cpack -C Release;
           else exit 0; fi;
