@@ -16,7 +16,7 @@ matrix:
       before_script: mkdir build && cd build
       script:
         - if [ "$TRAVIS_BRANCH" = "coverity" ]; then 
-            curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/sh;
+            curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
           else true; fi;
 
     - os: linux
