@@ -17,6 +17,7 @@ matrix:
       script:
         - if [ "$TRAVIS_BRANCH" = "coverity" ]; then 
             curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
+            cat cov-int/scm_log.txt;
           else true; fi;
 
     - os: linux
