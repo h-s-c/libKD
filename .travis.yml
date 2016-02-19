@@ -3,144 +3,199 @@ language: c
 matrix:
   include:
     - os: linux
+      dist: precise
+      sudo: false
+      deploy:
+        provider: packagecloud
+        dist: "ubuntu/precise"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        on:
+          tag: true
+        skip_cleanup: true
+      before_script: cmake --build . --config Release
+      script: cpack -C Release
+
+    - os: linux
+      dist: trusty
+      sudo: required
+      deploy:
+        provider: packagecloud
+        dist: "ubuntu/trusty"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        on:
+          tag: true
+        skip_cleanup: true
+      before_script: cmake --build . --config Release
+      script: cpack -C Release
+
+    - os: linux
       compiler: gcc-6
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['gcc-6', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: gcc-5
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['gcc-5', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: gcc-4.9
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['gcc-4.9', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: gcc-4.8
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['gcc-4.8', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: gcc-4.7
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['gcc-4.7', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: gcc-4.6
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['gcc-4.6', 'cmake', 'cmake-data', 'valgrind', 'valgrind']
+          packages: ['gcc-4.6', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: clang-3.8
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise', 'george-edison55-precise-backports']
           packages: ['clang-3.8', 'llvm-3.8', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: clang-3.7
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.7', 'george-edison55-precise-backports']
           packages: ['clang-3.7', 'llvm-3.7', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: clang-3.6
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.6', 'george-edison55-precise-backports']
           packages: ['clang-3.6', 'llvm-3.6', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: clang-3.5
+      dist: precise
       sudo: false
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.5', 'george-edison55-precise-backports']
           packages: ['clang-3.5', 'llvm-3.5', 'cmake', 'cmake-data', 'valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: linux
       compiler: icc
+      dist: precise
       sudo: required
-      dist: trusty
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['cmake', 'cmake-data', 'valgrind']
-      before_install:
-        - sudo ./install-icc.sh --components icc --dest /opt/intel
-      before_script:
-        - source /opt/intel/bin/compilervars.sh intel64
-        - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/opt/intel/lib/intel64_lin:$LD_LIBRARY_PATH
+      install: sudo ./install-icc.sh --components icc --dest /opt/intel
+      before_script: source ~/.bashrc
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: xcode7.3
-      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: xcode7.2
-      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: xcode7.1
-      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: xcode7
-      before_script: ['brew update', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: xcode6.4
-      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: beta-xcode6.3
-      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: beta-xcode6.2
-      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
     - os: osx
       compiler: clang
       osx_image: xcode6.1
-      before_script: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      install: ['brew update', 'brew unlink cmake', 'brew install cmake', 'brew install valgrind']
+      script: ctest -VV -S CTestRun.cmake
 
   allow_failures:
     - compiler: gcc-6       # Upstream Travis
     - compiler: clang-3.8   # Upstream LLVM
     - compiler: clang-3.7   # Upstream LLVM
     - osx_image: xcode6.4   # Upstream Travis
-
-script:
-  - ctest -VV -S CTestRun.cmake
