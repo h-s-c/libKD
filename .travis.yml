@@ -170,7 +170,9 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['cmake', 'cmake-data', 'valgrind']
       install: sudo ./install-icc.sh --components icc --dest /opt/intel
-      before_script: source ~/.bashrc
+      before_script:
+        - source /opt/intel/bin/compilervars.sh intel64
+        - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/opt/intel/lib/intel64_lin:$LD_LIBRARY_PATH
       script: ctest -VV -S CTestRun.cmake
 
     - os: osx
