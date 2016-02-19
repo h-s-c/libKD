@@ -46,10 +46,6 @@ if(DEFINED ENV{CI})
     set(KD_BUILD_CI "On")
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(KD_BUILD_DEBUG "On")
-endif()
-
 # Nvidia Tegra Nsight doesnt set this
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(ANDROID "On")

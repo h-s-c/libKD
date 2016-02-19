@@ -4,8 +4,25 @@ matrix:
   include:
     - os: linux
       compiler: gcc
+      dist: trusty
+      sudo: required
+      env:
+        secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
+      addons:
+        coverity_scan:
+          project:
+            name: "h-s-c/libKD"
+          notification_email: h-s-c@users.noreply.github.com
+          build_command_prepend: "cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .."
+          build_command:   "cmake --build . --config Debug"
+          branch_pattern: coverity
+      before_script: mkdir build && cd build
+      script: exit 0
+
+    - os: linux
+      compiler: gcc
       dist: precise
-      sudo: false
+      sudo: required
       deploy:
         provider: packagecloud
         dist: "ubuntu/precise"
@@ -16,9 +33,10 @@ matrix:
         on:
           tag: true
         skip_cleanup: true
+      before_script: mkdir build && cd build
       script:
         - if[$TRAVIS_TAG]; then 
-            mkdir build && cd build && cmake .. && cmake --build . --config Release;
+            cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .. && cmake --build . --config Release;
             cpack -C Release;
           else exit 0; fi;
 
@@ -36,9 +54,10 @@ matrix:
         on:
           tag: true
         skip_cleanup: true
+      before_script: mkdir build && cd build
       script:
         - if[$TRAVIS_TAG]; then 
-            mkdir build && cd build && cmake .. && cmake --build . --config Release;
+            cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .. && cmake --build . --config Release;
             cpack -C Release;
           else exit 0; fi;
 
