@@ -30,9 +30,10 @@ matrix:
         username: "h-s-c"
         token:
           secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        on:
-          tag: true
         skip_cleanup: true
+        on:
+          branch: release
+          tags: true
       before_script: mkdir build && cd build
       script:
         - if [ "$TRAVIS_TAG" ]; then 
@@ -51,9 +52,10 @@ matrix:
         username: "h-s-c"
         token:
           secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        on:
-          tag: true
         skip_cleanup: true
+        on:
+          branch: release
+          tags: true
       before_script: mkdir build && cd build
       script:
         - if [ "$TRAVIS_TAG" ]; then 
