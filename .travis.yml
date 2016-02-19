@@ -20,7 +20,7 @@ matrix:
         - if[$TRAVIS_TAG]; then 
             mkdir build && cd build && cmake .. && cmake --build . --config Release;
             cpack -C Release;
-          fi;
+          else exit 0; fi;
 
     - os: linux
       compiler: gcc
@@ -40,7 +40,7 @@ matrix:
         - if[$TRAVIS_TAG]; then 
             mkdir build && cd build && cmake .. && cmake --build . --config Release;
             cpack -C Release;
-          fi;
+          else exit 0; fi;
 
     - os: linux
       compiler: gcc-6
