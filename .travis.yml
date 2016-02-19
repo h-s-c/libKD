@@ -18,10 +18,9 @@ matrix:
         skip_cleanup: true
       script:
         - if[$TRAVIS_TAG]; then 
-            mkdir build && cd build;
-            cmake .. && cmake --build . --config Release;
+            mkdir build && cd build && cmake .. && cmake --build . --config Release;
             cpack -C Release;
-          fi
+          fi;
 
     - os: linux
       compiler: gcc
@@ -39,10 +38,9 @@ matrix:
         skip_cleanup: true
       script:
         - if[$TRAVIS_TAG]; then 
-            mkdir build && cd build;
-            cmake .. && cmake --build . --config Release;
+            mkdir build && cd build && cmake .. && cmake --build . --config Release;
             cpack -C Release;
-          fi
+          fi;
 
     - os: linux
       compiler: gcc-6
