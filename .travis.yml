@@ -91,7 +91,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['cmake', 'cmake-data', 'valgrind']
       before_install:
-        - sudo ./install-icc.sh --dest /opt/intel
+        - sudo ./install-icc.sh --components icc --dest /opt/intel
       before_script:
         - source /opt/intel/bin/compilervars.sh intel64
         - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/opt/intel/lib/intel64_lin:$LD_LIBRARY_PATH
@@ -140,7 +140,6 @@ matrix:
     - compiler: gcc-6       # Upstream Travis
     - compiler: clang-3.8   # Upstream LLVM
     - compiler: clang-3.7   # Upstream LLVM
-    - compiler: icc         # Upstream Intel (license issue)
     - osx_image: xcode6.4   # Upstream Travis
 
 script:

@@ -109,8 +109,8 @@ if [ -z "${COMPONENTS}" ]; then
     COMPONENTS="${COMPONENTS_ICC};intel-psf-intel__x86_64;intel-icsxe-pset;intel-ipsf__noarch;intel-ccompxe__noarch"
 fi
 
-INSTALLER="${TEMPORARY_FILES}/parallel_studio_xe_2016_online.sh"
-INSTALLER_URL="http://registrationcenter-download.intel.com/akdlm/irc_nas/7997/parallel_studio_xe_2016_online.sh"
+INSTALLER="${TEMPORARY_FILES}/parallel_studio_xe_2016_update2_online.sh"
+INSTALLER_URL="http://registrationcenter-download.intel.com/akdlm/irc_nas/8676/parallel_studio_xe_2016_update2_online.sh"
 SILENT_CFG="${TEMPORARY_FILES}/silent.cfg"
 SUCCESS_INDICATOR="${TEMPORARY_FILES}/icc-travis-success"
 
