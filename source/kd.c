@@ -1445,7 +1445,7 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
  ******************************************************************************/
 extern const char *__progname;
 static KDThread *__kd_mainthread = KD_NULL;
-const char* __kdAppName(const char *argv0)
+const char* __kdAppName(KD_UNUSED const char *argv0)
 {
 #ifdef __GLIBC__
     return __progname;
