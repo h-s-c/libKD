@@ -6,3 +6,6 @@ set(CTEST_CUSTOM_COVERAGE_EXCLUDE
     "/cov-int/"
     "/CMakeFiles/"
     "/usr/")
+
+set(CTEST_CUSTOM_ERROR_EXCEPTION
+    "clang: error: .* 'linker' input unused")
