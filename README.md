@@ -25,5 +25,8 @@
 -   Windows, Android, Linux, Web (ASM.js) support
 -   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
 
+###Compilers
+-   Visual C++ 2013/2015, GCC/MinGW, Clang/Xcode, Emscripten
+
 ###Dependencies
 -   EGL, OpenGL ES (samples)
