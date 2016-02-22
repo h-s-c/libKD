@@ -25,12 +25,19 @@ def download(url):
 
 def extract(filename):
     print "Extracting "+filename
-    if tarfile.is_tarfile(filename):
-        file = tarfile.TarFile(filename, mode="r:gz")
-        file.extractall()
-    elif zipfile.is_zipfile(filename):
-        file = zipfile.ZipFile(filename)
-        file.extractall()
+    if filename.endswith('.zip'):
+        opener, mode = zipfile.ZipFile, 'r'
+    elif filename.endswith('.tar.gz') or filename.endswith('.tgz'):
+        opener, mode = tarfile.open, 'r:gz'
+    elif filename.endswith('.tar.bz2') or filename.endswith('.tbz'):
+        opener, mode = tarfile.open, 'r:bz2'
+    else: 
+        raise ValueError, "Could not extract `%s` as no appropriate extractor is found" % filename
+    
+    file = opener(filename, mode)
+    try: file.extractall()
+    finally: file.close()
+
 
 def copy(source, dest):
     print "Copying to "+dest
@@ -55,7 +62,7 @@ if __name__ == "__main__":
         CMAKE_FILENAME = CMAKE_FILENAME_MACOSX
         CMAKE_SUFFIX = CMAKE_SUFFIX_UNIX
 
-    download(CMAKE_BASE_URL+CMAKE_FILENAME+CMAKE_SUFFIX)
+    #download(CMAKE_BASE_URL+CMAKE_FILENAME+CMAKE_SUFFIX)
     extract(CMAKE_FILENAME+CMAKE_SUFFIX)
     copy(CMAKE_FILENAME, "cmake")
 
