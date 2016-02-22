@@ -14,5 +14,4 @@ checkout:
 
 test:
   override:
-    - export PATH=`pwd`/ci/build/cmake/bin:${PATH}
-    - ctest -VV -S CTestRun.cmake
+    - PATH=`pwd`/ci/build/cmake/bin:${PATH} ctest -VV -S CTestRun.cmake
