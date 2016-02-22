@@ -22,12 +22,11 @@ def download(url):
     print "Downloading "+url
     filename = url.split("/")[-1]
     urllib.urlretrieve(url, filename)
-    sys.stdout.write("\n")
 
 def extract(filename):
     print "Extracting "+filename
     if tarfile.is_tarfile(filename):
-        file = tarfile.TarFile(filename, "r|gz")
+        file = tarfile.TarFile(filename, mode="r:gz")
         file.extractall()
     elif zipfile.is_zipfile(filename):
         file = zipfile.ZipFile(filename)
