@@ -5,6 +5,7 @@ import sys
 import platform
 import urllib
 import zipfile
+import tarfile
 import os
 import shutil
 
@@ -17,27 +18,26 @@ CMAKE_SUFFIX_UNIX = ".tar.gz"
 CMAKE_SUFFIX_WINDOWS = ".zip"
 CMAKE_DEST = "ci/build"
 
-def report(blocknr, blocksize, size):
-    current = blocknr*blocksize
-    sys.stdout.write("\rDownloading "+CMAKE_FILENAME+CMAKE_SUFFIX+" "+"{0:.2f}%".format(100.0*current/size))
-
 def download(url):
+    print "Downloading "+url
     filename = url.split("/")[-1]
-    urllib.urlretrieve(url, filename, report)
+    urllib.urlretrieve(url, filename)
     sys.stdout.write("\n")
 
 def extract(filename):
-    sys.stdout.write("Extracting "+filename)
-    file = zipfile.ZipFile(filename)
-    file.extractall()
-    sys.stdout.write("\n")
+    print "Extracting "+filename
+    if tarfile.is_tarfile(filename):
+        file = tarfile.TarFile(filename, "r|gz")
+        file.extractall()
+    elif zipfile.is_zipfile(filename):
+        file = zipfile.ZipFile(filename)
+        file.extractall()
 
 def copy(source, dest):
+    print "Copying to "+dest
     if os.path.exists(dest):
         shutil.rmtree(dest)
-    sys.stdout.write("Copying to "+dest)
     shutil.copytree(source, dest)
-    sys.stdout.write("\n")
 
 if __name__ == "__main__":
     if not os.path.exists(CMAKE_DEST):
