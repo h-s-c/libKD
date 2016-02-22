@@ -169,9 +169,15 @@ matrix:
       sudo: required
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['cmake', 'cmake-data', 'valgrind']
-      before_script: sudo /bin/sh `pwd`/ci/install_icc.sh
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['valgrind']
+      install: 
+        - sudo /bin/sh `pwd`/ci/install_icc.sh
+        - python ci/install_cmake.py
+      before_script: 
+        - source /opt/intel/bin/compilervars.sh intel64
+        - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/opt/intel/lib/intel64_lin:$LD_LIBRARY_PATH
+        - export PATH=`pwd`/ci/build/cmake/bin:${PATH}
       script: ctest -VV -S CTestRun.cmake
 
     - os: osx

@@ -27,7 +27,7 @@ COMPONENTS_GDB="intel-gdb-gt__x86_64;intel-gdb-gt-src__noarch;intel-gdb-gt-libel
 COMPONENTS_DAAL="intel-daal__x86_64;intel-daal-common__noarch"
 COMPONENTS_ICC="intel-icc-l-all__x86_64;intel-icc-l-ps-ss__x86_64;intel-icc-l-all-vars__noarch;intel-icc-l-all-common__noarch;intel-icc-l-ps-common__noarch;intel-icc-l-all-devel__x86_64;intel-icc-l-ps-devel__x86_64;intel-icc-l-ps-ss-devel__x86_64;${COMPONENTS_COMPILER_COMMON};${COMPONENTS_IPP};${COMPONENTS_OPENMP}"
 
-DESTINATION="${HOME}/intel"
+DESTINATION="/opt/intel"
 TEMPORARY_FILES="/tmp"
 PHONE_INTEL="no"
 COMPONENTS=""
@@ -179,6 +179,3 @@ fi
 # Apparently the installer drops the license file in a location it
 # doesn't know to check.
 ln -s "${DESTINATION}"/licenses ~/Licenses
-
-source "${DESTINATION}/bin/compilervars.sh" intel64
-export LD_LIBRARY_PATH="${DESTINATION}/ism/bin/intel64:${DESTINATION}/lib/intel64_lin:$LD_LIBRARY_PATH"
