@@ -8,6 +8,8 @@ import zipfile
 import tarfile
 import os
 import shutil
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 CMAKE_BASE_URL = "https://cmake.org/files/v3.5/"
 CMAKE_FILENAME_LINUX_32 = "cmake-3.5.0-rc3-Linux-i386"
@@ -21,6 +23,7 @@ CMAKE_DEST = "ci/build"
 def download(url):
     print "Downloading "+url
     filename = url.split("/")[-1]
+    ssl._create_default_https_context = ssl._create_unverified_context
     urllib.urlretrieve(url, filename)
 
 def extract(filename):
