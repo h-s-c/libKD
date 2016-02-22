@@ -1,0 +1,11 @@
+build:
+  dependencies:
+    override:
+      - apt-get update -y
+      - apt-get install -y build-essential python valgrind
+      - python ci/install_cmake.py
+      - export PATH=`pwd`/ci/build/cmake/bin:${PATH}
+
+  tests:
+    override:
+      - ctest -VV -S CTestRun.cmake
