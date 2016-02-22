@@ -9,3 +9,8 @@ build:
   tests:
     override:
       - ctest -VV -S CTestRun.cmake
+
+checks:
+    python:
+        code_rating: true
+        duplicate_code: true
