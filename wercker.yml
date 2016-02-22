@@ -7,6 +7,7 @@ build:
         code: |
           apt-get update -y
           apt-get install -y build-essential python valgrind
+          apt-get install -y libidn
           python ci/install_cmake.py
           export PATH=`pwd`/ci/build/cmake/bin:${PATH}
 

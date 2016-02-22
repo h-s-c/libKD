@@ -171,7 +171,7 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['cmake', 'cmake-data', 'valgrind']
-      before_script: ./ci/install_icc.sh
+      before_script: sudo ./ci/install_icc.sh
       script: ctest -VV -S CTestRun.cmake
 
     - os: osx
