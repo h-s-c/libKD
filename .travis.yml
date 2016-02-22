@@ -17,7 +17,6 @@ matrix:
       script:
         - if [ "$TRAVIS_BRANCH" = "coverity" ]; then 
             curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
-            cat cov-int/scm_log.txt;
           else true; fi;
 
     - os: linux
@@ -172,10 +171,7 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['cmake', 'cmake-data', 'valgrind']
-      install: sudo ./install-icc.sh --components icc --dest /opt/intel
-      before_script:
-        - source /opt/intel/bin/compilervars.sh intel64
-        - export LD_LIBRARY_PATH=/opt/intel/ism/bin/intel64:/opt/intel/lib/intel64_lin:$LD_LIBRARY_PATH
+      before_script: sudo ./ci/install-icc.sh --components icc --dest /opt/intel
       script: ctest -VV -S CTestRun.cmake
 
     - os: osx

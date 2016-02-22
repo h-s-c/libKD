@@ -180,8 +180,5 @@ fi
 # doesn't know to check.
 ln -s "${DESTINATION}"/licenses ~/Licenses
 
-# Add configuration information to ~/.bashrc.  Unfortunately this will
-# not be picked up automatically by Travis, so you'll still need to
-# source ~/.bashrc in your .travis.yml
-echo ". \"${DESTINATION}/bin/compilervars.sh\" intel64" >> ~/.bashrc
-echo "export LD_LIBRARY_PATH=\"${DESTINATION}/ism/bin/intel64:${DESTINATION}/lib/intel64_lin:\$LD_LIBRARY_PATH\"" >> ~/.bashrc
+source "${DESTINATION}/bin/compilervars.sh" intel64
+export LD_LIBRARY_PATH="${DESTINATION}/ism/bin/intel64:${DESTINATION}/lib/intel64_lin:$LD_LIBRARY_PATH"
