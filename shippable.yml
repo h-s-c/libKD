@@ -3,8 +3,7 @@ language: python
 before_script:
   - sudo apt-get update -y
   - sudo apt-get install -y build-essential python valgrind
-  - python ci/install_cmake.py
-  - export PATH=`pwd`/ci/build/cmake/bin:${PATH}
+  - python ci-tools/install_cmake.py
 
 script:
-  - ctest -VV -S CTestRun.cmake
+  - python ci-tools/run_ctest.py

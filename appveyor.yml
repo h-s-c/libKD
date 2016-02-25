@@ -14,8 +14,7 @@ before_build:
   - appveyor DownloadFile https://github.com/h-s-c/libKD/releases/download/v0.0/OpenCppCoverage.7z
   - 7z x OpenCppCoverage.7z > nul
   - set PATH=%cd%\OpenCppCoverage;%PATH%
-  - python ci/install_cmake.py
-  - set PATH=%cd%\ci\build\cmake\bin;%PATH%
+  - python ci-tools/install_cmake.py
 
 build_script:
-  - ctest -VV -S CTestRun.cmake
+  - python ci-tools/run_ctest.py

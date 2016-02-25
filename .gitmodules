@@ -10,3 +10,6 @@
 [submodule "thirdparty/inttypes"]
 	path = thirdparty/inttypes
 	url = https://github.com/h-s-c/inttypes.git
+[submodule "ci-tools"]
+	path = ci-tools
+	url = https://github.com/h-s-c/ci-tools.git

@@ -1,9 +1,8 @@
 before_script:
   - apt-get update -y
   - apt-get install -y build-essential python valgrind
-  - python ci/install_cmake.py
-  - export PATH=`pwd`/ci/build/cmake/bin:${PATH}
+  - python ci-tools/install_cmake.py
 
 default:
   script:
-    - ctest -VV -S CTestRun.cmake
+    - python ci-tools/run_ctest.py
