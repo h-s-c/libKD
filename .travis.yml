@@ -185,6 +185,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['valgrind']
       install: python ci-tools/install_cmake.py && python ci-tools/install_icc.py
+      before_script: source $HOME/ci-tools/icc/bin/compilervars.sh intel64
       script: python ci-tools/run_ctest.py
 
     - os: osx
