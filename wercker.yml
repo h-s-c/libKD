@@ -5,12 +5,13 @@ build:
     - script:
         name: install dependencies
         code: |
+          git submodule update --init --recursive --quiet
           apt-get update -y
           apt-get install -y build-essential python valgrind
           apt-get install -y libidn11
+          python ci-tools/install_cmake.py
 
     - script:
         name: build code
         code: |
-          python ci-tools/install_cmake.py
           python ci-tools/run_ctest.py
