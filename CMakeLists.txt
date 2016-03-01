@@ -38,13 +38,8 @@ include(CheckLibraryExists)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
 set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
-set(KD_BUILD_TESTS "On" CACHE BOOL "Build with tests")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 set(KD_FREESTANDING "Off" CACHE BOOL "Build without CRT/libc (MinGW/Win32 only)")
-
-if(DEFINED ENV{CI})
-    set(KD_BUILD_CI "On")
-endif()
 
 # Nvidia Tegra Nsight doesnt set this
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
@@ -84,9 +79,9 @@ project (KD C)
         endif()
     endif()
 
-    if(KD_BUILD_CI)
-        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} ${KD_BUILD_CI_FLAGS}")
-        set(KD_MSVC_FLAGS "${KD_MSVC_FLAGS} ${KD_BUILD_CI_FLAGS}")
+    if(DEFINED ENV{CI})
+        set(KD_GCC_FLAGS "${KD_GCC_FLAGS} ${CI_FLAGS}")
+        set(KD_MSVC_FLAGS "${KD_MSVC_FLAGS} ${CI_FLAGS}")
     endif()
 
     if(KD_BUILD_VFS)
@@ -156,11 +151,6 @@ project (KD C)
         if(NOT HAVE_DIRENT)
             list(APPEND KD_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/thirdparty/dirent/include)
         endif()
-
-        check_include_files("inttypes.h" HAVE_INTTYPES)
-        if(NOT HAVE_INTTYPES)
-            list(APPEND KD_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/thirdparty/inttypes/include)
-        endif()
     endif()
 
     if(NOT KD_FREESTANDING)
@@ -182,7 +172,8 @@ project (KD C)
     include_directories(${KD_INCLUDE_DIRS})
 
     # Tests
-    if(KD_BUILD_TESTS)
+    include(CTest)
+    if(BUILD_TESTING)
         include(CTest)
         function(test_helper TEST_NAME)
             add_executable(${TEST_NAME} ${CMAKE_SOURCE_DIR}/test/${TEST_NAME}.c)
@@ -204,14 +195,14 @@ project (KD C)
         test_helper(test_callback)
         test_helper(test_eventloop)
         test_helper(test_threadonce)
-        if(NOT KD_BUILD_CI)
+        if(NOT DEFINED ENV{CI})
             #AddressSanitizer uses too much stack memory
             test_helper(test_stacksize)
         endif()
     endif()
 
     # Examples
-    if(NOT KD_BUILD_CI AND KD_BUILD_EXAMPLES)
+    if(NOT DEFINED ENV{CI} AND KD_BUILD_EXAMPLES)
         function(example_helper EXAMPLE_NAME)
             find_package(EGL)
             find_package(GLES2)
