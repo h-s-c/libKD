@@ -34,4 +34,4 @@ set(CTEST_CUSTOM_ERROR_EXCEPTION
     "clang: error: .* 'linker' input unused")
 
 set(CTEST_CUSTOM_WARNING_EXCEPTION
-    "warning MSB8029)
+    "warning MSB8029")
