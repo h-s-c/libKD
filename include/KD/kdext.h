@@ -24,16 +24,16 @@
 #ifndef __kdext_h_
 #define __kdext_h_
 
-#include <kd/kd.h>
+#include <KD/kd.h>
 
-#include <kd/KHR_float64.h>
-#include <kd/KHR_formatted.h>
-#include <kd/KHR_perfcounter.h>
-#include <kd/KHR_thread_storage.h>
+#include <KD/KHR_float64.h>
+#include <KD/KHR_formatted.h>
+#include <KD/KHR_perfcounter.h>
+#include <KD/KHR_thread_storage.h>
 
-#include <kd/VEN_atomic.h>
-#include <kd/VEN_keyboard.h>
-#include <kd/VEN_queue.h>
+#include <KD/VEN_atomic.h>
+#include <KD/VEN_keyboard.h>
+#include <KD/VEN_queue.h>
 
 /******************************************************************************
  * String and memory functions (extensions)
