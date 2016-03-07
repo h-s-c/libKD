@@ -21,7 +21,7 @@ freely, subject to the following restrictions:
 
 
 #OpenBSD strlcat.c/strlcpy.c
-###MIT License
+###ISC License
 
 Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
 
