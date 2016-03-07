@@ -1,8 +1,8 @@
 before_script:
   - apt-get update -y
   - apt-get install -y build-essential python valgrind
-  - python ci-tools/install_cmake.py
 
 default:
   script:
+    - python ci-tools/install_cmake.py
     - python ci-tools/run_ctest.py

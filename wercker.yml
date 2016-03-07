@@ -9,11 +9,13 @@ build:
         code: |
           apk update
           apk add build-base python valgrind
-          apk add git perl
-          git submodule update --init --recursive --quiet
-          python ci-tools/install_cmake.py
+          apk add git perl coreutils
 
     - script:
         name: build code
         code: |
+          git submodule update --init --recursive
+          python ci-tools/install_cmake.py
+          ls
+          ls ci-tools
           python ci-tools/run_ctest.py
