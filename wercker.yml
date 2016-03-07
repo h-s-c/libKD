@@ -1,0 +1,19 @@
+box:
+    id: alpine
+    cmd: /bin/sh
+
+build:
+  steps:
+    - script:
+        name: install dependencies
+        code: |
+          apk update
+          apk add build-base python valgrind
+          apk add git
+          git submodule update --init --recursive --quiet
+          python ci-tools/install_cmake.py
+
+    - script:
+        name: build code
+        code: |
+          python ci-tools/run_ctest.py
