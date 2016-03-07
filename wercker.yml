@@ -9,7 +9,7 @@ build:
         code: |
           apk update
           apk add build-base python valgrind
-          apk add git
+          apk add git perl
           git submodule update --init --recursive --quiet
           python ci-tools/install_cmake.py
 
