@@ -16,5 +16,4 @@ build:
         code: |
           git submodule update --init --recursive
           python ci-tools/install_cmake.py
-          ls $WERCKER_ROOT/ci-tools/cmake/bin
           python ci-tools/run_ctest.py
