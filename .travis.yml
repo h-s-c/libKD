@@ -133,6 +133,17 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
+      compiler: clang-3.9
+      dist: precise
+      sudo: false
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise']
+          packages: ['clang-3.9', 'llvm-3.9', 'valgrind']
+      install: python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: linux
       compiler: clang-3.8
       dist: precise
       sudo: false
