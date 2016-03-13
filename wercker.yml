@@ -9,7 +9,7 @@ build:
         code: |
           apk update
           apk add build-base python valgrind
-          apk add git perl cmake
+          apk add git perl coreutils cmake
 
     - script:
         name: build code
