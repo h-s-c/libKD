@@ -46,10 +46,12 @@ static void KD_APIENTRY kd_callback(const KDEvent *event)
         }
     }
 }
+#ifdef GL_KHR_debug
 static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
     kdLogMessage(message); kdLogMessage("\n");
 }
+#endif
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
@@ -67,16 +69,18 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         EGL_RED_SIZE,           8,
         EGL_GREEN_SIZE,         8,
         EGL_BLUE_SIZE,          8,
-        EGL_ALPHA_SIZE,         8,
-        EGL_DEPTH_SIZE,         24,
-        EGL_STENCIL_SIZE,       8,
+        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
+        EGL_DEPTH_SIZE,         EGL_DONT_CARE,
+        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
         EGL_NONE
     };
 
     const EGLint egl_context_attributes[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
+ #ifdef GL_KHR_debug       
         EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
+#endif
         EGL_NONE,
     };
 
@@ -107,6 +111,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessage("Renderer: "); kdLogMessage((const KDchar*)glGetString(GL_RENDERER)); kdLogMessage("\n");
     kdLogMessage("Extensions: "); kdLogMessage((const KDchar*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
 
+#ifdef GL_KHR_debug
     if(kdStrstrVEN((const KDchar*)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
     {
         glEnable(GL_DEBUG_OUTPUT_KHR);
@@ -114,6 +119,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
         glDebugMessageCallback(&gl_callback, KD_NULL);
     }
+#endif
 
     kdInstallCallback(&kd_callback, KD_EVENT_QUIT, KD_NULL);
     KDTimer* kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);

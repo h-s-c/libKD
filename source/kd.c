@@ -41,6 +41,9 @@
     #ifdef __linux__
         #define _GNU_SOURCE
     #endif
+    #ifdef __EMSCRIPTEN__
+        #define _POSIX_SOURCE
+    #endif
     #include <sys/param.h>
     #ifdef BSD
         #define _BSD_SOURCE
@@ -1013,7 +1016,10 @@ static KDboolean __kdExecCallback(KDEvent* event)
 #if defined(KD_WINDOW_SUPPORTED)
 struct KDWindow
 {
-#if defined(KD_WINDOW_ANDROID)
+#if defined(KD_WINDOW_NULL)
+    KDint nativewindow;
+    void *nativedisplay;
+#elif defined(KD_WINDOW_ANDROID)
     struct ANativeWindow *nativewindow;
     void *nativedisplay;
 #elif defined(KD_WINDOW_WIN32)
@@ -1592,17 +1598,20 @@ static void* __kdMainInjector( void *arg)
 
     __kd_mainthread = __kd_thread;
 
-    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
 #ifdef __ANDROID__
     kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
     kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
+#elif __EMSCRIPTEN__
+    kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     HMODULE handle = GetModuleHandle(0);
+    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
     KDMAIN kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
     (*kdmain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
 #else
+    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
     KDMAIN kdmain = KD_NULL;
     void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
@@ -2960,7 +2969,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(KD_WINDOW_ANDROID)
+#if defined(KD_WINDOW_ANDROID) || defined(KD_WINDOW_NULL)
         kdSetError(KD_EOPNOTSUPP);
         return -1;
 #elif defined(KD_WINDOW_X11)
@@ -2979,7 +2988,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-#if defined(KD_WINDOW_ANDROID)
+#if defined(KD_WINDOW_ANDROID) || defined(KD_WINDOW_NULL)
         kdSetError(KD_EOPNOTSUPP);
         return -1;
 #elif defined(KD_WINDOW_X11)
@@ -3005,7 +3014,10 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(KD_WINDOW_ANDROID)
+#if defined(KD_WINDOW_NULL)
+        kdSetError(KD_EOPNOTSUPP);
+        return -1;
+#elif defined(KD_WINDOW_ANDROID)
         param[0] = ANativeWindow_getWidth(window->nativewindow);
         param[1] = ANativeWindow_getHeight(window->nativewindow);
 #elif defined(KD_WINDOW_X11)
@@ -3021,7 +3033,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-#if defined(KD_WINDOW_ANDROID)
+#if defined(KD_WINDOW_ANDROID) || defined(KD_WINDOW_NULL)
         kdSetError(KD_EOPNOTSUPP);
         return -1;
 #elif defined(KD_WINDOW_X11)
