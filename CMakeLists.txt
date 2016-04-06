@@ -69,7 +69,6 @@ project (KD C)
 
     if(CMAKE_C_COMPILER_ID STREQUAL "Intel")
         set(KD_CC_FLAGS "${KD_CC_FLAGS} -std=c11")
-        set(KD_CC_FLAGS "${KD_CC_FLAGS} /Qstd=c11")
     endif()
 
     if(KD_BUILD_VFS)
