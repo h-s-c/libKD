@@ -20,3 +20,20 @@
 #    misrepresented as being the original software.
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
+
+set(CPACK_PACKAGE_NAME "kd")
+set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_VERSION_MAJOR "0")
+set(CPACK_PACKAGE_VERSION_MINOR "1")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_PACKAGE_DESCRIPTION "OpenKODE Core implementation")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OpenKODE Core implementation")
+set(CPACK_PACKAGE_FILE_NAME ${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION}_amd64)
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kevin Schmidt")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/h-s-c/libKD")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
+
+set(CPACK_CMAKE_GENERATOR "Unix Makefiles")
+set(CPACK_INSTALL_CMAKE_PROJECTS "build;KD;ALL;/")

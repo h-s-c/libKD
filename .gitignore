@@ -4,3 +4,6 @@
 /thirdparty/gles_amd
 /thirdparty/gles_angle
 /thirdparty/gles_mali
+/_CPack_Packages
+/*.rpm
+/*.deb

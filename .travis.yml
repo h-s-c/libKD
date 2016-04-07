@@ -11,10 +11,10 @@ matrix:
         - COVERITY_SCAN_PROJECT_NAME="h-s-c/libKD"
         - COVERITY_SCAN_NOTIFICATION_EMAIL="h-s-c@users.noreply.github.com"
         - COVERITY_SCAN_BRANCH_PATTERN="coverity"
-        - COVERITY_SCAN_BUILD_COMMAND_PREPEND="cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .."
-        - COVERITY_SCAN_BUILD_COMMAND="cmake --build . --config Debug"
+        - COVERITY_SCAN_BUILD_COMMAND_PREPEND="cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off -Bbuild -H."
+        - COVERITY_SCAN_BUILD_COMMAND="cmake --build build --config Debug"
       install: python ci-tools/install_cmake.py  
-      before_script: mkdir build && cd build
+      before_script: mkdir build
       script:
         - if [ "$TRAVIS_BRANCH" = "coverity" ]; then 
             curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
@@ -36,10 +36,9 @@ matrix:
           branch: release
           tags: true
       install: python ci-tools/install_cmake.py  
-      before_script: mkdir build && cd build
       script:
         - if [ "$TRAVIS_TAG" ]; then 
-            cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .. && cmake --build . --config Release;
+            cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off -Bbuild -H. && cmake --build build --config Release;
             cpack -C Release;
           else true; fi;
 
@@ -59,10 +58,9 @@ matrix:
           branch: release
           tags: true
       install: python ci-tools/install_cmake.py  
-      before_script: mkdir build && cd build
       script:
         - if [ "$TRAVIS_TAG" ]; then 
-            cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off .. && cmake --build . --config Release;
+            cmake -DKD_BUILD_TESTS=Off -DKD_BUILD_EXAMPLES=Off -Bbuild -H. && cmake --build build --config Release;
             cpack -C Release;
           else true; fi;
 
@@ -263,3 +261,4 @@ matrix:
     - compiler: clang-3.9   # Testing
     - compiler: clang-3.8   # Upstream LLVM
     - compiler: clang-3.7   # Upstream LLVM
+    - compiler: icc         # Unstable

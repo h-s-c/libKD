@@ -38,6 +38,7 @@ include(CheckLibraryExists)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
 set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
+set(KD_BUILD_TESTS "On" CACHE BOOL "Build with tests")
 set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 set(KD_FREESTANDING "Off" CACHE BOOL "Build without CRT/libc (MinGW/Win32 only)")
 
@@ -47,6 +48,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
 endif()
 
 project (KD C)
+    include(CPack)
+    include(CTest)
 
     if(DEFINED ENV{CI})
         if(DEFINED CI_FLAGS)
@@ -161,9 +164,7 @@ project (KD C)
     include_directories(${KD_INCLUDE_DIRS})
 
     # Tests
-    include(CTest)
-    if(BUILD_TESTING)
-        include(CTest)
+    if(KD_BUILD_TESTS)
         function(test_helper TEST_NAME)
             add_executable(${TEST_NAME} ${CMAKE_SOURCE_DIR}/test/${TEST_NAME}.c)
             target_link_libraries(${TEST_NAME} KD)
@@ -228,3 +229,7 @@ project (KD C)
     if(EMSCRIPTEN)
         set_target_properties(KD PROPERTIES SUFFIX ".bc")
     endif()
+
+    install(TARGETS KD DESTINATION lib)
+    file(GLOB KD_HEADERS "${CMAKE_SOURCE_DIR}/include/KD/*.h")
+    install(FILES ${KD_HEADERS} ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h  DESTINATION include/KD)
