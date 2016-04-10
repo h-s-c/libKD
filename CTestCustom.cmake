@@ -32,7 +32,6 @@ set(CTEST_CUSTOM_COVERAGE_EXCLUDE
 
 set(CTEST_CUSTOM_ERROR_EXCEPTION
     "clang: error: .* 'linker' input unused"
-    "Cannot find memory tester output file")
 
 set(CTEST_CUSTOM_WARNING_EXCEPTION
     "warning MSB8029")
