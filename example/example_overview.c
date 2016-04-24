@@ -139,9 +139,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 {
                     KDuint8 buffer[3] = {0};
                     kdCryptoRandom(buffer, 3);
-                    r = buffer[0]%256 / 255.0f;
-                    g = buffer[1]%256 / 255.0f;
-                    b = buffer[2]%256 / 255.0f;
+                    r = buffer[0] % 256 / 255.0f;
+                    g = buffer[1] % 256 / 255.0f;
+                    b = buffer[2] % 256 / 255.0f;
                     break;
                 }
                 default:

@@ -419,7 +419,7 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize sta
 }
 
 /* __kdThreadAttrSetDebugName: Set debugname attribute. */
-static KDint __kdThreadAttrSetDebugName(KDThreadAttr *attr, const char * debugname)
+KD_UNUSED static KDint __kdThreadAttrSetDebugName(KDThreadAttr *attr, const char * debugname)
 {
     kdStrcpy_s(attr->debugname, 256, debugname);
     return 0;
@@ -1671,11 +1671,15 @@ KD_API int main(int argc, char **argv)
     mainargs.argc = argc;
     mainargs.argv = argv;
 
+#ifdef __EMSCRIPTEN__
+    __kdMainInjector(&mainargs);
+#else
     KDThreadAttr *mainattr = kdThreadAttrCreate();
     __kdThreadAttrSetDebugName(mainattr, "KDThread (Main)");
     KDThread * mainthread = kdThreadCreate(mainattr, __kdMainInjector, &mainargs);
     kdThreadJoin(mainthread, KD_NULL);
     kdThreadAttrFree(mainattr);
+#endif
     return 0;
 }
 #endif
