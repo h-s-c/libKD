@@ -1,12 +1,12 @@
 [submodule "thirdparty/dirent"]
     path = thirdparty/dirent
     url = https://github.com/tronkko/dirent.git
-[submodule "thirdparty/zahnrad"]
-    path = thirdparty/zahnrad
-    url = https://github.com/vurtun/zahnrad.git
 [submodule "thirdparty/qfpc"]
     path = thirdparty/qfpc
     url = https://github.com/procedural/quatFirstPersonCamera.git
 [submodule "ci-tools"]
     path = ci-tools
     url = https://github.com/h-s-c/ci-tools.git
+[submodule "thirdparty/nuklear"]
+	path = thirdparty/nuklear
+	url = https://github.com/vurtun/nuklear.git
