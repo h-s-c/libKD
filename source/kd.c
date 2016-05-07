@@ -105,7 +105,7 @@
     #include <sys/stat.h>
     #include <sys/syscall.h>
     #include <sys/utsname.h>
-    #ifdef __APPLE__
+    #if defined(__APPLE__)
         #include<sys/mount.h>
     #else
         #include<sys/vfs.h>
@@ -114,23 +114,27 @@
     #include <dirent.h>
     #include <dlfcn.h>
 
+    #if defined(__linux__)
+        #include <sys/prctl.h>
+    #endif
+
     /* POSIX reserved but OpenKODE uses this */
     #undef st_mtime
 
-    #ifdef __ANDROID__
+    #if defined(__ANDROID__)
         #include <android/log.h>
         #include <android/native_activity.h>
         #include <android/native_window.h>
         #include <android/window.h>
     #else
-        #ifdef KD_WINDOW_SUPPORTED
+        #if defined(KD_WINDOW_SUPPORTED)
             #include <X11/Xlib.h>
             #include <X11/Xutil.h>
         #endif
     #endif
 #endif
 
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__)
     #include <emscripten/emscripten.h>
 #endif
 
@@ -449,14 +453,6 @@ struct KDThread
 };
 
 static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
-static void __kdThreadCleanup(KD_UNUSED void *args)
-{
-    if(__kd_lastevent != KD_NULL)
-    {
-        kdFreeEvent(__kd_lastevent);
-        __kd_lastevent = KD_NULL;
-    }
-}
 static void* __kdThreadStart(void *args)
 {
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
@@ -488,8 +484,8 @@ static void* __kdThreadStart(void *args)
 #pragma warning(pop)
     }
 #elif defined(KD_THREAD_POSIX)
-#if defined(__linux__) && defined (__GLIBC__)
-    pthread_setname_np(start_args->thread->nativethread, threadname);
+#if defined(__linux__)
+    prctl(PR_SET_NAME, (unsigned long)threadname, 0UL, 0UL, 0UL);
 #elif defined(__APPLE__)
     pthread_setname_np(threadname);
 #endif
@@ -501,17 +497,14 @@ static void* __kdThreadStart(void *args)
     __kd_thread = start_args->thread;
 
     void* result = KD_NULL;
-#if defined(KD_THREAD_POSIX)
-    pthread_cleanup_push(__kdThreadCleanup, KD_NULL);
-#endif
 
     result = start_args->start_routine(start_args->arg);
 
-#if defined(KD_THREAD_POSIX)
-    pthread_cleanup_pop(1);
-#else
-    __kdThreadCleanup(KD_NULL);
-#endif
+    if(__kd_lastevent != KD_NULL)
+    {
+        kdFreeEvent(__kd_lastevent);
+        __kd_lastevent = KD_NULL;
+    }
     return result;
 }
 
@@ -932,7 +925,7 @@ void __KDSleep(KDust timeout)
     thrd_sleep(&ts, NULL);
 #elif defined(KD_THREAD_POSIX)
 #ifdef __EMSCRIPTEN__
-    emscripten_sleep(timeout / 1000000);
+    emscripten_sleep_with_yield(timeout / 1000000);
 #else
     nanosleep(&ts, NULL);
 #endif
@@ -1040,7 +1033,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
 #ifdef __EMSCRIPTEN__
     /* Give back control to the browser */
-    emscripten_sleep(1);
+    emscripten_sleep_with_yield(1);
 #endif
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
     for (KDuint i = 0; i < queuesize; i++)
@@ -1823,12 +1816,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 #elif defined(__EMSCRIPTEN__)
     for(KDsize i = 0; i < buflen; i++)
     {
-        buf[i] = EM_ASM_INT_V
-        (
-            var array = new Uint8Array(1);
-            window.crypto.getRandomValues(array);
-            return array;
-        );
+        buf[i] = (KDuint8)(emscripten_random() * 255) % 256;
     }
     return 0;
 #elif defined(__unix__) || defined(__APPLE__)
