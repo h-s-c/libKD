@@ -2082,7 +2082,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
       buf[buflen - 1] = 0;
     }
 
-    return needed;
+    return (KDint)needed;
 }
 #if defined(_MSC_VER)
 #pragma warning(pop)
@@ -2128,7 +2128,7 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
       buf[buflen - 1] = 0;
     }
 
-    return needed;
+    return (KDint)needed;
 }
 #if defined(_MSC_VER)
 #pragma warning(pop)
@@ -3464,10 +3464,10 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
         }
         if (!*p2)
         {
-            return (char *)str1;
+            return (KDchar *)str1;
         }
         ++str1;
         p1 = str1;
     }
-    return NULL;
+    return KD_NULL;
 }
