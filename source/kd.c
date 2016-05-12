@@ -81,7 +81,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 
 #if defined(KD_THREAD_C11) && !defined(_MSC_VER)
@@ -237,65 +236,6 @@
 /******************************************************************************
  * Errors
  ******************************************************************************/
-typedef struct
-{
-    KDint       errorcode_kd;
-    int         errorcode;
-    const char *errorcode_text;
-} __KDErrors;
-
-static __KDErrors errorcodes_posix[] =
-{
-    { KD_EACCES,            EACCES,         "Permission denied."},
-    { KD_EADDRINUSE,        EADDRINUSE,     "Adress in use."},
-    { KD_EADDRNOTAVAIL,     EADDRNOTAVAIL,  "Address not available on the local platform."},
-    { KD_EAFNOSUPPORT,      EAFNOSUPPORT,   "Address family not supported."},
-    { KD_EAGAIN,            EAGAIN,         "Resource unavailable, try again."},
-    { KD_EALREADY,          EALREADY,       "A connection attempt is already in progress for this socket."},
-    { KD_EBADF,             EBADF,          "File not opened in the appropriate mode for the operation."},
-    { KD_EBUSY,             EBUSY,          "Device or resource busy."},
-    { KD_ECONNREFUSED,      ECONNREFUSED,   "Connection refused."},
-    { KD_ECONNRESET,        ECONNRESET,     "Connection reset."},
-    { KD_EDEADLK,           EDEADLK,        "Resource deadlock would occur."},
-    { KD_EDESTADDRREQ,      EDESTADDRREQ,   "Destination address required."},
-    { KD_EEXIST,            EEXIST,         "File exists."},
-    { KD_EFBIG,             EFBIG,          "File too large."},
-    { KD_EHOSTUNREACH,      EHOSTUNREACH,   "Host is unreachable."},
-    { KD_EHOST_NOT_FOUND,   0,              "The specified name is not known."}, /* EHOSTNOTFOUND is not standard */
-    { KD_EINVAL,            EINVAL,         "Invalid argument."},
-    { KD_EIO,               EIO,            "I/O error."},
-    { KD_EILSEQ,            EILSEQ,         "Illegal byte sequence."},
-    { KD_EISCONN,           EISCONN,        "Socket is connected."},
-    { KD_EISDIR,            EISDIR,         "Is a directory."},
-    { KD_EMFILE,            EMFILE,         "Too many openfiles."},
-    { KD_ENAMETOOLONG,      ENAMETOOLONG,   "Filename too long."},
-    { KD_ENOENT,            ENOENT,         "No such file or directory."},
-    { KD_ENOMEM,            ENOMEM,         "Not enough space."},
-    { KD_ENOSPC,            ENOSPC,         "No space left on device."},
-    { KD_ENOSYS,            ENOSYS,         "Function not supported."},
-    { KD_ENOTCONN,          ENOTCONN,       "The socket is not connected."},
-    { KD_ENO_DATA,          ENODATA,        "The specified name is valid but does not have an address."},
-    { KD_ENO_RECOVERY,      0,              "A non-recoverable error has occurred on the name server."}, /* ENORECOVERY is not standard */
-    { KD_EOPNOTSUPP,        EOPNOTSUPP,     "Operation not supported."},
-    { KD_EOVERFLOW,         EOVERFLOW,      "Overflow."},
-    { KD_EPERM,             EPERM,          "Operation not permitted."},
-    { KD_ERANGE,            ERANGE,         "Result out of range."},
-    { KD_ETIMEDOUT,         ETIMEDOUT,      "Connection timed out."},
-    { KD_ETRY_AGAIN,        0,              "A temporary error has occurred on an authoratitive name server, and the lookup may succeed if retried later."}, /* ETRYAGAIN is not standard */
-};
-
-KDint __kdTranslateError(int errorcode)
-{
-    for (KDuint i = 0; i < sizeof(errorcodes_posix) / sizeof(errorcodes_posix[0]); i++)
-    {
-        if(errorcodes_posix[i].errorcode == errorcode)
-        {
-            return errorcodes_posix[i].errorcode_kd;
-        }
-    }
-    return 0;
-}
-
 static KD_THREADLOCAL KDint lasterror = 0;
  /* kdGetError: Get last error indication. */
 KD_API KDint KD_APIENTRY kdGetError(void)
@@ -1703,7 +1643,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 /* kdAbs: Compute the absolute value of an integer. */
 KD_API KDint KD_APIENTRY kdAbs(KDint i)
 {
-    return abs(i);
+    return ( i >= 0 ) ? i : -i;
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
@@ -1991,73 +1931,124 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  * String and memory functions
  ******************************************************************************/
 
-static size_t __strlcpy(char *dst, const char *src, size_t dstsize);
-static size_t __strlcat(char *dst, const char *src, size_t dstsize);
-
  /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
-    void *retval = memchr(src , byte, len);
-    if(retval == NULL)
+    const KDuint8* p = (const KDuint8*) src;
+    while(len--)
     {
-        kdSetError(__kdTranslateError(errno));
-        return KD_NULL;
+        if(*p == (KDuint8)byte)
+        {
+            return (void*)p;
+        }
+        ++p;
     }
-    return retval;
+    return KD_NULL;
 }
 
 /* kdMemcmp: Compare two memory regions. */
 KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len)
 {
-    return memcmp(src1, src2, len);
+    const KDuint8* p1 = (const KDuint8*) src1;
+    const KDuint8* p2 = (const KDuint8*) src2;
+    while(len-- )
+    {
+        if(*p1 != *p2)
+        {
+            return *p1 - *p2;
+        }
+        ++p1;
+        ++p2;
+    }
+    return 0;
 }
 
 /* kdMemcpy: Copy a memory region, no overlapping. */
 KD_API void *KD_APIENTRY kdMemcpy(void *buf, const void *src, KDsize len)
 {
-    return memcpy(buf, src, len);
+    KDuint8* dest = (KDuint8*) buf;
+    const KDuint8 * tmp = (const KDuint8 *) src;
+    while (len--)
+    {
+        *dest++ = *tmp++;
+    }
+    return buf;
 }
 
 /* kdMemmove: Copy a memory region, overlapping allowed. */
 KD_API void *KD_APIENTRY kdMemmove(void *buf, const void *src, KDsize len)
 {
-    return memmove(buf, src, len);
+    KDuint8* dest = (KDuint8*) buf;
+    const KDuint8 * tmp = (const KDuint8 *)src;
+    if(dest <= tmp)
+    {
+        while(len--)
+        {
+            *dest++ = *tmp++;
+        }
+    }
+    else
+    {
+        tmp += len;
+        dest += len;
+        while(len--)
+        {
+            *--dest = *--tmp;
+        }
+    }
+    return buf;
 }
 
 /* kdMemset: Set bytes in memory to a value. */
 KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 {
-    return memset(buf, byte, len);
+    KDuint8* p = (KDuint8*) buf;
+    while (len--)
+    {
+        *p++ = (KDuint8) byte;
+    }
+    return buf;
 }
 
 /* kdStrchr: Scan string for a byte value. */
 KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
 {
-    void *retval = strchr(str, ch);
-    if(retval == NULL)
+    do
     {
-        kdSetError(__kdTranslateError(errno));
-        return KD_NULL;
-    }
-    return retval;
+        if(*str == (KDchar)ch )
+        {
+            return (KDchar*)str;
+        }
+    } while( *str++ );
+    return KD_NULL;
 }
 
 /* kdStrcmp: Compares two strings. */
 KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 {
-    return strcmp(str1, str2);
+    while ((*str1) && (*str1 == *str2))
+    {
+        ++str1;
+        ++str2;
+    }
+    return (*(KDuint8*)str1 - *(KDuint8*)str2);
 }
 
 /* kdStrlen: Determine the length of a string. */
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
-    return strlen(str);
+    KDsize rc = 0;
+    while ( str[rc] )
+    {
+        ++rc;
+    }
+    return rc;
 }
 
 /* kdStrnlen: Determine the length of a string. */
 KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 {
-    size_t i = 0;
+    KDsize i = 0;
     for(; (i < maxlen) && str[i]; ++i);
     return i;
 }
@@ -2065,25 +2056,74 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 /* kdStrncat_s: Concatenate two strings. */
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
 {
-    return (KDint)__strlcat(buf, src, buflen);
+    KDsize needed = 0;
+    KDsize j = 0;
+
+    while(buf[needed])
+    {  
+        needed++;
+    }
+    while(needed < buflen && (buf[needed] = src[j]))
+    {
+        needed++; 
+        j++;
+    }
+    while(src[j++]) 
+    {
+        needed++;
+    }
+    needed++;
+
+    if(needed > buflen && buflen)
+    {
+      buf[buflen - 1] = 0;
+    }
+
+    return needed;
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
 KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsize maxlen)
 {
-    return strncmp(str1, str2, maxlen);
+    while(*str1 && maxlen && (*str1 == *str2))
+    {
+        ++str1;
+        ++str2;
+        --maxlen;
+    }
+    if(maxlen == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return (*(KDuint8*)str1 - *(KDuint8*)str2);
+    }
 }
 
 /* kdStrcpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
-    return (KDint)__strlcpy(buf, src, buflen);
+    KDsize needed = 0;
+    while(needed < buflen && (buf[needed] = src[needed]))
+    {
+        needed++;
+    }
+
+    while(src[needed++]);
+
+    if(needed > buflen && buflen)
+    {
+      buf[buflen - 1] = 0;
+    }
+
+    return needed;
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srclen)
 {
-    return (KDint)__strlcpy(buf, src, buflen);
+    return kdStrcpy_s(buf, buflen, src);
 }
 
 /******************************************************************************
@@ -3398,103 +3438,22 @@ KD_API void* KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
 /* kdStrstr: Locate substring. */
 KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 {
-    return strstr(str1, str2);
-}
-
-/******************************************************************************
- * Thirdparty
- ******************************************************************************/
-
-/*
- * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
- *
- * Permission to use, copy, modify, and distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
-
-/*
- * Appends src to string dst of size siz (unlike strncat, siz is the
- * full size of dst, not space left).  At most siz-1 characters
- * will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
- * Returns strlen(src) + MIN(siz, strlen(initial dst)).
- * If retval >= siz, truncation occurred.
- */
-static size_t __strlcat(char *dst, const char *src, size_t siz)
-{
-    char *d = dst;
-    const char *s = src;
-    size_t n = siz;
-    size_t dlen;
-
-    /* Find the end of dst and adjust bytes left but don't go past end */
-    while(n-- != 0 && *d != '\0')
+    const KDchar * p1 = str1;
+    const KDchar * p2;
+    while (*str1)
     {
-        d++;
-    }
-    dlen = d - dst;
-    n = siz - dlen;
-
-    if(n == 0)
-    {
-        return (dlen + strlen(s));
-    }
-    while(*s != '\0') 
-    {
-        if(n != 1) 
+        p2 = str2;
+        while (*p2 && (*p1 == *p2))
         {
-            *d++ = *s;
-            n--;
+            ++p1;
+            ++p2;
         }
-        s++;
-    }
-    *d = '\0';
-
-    return (dlen + (s - src));	/* count does not include NUL */
-}
-
-/*
- * Copy src to string dst of size siz.  At most siz-1 characters
- * will be copied.  Always NUL terminates (unless siz == 0).
- * Returns strlen(src); if retval >= siz, truncation occurred.
- */
-static size_t __strlcpy(char *dst, const char *src, size_t siz)
-{
-    char *d = dst;
-    const char *s = src;
-    size_t n = siz;
-
-    /* Copy as many bytes as will fit */
-    if(n != 0) 
-    {
-        while(--n != 0) 
+        if (!*p2)
         {
-            if((*d++ = *s++) == '\0')
-            {
-                break;
-            }
+            return (char *)str1;
         }
+        ++str1;
+        p1 = str1;
     }
-
-    /* Not enough room in dst, add NUL and traverse rest of src */
-    if(n == 0) 
-    {
-        if(siz != 0)
-        {
-            *d = '\0';		/* NUL-terminate dst */
-        }
-        while(*s++)
-        {
-        }
-    }
-
-    return (s - src - 1);	/* count does not include NUL */
+    return NULL;
 }
