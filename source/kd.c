@@ -1648,7 +1648,6 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 
 /* kdStrtof: Convert a string to a floating point number. */
 #if defined(_MSC_VER) && _MSC_VER <= 1800
-/* Warning is function scope */
 #pragma warning(push)
 #pragma warning(disable:4756)
 #endif
@@ -2054,6 +2053,10 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 }
 
 /* kdStrncat_s: Concatenate two strings. */
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable:4706)
+#endif
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
 {
     KDsize needed = 0;
@@ -2081,6 +2084,9 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
 
     return needed;
 }
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 /* kdStrncmp: Compares two strings with length limit. */
 KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsize maxlen)
@@ -2101,7 +2107,12 @@ KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsiz
     }
 }
 
+
 /* kdStrcpy_s: Copy a string with an overrun check. */
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable:4706)
+#endif
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
     KDsize needed = 0;
@@ -2119,6 +2130,9 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
 
     return needed;
 }
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srclen)
