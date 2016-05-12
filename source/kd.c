@@ -1991,8 +1991,8 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  * String and memory functions
  ******************************************************************************/
 
-size_t __strlcpy(char *dst, const char *src, size_t dstsize);
-size_t __strlcat(char *dst, const char *src, size_t dstsize);
+static size_t __strlcpy(char *dst, const char *src, size_t dstsize);
+static size_t __strlcat(char *dst, const char *src, size_t dstsize);
 
  /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
@@ -3428,7 +3428,7 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
  * Returns strlen(src) + MIN(siz, strlen(initial dst)).
  * If retval >= siz, truncation occurred.
  */
-size_t __strlcat(char *dst, const char *src, size_t siz)
+static size_t __strlcat(char *dst, const char *src, size_t siz)
 {
     char *d = dst;
     const char *s = src;
@@ -3466,7 +3466,7 @@ size_t __strlcat(char *dst, const char *src, size_t siz)
  * will be copied.  Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
-size_t __strlcpy(char *dst, const char *src, size_t siz)
+static size_t __strlcpy(char *dst, const char *src, size_t siz)
 {
     char *d = dst;
     const char *s = src;
