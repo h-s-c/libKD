@@ -217,7 +217,7 @@ project (KD C)
     endif()
 
     if(MSVC OR MINGW)
-        add_definitions(-D_WIN32_WINNT=0x0600)
+        add_definitions(-D_WIN32_WINNT=0x0600 -DKD_EXPORTS)
     endif()
 
     if(EMSCRIPTEN OR MINGW)
