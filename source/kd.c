@@ -1928,6 +1928,9 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
 
 /******************************************************************************
  * String and memory functions
+ *
+ * Notes:
+ * - Copied from the Public Domain C Library (https://bitbucket.org/pdclib)
  ******************************************************************************/
 
  /* kdMemchr: Scan memory for a byte value. */
@@ -2053,10 +2056,6 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 }
 
 /* kdStrncat_s: Concatenate two strings. */
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable:4706)
-#endif
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
 {
     KDsize needed = 0;
@@ -2066,10 +2065,18 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     {  
         needed++;
     }
-    while(needed < buflen && (buf[needed] = src[j]))
+    while(needed < buflen)
     {
-        needed++; 
-        j++;
+        buf[needed] = src[j];
+        if(buf[needed])
+        {
+            needed++; 
+            j++;    
+        }
+        else
+        {
+            break;
+        }
     }
     while(src[j++]) 
     {
@@ -2084,9 +2091,6 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
 
     return (KDint)needed;
 }
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 /* kdStrncmp: Compares two strings with length limit. */
 KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsize maxlen)
@@ -2109,16 +2113,20 @@ KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsiz
 
 
 /* kdStrcpy_s: Copy a string with an overrun check. */
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable:4706)
-#endif
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
     KDsize needed = 0;
-    while(needed < buflen && (buf[needed] = src[needed]))
+    while(needed < buflen)
     {
-        needed++;
+        buf[needed] = src[needed];
+        if(buf[needed])
+        {
+            needed++;
+        }
+        else
+        {
+            break;
+        }
     }
 
     while(src[needed++]);
@@ -2130,9 +2138,6 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
 
     return (KDint)needed;
 }
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srclen)
