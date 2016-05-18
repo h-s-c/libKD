@@ -64,9 +64,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/VEN_keyboard.h>
-#include <KD/VEN_atomic.h>
-#include <KD/VEN_queue.h>
+#include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -1822,30 +1820,322 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 
 /******************************************************************************
  * Mathematical functions
+ *
+ * Notes:
+ * - Copied from FDLIBM developed at Sun Microsystems, Inc. 
+ ******************************************************************************/
+/******************************************************************************
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice 
+ * is preserved.
+ * ====================================================
  ******************************************************************************/
 
- /* kdAcosf: Arc cosine function. */
+static const KDfloat32 zero  = 0.0;
+static const KDfloat32 one =  1.0000000000e+00;                 /* 0x3F800000 */
+static const KDfloat32 huge =  1.000e+30;           /* coefficient for R(x^2) */
+static volatile KDfloat32 tiny  = 1.0e-30;
+static const KDfloat32 pi =  3.1415925026e+00;                  /* 0x40490fda */
+static const KDfloat32 pi_o_4  = 7.8539818525e-01;              /* 0x3f490fdb */
+static const KDfloat32 pi_o_2  = 1.5707963705e+00;              /* 0x3fc90fdb */
+static const KDfloat32 pio2_hi =  1.5707962513e+00;             /* 0x3fc90fda */
+static volatile KDfloat32 pio2_lo =  7.5497894159e-08;          /* 0x33a22168 */
+static volatile KDfloat32 pi_lo   = -8.7422776573e-08;          /* 0xb3bbbd2e */
+static const KDfloat32 pS0 =  1.6666586697e-01;
+static const KDfloat32 pS1 = -4.2743422091e-02;
+static const KDfloat32 pS2 = -8.6563630030e-03;
+static const KDfloat32 qS1 = -7.0662963390e-01;
+static const KDfloat64KHR pio2 =  1.570796326794896558e+00;
+
+
+static const float atanhi[] = 
+{
+  4.6364760399e-01,                                 /* atan(0.5)hi 0x3eed6338 */
+  7.8539812565e-01,                                 /* atan(1.0)hi 0x3f490fda */
+  9.8279368877e-01,                                 /* atan(1.5)hi 0x3f7b985e */
+  1.5707962513e+00,                                 /* atan(inf)hi 0x3fc90fda */
+};
+static const float atanlo[] = 
+{
+  5.0121582440e-09,                                 /* atan(0.5)lo 0x31ac3769 */
+  3.7748947079e-08,                                 /* atan(1.0)lo 0x33222168 */
+  3.4473217170e-08,                                 /* atan(1.5)lo 0x33140fb4 */
+  7.5497894159e-08,                                 /* atan(inf)lo 0x33a22168 */
+};
+static const float aT[] = 
+{
+  3.3333328366e-01,
+ -1.9999158382e-01,
+  1.4253635705e-01,
+ -1.0648017377e-01,
+  6.1687607318e-02,
+};
+
+/*
+ * A union which permits us to convert between a float and a 32 bit
+ * int.
+ */
+typedef union
+{
+  KDfloat32 value;
+  KDuint word;                                 /* FIXME: Assumes 32 bit int.  */
+} ieee_float_shape_type;
+
+/* Get a 32 bit int from a float.  */
+#define GET_FLOAT_WORD(i,d)     \
+do {                            \
+  ieee_float_shape_type gf_u;   \
+  gf_u.value = (d);             \
+  (i) = gf_u.word;              \
+} while (0)
+
+/* Set a float from a 32 bit int.  */
+#define SET_FLOAT_WORD(d,i)     \
+do {                            \
+  ieee_float_shape_type sf_u;   \
+  sf_u.word = (i);              \
+  (d) = sf_u.value;             \
+} while (0)
+
+/* kdAcosf: Arc cosine function. */
 KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
 {
-    return acosf(x);
+    KDfloat32 z,p,q,r,w,s,c,df;
+    KDint32 hx,ix;
+    GET_FLOAT_WORD(hx,x);
+    ix = hx&0x7fffffff;
+    if(ix>=0x3f800000)                                            /* |x| >= 1 */
+    {
+        if(ix==0x3f800000)                                        /* |x| == 1 */
+        {
+            if(hx>0) 
+            { 
+                return 0.0;                                    /* acos(1) = 0 */
+            }
+            else 
+            { 
+                return pi+(KDfloat32)2.0*pio2_lo;             /* acos(-1)= pi */
+            }
+        }
+        return (x-x)/(x-x);                             /* acos(|x|>1) is NaN */
+    }
+    if(ix<0x3f000000)                                            /* |x| < 0.5 */
+    {   
+        if(ix<=0x32800000)                                      /*if|x|<2**-26*/
+        {
+            return pio2_hi+pio2_lo;
+        }
+        z = x*x;
+        p = z*(pS0+z*(pS1+z*pS2));
+        q = one+z*qS1;
+        r = p/q;
+        return pio2_hi - (x - (pio2_lo-x*r));
+    } 
+    else if(hx<0)                                                 /* x < -0.5 */
+    {   
+        z = (one+x)*(KDfloat32)0.5;
+        p = z*(pS0+z*(pS1+z*pS2));
+        q = one+z*qS1;
+        s = kdSqrtf(z);
+        r = p/q;
+        w = r*s-pio2_lo;
+        return pi - (KDfloat32)2.0*(s+w);
+    } 
+    else /* x > 0.5 */
+    {   
+        KDint32 idf;
+        z = (one-x)*(KDfloat32)0.5;
+        s = kdSqrtf(z);
+        df = s;
+        GET_FLOAT_WORD(idf,df);
+        SET_FLOAT_WORD(df,idf&0xfffff000);
+        c  = (z-df*df)/(s+df);
+        p = z*(pS0+z*(pS1+z*pS2));
+        q = one+z*qS1;
+        r = p/q;
+        w = r*s+c;
+        return (KDfloat32)2.0*(df+w);
+    }
 }
 
 /* kdAsinf: Arc sine function. */
 KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
 {
-    return asinf(x);
+    KDfloat64KHR s;
+    KDfloat32 t,w,p,q;
+    KDint32 hx,ix;
+    GET_FLOAT_WORD(hx,x);
+    ix = hx&0x7fffffff;
+    if(ix>=0x3f800000)                                            /* |x| >= 1 */
+    {
+        if(ix==0x3f800000)                                        /* |x| == 1 */
+        { 
+            return x*pio2;                 /* asin(+-1) = +-pi/2 with inexact */
+        }
+        return (x-x)/(x-x);                             /* asin(|x|>1) is NaN */
+    }
+    else if (ix<0x3f000000)                                        /* |x|<0.5 */
+    {
+        if(ix<0x39800000)                                     /* |x| < 2**-12 */
+        {   
+            if(huge+x>one) 
+            { 
+                return x;                     /* return x with inexact if x!=0*/
+            }
+        }
+        t = x*x;
+        p = t*(pS0+t*(pS1+t*pS2));
+        q = one+t*qS1;
+        w = p/q;
+        return x+x*w;
+    }
+    /* 1> |x|>= 0.5 */
+    w = one-kdFabsf(x);
+    t = w*(KDfloat32)0.5;
+    p = t*(pS0+t*(pS1+t*pS2));
+    q = one+t*qS1;
+    s = sqrt(t);
+    w = p/q;
+    t = pio2-2.0*(s+s*w);
+    if(hx>0) 
+    { 
+        return t; 
+    }
+    else 
+    { 
+        return -t; 
+    }
 }
 
 /* kdAtanf: Arc tangent function. */
 KD_API KDfloat32 KD_APIENTRY kdAtanf(KDfloat32 x)
 {
-    return atanf(x);
+    float w,s1,s2,z;
+    int32_t ix,hx,id;
+    GET_FLOAT_WORD(hx,x);
+    ix = hx&0x7fffffff;
+    if(ix>=0x4c800000) {    /* if |x| >= 2**26 */
+        if(ix>0x7f800000)
+        return x+x;     /* NaN */
+        if(hx>0) return  atanhi[3]+*(volatile float *)&atanlo[3];
+        else     return -atanhi[3]-*(volatile float *)&atanlo[3];
+    } if (ix < 0x3ee00000) {    /* |x| < 0.4375 */
+        if (ix < 0x39800000) {  /* |x| < 2**-12 */
+        if(huge+x>one) return x;    /* raise inexact */
+        }
+        id = -1;
+    } else {
+    x = fabsf(x);
+    if (ix < 0x3f980000) {      /* |x| < 1.1875 */
+        if (ix < 0x3f300000) {  /* 7/16 <=|x|<11/16 */
+        id = 0; x = ((float)2.0*x-one)/((float)2.0+x);
+        } else {            /* 11/16<=|x|< 19/16 */
+        id = 1; x  = (x-one)/(x+one);
+        }
+    } else {
+        if (ix < 0x401c0000) {  /* |x| < 2.4375 */
+        id = 2; x  = (x-(float)1.5)/(one+(float)1.5*x);
+        } else {            /* 2.4375 <= |x| < 2**26 */
+        id = 3; x  = -(float)1.0/x;
+        }
+    }}
+    /* end of argument reduction */
+    z = x*x;
+    w = z*z;
+    /* break sum from i=0 to 10 aT[i]z**(i+1) into odd and even poly */
+    s1 = z*(aT[0]+w*(aT[2]+w*aT[4]));
+    s2 = w*(aT[1]+w*aT[3]);
+    if (id<0) return x - x*(s1+s2);
+    else {
+        z = atanhi[id] - ((x*(s1+s2) - atanlo[id]) - x);
+        return (hx<0)? -z:z;
+    }
 }
 
 /* kdAtan2f: Arc tangent function. */
 KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
 {
-    return atan2f(y, x);
+    KDfloat32 z;
+    KDint32 k,m,hx,hy,ix,iy;
+    GET_FLOAT_WORD(hx,x);
+    ix = hx&0x7fffffff;
+    GET_FLOAT_WORD(hy,y);
+    iy = hy&0x7fffffff;
+    if((ix>0x7f800000)  || (iy>0x7f800000))                  /* x or y is NaN */
+    {
+        return x+y;
+    }
+    if(hx==0x3f800000)
+    {
+        return kdAtanf(y);                                           /* x=1.0 */
+    }
+    m = ((hy>>31)&1)|((hx>>30)&2);                       /* 2*sign(x)+sign(y) */
+    if(iy==0)                                                   /* when y = 0 */
+    {
+        switch(m) 
+        {
+            case 0:
+            case 1: return y;                      /* atan(+-0,+anything)=+-0 */
+            case 2: return  pi+tiny;               /* atan(+0,-anything) = pi */
+            case 3: return -pi-tiny;               /* atan(-0,-anything) =-pi */
+        }
+    }
+    if(ix==0)                                                   /* when x = 0 */
+    {
+        return (hy<0)?  -pi_o_2-tiny: pi_o_2+tiny;
+    }
+    if(ix==0x7f800000)                                       /* when x is INF */
+    {
+        if(iy==0x7f800000) 
+        {
+            switch(m) 
+            {
+                case 0: return  pi_o_4+tiny;               /* atan(+INF,+INF) */
+                case 1: return -pi_o_4-tiny;               /* atan(-INF,+INF) */
+                case 2: return (KDfloat32)3.0*pi_o_4+tiny; /* atan(+INF,-INF) */
+                case 3: return (KDfloat32)-3.0*pi_o_4-tiny;/* atan(-INF,-INF) */
+            }
+        } 
+        else 
+        {
+            switch(m) 
+            {
+                case 0: return  zero;                      /* atan(+...,+INF) */
+                case 1: return -zero;                      /* atan(-...,+INF) */
+                case 2: return  pi+tiny;                   /* atan(+...,-INF) */
+                case 3: return -pi-tiny;                   /* atan(-...,-INF) */
+            }
+        }
+    }
+    if(iy==0x7f800000)                                       /* when y is INF */
+    {
+        return (hy<0)? -pi_o_2-tiny: pi_o_2+tiny;
+    }
+    k = (iy-ix)>>23;                                           /* compute y/x */
+    if(k > 26)                                              /* |y/x| >  2**26 */
+    {
+        z=pi_o_2+(KDfloat32)0.5*pi_lo;
+        m&=1;
+    }
+    else if(k<-26&&hx<0) 
+    {
+        z=0.0;                                         /* 0 > |y|/x > -2**-26 */
+    }
+    else 
+    {
+        z=kdAtanf(kdFabsf(y/x));                            /* safe to do y/x */
+    }
+    switch (m) 
+    {
+        case 0: return z;                                        /* atan(+,+) */
+        case 1: return -z;                                       /* atan(-,+) */
+        case 2: return pi-(z-pi_lo);                             /* atan(+,-) */
+        default: return (z-pi_lo)-pi;                            /* atan(-,-) */
+    }
 }
 
 /* kdCosf: Cosine function. */
@@ -1930,7 +2220,10 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  * String and memory functions
  *
  * Notes:
- * - Copied from the Public Domain C Library (https://bitbucket.org/pdclib)
+ * - Copied from PDCLIB (https://bitbucket.org/pdclib)
+ ******************************************************************************/
+/******************************************************************************
+ * Permission is granted to use, modify, and / or redistribute at will.
  ******************************************************************************/
 
  /* kdMemchr: Scan memory for a byte value. */
@@ -2067,9 +2360,9 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     }
     while(needed < buflen)
     {
-        buf[needed] = src[j];
-        if(buf[needed])
+        if(src[j])
         {
+            buf[needed] = src[j];
             needed++; 
             j++;    
         }
@@ -2118,9 +2411,9 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
     KDsize needed = 0;
     while(needed < buflen)
     {
-        buf[needed] = src[needed];
-        if(buf[needed])
+        if(src[needed])
         {
+            buf[needed] = src[needed];
             needed++;
         }
         else
@@ -2144,6 +2437,30 @@ KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *s
 {
     return kdStrcpy_s(buf, buflen, src);
 }
+
+/* kdStrstrVEN: Locate substring. */
+KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
+{
+    const KDchar * p1 = str1;
+    const KDchar * p2;
+    while (*str1)
+    {
+        p2 = str2;
+        while (*p2 && (*p1 == *p2))
+        {
+            ++p1;
+            ++p2;
+        }
+        if (!*p2)
+        {
+            return (KDchar *)str1;
+        }
+        ++str1;
+        p1 = str1;
+    }
+    return KD_NULL;
+}
+
 
 /******************************************************************************
  * Time functions
@@ -3453,26 +3770,3 @@ KD_API void* KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
 /******************************************************************************
  * String and memory functions (extensions)
  ******************************************************************************/
-
-/* kdStrstr: Locate substring. */
-KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
-{
-    const KDchar * p1 = str1;
-    const KDchar * p2;
-    while (*str1)
-    {
-        p2 = str2;
-        while (*p2 && (*p1 == *p2))
-        {
-            ++p1;
-            ++p2;
-        }
-        if (!*p2)
-        {
-            return (KDchar *)str1;
-        }
-        ++str1;
-        p1 = str1;
-    }
-    return KD_NULL;
-}

@@ -24,8 +24,6 @@
 #ifndef __kdext_h_
 #define __kdext_h_
 
-#include <KD/kd.h>
-
 #include <KD/KHR_float64.h>
 #include <KD/KHR_formatted.h>
 #include <KD/KHR_perfcounter.h>
