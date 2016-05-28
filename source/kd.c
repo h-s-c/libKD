@@ -2278,31 +2278,6 @@ do {                            \
  * A union which permits us to convert between a double and two 32 bit
  * ints.
  */
-#ifdef __arm__
-#if defined(__VFP_FP__) || defined(__ARM_EABI__)
-#define IEEE_WORD_ORDER BYTE_ORDER
-#else
-#define IEEE_WORD_ORDER BIG_ENDIAN
-#endif
-#else /* __arm__ */
-#define IEEE_WORD_ORDER BYTE_ORDER
-#endif
-#if IEEE_WORD_ORDER == BIG_ENDIAN
-typedef union
-{
-  KDfloat64KHR value;
-  struct
-  {
-    KDuint32 msw;
-    KDuint32 lsw;
-  } parts;
-  struct
-  {
-    KDuint64 w;
-  } xparts;
-} ieee_double_shape_type;
-#endif
-#if IEEE_WORD_ORDER == LITTLE_ENDIAN
 typedef union
 {
   KDfloat64KHR value;
@@ -2316,7 +2291,6 @@ typedef union
     KDuint64 w;
   } xparts;
 } ieee_double_shape_type;
-#endif
 
 /* Get two 32 bit ints from a double.  */
 #define EXTRACT_WORDS(ix0,ix1,d)    \
@@ -2360,7 +2334,7 @@ static inline KDfloat32 __kernel_cosdf(KDfloat64KHR x)
     z = x*x;
     w = z*z;
     r = C2+z*C3;
-    return ((one+z*C0) + w*C1) + (w*z)*r;
+    return (KDfloat32)((one+z*C0) + w*C1) + (w*z)*r;
 }
 
 static inline KDfloat32 __kernel_sindf(KDfloat64KHR x)
@@ -2371,7 +2345,7 @@ static inline KDfloat32 __kernel_sindf(KDfloat64KHR x)
     w = z*z;
     r = S3+z*S4;
     s = z*x;
-    return (x + s*(S1+z*S2)) + s*w*r;
+    return (KDfloat32)(x + s*(S1+z*S2)) + s*w*r;
 }
 
 static inline KDfloat32 __kernel_tandf(KDfloat64KHR x, KDint iy)
@@ -2398,8 +2372,8 @@ static inline KDfloat32 __kernel_tandf(KDfloat64KHR x, KDint iy)
     s = z*x;
     u = T[0]+z*T[1];
     r = (x+s*u)+(s*w)*(t+w*r);
-    if(iy==1) return r;
-    else return -1.0/r;
+    if(iy==1) return (KDfloat32)r;
+    else return (KDfloat32)-1.0/r;
 }
 
 KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
