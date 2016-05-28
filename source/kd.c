@@ -3717,9 +3717,9 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
         z = one-tiny; /* trigger inexact flag */
         if (z>=one) {
             z = one+tiny;
-            if (q1==(u_int32_t)0xffffffff) { q1=0; q += 1;}
+            if (q1==(KDuint32)0xffffffff) { q1=0; q += 1;}
         else if (z>one) {
-            if (q1==(u_int32_t)0xfffffffe) q+=1;
+            if (q1==(KDuint32)0xfffffffe) q+=1;
             q1+=2; 
         } else
                 q1 += (q1&1);
