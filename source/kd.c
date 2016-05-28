@@ -1958,20 +1958,20 @@ KDboolean KD_APIENTRY __kdDispatchFuncSIMD(KDuintptr optimalinfo, KDuintptr cand
 }
 
 /* TODO: Cleanup */
-static const KDfloat32 zero  = 0.0;
-static const KDfloat32 one =  1.0000000000e+00;                 /* 0x3F800000 */
-static const KDfloat32 huge =  1.000e+30;           /* coefficient for R(x^2) */
-static volatile KDfloat32 tiny  = 1.0e-30;
-static const KDfloat32 pi =  3.1415925026e+00;                  /* 0x40490fda */
-static const KDfloat32 pi_o_4  = 7.8539818525e-01;              /* 0x3f490fdb */
-static const KDfloat32 pi_o_2  = 1.5707963705e+00;              /* 0x3fc90fdb */
-static const KDfloat32 pio2_hi =  1.5707962513e+00;             /* 0x3fc90fda */
-static volatile KDfloat32 pio2_lo =  7.5497894159e-08;          /* 0x33a22168 */
-static volatile KDfloat32 pi_lo   = -8.7422776573e-08;          /* 0xb3bbbd2e */
-static const KDfloat32 pS0 =  1.6666586697e-01;
-static const KDfloat32 pS1 = -4.2743422091e-02;
-static const KDfloat32 pS2 = -8.6563630030e-03;
-static const KDfloat32 qS1 = -7.0662963390e-01;
+static const KDfloat32 zero  = 0.0f;
+static const KDfloat32 one =  1.0000000000e+00f;                 /* 0x3F800000 */
+static const KDfloat32 huge =  1.000e+30f;           /* coefficient for R(x^2) */
+static volatile KDfloat32 tiny  = 1.0e-30f;
+static const KDfloat32 pi =  3.1415925026e+00f;                  /* 0x40490fda */
+static const KDfloat32 pi_o_4  = 7.8539818525e-01f;              /* 0x3f490fdb */
+static const KDfloat32 pi_o_2  = 1.5707963705e+00f;              /* 0x3fc90fdb */
+static const KDfloat32 pio2_hi =  1.5707962513e+00f;             /* 0x3fc90fda */
+static volatile KDfloat32 pio2_lo =  7.5497894159e-08f;          /* 0x33a22168 */
+static volatile KDfloat32 pi_lo   = -8.7422776573e-08f;          /* 0xb3bbbd2e */
+static const KDfloat32 pS0 =  1.6666586697e-01f;
+static const KDfloat32 pS1 = -4.2743422091e-02f;
+static const KDfloat32 pS2 = -8.6563630030e-03f;
+static const KDfloat32 qS1 = -7.0662963390e-01f;
 static const KDfloat64KHR pio2 =  1.570796326794896558e+00;
 /* |cos(x) - c(x)| < 2**-34.1 (~[-5.37e-11, 5.295e-11]). */
 static const KDfloat64KHR 
@@ -2004,89 +2004,89 @@ invpio2 =  6.36619772367581382433e-01, /* 0x3FE45F30, 0x6DC9C883 */
 pio2_1  =  1.57079631090164184570e+00, /* 0x3FF921FB, 0x50000000 */
 pio2_1t =  1.58932547735281966916e-08; /* 0x3E5110b4, 0x611A6263 */
 
-static const float
-halF[2] = {0.5,-0.5,},
-o_threshold=  8.8721679688e+01,  /* 0x42b17180 */
-u_threshold= -1.0397208405e+02,  /* 0xc2cff1b5 */
-ln2HI[2]   ={ 6.9314575195e-01,     /* 0x3f317200 */
-         -6.9314575195e-01,},   /* 0xbf317200 */
-ln2LO[2]   ={ 1.4286067653e-06,     /* 0x35bfbe8e */
-         -1.4286067653e-06,},   /* 0xb5bfbe8e */
-invln2 =  1.4426950216e+00,         /* 0x3fb8aa3b */
+static const KDfloat32
+halF[2] = {0.5f,-0.5f,},
+o_threshold=  8.8721679688e+01f,  /* 0x42b17180 */
+u_threshold= -1.0397208405e+02f,  /* 0xc2cff1b5 */
+ln2HI[2]   ={ 6.9314575195e-01f,     /* 0x3f317200 */
+         -6.9314575195e-01f,},   /* 0xbf317200 */
+ln2LO[2]   ={ 1.4286067653e-06f,     /* 0x35bfbe8e */
+         -1.4286067653e-06f,},   /* 0xb5bfbe8e */
+invln2 =  1.4426950216e+00f,         /* 0x3fb8aa3b */
 /*
  * Domain [-0.34568, 0.34568], range ~[-4.278e-9, 4.447e-9]:
  * |x*(exp(x)+1)/(exp(x)-1) - p(x)| < 2**-27.74
  */
-P1 =  1.6666625440e-1,      /*  0xaaaa8f.0p-26 */
-P2 = -2.7667332906e-3;      /* -0xb55215.0p-32 */
-static volatile float
-twom100 = 7.8886090522e-31;      /* 2**-100=0x0d800000 */
+P1 =  1.6666625440e-1f,      /*  0xaaaa8f.0p-26 */
+P2 = -2.7667332906e-3f;      /* -0xb55215.0p-32 */
+static volatile KDfloat32
+twom100 = 7.8886090522e-31f;      /* 2**-100=0x0d800000 */
 
-static const float
-ln2_hi =   6.9313812256e-01,    /* 0x3f317180 */
-ln2_lo =   9.0580006145e-06,    /* 0x3717f7d1 */
-two25 =    3.355443200e+07, /* 0x4c000000 */
-twom25 =    2.9802322388e-08, /* 0x33000000 */
+static const KDfloat32
+ln2_hi =   6.9313812256e-01f,    /* 0x3f317180 */
+ln2_lo =   9.0580006145e-06f,    /* 0x3717f7d1 */
+two25 =    3.355443200e+07f, /* 0x4c000000 */
+twom25 =    2.9802322388e-08f, /* 0x33000000 */
 /* |(log(1+s)-log(1-s))/s - Lg(s)| < 2**-34.24 (~[-4.95e-11, 4.97e-11]). */
-Lg1 =      0xaaaaaa.0p-24,  /* 0.66666662693 */
-Lg2 =      0xccce13.0p-25,  /* 0.40000972152 */
-Lg3 =      0x91e9ee.0p-25,  /* 0.28498786688 */
-Lg4 =      0xf89e26.0p-26;  /* 0.24279078841 */
-static volatile KDfloat32 vzero = 0.0;
+Lg1 =      0xaaaaaa.0p-24f,  /* 0.66666662693 */
+Lg2 =      0xccce13.0p-25f,  /* 0.40000972152 */
+Lg3 =      0x91e9ee.0p-25f,  /* 0.28498786688 */
+Lg4 =      0xf89e26.0p-26f;  /* 0.24279078841 */
+static volatile KDfloat32 vzero = 0.0f;
 
-static const float
-bp[] = {1.0, 1.5,},
-dp_h[] = { 0.0, 5.84960938e-01,}, /* 0x3f15c000 */
-dp_l[] = { 0.0, 1.56322085e-06,}, /* 0x35d1cfdc */
-two =  2.0,
+static const KDfloat32
+bp[] = {1.0f, 1.5f,},
+dp_h[] = { 0.0f, 5.84960938e-01f,}, /* 0x3f15c000 */
+dp_l[] = { 0.0f, 1.56322085e-06f,}, /* 0x35d1cfdc */
+two =  2.0f,
     /* poly coefs for (3/2)*(log(x)-2s-2/3*s**3 */
-L1  =  6.0000002384e-01, /* 0x3f19999a */
-L2  =  4.2857143283e-01, /* 0x3edb6db7 */
-L3  =  3.3333334327e-01, /* 0x3eaaaaab */
-L4  =  2.7272811532e-01, /* 0x3e8ba305 */
-L5  =  2.3066075146e-01, /* 0x3e6c3255 */
-L6  =  2.0697501302e-01, /* 0x3e53f142 */
-P3   =  6.6137559770e-05, /* 0x388ab355 */
-P4   = -1.6533901999e-06, /* 0xb5ddea0e */
-P5   =  4.1381369442e-08, /* 0x3331bb4c */
-lg2  =  6.9314718246e-01, /* 0x3f317218 */
-lg2_h  =  6.93145752e-01, /* 0x3f317200 */
-lg2_l  =  1.42860654e-06, /* 0x35bfbe8c */
-ovt =  4.2995665694e-08, /* -(128-log2(ovfl+.5ulp)) */
-cp_   =  9.6179670095e-01, /* 0x3f76384f =2/(3ln2) */
-cp_h  =  9.6191406250e-01, /* 0x3f764000 =12b cp */
-cp_l  = -1.1736857402e-04, /* 0xb8f623c6 =tail of cp_h */
-ivln2    =  1.4426950216e+00, /* 0x3fb8aa3b =1/ln2 */
-ivln2_h  =  1.4426879883e+00, /* 0x3fb8aa00 =16b 1/ln2*/
-ivln2_l  =  7.0526075433e-06; /* 0x36eca570 =1/ln2 tail*/
+L1  =  6.0000002384e-01f, /* 0x3f19999a */
+L2  =  4.2857143283e-01f, /* 0x3edb6db7 */
+L3  =  3.3333334327e-01f, /* 0x3eaaaaab */
+L4  =  2.7272811532e-01f, /* 0x3e8ba305 */
+L5  =  2.3066075146e-01f, /* 0x3e6c3255 */
+L6  =  2.0697501302e-01f, /* 0x3e53f142 */
+P3   =  6.6137559770e-05f, /* 0x388ab355 */
+P4   = -1.6533901999e-06f, /* 0xb5ddea0e */
+P5   =  4.1381369442e-08f, /* 0x3331bb4c */
+lg2  =  6.9314718246e-01f, /* 0x3f317218 */
+lg2_h  =  6.93145752e-01f, /* 0x3f317200 */
+lg2_l  =  1.42860654e-06f, /* 0x35bfbe8c */
+ovt =  4.2995665694e-08f, /* -(128-log2(ovfl+.5ulp)) */
+cp_   =  9.6179670095e-01f, /* 0x3f76384f =2/(3ln2) */
+cp_h  =  9.6191406250e-01f, /* 0x3f764000 =12b cp */
+cp_l  = -1.1736857402e-04f, /* 0xb8f623c6 =tail of cp_h */
+ivln2    =  1.4426950216e+00f, /* 0x3fb8aa3b =1/ln2 */
+ivln2_h  =  1.4426879883e+00f, /* 0x3fb8aa00 =16b 1/ln2*/
+ivln2_l  =  7.0526075433e-06f; /* 0x36eca570 =1/ln2 tail*/
 
 static const KDfloat64KHR
 two54 =  1.80143985094819840000e+16, /* 0x43500000, 0x00000000 */
 twom54 = 5.55111512312578270212e-17; /* 0x3C900000, 0x00000000 */
 
-static const KDfloat32 Zero[] = {0.0, -0.0,};
+static const KDfloat32 Zero[] = {0.0f, -0.0f,};
 
 static const KDfloat32 atanhi[] = 
 {
-  4.6364760399e-01,                                 /* atan(0.5)hi 0x3eed6338 */
-  7.8539812565e-01,                                 /* atan(1.0)hi 0x3f490fda */
-  9.8279368877e-01,                                 /* atan(1.5)hi 0x3f7b985e */
-  1.5707962513e+00,                                 /* atan(inf)hi 0x3fc90fda */
+  4.6364760399e-01f,                                 /* atan(0.5)hi 0x3eed6338 */
+  7.8539812565e-01f,                                 /* atan(1.0)hi 0x3f490fda */
+  9.8279368877e-01f,                                 /* atan(1.5)hi 0x3f7b985e */
+  1.5707962513e+00f,                                 /* atan(inf)hi 0x3fc90fda */
 };
 static const KDfloat32 atanlo[] = 
 {
-  5.0121582440e-09,                                 /* atan(0.5)lo 0x31ac3769 */
-  3.7748947079e-08,                                 /* atan(1.0)lo 0x33222168 */
-  3.4473217170e-08,                                 /* atan(1.5)lo 0x33140fb4 */
-  7.5497894159e-08,                                 /* atan(inf)lo 0x33a22168 */
+  5.0121582440e-09f,                                 /* atan(0.5)lo 0x31ac3769 */
+  3.7748947079e-08f,                                 /* atan(1.0)lo 0x33222168 */
+  3.4473217170e-08f,                                 /* atan(1.5)lo 0x33140fb4 */
+  7.5497894159e-08f,                                 /* atan(inf)lo 0x33a22168 */
 };
 static const KDfloat32 aT[] = 
 {
-  3.3333328366e-01,
- -1.9999158382e-01,
-  1.4253635705e-01,
- -1.0648017377e-01,
-  6.1687607318e-02,
+  3.3333328366e-01f,
+ -1.9999158382e-01f,
+  1.4253635705e-01f,
+ -1.0648017377e-01f,
+  6.1687607318e-02f,
 };
 
 /* |tan(x)/x - t(x)| < 2**-25.5 (~[-2e-08, 2e-08]). */
