@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/VEN_atomic.h>
+ #include <KD/kdext.h>
 
 #include <stdio.h>
 

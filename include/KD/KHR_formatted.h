@@ -24,7 +24,7 @@ KD_API KDint KD_APIENTRY kdVsprintfKHR(KDchar *buf, const KDchar *format, KDVaLi
 KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...);
 KD_API KDint KD_APIENTRY kdVfprintfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap);
 
-/* kdLogMessagefKHR: Formatted output to the platform&#8217;s debug logging facility. */
+/* kdLogMessagefKHR: Formatted output to the platform's debug logging facility. */
 KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...);
 
 /* kdSscanfKHR, kdVsscanfKHR: Read formatted input from a buffer. */
