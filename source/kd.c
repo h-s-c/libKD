@@ -73,6 +73,7 @@
  ******************************************************************************/
 
 #include <errno.h>
+#include <float.h>
 #include <inttypes.h>
 #include <locale.h>
 #include <stdarg.h>
@@ -99,7 +100,6 @@
     #include <unistd.h>
 
     #include <cpuid.h>
-
     #if defined(__x86_64__) || defined(__i386__)
         #include <x86intrin.h>
     #elif defined(__ARM_NEON__)
@@ -1975,16 +1975,16 @@ static const KDfloat32 qS1 = -7.0662963390e-01f;
 static const KDfloat64KHR pio2 =  1.570796326794896558e+00;
 /* |cos(x) - c(x)| < 2**-34.1 (~[-5.37e-11, 5.295e-11]). */
 static const KDfloat64KHR 
-C0 = -0x1ffffffd0c5e81.0p-54,                     /* -0.499999997251031003120 */
-C1  =  0x155553e1053a42.0p-57,                   /*  0.0416666233237390631894 */
-C2  = -0x16c087e80f1e27.0p-62,                  /* -0.00138867637746099294692 */
-C3  =  0x199342e0ee5069.0p-68;                /*  0.0000243904487962774090654 */
+C0  = -4.9999999725103100e-01,                      /* -0x1ffffffd0c5e81.0p-54 */
+C1  =  4.1666623323739063e-02,                      /*  0x155553e1053a42.0p-57 */
+C2  = -1.3886763774609929e-03,                      /* -0x16c087e80f1e27.0p-62 */
+C3  =  2.4390448796277409e-05;                      /*  0x199342e0ee5069.0p-68 */
 /* |sin(x)/x - s(x)| < 2**-37.5 (~[-4.89e-12, 4.824e-12]). */
 static const KDfloat64KHR 
-S1 = -0x15555554cbac77.0p-55,                     /* -0.166666666416265235595 */
-S2 =  0x111110896efbb2.0p-59,                    /*  0.0083333293858894631756 */
-S3 = -0x1a00f9e2cae774.0p-65,                  /* -0.000198393348360966317347 */
-S4 =  0x16cd878c3b46a7.0p-71;                 /*  0.0000027183114939898219064 */
+S1 = -1.6666666641626524e-01,                       /* -0x15555554cbac77.0p-55 */
+S2 =  8.3333293858894632e-03,                       /* 0x111110896efbb2.0p-59 */
+S3 = -1.9839334836096632e-04,                       /* -0x1a00f9e2cae774.0p-65 */
+S4 =  2.7183114939898219e-06;                       /* 0x16cd878c3b46a7.0p-71 */
 static const KDfloat64KHR cs1pio2 = 1*KD_PI_2_KHR;   /* 0x3FF921FB, 0x54442D18 */
 static const KDfloat64KHR cs2pio2 = 2*KD_PI_2_KHR;   /* 0x400921FB, 0x54442D18 */
 static const KDfloat64KHR cs3pio2 = 3*KD_PI_2_KHR;   /* 0x4012D97C, 0x7F3321D2 */
@@ -1993,6 +1993,8 @@ static const KDfloat64KHR cst4pio2 = 4*KD_PI_2_KHR;   /* 0x401921FB, 0x54442D18 
 static const KDfloat64KHR         
 two24   =  1.67772160000000000000e+07, /* 0x41700000, 0x00000000 */
 twon24  =  5.96046447753906250000e-08; /* 0x3E700000, 0x00000000 */
+
+static const KDfloat32 two24f = 16777216.0; /* 0x4b800000 */
 
 /*
  * invpio2:  53 bits of 2/pi
@@ -2028,10 +2030,10 @@ ln2_lo =   9.0580006145e-06f,    /* 0x3717f7d1 */
 two25 =    3.355443200e+07f, /* 0x4c000000 */
 twom25 =    2.9802322388e-08f, /* 0x33000000 */
 /* |(log(1+s)-log(1-s))/s - Lg(s)| < 2**-34.24 (~[-4.95e-11, 4.97e-11]). */
-Lg1 =      0xaaaaaa.0p-24f,  /* 0.66666662693 */
-Lg2 =      0xccce13.0p-25f,  /* 0.40000972152 */
-Lg3 =      0x91e9ee.0p-25f,  /* 0.28498786688 */
-Lg4 =      0xf89e26.0p-26f;  /* 0.24279078841 */
+Lg1 =6.6666662693023682e-01,      /* 0xaaaaaa.0p-24f */
+Lg2 =4.0000972151756287e-01,      /* 0xccce13.0p-25f */
+Lg3 =2.8498786687850952e-01,      /* 0x91e9ee.0p-25f */
+Lg4 =2.4279078841209412e-01;      /* 0xf89e26.0p-26f */
 static volatile KDfloat32 vzero = 0.0f;
 
 static const KDfloat32
@@ -2092,12 +2094,12 @@ static const KDfloat32 aT[] =
 /* |tan(x)/x - t(x)| < 2**-25.5 (~[-2e-08, 2e-08]). */
 static const KDfloat64KHR
 T[] =  {
-  0x15554d3418c99f.0p-54,   /* 0.333331395030791399758 */
-  0x1112fd38999f72.0p-55,   /* 0.133392002712976742718 */
-  0x1b54c91d865afe.0p-57,   /* 0.0533812378445670393523 */
-  0x191df3908c33ce.0p-58,   /* 0.0245283181166547278873 */
-  0x185dadfcecf44e.0p-61,   /* 0.00297435743359967304927 */
-  0x1362b9bf971bcd.0p-59,   /* 0.00946564784943673166728 */
+    3.3333139503079140e-01,        /* 0x15554d3418c99f.0p-54 */
+    1.3339200271297674e-01,        /* 0x1112fd38999f72.0p-55 */
+    5.3381237844567039e-02,        /* 0x1b54c91d865afe.0p-57 */
+    2.4528318116654728e-02,        /* 0x191df3908c33ce.0p-58 */
+    2.9743574335996730e-03,        /* 0x185dadfcecf44e.0p-61 */
+    9.4656478494367317e-03,        /* 0x1362b9bf971bcd.0p-59 */
 };
 
 /*
@@ -2602,8 +2604,8 @@ static inline KDint __ieee754_rem_pio2f(KDfloat32 x, KDfloat64KHR *y)
     /* 33+53 bit pi is good enough for medium size */
     if(ix<0x4dc90fdb) {     /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        STRICT_ASSIGN(KDfloat64KHR,fn,x*invpio2+0x1.8p52);
-        fn = fn-0x1.8p52;
+        STRICT_ASSIGN(KDfloat64KHR,fn,x*invpio2+6.7553994410557440e+15);
+        fn = fn-6.7553994410557440e+15;
 #ifdef HAVE_EFFICIENT_IRINT
         n  = irint(fn);
 #else
@@ -2971,7 +2973,7 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
         hi = x - t*ln2HI[0];    /* t*ln2HI is exact here */
         lo = t*ln2LO[0];
         }
-        STRICT_ASSIGN(float, x, hi - lo);
+        STRICT_ASSIGN(KDfloat32, x, hi - lo);
     }
     else if(hx < 0x39000000)  { /* when |x|<2**-14 */
         if(huge+x>one) return one+x;/* trigger inexact */
@@ -2984,10 +2986,10 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
     else
         SET_FLOAT_WORD(twopk,0x3f800000+((k+100)<<23));
     c  = x - t*(P1+t*P2);
-    if(k==0)    return one-((x*c)/(c-(KDfloat32)2.0)-x);
-    else        y = one-((lo-(x*c)/((KDfloat32)2.0-c))-hi);
+    if(k==0)    return one-((x*c)/(c-2.0f)-x);
+    else        y = one-((lo-(x*c)/(2.0f-c))-hi);
     if(k >= -125) {
-        if(k==128) return y*2.0F*0x1p127F;
+        if(k==128) return y*2.0F*1.7014118346046923e+38F;
         return y*twopk;
     } else {
         return y*twopk*twom100;
@@ -3144,7 +3146,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         n = 0;
     /* take care subnormal number */
         if(ix<0x00800000)
-        {ax *= two24; n -= 24; GET_FLOAT_WORD(ix,ax); }
+        {ax *= two24f; n -= 24; GET_FLOAT_WORD(ix,ax); }
         n  += ((ix)>>23)-0x7f;
         j  = ix&0x007fffff;
     /* determine interval */
