@@ -59,7 +59,7 @@ project (KD C)
     endif()
 
     if(MSVC)
-        set(KD_CC_FLAGS "${KD_CC_FLAGS} /W4 /wd4100")
+        set(KD_CC_FLAGS "${KD_CC_FLAGS} /W4 /WX /wd4100")
     else()
         set(KD_CC_FLAGS "${KD_CC_FLAGS} -Wall -Wextra -Werror -Wshadow -pedantic -Wno-attributes -Wno-missing-field-initializers -Wno-unused-parameter")
         if(KD_BUILD_STDLIB MATCHES "musl")
