@@ -2982,19 +2982,20 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
 /* kdExpf: Exponential function. */
 KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
 {
-    KDfloat32 y,hi=0.0f,lo=0.0f,c,t,twopk;
+    KDfloat32 y,hi=0.0f,lo=0.0f,c,t,twopk,sn;
     KDint32 k=0,xsb;
     KDuint32 hx;
     GET_FLOAT_WORD(hx,x);
     xsb = (hx>>31)&1;       /* sign bit of x */
     hx &= 0x7fffffff;       /* high word of |x| */
+    sn = zero;
     /* filter out non-finite argument */
     if(hx >= 0x42b17218) {          /* if |x|>=88.721... */
         if(hx>0x7f800000)
          return x+x;            /* NaN */
             if(hx==0x7f800000)
         return (xsb==0)? x:0.0f;     /* exp(+-inf)={inf,0} */
-        if(x > o_threshold) return huge*huge; /* overflow */
+        if(x > o_threshold) return sn*huge*huge; /* overflow */
         if(x < u_threshold) return twom100*twom100; /* underflow */
     }
     /* argument reduction */
@@ -3040,7 +3041,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     if (ix < 0x00800000) {          /* x < 2**-126  */
         if ((ix&0x7fffffff)==0)
         return -two25/vzero;        /* log(+-0)=-inf */
-        if (ix<0) return (x-x)/zero;    /* log(-#) = NaN */
+        if (ix<0) return (x-x)/(x-x);    /* log(-#) = NaN */
         k -= 25; x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix,x);
     }
