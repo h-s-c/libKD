@@ -1846,29 +1846,24 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 #pragma warning(push)
 #pragma warning(disable:4723)
 #pragma warning(disable:4756)
+#if _MSC_VER <= 1800
+#pragma warning(disable:4127)
+#endif
 #endif
 
-static void __kdCpuid(KDint level, KDint abcd[4])
-{
-#if defined(_MSC_VER)
-    __cpuid(abcd, level);
-#elif defined(__GNUC__)
-    __cpuid_count(level, 0, abcd[0], abcd[1], abcd[2], abcd[3]);
-#else
-    kdAssert(0);
-#endif
-}
-
-enum 
+enum
 {
     __KD_GENERIC = 0,
+    /* x86 */
     __KD_SSE = 1,
     __KD_SSE2 = 2,
     __KD_SSE3 = 3,
     __KD_SSSE3 = 4,
     __KD_SSE4_1 = 5,
     __KD_SSE4_2 = 6,
-    __KD_AVX = 7
+    __KD_AVX = 7,
+    /* ARM */
+    __KD_NEON = 99,
 };
 
 KDboolean KD_APIENTRY __kdDispatchFuncSIMD(KDuintptr optimalinfo, KDuintptr candidateinfo)
@@ -1878,10 +1873,28 @@ KDboolean KD_APIENTRY __kdDispatchFuncSIMD(KDuintptr optimalinfo, KDuintptr cand
         return 0;
     }
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
     KDint abcd[4] = {0,0,0,0};
-    __kdCpuid(0x00000001, abcd);
+#if defined(_MSC_VER)
+    __cpuid(abcd, 0x00000001);
+#elif defined(__GNUC__)
+    __cpuid_count(0x00000001, 0, abcd[0], abcd[1], abcd[2], abcd[3]);
+#else
+    kdAssert(0);
+#endif
+#endif
+
     switch(candidateinfo)
     {
+#if defined(__aarch64_) || defined(__arm__) || defined(_M_ARM)
+#ifdef __ARM_NEON__
+        case __KD_NEON:
+        {
+            return 1;
+        }
+#endif
+#endif
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
 #ifdef __AVX__
         case __KD_AVX:
         {
@@ -1951,6 +1964,7 @@ KDboolean KD_APIENTRY __kdDispatchFuncSIMD(KDuintptr optimalinfo, KDuintptr cand
             }
             break;
         }
+#endif
 #endif
         case __KD_GENERIC:
         {
