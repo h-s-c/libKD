@@ -2469,13 +2469,13 @@ static inline KDint __kdIrint_SSE2(KDfloat64KHR x)
 }
 
 static KDDispatchVEN*  kddispatchirint = KD_NULL;
-static KDfloat32 (*kdirint)(KDfloat32) = KD_NULL;
+static KDint (*kdirint)(KDfloat64KHR) = KD_NULL;
 static void __kdIrintInit(void)
 {
     kddispatchirint = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
     kdDispatchInstallCandidateVEN(kddispatchirint, __KD_GENERIC, (KDuintptr)&__kdIrint_Generic);
     kdDispatchInstallCandidateVEN(kddispatchirint, __KD_SSE2, (KDuintptr)&__kdIrint_SSE2);
-    kdirint = (KDfloat32(*)(KDfloat32))kdDispatchGetOptimalVEN(kddispatchirint);
+    kdirint = (KDint(*)(KDfloat64KHR))kdDispatchGetOptimalVEN(kddispatchirint);
 }
 
 static void __kdIrintCleanup(void)
@@ -2739,7 +2739,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
     q = one+t*qS1;
     s = kdSqrtKHR(t);
     w = p/q;
-    t = (KDfloat32)pio2-2.0f*(s+s*w);
+    t = (KDfloat32)(pio2-2.0*(s+s*w));
     if(hx>0) return t; else return -t;
 }
 
@@ -3002,7 +3002,7 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
         if(hx < 0x3F851592) {   /* and |x| < 1.5 ln2 */
         hi = x-ln2HI[xsb]; lo=ln2LO[xsb]; k = 1-xsb-xsb;
         } else {
-        k  = (KDint32)invln2*x+halF[xsb];
+        k  = (KDint32)(invln2*x+halF[xsb]);
         t  = (KDfloat32)k;
         hi = x - t*ln2HI[0];    /* t*ln2HI is exact here */
         lo = t*ln2LO[0];
