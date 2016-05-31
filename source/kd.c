@@ -1841,6 +1841,13 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
  * is preserved.
  * ====================================================
  ******************************************************************************/
+
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable:4723)
+#pragma warning(disable:4756)
+#endif
+
 static void __kdCpuid(KDint level, KDint abcd[4])
 {
 #if defined(_MSC_VER)
@@ -3871,6 +3878,10 @@ static void __kdMathCleanup(void)
     __kdSqrtKHRCleanup();
     __kdFloorKHRCleanup();
 }
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 /******************************************************************************
  * String and memory functions
