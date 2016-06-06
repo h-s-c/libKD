@@ -78,7 +78,6 @@
 #include <locale.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 
 #if defined(KD_THREAD_C11) && !defined(_MSC_VER)
@@ -427,8 +426,8 @@ static void* __kdThreadStart(void *args)
         __except (EXCEPTION_CONTINUE_EXECUTION)
         {
         }
-#pragma warning(pop)
     }
+#pragma warning(pop)
 #elif defined(KD_THREAD_POSIX)
 #if defined(__linux__)
     prctl(PR_SET_NAME, (unsigned long)threadname, 0UL, 0UL, 0UL);
@@ -707,7 +706,6 @@ struct KDThreadCond
 };
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 {
-
     KDThreadCond *cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
     KDint error = 0;
 #if defined(KD_THREAD_C11)
@@ -1653,50 +1651,246 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 
 /******************************************************************************
  * Utility library functions
+ *
+ * Notes:
+ * - kdAbs, kdStrtol and kdStrtoul copied from the BSD libc developed at the 
+ *   University of California, Berkeley
+ ******************************************************************************/
+/******************************************************************************
+ * Copyright (c) 1990, 1993
+ *  The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Chris Torek.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  ******************************************************************************/
 
 /* kdAbs: Compute the absolute value of an integer. */
 KD_API KDint KD_APIENTRY kdAbs(KDint i)
 {
-    return ( i >= 0 ) ? i : -i;
+    return(i < 0 ? -i : i);
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
-#if defined(_MSC_VER) && _MSC_VER <= 1800
-#pragma warning(push)
-#pragma warning(disable:4756)
-#endif
 KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 {
     return strtof(s, endptr);
 }
 
 /* kdStrtol, kdStrtoul: Convert a string to an integer. */
-KD_API KDint KD_APIENTRY kdStrtol(const KDchar *s, KDchar **endptr, KDint base)
+static KDint __kdIsalpha(KDint c)
 {
-    KDint64 retval = strtoimax(s, endptr, base);
-    if(retval ==  INTMAX_MIN)
-    {
-        kdSetError(KD_ERANGE);
-        return  KDINT_MIN;
-    }
-    else if(retval ==  INTMAX_MAX)
-    {
-        kdSetError(KD_ERANGE);
-        return  KDINT_MAX;
-    }
-    return (KDint)retval;
+    return((c >='a' && c <='z') || (c >='A' && c <='Z'));
 }
 
-KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *s, KDchar **endptr, KDint base)
+static KDint __kdIsdigit(KDint c)
 {
-    KDuint64 retval = strtoumax(s, endptr, base);
-    if(retval == UINTMAX_MAX)
-    {
-        kdSetError(KD_ERANGE);
-        return  KDUINT_MAX;
+    return((c>='0') && (c<='9'));
+}
+
+static KDint __kdIsspace(KDint c)
+{
+    return ((c>=0x09 && c<=0x0D) || (c==0x20));
+}
+
+static KDint __kdIsupper(KDint c)
+{
+    return ((c>='A') && (c<='Z'));
+}
+
+KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint base)
+{
+    const KDchar *s;
+    KDint acc, cutoff;
+    KDint c;
+    KDint neg, any, cutlim;
+    /*
+     * Ensure that base is between 2 and 36 inclusive, or the special
+     * value of 0.
+     */
+    if (base < 0 || base == 1 || base > 36) {
+        if (endptr != 0)
+            *endptr = (KDchar *)nptr;
+        errno = KD_EINVAL;
+        return 0;
     }
-    return (KDuint)retval;
+    /*
+     * Skip white space and pick up leading +/- sign if any.
+     * If base is 0, allow 0x for hex and 0 for octal, else
+     * assume decimal; if base is already 16, allow 0x.
+     */
+    s = nptr;
+    do {
+        c = (KDuintptr) *s++;
+    } while (__kdIsspace(c));
+    if (c == '-') {
+        neg = 1;
+        c = *s++;
+    } else {
+        neg = 0;
+        if (c == '+')
+            c = *s++;
+    }
+    if ((base == 0 || base == 16) &&
+        c == '0' && (*s == 'x' || *s == 'X')) {
+        c = s[1];
+        s += 2;
+        base = 16;
+    }
+    if (base == 0)
+        base = c == '0' ? 8 : 10;
+    /*
+     * Compute the cutoff value between legal numbers and illegal
+     * numbers.  That is the largest legal value, divided by the
+     * base.  An input number that is greater than this value, if
+     * followed by a legal input character, is too big.  One that
+     * is equal to this value may be valid or not; the limit
+     * between valid and invalid numbers is then based on the last
+     * digit.  For instance, if the range for intmax_t is
+     * [-9223372036854775808..9223372036854775807] and the input base
+     * is 10, cutoff will be set to 922337203685477580 and cutlim to
+     * either 7 (neg==0) or 8 (neg==1), meaning that if we have
+     * accumulated a value > 922337203685477580, or equal but the
+     * next digit is > 7 (or 8), the number is too big, and we will
+     * return a range error.
+     *
+     * Set any if any `digits' consumed; make it negative to indicate
+     * overflow.
+     */
+    cutoff = neg ? KDINT_MIN : KDINT_MAX;
+    cutlim = cutoff % base;
+    cutoff /= base;
+    if (neg) {
+        if (cutlim > 0) {
+            cutlim -= base;
+            cutoff += 1;
+        }
+        cutlim = -cutlim;
+    }
+    for (acc = 0, any = 0;; c = (KDuintptr) *s++) {
+        if (__kdIsdigit(c))
+            c -= '0';
+        else if (__kdIsalpha(c))
+            c -= __kdIsupper(c) ? 'A' - 10 : 'a' - 10;
+        else
+            break;
+        if (c >= base)
+            break;
+        if (any < 0)
+            continue;
+        if (neg) {
+            if (acc < cutoff || (acc == cutoff && c > cutlim)) {
+                any = -1;
+                acc = KDINT_MIN;
+                errno = ERANGE;
+            } else {
+                any = 1;
+                acc *= base;
+                acc -= c;
+            }
+        } else {
+            if (acc > cutoff || (acc == cutoff && c > cutlim)) {
+                any = -1;
+                acc = KDINT_MAX;
+                errno = KD_ERANGE;
+            } else {
+                any = 1;
+                acc *= base;
+                acc += c;
+            }
+        }
+    }
+    if (endptr != 0)
+        *endptr = (KDchar *) (any ? s - 1 : nptr);
+    return (acc);
+}
+
+KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint base)
+{
+    const KDchar *s;
+    KDuint acc, cutoff;
+    KDint c;
+    KDint neg, any, cutlim;
+    /*
+     * See strtoimax for comments as to the logic used.
+     */
+    if (base < 0 || base == 1 || base > 36) {
+        if (endptr != 0)
+            *endptr = (KDchar *)nptr;
+        errno = KD_EINVAL;
+        return 0;
+    }
+    s = nptr;
+    do {
+        c = (KDuintptr) *s++;
+    } while (__kdIsspace(c));
+    if (c == '-') {
+        neg = 1;
+        c = *s++;
+    } else {
+        neg = 0;
+        if (c == '+')
+            c = *s++;
+    }
+    if ((base == 0 || base == 16) &&
+        c == '0' && (*s == 'x' || *s == 'X')) {
+        c = s[1];
+        s += 2;
+        base = 16;
+    }
+    if (base == 0)
+        base = c == '0' ? 8 : 10;
+    cutoff = KDUINT_MAX / (KDuint)base;
+    cutlim = KDUINT_MAX % (KDuint)base;
+    for (acc = 0, any = 0;; c = (KDuintptr) *s++) {
+        if (__kdIsdigit(c))
+            c -= '0';
+        else if (__kdIsalpha(c))
+            c -= __kdIsupper(c) ? 'A' - 10 : 'a' - 10;
+        else
+            break;
+        if (c >= base)
+            break;
+        if (any < 0)
+            continue;
+        if (acc > cutoff || (acc == cutoff && c > cutlim)) {
+            any = -1;
+            acc = KDUINT_MAX;
+            errno = KD_ERANGE;
+        } else {
+            any = 1;
+            acc *= (KDuint)base;
+            acc += c;
+        }
+    }
+    if (neg && any > 0)
+        acc = -acc;
+    if (endptr != 0)
+        *endptr = (KDchar *) (any ? s - 1 : nptr);
+    return (acc);
 }
 
 /* kdLtostr, kdUltostr: Convert an integer to a string. */
@@ -1708,6 +1902,7 @@ KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
     }
     return snprintf(buffer, buflen, "%i", number);
 }
+
 KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint number, KDint base)
 {
     if(buflen == 0)
@@ -2417,7 +2612,7 @@ KDfloat32 __kdCopysignf(KDfloat32 x, KDfloat32 y)
     return x;
 }
 
-static KDfloat64KHR __scalbn (KDfloat64KHR x, KDint n)
+static KDfloat64KHR __kdScalbn (KDfloat64KHR x, KDint n)
 {
     KDint32 k,hx,lx;
     EXTRACT_WORDS(hx,lx,x);
@@ -2541,7 +2736,7 @@ recompute:
         z     =  q[j-1]+fw;
     }
     /* compute n */
-    z  = __scalbn(z,q0);      /* actual value of z */
+    z  = __kdScalbn(z,q0);      /* actual value of z */
     z -= 8.0*kdFloorKHR(z*0.125);        /* trim off integer >= 8 */
     n  = (KDint32) z;
     z -= (KDfloat64KHR)n;
@@ -2573,7 +2768,7 @@ recompute:
         }
         if(ih==2) {
         z = one - z;
-        if(carry!=0) z -= __scalbn(one,q0);
+        if(carry!=0) z -= __kdScalbn(one,q0);
         }
     }
     /* check if recomputation is needed */
@@ -2583,7 +2778,7 @@ recompute:
         if(j==0) { /* need recomputation */
         for(k=1;iq[jk-k]==0;k++);   /* k = no. of terms needed */
         for(i=jz+1;i<=jz+k;i++) {   /* add q[jz+1] to q[jz+k] */
-            f[jx+i] = (KDfloat64KHR) ipio2[jv+i];
+            f[jx+i] = (KDfloat64KHR)ipio2[jv+i];
             for(j=0,fw=0.0;j<=jx;j++) fw += x[j]*f[jx+i-j];
             q[i] = fw;
         }
@@ -2596,7 +2791,7 @@ recompute:
         jz -= 1; q0 -= 24;
         while(iq[jz]==0) { jz--; q0-=24;}
     } else { /* break z into 24-bit if necessary */
-        z = __scalbn(z,-q0);
+        z = __kdScalbn(z,-q0);
         if(z>=two24) { 
         fw = (KDfloat64KHR)((KDint32)(twon24*z));
         iq[jz] = (KDint32)(z-two24*fw);
@@ -2605,7 +2800,7 @@ recompute:
         } else iq[jz] = (KDint32) z ;
     }
     /* convert integer "bit" chunk to floating-point value */
-    fw = __scalbn(one,q0);
+    fw = __kdScalbn(one,q0);
     for(i=jz;i>=0;i--) {
         q[i] = fw*(KDfloat64KHR)iq[i]; fw*=twon24;
     }
@@ -3901,23 +4096,129 @@ static void __kdMathCleanup(void)
  * String and memory functions
  *
  * Notes:
- * - Copied from PDCLIB (https://bitbucket.org/pdclib)
+ * - Generic codepath copied from the BSD libc developed at the 
+ *   University of California, Berkeley
  ******************************************************************************/
 /******************************************************************************
- * Permission is granted to use, modify, and / or redistribute at will.
+ * Copyright (c) 1990, 1993
+ *  The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Chris Torek.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  ******************************************************************************/
+
+/*
+ * sizeof(word) MUST BE A POWER OF TWO
+ * SO THAT wmask BELOW IS ALL ONES
+ */
+typedef int word;       /* "word" used for optimal copy speed */
+
+#define wsize   sizeof(word)
+#define wmask   (wsize - 1)
+
+/*
+ * Copy a block of memory, handling overlap.
+ * This is the routine that actually implements
+ * (the portable versions of) bcopy, memcpy, and memmove.
+ */
+static void* __kdBcopy(void *dst0, const void *src0, size_t length)
+{
+    KDint8 *dst = dst0;
+    const KDint8 *src = src0;
+    KDsize t;
+
+    if (length == 0 || dst == src)      /* nothing to do */
+        goto done;
+
+    /*
+     * Macros: loop-t-times; and loop-t-times, t>0
+     */
+#define TLOOP(s) if (t) TLOOP1(s)
+#define TLOOP1(s) do { s; } while (--t)
+
+    if ((KDuintptr)dst < (KDuintptr)src) {
+        /*
+         * Copy forward.
+         */
+        t = (KDuintptr)src; /* only need low bits */
+        if ((t | (KDuintptr)dst) & wmask) {
+            /*
+             * Try to align operands.  This cannot be done
+             * unless the low bits match.
+             */
+            if ((t ^ (KDuintptr)dst) & wmask || length < wsize)
+                t = length;
+            else
+                t = wsize - (t & wmask);
+            length -= t;
+            TLOOP1(*dst++ = *src++);
+        }
+        /*
+         * Copy whole words, then mop up any trailing bytes.
+         */
+        t = length / wsize;
+        TLOOP(*(word *)dst = *(word *)src; src += wsize; dst += wsize);
+        t = length & wmask;
+        TLOOP(*dst++ = *src++);
+    } else {
+        /*
+         * Copy backwards.  Otherwise essentially the same.
+         * Alignment works as before, except that it takes
+         * (t&wmask) bytes to align, not wsize-(t&wmask).
+         */
+        src += length;
+        dst += length;
+        t = (KDuintptr)src;
+        if ((t | (KDuintptr)dst) & wmask) {
+            if ((t ^ (KDuintptr)dst) & wmask || length <= wsize)
+                t = length;
+            else
+                t &= wmask;
+            length -= t;
+            TLOOP1(*--dst = *--src);
+        }
+        t = length / wsize;
+        TLOOP(src -= wsize; dst -= wsize; *(word *)dst = *(word *)src);
+        t = length & wmask;
+        TLOOP(*--dst = *--src);
+    }
+done:
+    return (dst0);
+} 
 
  /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
-    const KDuint8* p = (const KDuint8*) src;
-    while(len--)
-    {
-        if(*p == (KDuint8)byte)
-        {
-            return (void*)p;
-        }
-        ++p;
+    if (len != 0) {
+        const KDuintptr *p = src;
+        do {
+            if (*p++ == (KDuintptr)byte)
+                return ((void *)(p - 1));
+        } while (--len != 0);
     }
     return KD_NULL;
 }
@@ -3925,16 +4226,12 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 /* kdMemcmp: Compare two memory regions. */
 KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len)
 {
-    const KDuint8* p1 = (const KDuint8*) src1;
-    const KDuint8* p2 = (const KDuint8*) src2;
-    while(len-- )
-    {
-        if(*p1 != *p2)
-        {
-            return *p1 - *p2;
-        }
-        ++p1;
-        ++p2;
+    if (len != 0) {
+        const  KDuintptr *p1 = src1, *p2 = src2;
+        do {
+            if (*p1++ != *p2++)
+                return (*--p1 - *--p2);
+        } while (--len != 0);
     }
     return 0;
 }
@@ -3942,46 +4239,22 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
 /* kdMemcpy: Copy a memory region, no overlapping. */
 KD_API void *KD_APIENTRY kdMemcpy(void *buf, const void *src, KDsize len)
 {
-    KDuint8* dest = (KDuint8*) buf;
-    const KDuint8 * tmp = (const KDuint8 *) src;
-    while (len--)
-    {
-        *dest++ = *tmp++;
-    }
-    return buf;
+    return __kdBcopy(buf, src, len);
 }
 
 /* kdMemmove: Copy a memory region, overlapping allowed. */
 KD_API void *KD_APIENTRY kdMemmove(void *buf, const void *src, KDsize len)
 {
-    KDuint8* dest = (KDuint8*) buf;
-    const KDuint8 * tmp = (const KDuint8 *)src;
-    if(dest <= tmp)
-    {
-        while(len--)
-        {
-            *dest++ = *tmp++;
-        }
-    }
-    else
-    {
-        tmp += len;
-        dest += len;
-        while(len--)
-        {
-            *--dest = *--tmp;
-        }
-    }
-    return buf;
+    return __kdBcopy(buf, src, len);
 }
 
 /* kdMemset: Set bytes in memory to a value. */
 KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 {
-    KDuint8* p = (KDuint8*) buf;
+    KDuintptr* p = (KDuintptr*) buf;
     while (len--)
     {
-        *p++ = (KDuint8) byte;
+        *p++ = (KDuintptr) byte;
     }
     return buf;
 }
@@ -3989,157 +4262,222 @@ KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 /* kdStrchr: Scan string for a byte value. */
 KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
 {
-    do
-    {
-        if(*str == (KDchar)ch )
-        {
-            return (KDchar*)str;
-        }
-    } while( *str++ );
+    KDchar c;
+    c = ch;
+    for (;; ++str) {
+        if (*str == c)
+            return ((KDchar*)str);
+        if (*str == '\0')
+            return KD_NULL;
+    }
+    kdAssert(0);
     return KD_NULL;
 }
 
 /* kdStrcmp: Compares two strings. */
 KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 {
-    while ((*str1) && (*str1 == *str2))
-    {
-        ++str1;
-        ++str2;
-    }
-    return (*(KDuint8*)str1 - *(KDuint8*)str2);
+    while (*str1 == *str2++)
+        if (*str1++ == '\0')
+            return (0);
+    return (KDint)(*(KDuintptr*)str1 - *(KDuintptr*)(str2 - 1));
 }
 
 /* kdStrlen: Determine the length of a string. */
+/*
+ * Portable strlen() for 32-bit and 64-bit systems.
+ *
+ * Rationale: it is generally much more efficient to do word length
+ * operations and avoid branches on modern computer systems, as
+ * compared to byte-length operations with a lot of branches.
+ *
+ * The expression:
+ *
+ *  ((x - 0x01....01) & ~x & 0x80....80)
+ *
+ * would evaluate to a non-zero value iff any of the bytes in the
+ * original word is zero.
+ *
+ * On multi-issue processors, we can divide the above expression into:
+ *  a)  (x - 0x01....01)
+ *  b) (~x & 0x80....80)
+ *  c) a & b
+ *
+ * Where, a) and b) can be partially computed in parallel.
+ *
+ * The algorithm above is found on "Hacker's Delight" by
+ * Henry S. Warren, Jr.
+ */
+
+/* Magic numbers for the algorithm */
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_) 
+static const unsigned long mask01 = 0x0101010101010101;
+static const unsigned long mask80 = 0x8080808080808080;
+#elif defined(__i386) || defined(_M_IX86) || || defined(__arm__) || defined(_M_ARM)
+static const unsigned long mask01 = 0x01010101;
+static const unsigned long mask80 = 0x80808080;
+#else
+#error Unsupported arch
+#endif
+
+#define LONGPTR_MASK (sizeof(long) - 1)
+
+/*
+ * Helper macro to return string length if we caught the zero
+ * byte.
+ */
+#define testbyte(x)             \
+    do {                    \
+        if (p[x] == '\0')       \
+            return (p - str + x);   \
+    } while (0)
+
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
-    KDsize rc = 0;
-    while ( str[rc] )
-    {
-        ++rc;
+    const KDchar *p;
+    const KDuint32 *lp;
+    KDint32 va, vb;
+
+    /*
+     * Before trying the hard (unaligned byte-by-byte access) way
+     * to figure out whether there is a nul character, try to see
+     * if there is a nul character is within this accessible word
+     * first.
+     *
+     * p and (p & ~LONGPTR_MASK) must be equally accessible since
+     * they always fall in the same memory page, as long as page
+     * boundaries is integral multiple of word size.
+     */
+    lp = (const KDuint32 *)((KDuintptr)str & ~LONGPTR_MASK);
+    va = (*lp - mask01);
+    vb = ((~*lp) & mask80);
+    lp++;
+    if (va & vb)
+        /* Check if we have \0 in the first part */
+        for (p = str; p < (const KDchar *)lp; p++)
+            if (*p == '\0')
+                return (p - str);
+
+    /* Scan the rest of the string using word sized operation */
+    for (; ; lp++) {
+        va = (*lp - mask01);
+        vb = ((~*lp) & mask80);
+        if (va & vb) {
+            p = (const KDchar *)(lp);
+            testbyte(0);
+            testbyte(1);
+            testbyte(2);
+            testbyte(3);
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_) 
+            testbyte(4);
+            testbyte(5);
+            testbyte(6);
+            testbyte(7);
+#endif
+        }
     }
-    return rc;
+    return 0;
 }
 
 /* kdStrnlen: Determine the length of a string. */
 KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 {
-    KDsize i = 0;
-    for(; (i < maxlen) && str[i]; ++i);
-    return i;
+    KDsize len;
+    for (len = 0; len < maxlen; len++, str++) {
+        if (!*str)
+            break;
+    }
+    return len;
 }
 
 /* kdStrncat_s: Concatenate two strings. */
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
 {
-    KDsize needed = 0;
-    KDsize j = 0;
-
-    while(buf[needed])
-    {  
-        needed++;
-    }
-    while(needed < buflen)
+    if (buflen != 0) 
     {
-        if(src[j])
-        {
-            buf[needed] = src[j];
-            needed++; 
-            j++;    
-        }
-        else
-        {
-            break;
-        }
-    }
-    while(src[j++]) 
-    {
-        needed++;
-    }
-    needed++;
+        char *d = buf;
+        const char *s = src;
 
-    if(needed > buflen && buflen)
-    {
-      buf[buflen - 1] = 0;
+        while (*d != 0)
+            d++;
+        do {
+            if ((*d = *s++) == 0)
+                break;
+            d++;
+        } while (--buflen != 0);
+        *d = 0;
     }
-
-    return (KDint)needed;
+    else
+    {
+        return -1;
+    }
+    return 0;
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
 KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsize maxlen)
 {
-    while(*str1 && maxlen && (*str1 == *str2))
-    {
-        ++str1;
-        ++str2;
-        --maxlen;
-    }
-    if(maxlen == 0)
-    {
+    if (maxlen == 0)
         return 0;
-    }
-    else
-    {
-        return (*(KDuint8*)str1 - *(KDuint8*)str2);
-    }
+    do {
+        if (*str1 != *str2++)
+            return (*(const KDuintptr *)str1 -
+                *(const KDuintptr *)(str2 - 1));
+        if (*str1++ == '\0')
+            break;
+    } while (--maxlen != 0);
+    return 0;
 }
 
 
 /* kdStrcpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
-    KDsize needed = 0;
-    while(needed < buflen)
-    {
-        if(src[needed])
-        {
-            buf[needed] = src[needed];
-            needed++;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    while(src[needed++]);
-
-    if(needed > buflen && buflen)
-    {
-      buf[buflen - 1] = 0;
-    }
-
-    return (KDint)needed;
+    for (; (*buf = *src); ++src, ++buf);
+    return 0;
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srclen)
 {
-    return kdStrcpy_s(buf, buflen, src);
+    if (buflen != 0) 
+    {
+        char *d = buf;
+        const char *s = src;
+
+        do {
+            if ((*d++ = *s++) == '\0') {
+                /* NUL pad the remaining n-1 bytes */
+                while (--buflen != 0)
+                    *d++ = '\0';
+                break;
+            }
+        } while (--buflen != 0);
+    }
+    else
+    {
+        return -1;
+    }
+    return 0;
 }
 
 /* kdStrstrVEN: Locate substring. */
 KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 {
-    const KDchar * p1 = str1;
-    const KDchar * p2;
-    while (*str1)
-    {
-        p2 = str2;
-        while (*p2 && (*p1 == *p2))
-        {
-            ++p1;
-            ++p2;
-        }
-        if (!*p2)
-        {
-            return (KDchar *)str1;
-        }
-        ++str1;
-        p1 = str1;
+    KDchar c, sc;
+    KDsize len;
+
+    if ((c = *str2++) != '\0') {
+        len = kdStrlen(str2);
+        do {
+            do {
+                if ((sc = *str1++) == '\0')
+                    return (NULL);
+            } while (sc != c);
+        } while (kdStrncmp(str1, str2, len) != 0);
+        str1--;
     }
-    return KD_NULL;
+    return (KDchar *)str1;
 }
 
 
