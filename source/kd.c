@@ -442,9 +442,7 @@ static void* __kdThreadStart(void *args)
 
     __kd_thread = start_args->thread;
 
-    void* result = KD_NULL;
-
-    result = start_args->start_routine(start_args->arg);
+    void* result = start_args->start_routine(start_args->arg);
 
     if(__kd_lastevent != KD_NULL)
     {
