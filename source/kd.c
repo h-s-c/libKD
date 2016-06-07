@@ -4091,6 +4091,7 @@ static void __kdMathCleanup(void)
  * Notes:
  * - Generic codepath copied from the BSD libc developed at the 
  *   University of California, Berkeley
+ * - kdStrcpy_s/kdStrncat_s based on strlcpy/strlcat by Todd C. Miller
  ******************************************************************************/
 /******************************************************************************
  * Copyright (c) 1990, 1993
@@ -4123,6 +4124,22 @@ static void __kdMathCleanup(void)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  ******************************************************************************/
+/******************************************************************************
+ * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ ******************************************************************************/
+
 
 /*
  * sizeof(word) MUST BE A POWER OF TWO
@@ -4390,25 +4407,29 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 /* kdStrncat_s: Concatenate two strings. */
 KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
 {
-    if (buflen != 0) 
-    {
-        char *d = buf;
-        const char *s = src;
+    KDchar *d = buf;
+    const KDchar *s = src;
+    KDsize n = buflen;
+    KDsize dlen;
 
-        while (*d != 0)
-            d++;
-        do {
-            if ((*d = *s++) == 0)
-                break;
-            d++;
-        } while (--buflen != 0);
-        *d = 0;
+    /* Find the end of dst and adjust bytes left but don't go past end */
+    while (n-- != 0 && *d != '\0')
+        d++;
+    dlen = d - buf;
+    n = buflen - dlen;
+
+    if (n == 0)
+        return(dlen + kdStrlen(s));
+    while (*s != '\0') {
+        if (n != 1) {
+            *d++ = *s;
+            n--;
+        }
+        s++;
     }
-    else
-    {
-        return -1;
-    }
-    return 0;
+    *d = '\0';
+
+    return(dlen + (s - src));   /* count does not include NUL */
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
@@ -4430,8 +4451,27 @@ KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsiz
 /* kdStrcpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *src)
 {
-    for (; (*buf = *src); ++src, ++buf);
-    return 0;
+    KDchar *d = buf;
+    const KDchar *s = src;
+    KDsize n = buflen;
+
+    /* Copy as many bytes as will fit */
+    if (n != 0) {
+        while (--n != 0) {
+            if ((*d++ = *s++) == '\0')
+                break;
+        }
+    }
+
+    /* Not enough room in dst, add NUL and traverse rest of src */
+    if (n == 0) {
+        if (buflen != 0)
+            *d = '\0';      /* NUL-terminate dst */
+        while (*s++)
+            ;
+    }
+
+    return(s - src - 1);    /* count does not include NUL */
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
