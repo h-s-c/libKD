@@ -1825,13 +1825,13 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
     }
     if (endptr != 0)
         *endptr = (KDchar *) (any ? s - 1 : nptr);
-    return acc;
+    return (KDint)acc;
 }
 
 KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint base)
 {
     const KDchar *s;
-    KDuint64 acc, cutoff;
+    KDint64 acc, cutoff;
     KDint c;
     KDint neg, any, cutlim;
     /*
@@ -1887,10 +1887,10 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
         }
     }
     if (neg && any > 0)
-        acc = -(KDint64)acc;
+        acc = -acc;
     if (endptr != 0)
         *endptr = (KDchar *) (any ? s - 1 : nptr);
-    return acc;
+    return (KDuint)acc;
 }
 
 /* kdLtostr, kdUltostr: Convert an integer to a string. */
@@ -3238,9 +3238,9 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     GET_FLOAT_WORD(ix,x);
     k=0;
     if (ix < 0x00800000) {          /* x < 2**-126  */
-        if ((ix&0x7fffffff)==0)
-        return -KD_INFINITY;        /* log(+-0)=-inf */
-        if (ix<0) return KD_NAN;    /* log(-#) = NaN */
+        if ((ix&0x7fffffffF)==0)
+        return -(KDfloat32)KD_INFINITY;        /* log(+-0)=-inf */
+        if (ix<0) return (KDfloat32)KD_NAN;    /* log(-#) = NaN */
         k -= 25; x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix,x);
     }
@@ -4297,7 +4297,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 #if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_) 
 static const unsigned long mask01 = 0x0101010101010101;
 static const unsigned long mask80 = 0x8080808080808080;
-#elif defined(__i386) || defined(_M_IX86) || || defined(__arm__) || defined(_M_ARM)
+#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM)
 static const unsigned long mask01 = 0x01010101;
 static const unsigned long mask80 = 0x80808080;
 #else
