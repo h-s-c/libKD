@@ -96,7 +96,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'valgrind']
+          packages: ['gcc-4.9', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -107,7 +107,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'valgrind']
+          packages: ['gcc-4.8', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -118,7 +118,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'valgrind']
+          packages: ['gcc-4.7', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -129,7 +129,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.6', 'valgrind']
+          packages: ['gcc-4.6', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
