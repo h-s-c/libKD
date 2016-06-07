@@ -4280,8 +4280,6 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
         if (*str == '\0')
             return KD_NULL;
     }
-    kdAssert(0);
-    return KD_NULL;
 }
 
 /* kdStrcmp: Compares two strings. */
@@ -4390,7 +4388,6 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 #endif
         }
     }
-    return 0;
 }
 
 /* kdStrnlen: Determine the length of a string. */
