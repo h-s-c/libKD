@@ -74,7 +74,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'valgrind']
+          packages: ['gcc-6', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -85,7 +85,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'valgrind']
+          packages: ['gcc-5', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -267,9 +267,7 @@ matrix:
       script: python ci-tools/run_ctest.py
 
   allow_failures:
-    - compiler: gcc-6       # Upstream Travis
     - compiler: clang-3.8   # Unstable
     - compiler: clang-3.7   # Upstream LLVM
     - compiler: clang-3.6   # Unstable
     - compiler: clang-3.5   # Unstable
-    - compiler: icc         # Unstable

@@ -4320,8 +4320,8 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 static const KDuint64 mask01 = 0x0101010101010101;
 static const KDuint64 mask80 = 0x8080808080808080;
 #elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM)
-static const KDuint32 mask01 = 0x01010101;
-static const KDuint32 mask80 = 0x80808080;
+static const KDuint64 mask01 = 0x01010101;
+static const KDuint64 mask80 = 0x80808080;
 #else
 #error Unsupported arch
 #endif
@@ -4345,8 +4345,8 @@ KDsize __kdTestbyte(const KDchar *str, const KDchar *p, KDint x)
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
     const KDchar *p;
-    const KDuint32 *lp;
-    KDint32 va, vb;
+    const KDuint64 *lp;
+    KDint64 va, vb;
 
     /*
      * Before trying the hard (unaligned byte-by-byte access) way
@@ -4358,7 +4358,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
      * they always fall in the same memory page, as long as page
      * boundaries is integral multiple of word size.
      */
-    lp = (const KDuint32 *)((KDuintptr)str & ~LONGPTR_MASK);
+    lp = (const KDuint64 *)((KDuintptr)str & ~LONGPTR_MASK);
     va = (*lp - mask01);
     vb = ((~*lp) & mask80);
     lp++;
@@ -4414,7 +4414,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     n = buflen - dlen;
 
     if (n == 0)
-        return(dlen + kdStrlen(s));
+        return (KDint)(dlen + kdStrlen(s));
     while (*s != '\0') {
         if (n != 1) {
             *d++ = *s;
@@ -4424,7 +4424,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     }
     *d = '\0';
 
-    return(dlen + (s - src));   /* count does not include NUL */
+    return (KDint)(dlen + (s - src));   /* count does not include NUL */
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
