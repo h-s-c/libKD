@@ -4345,6 +4345,8 @@ KDsize __kdTestbyte(const KDchar *str, const KDchar *p, KDint x)
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
+    kdAssert(0);
+    return 0;
 }
 
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
