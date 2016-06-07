@@ -118,6 +118,7 @@ typedef khronos_ssize_t     KDssize;
 #define KDSIZE_MAX      KDUINT_MAX
 #define KDUINTPTR_MAX   KDUINT_MAX
 #define KD_INFINITY     0x7f800000
+#define KD_NAN          0x7f800001
 
 #endif /* __kdplatform_h_ */
 
