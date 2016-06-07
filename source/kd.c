@@ -1751,7 +1751,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
      */
     s = nptr;
     do {
-        c = (KDuintptr) *s++;
+        c = (KDuint8) *s++;
     } while (__kdIsspace(c));
     if (c == '-') {
         neg = 1;
@@ -1797,7 +1797,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
         }
         cutlim = -cutlim;
     }
-    for (acc = 0, any = 0;; c = (KDuintptr) *s++) {
+    for (acc = 0, any = 0;; c = (KDuint8) *s++) {
         if (__kdIsdigit(c))
             c -= '0';
         else if (__kdIsalpha(c))
@@ -1852,7 +1852,7 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
     }
     s = nptr;
     do {
-        c = (KDuintptr) *s++;
+        c = (KDuint8) *s++;
     } while (__kdIsspace(c));
     if (c == '-') {
         neg = 1;
@@ -1872,7 +1872,7 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
         base = c == '0' ? 8 : 10;
     cutoff = KDUINT_MAX / (KDuint)base;
     cutlim = KDUINT_MAX % (KDuint)base;
-    for (acc = 0, any = 0;; c = (KDuintptr) *s++) {
+    for (acc = 0, any = 0;; c = (KDuint8) *s++) {
         if (__kdIsdigit(c))
             c -= '0';
         else if (__kdIsalpha(c))
@@ -4168,7 +4168,7 @@ static void* __kdBcopy(void *dst0, const void *src0, size_t length)
 #define TLOOP(s) if (t) TLOOP1(s)
 #define TLOOP1(s) do { s; } while (--t)
 
-    if ((KDuintptr)dst < (KDuintptr)src) {
+    if ((KDuint64)dst < (KDuint64)src) {
         /*
          * Copy forward.
          */
@@ -4222,9 +4222,9 @@ done:
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
     if (len != 0) {
-        const KDuintptr *p = src;
+        const KDuint8 *p = src;
         do {
-            if (*p++ == (KDuintptr)byte)
+            if (*p++ == (KDuint8)byte)
                 return ((void *)(p - 1));
         } while (--len != 0);
     }
@@ -4235,7 +4235,7 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len)
 {
     if (len != 0) {
-        const  KDuintptr *p1 = src1, *p2 = src2;
+        const  KDuint8 *p1 = src1, *p2 = src2;
         do {
             if (*p1++ != *p2++)
                 return (*--p1 - *--p2);
@@ -4259,10 +4259,10 @@ KD_API void *KD_APIENTRY kdMemmove(void *buf, const void *src, KDsize len)
 /* kdMemset: Set bytes in memory to a value. */
 KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 {
-    KDuintptr* p = (KDuintptr*) buf;
+    KDuint8* p = (KDuint8*)buf;
     while (len--)
     {
-        *p++ = (KDuintptr) byte;
+        *p++ = (KDuint8)byte;
     }
     return buf;
 }
@@ -4286,7 +4286,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
     while (*str1 == *str2++)
         if (*str1++ == '\0')
             return 0;
-    return (KDint)(*(KDuintptr*)str1 - *(KDuintptr*)(str2 - 1));
+    return (KDint)(*(KDuint8*)str1 - *(KDuint8*)(str2 - 1));
 }
 
 /* kdStrlen: Determine the length of a string. */
@@ -4317,16 +4317,16 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 
 /* Magic numbers for the algorithm */
 #if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_) 
-static const unsigned long mask01 = 0x0101010101010101;
-static const unsigned long mask80 = 0x8080808080808080;
+static const KDuint64 mask01 = 0x0101010101010101;
+static const KDuint64 mask80 = 0x8080808080808080;
 #elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM)
-static const unsigned long mask01 = 0x01010101;
-static const unsigned long mask80 = 0x80808080;
+static const KDuint32 mask01 = 0x01010101;
+static const KDuint32 mask80 = 0x80808080;
 #else
 #error Unsupported arch
 #endif
 
-#define LONGPTR_MASK (sizeof(long) - 1)
+#define LONGPTR_MASK (sizeof(KDint64) - 1)
 
 /* Helper function to return string length if we caught the zero byte. */
 KDsize __kdTestbyte(const KDchar *str, const KDchar *p, KDint x) 
@@ -4434,8 +4434,7 @@ KD_API KDint KD_APIENTRY kdStrncmp(const KDchar *str1, const KDchar *str2, KDsiz
         return 0;
     do {
         if (*str1 != *str2++)
-            return (*(const KDuintptr *)str1 -
-                *(const KDuintptr *)(str2 - 1));
+            return (*(const KDuint8 *)str1 - *(const KDuint8 *)(str2 - 1));
         if (*str1++ == '\0')
             break;
     } while (--maxlen != 0);
@@ -4466,7 +4465,7 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
             ;
     }
 
-    return(s - src - 1);    /* count does not include NUL */
+    return (KDint)(s - src - 1);    /* count does not include NUL */
 }
 
 /* kdStrncpy_s: Copy a string with an overrun check. */
