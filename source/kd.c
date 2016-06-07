@@ -77,6 +77,7 @@
 #include <inttypes.h>
 #include <locale.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -1647,6 +1648,14 @@ int WINAPI WinMainCRTStartup(void)
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
     exit(status);
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable:4127)
+#endif
+    while(1);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 }
 
 /******************************************************************************
@@ -4247,7 +4256,7 @@ KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
 {
     KDchar c;
-    c = ch;
+    c = (KDchar)ch;
     for (;; ++str) {
         if (*str == c)
             return ((KDchar*)str);
