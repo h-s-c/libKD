@@ -431,7 +431,7 @@ static void* __kdThreadStart(void *args)
 #pragma warning(pop)
 #elif defined(KD_THREAD_POSIX)
 #if defined(__linux__)
-    prctl(PR_SET_NAME, (unsigned long)threadname, 0UL, 0UL, 0UL);
+    prctl(PR_SET_NAME, (KDuint64)threadname, 0UL, 0UL, 0UL);
 #elif defined(__APPLE__)
     pthread_setname_np(threadname);
 #endif
@@ -846,7 +846,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 void __KDSleep(KDust timeout)
 {
 #if defined(_MSC_VER) && _MSC_VER <= 1800
-#define LONG_CAST (long)
+#define LONG_CAST (KDint64)
 #else
 #define LONG_CAST
 #endif
@@ -1151,7 +1151,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             {
                                 event->type = KD_EVENT_INPUT_KEYCHAR_VEN;
                                 KDEventInputKeyCharVEN *keycharevent = (KDEventInputKeyCharVEN *) (&event->data);
-                                GetKeyNameText((long)MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (char*)&keycharevent->character, sizeof(KDint32));
+                                GetKeyNameText((KDint64)MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (KDchar*)&keycharevent->character, sizeof(KDint32));
                                 break;
                             }
                         }
@@ -5634,7 +5634,7 @@ KD_API KDAtomicPtrVEN* KD_APIENTRY kdAtomicPtrCreateVEN(void* value)
 {
     KDAtomicPtrVEN* object = (KDAtomicPtrVEN*)kdMalloc(sizeof(KDAtomicPtrVEN));
 #if defined(KD_ATOMIC_C11)
-    atomic_init(&object->value, (uintptr_t)value);
+    atomic_init(&object->value, (KDuintptr)value);
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
     object->value = value;
 #endif
@@ -5688,7 +5688,7 @@ KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    _InterlockedExchange((long *)&object->value, (long)value);
+    _InterlockedExchange((KDint64 *)&object->value, (KDint64)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     __atomic_store_n(&object->value, value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5699,9 +5699,9 @@ KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
 KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void* value)
 {
 #if defined(KD_ATOMIC_C11)
-    atomic_store(&object->value, (uintptr_t)value);
+    atomic_store(&object->value, (KDuintptr)value);
 #elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
-    _InterlockedExchange((long *)&object->value, (long) value);
+    _InterlockedExchange((KDint64*)&object->value, (KDint64)value);
 #elif defined(KD_ATOMIC_WIN32)
     _InterlockedExchangePointer(&object->value, value);
 #elif defined(KD_ATOMIC_BUILTIN)
@@ -5716,7 +5716,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint va
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_add(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((long*)&object->value, (long)value);
+    return _InterlockedExchangeAdd((KDint64*)&object->value, (KDint64)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_add_fetch(&object->value, value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5729,7 +5729,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint va
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_sub(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((long*)&object->value, (long)-value);
+    return _InterlockedExchangeAdd((KDint64*)&object->value, (KDint64)-value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_sub_fetch(&object->value, value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5742,7 +5742,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, &expected, desired);
 #elif defined(KD_ATOMIC_WIN32)
-    return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
+    return (_InterlockedCompareExchange((KDint64*)&object->value, (KDint64)desired, (KDint64)expected) == (KDint64)expected);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_compare_exchange_n(&object->value, &expected, desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5753,9 +5753,9 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
 KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void* expected, void* desired)
 {
 #if defined(KD_ATOMIC_C11)
-    return atomic_compare_exchange_weak(&object->value, (uintptr_t*)&expected, (uintptr_t)desired);
+    return atomic_compare_exchange_weak(&object->value, (KDuintptr*)&expected, (KDuintptr)desired);
 #elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
-    return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
+    return (_InterlockedCompareExchange((KDint64*)&object->value, (KDint64)desired, (KDint64)expected) == (KDint64)expected);
 #elif defined(KD_ATOMIC_WIN32)
     return (_InterlockedCompareExchangePointer(&object->value, desired, expected) == expected);
 #elif defined(KD_ATOMIC_BUILTIN)
@@ -5772,7 +5772,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
 struct KDDispatchVEN
 {
     KDDispatchFuncVEN* filterfunc;
-    uintptr_t optimalfunc;
+    KDuintptr optimalfunc;
     void* optimalinfo;
 };
 
@@ -5791,7 +5791,7 @@ KD_API KDint KD_APIENTRY kdDispatchFreeVEN(KDDispatchVEN* disp)
     return 0;
 }
 
-KD_API KDint KD_APIENTRY kdDispatchInstallCandidateVEN(KDDispatchVEN* disp, void* candidateinfo, uintptr_t candidatefunc)
+KD_API KDint KD_APIENTRY kdDispatchInstallCandidateVEN(KDDispatchVEN* disp, void* candidateinfo, KDuintptr candidatefunc)
 {
     if((*disp->filterfunc)(disp->optimalinfo, candidateinfo))
     {
@@ -5802,7 +5802,7 @@ KD_API KDint KD_APIENTRY kdDispatchInstallCandidateVEN(KDDispatchVEN* disp, void
     return -1;
 }
 
-KD_API uintptr_t KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN* disp)
+KD_API KDuintptr KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN* disp)
 {
     if(!disp->optimalfunc)
     {
