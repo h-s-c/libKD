@@ -5688,7 +5688,7 @@ KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    _InterlockedExchange((KDint64 *)&object->value, (KDint64)value);
+    _InterlockedExchange((long*)&object->value, (long)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     __atomic_store_n(&object->value, value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5701,7 +5701,7 @@ KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void* value)
 #if defined(KD_ATOMIC_C11)
     atomic_store(&object->value, (KDuintptr)value);
 #elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
-    _InterlockedExchange((KDint64*)&object->value, (KDint64)value);
+    _InterlockedExchange((long*)&object->value, (long)value);
 #elif defined(KD_ATOMIC_WIN32)
     _InterlockedExchangePointer(&object->value, value);
 #elif defined(KD_ATOMIC_BUILTIN)
@@ -5716,7 +5716,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint va
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_add(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((KDint64*)&object->value, (KDint64)value);
+    return _InterlockedExchangeAdd((long*)&object->value, (long)value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_add_fetch(&object->value, value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5729,7 +5729,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint va
 #if defined(KD_ATOMIC_C11)
     return atomic_fetch_sub(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((KDint64*)&object->value, (KDint64)-value);
+    return _InterlockedExchangeAdd((long*)&object->value, (long)-value);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_sub_fetch(&object->value, value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5742,7 +5742,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, &expected, desired);
 #elif defined(KD_ATOMIC_WIN32)
-    return (_InterlockedCompareExchange((KDint64*)&object->value, (KDint64)desired, (KDint64)expected) == (KDint64)expected);
+    return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_compare_exchange_n(&object->value, &expected, desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_LEGACY)
@@ -5755,7 +5755,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
 #if defined(KD_ATOMIC_C11)
     return atomic_compare_exchange_weak(&object->value, (KDuintptr*)&expected, (KDuintptr)desired);
 #elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
-    return (_InterlockedCompareExchange((KDint64*)&object->value, (KDint64)desired, (KDint64)expected) == (KDint64)expected);
+    return (_InterlockedCompareExchange((long*)&object->value, (long)desired, (long)expected) == (long)expected);
 #elif defined(KD_ATOMIC_WIN32)
     return (_InterlockedCompareExchangePointer(&object->value, desired, expected) == expected);
 #elif defined(KD_ATOMIC_BUILTIN)
