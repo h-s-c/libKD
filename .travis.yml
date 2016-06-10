@@ -4,11 +4,11 @@ matrix:
   include:
     - os: linux
       compiler: gcc
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
         - COVERITY_SCAN_PROJECT_NAME="h-s-c/libKD"
@@ -23,34 +23,11 @@ matrix:
 
     - os: linux
       compiler: gcc
-      dist: xenial
-      sudo: false
-      addons:
-        apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
-      deploy:
-        provider: packagecloud
-        dist: "ubuntu/xenial"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        on:
-          tags: true
-      install: python ci-tools/install_cmake.py  
-      script:
-        - if [ "$TRAVIS_TAG" ]; then 
-            python ci-tools/run_cpack.py;
-          else true; fi;
-
-    - os: linux
-      compiler: gcc
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
       deploy:
         provider: packagecloud
         dist: "ubuntu/trusty"
@@ -73,7 +50,7 @@ matrix:
       sudo: false
       addons:
         apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
       deploy:
         provider: packagecloud
         dist: "ubuntu/precise"
@@ -92,8 +69,8 @@ matrix:
 
     - os: linux
       compiler: gcc-6
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -103,40 +80,44 @@ matrix:
 
     - os: linux
       compiler: gcc-5
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-5', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: gcc-4.9
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.9', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: gcc-4.8
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.8', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: gcc-4.7
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.7', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
@@ -144,59 +125,65 @@ matrix:
     - os: linux
       compiler: gcc-4.6
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.6', 'valgrind', 'binutils-gold']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: clang-3.8
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.8', 'llvm-3.8', 'valgrind']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: clang-3.7
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.7', 'llvm-3.7', 'valgrind']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: clang-3.6
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.6', 'llvm-3.6', 'valgrind']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: clang-3.5
-      dist: xenial
-      sudo: false
+      dist: trusty
+      sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.5', 'llvm-3.5', 'valgrind']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
       compiler: icc
-      dist: xenial
+      dist: trusty
       sudo: required
       addons:
         apt:
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['valgrind']
       install: 
         - python ci-tools/install_cmake.py 
