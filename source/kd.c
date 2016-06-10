@@ -846,7 +846,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 void __KDSleep(KDust timeout)
 {
 #if defined(_MSC_VER) && _MSC_VER <= 1800
-#define LONG_CAST (KDint64)
+#define LONG_CAST (long)
 #else
 #define LONG_CAST
 #endif
@@ -2101,8 +2101,7 @@ KDboolean KD_APIENTRY __kdDispatchFuncSIMD(void* optimalinfo, void* candidateinf
                 return 1;
             }
 #endif
-#endif
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
+#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
 #ifdef __AVX__
             case __KD_AVX:
             {
@@ -2178,7 +2177,7 @@ KDboolean KD_APIENTRY __kdDispatchFuncSIMD(void* optimalinfo, void* candidateinf
                 return 1;
             }
 #endif
-#endif
+#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
             case __KD_AVX:
             {
                 if((abcd[2] & ((KDint)1 << 28)) != 0)
@@ -2235,6 +2234,7 @@ KDboolean KD_APIENTRY __kdDispatchFuncSIMD(void* optimalinfo, void* candidateinf
                 }
                 break;
             }
+#endif
             case __KD_GENERIC:
             {
                 return 1;
