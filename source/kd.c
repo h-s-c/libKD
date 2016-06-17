@@ -5087,7 +5087,7 @@ static __KDAccessMode accessmode[] =
 	{ KD_X_OK, 00 }
 };
 #else
-static __KDAccessMode accessmode[] =
+static KD_UNUSED __KDAccessMode accessmode[] =
 {
     {KD_R_OK, R_OK},
     {KD_W_OK, W_OK},
