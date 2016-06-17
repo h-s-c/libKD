@@ -50,19 +50,12 @@ static void KD_APIENTRY kd_callback(const KDEvent *event)
 #ifdef GL_KHR_debug
 static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
-    kdLogMessage(message); kdLogMessage("\n");
+    kdLogMessage(message);
 }
 #endif
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdLogMessage("Starting example\n");
-
-    kdLogMessage("-----KD-----\n");
-    kdLogMessage("Vendor: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VENDOR)); kdLogMessage("\n");
-    kdLogMessage("Version: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_VERSION)); kdLogMessage("\n");
-    kdLogMessage("Platform: "); kdLogMessage(kdQueryAttribcv(KD_ATTRIB_PLATFORM)); kdLogMessage("\n");
-
     const EGLint egl_attributes[] =
     {
         EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
@@ -79,7 +72,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     const EGLint egl_context_attributes[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
- #ifdef GL_KHR_debug       
+#ifdef GL_KHR_debug       
         EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
 #endif
         EGL_NONE,
@@ -88,12 +81,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
-
-    kdLogMessage("-----EGL-----\n");
-    kdLogMessage("Vendor: "); kdLogMessage(eglQueryString(egl_display, EGL_VENDOR)); kdLogMessage("\n");
-    kdLogMessage("Version: "); kdLogMessage(eglQueryString(egl_display, EGL_VERSION)); kdLogMessage("\n");
-    kdLogMessage("Client APIs: "); kdLogMessage(eglQueryString(egl_display, EGL_CLIENT_APIS)); kdLogMessage("\n");
-    kdLogMessage("Extensions: "); kdLogMessage(eglQueryString(egl_display, EGL_EXTENSIONS)); kdLogMessage("\n");
 
     EGLint egl_num_configs = 0;
     EGLConfig egl_config;
@@ -106,12 +93,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
 
-    kdLogMessage("-----GLES2-----\n");
-    kdLogMessage("Vendor: "); kdLogMessage((const KDchar*)glGetString(GL_VENDOR)); kdLogMessage("\n");
-    kdLogMessage("Version: "); kdLogMessage((const KDchar*)glGetString(GL_VERSION)); kdLogMessage("\n");
-    kdLogMessage("Renderer: "); kdLogMessage((const KDchar*)glGetString(GL_RENDERER)); kdLogMessage("\n");
-    kdLogMessage("Extensions: "); kdLogMessage((const KDchar*)glGetString(GL_EXTENSIONS)); kdLogMessage("\n");
-
 #ifdef GL_KHR_debug
     if(kdStrstrVEN((const KDchar*)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
     {
@@ -121,6 +102,47 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         glDebugMessageCallback(&gl_callback, KD_NULL);
     }
 #endif
+
+    /* Debug message */
+    #define messagelimit 4096
+    KDchar message[messagelimit] = "";
+    kdStrncat_s(message, messagelimit, "-----KD-----\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Vendor: ", messagelimit);
+    kdStrncat_s(message, messagelimit, kdQueryAttribcv(KD_ATTRIB_VENDOR), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Version: ", messagelimit);
+    kdStrncat_s(message, messagelimit, kdQueryAttribcv(KD_ATTRIB_VERSION), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Platform: ", messagelimit);
+    kdStrncat_s(message, messagelimit, kdQueryAttribcv(KD_ATTRIB_PLATFORM), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "-----EGL-----\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Vendor: ", messagelimit);
+    kdStrncat_s(message, messagelimit, eglQueryString(egl_display, EGL_VENDOR), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Version: ", messagelimit);
+    kdStrncat_s(message, messagelimit, eglQueryString(egl_display, EGL_VERSION), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Client APIs: ", messagelimit);
+    kdStrncat_s(message, messagelimit, eglQueryString(egl_display, EGL_CLIENT_APIS), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Extensions: ", messagelimit);
+    kdStrncat_s(message, messagelimit, eglQueryString(egl_display, EGL_EXTENSIONS), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "-----GLES2-----\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Vendor: ", messagelimit);
+    kdStrncat_s(message, messagelimit, (const KDchar*)glGetString(GL_VENDOR), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Version: ", messagelimit);
+    kdStrncat_s(message, messagelimit, (const KDchar*)glGetString(GL_VERSION), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Renderer: ", messagelimit);
+    kdStrncat_s(message, messagelimit, (const KDchar*)glGetString(GL_RENDERER), messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Extensions: ", messagelimit);
+    kdStrncat_s(message, messagelimit, (const KDchar*)glGetString(GL_EXTENSIONS), messagelimit);
+    kdLogMessage(message);
+    #undef messagelimit
 
     kdInstallCallback(&kd_callback, KD_EVENT_QUIT, KD_NULL);
     KDTimer* kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);

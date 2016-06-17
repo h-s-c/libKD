@@ -30,10 +30,20 @@
 #include <KD/KHR_thread_storage.h>
 
 /******************************************************************************
+ * Threads and synchronization (extensions)
+ ******************************************************************************/
+
+/* kdThreadAttrSetDebugNameVEN: Set debugname attribute. */
+KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const char * debugname);
+ 
+/* kdThreadSleepVEN: Blocks the current thread for nanoseconds. */
+KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout);
+
+/******************************************************************************
  * String and memory functions (extensions)
  ******************************************************************************/
 
-/* kdStrstr: Locate substring. */
+/* kdStrstrVEN: Locate substring. */
 KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
 
 /*******************************************************

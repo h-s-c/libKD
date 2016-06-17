@@ -94,8 +94,7 @@
     #define KD_NDEBUG
 #endif
 
-#include <assert.h>
-#define kdAssert(c) assert(c)
+#define kdAssert(c) kdHandleAssertion(c, __FILE__, __LINE__)
 
 typedef khronos_int32_t     KDint32;
 typedef khronos_uint32_t    KDuint32;
@@ -118,7 +117,6 @@ typedef khronos_ssize_t     KDssize;
 #define KDSIZE_MAX      KDUINT_MAX
 #define KDUINTPTR_MAX   KDUINT_MAX
 #define KD_INFINITY     0x7f800000
-#define KD_NAN          0x7f800001
 
 #endif /* __kdplatform_h_ */
 

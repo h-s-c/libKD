@@ -316,6 +316,12 @@ struct KDThreadAttr
 KD_API KDThreadAttr *KD_APIENTRY kdThreadAttrCreate(void)
 {
     KDThreadAttr *attr = (KDThreadAttr*)kdMalloc(sizeof(KDThreadAttr));
+    if(attr == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+
     /* Spec default */
     attr->detachstate = KD_THREAD_CREATE_JOINABLE;
     /* Impl default */
@@ -339,21 +345,24 @@ KD_API KDint KD_APIENTRY kdThreadAttrFree(KDThreadAttr *attr)
 /* kdThreadAttrSetDetachState: Set detachstate attribute. */
 KD_API KDint KD_APIENTRY kdThreadAttrSetDetachState(KDThreadAttr *attr, KDint detachstate)
 {
-    attr->detachstate = detachstate;
-#if defined(KD_THREAD_POSIX)
     if(detachstate == KD_THREAD_CREATE_JOINABLE)
     {
+#if defined(KD_THREAD_POSIX)
         pthread_attr_setdetachstate(&attr->nativeattr, PTHREAD_CREATE_JOINABLE);
+#endif
     }
     else if(detachstate == KD_THREAD_CREATE_DETACHED)
     {
+#if defined(KD_THREAD_POSIX)
         pthread_attr_setdetachstate(&attr->nativeattr, PTHREAD_CREATE_DETACHED);
+#endif
     }
     else
     {
-        kdAssert(0);
+        kdSetError(KD_EINVAL);
+        return -1;
     }
-#endif
+    attr->detachstate = detachstate;
     return 0;
 }
 
@@ -363,13 +372,18 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetStackSize(KDThreadAttr *attr, KDsize sta
 {
     attr->stacksize = stacksize;
 #if defined(KD_THREAD_POSIX)
-    pthread_attr_setstacksize(&attr->nativeattr, attr->stacksize);
+    KDint result = pthread_attr_setstacksize(&attr->nativeattr, attr->stacksize);
+    if(result == EINVAL)
+    {
+        kdSetError(KD_EINVAL);
+        return -1;
+    }
 #endif
     return 0;
 }
 
-/* __kdThreadAttrSetDebugName: Set debugname attribute. */
-KD_UNUSED static KDint __kdThreadAttrSetDebugName(KDThreadAttr *attr, const char * debugname)
+/* kdThreadAttrSetDebugNameVEN: Set debugname attribute. */
+KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const char * debugname)
 {
     kdStrcpy_s(attr->debugname, 256, debugname);
     return 0;
@@ -454,11 +468,35 @@ static void* __kdThreadStart(void *args)
 
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
+#if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
+    kdSetError(KD_ENOSYS);
+    return KD_NULL;
+#endif
+
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
+    if(thread == KD_NULL)
+    {
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
+
     thread->eventqueue = kdQueueCreateVEN(100);
+    if(thread->eventqueue == KD_NULL)
+    {
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
     thread->attr = attr;
 
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs*)kdMalloc(sizeof(__KDThreadStartArgs));
+    if(start_args == KD_NULL)
+    {
+        kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
     start_args->start_routine = start_routine;
     start_args->arg = arg;
     start_args->thread = thread;
@@ -472,14 +510,14 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)start_args, 0, KD_NULL);
     error = thread->nativethread ? 0 : 1;
 #else
-	kdAssert(0);
+    kdAssert(0);
 #endif
 
     if(error != 0)
     {
-        kdSetError(KD_EAGAIN);
         kdQueueFreeVEN(thread->eventqueue);
         kdFree(thread);
+        kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
 
@@ -530,7 +568,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         result = *retval;
     }
 #if defined(KD_THREAD_C11)
-    error = thrd_join(thread->nativethread, result);
+    error = thrd_join(thread->ntaivethread, result);
     if(error == thrd_error)
 #elif defined(KD_THREAD_POSIX)
     error = pthread_join(thread->nativethread, retval);
@@ -600,7 +638,11 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
     kdMemcpy(&pfunc, &init_routine, sizeof(init_routine));
     InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, pfunc, NULL);
 #else
-    kdAssert(0);
+    if(once_control == 0)
+    {
+        once_control = 1;
+        init_routine();
+    }
 #endif
     return 0;
 }
@@ -615,12 +657,19 @@ struct KDThreadMutex
     pthread_mutex_t nativemutex;
 #elif defined(KD_THREAD_WIN32)
     SRWLOCK nativemutex;
+#else
+    KDboolean nativemutex;
 #endif
 };
 KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mutexattr)
 {
     /* TODO: Write KDThreadMutexAttr extension */
     KDThreadMutex *mutex = (KDThreadMutex*)kdMalloc(sizeof(KDThreadMutex));
+    if(mutex == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
     KDint error = 0;
 #if defined(KD_THREAD_C11)
     error = mtx_init(&mutex->nativemutex, mtx_plain);
@@ -635,7 +684,7 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mute
 #elif defined(KD_THREAD_WIN32)
     InitializeSRWLock(&mutex->nativemutex);
 #else
-    kdAssert(0);
+    mutex->nativemutex = 0;
 #endif
     if(error != 0)
     {
@@ -655,8 +704,6 @@ KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
     pthread_mutex_destroy(&mutex->nativemutex);
 #elif defined(KD_THREAD_WIN32)
     // No need to free anything
-#else
-    kdAssert(0);
 #endif
     kdFree(mutex);
     return 0;
@@ -672,7 +719,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexLock(KDThreadMutex *mutex)
 #elif defined(KD_THREAD_WIN32)
     AcquireSRWLockExclusive(&mutex->nativemutex);
 #else
-    kdAssert(0);
+    mutex->nativemutex = 1;
 #endif
     return 0;
 }
@@ -687,7 +734,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 #elif defined(KD_THREAD_WIN32)
     ReleaseSRWLockExclusive(&mutex->nativemutex);
 #else
-    kdAssert(0);
+    mutex->nativemutex = 0;
 #endif
     return 0;
 }
@@ -705,7 +752,17 @@ struct KDThreadCond
 };
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 {
+#if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
+    kdSetError(KD_ENOSYS);
+    return KD_NULL;
+#endif
+
     KDThreadCond *cond = (KDThreadCond*)kdMalloc(sizeof(KDThreadCond));
+    if(cond == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
     KDint error = 0;
 #if defined(KD_THREAD_C11)
     error =  cnd_init(&cond->nativecond);
@@ -794,16 +851,36 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
 /* kdThreadSemCreate: Create a semaphore. */
 struct KDThreadSem
 {
-    KDuint          count;
-    KDThreadMutex*   mutex;
-    KDThreadCond*    condition;
+    KDuint count;
+    KDThreadMutex* mutex;
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
+    KDThreadCond* condition;
+#endif
 };
 KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
 {
     KDThreadSem *sem = (KDThreadSem*)kdMalloc(sizeof(KDThreadSem));
+    if(sem == KD_NULL)
+    {
+        kdSetError(KD_ENOSPC);
+        return KD_NULL;
+    }
+
     sem->count = value;
     sem->mutex = kdThreadMutexCreate(KD_NULL);
+    if(sem->mutex == KD_NULL)
+    {
+        kdSetError(KD_ENOSPC);
+        return KD_NULL;
+    }
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
     sem->condition = kdThreadCondCreate(KD_NULL);
+    if(sem->condition == KD_NULL)
+    {
+        kdSetError(KD_ENOSPC);
+        return KD_NULL;
+    }
+#endif
     return sem;
 }
 
@@ -811,7 +888,9 @@ KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
 KD_API KDint KD_APIENTRY kdThreadSemFree(KDThreadSem *sem)
 {
     kdThreadMutexFree(sem->mutex);
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
     kdThreadCondFree(sem->condition);
+#endif
     kdFree(sem);
     return 0;
 }
@@ -820,10 +899,12 @@ KD_API KDint KD_APIENTRY kdThreadSemFree(KDThreadSem *sem)
 KD_API KDint KD_APIENTRY kdThreadSemWait(KDThreadSem *sem)
 {
     kdThreadMutexLock(sem->mutex);
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
     while(sem->count == 0)
     {
         kdThreadCondWait(sem->condition, sem->mutex);
     }
+#endif
     --sem->count;
     kdThreadMutexUnlock(sem->mutex);
     return 0;
@@ -834,16 +915,15 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 {
     kdThreadMutexLock(sem->mutex);
     ++sem->count;
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
     kdThreadCondSignal(sem->condition);
+#endif
     kdThreadMutexUnlock(sem->mutex);
     return 0;
 }
 
-/******************************************************************************
- * Events
- ******************************************************************************/
-/* __KDSleep: Sleep for nanoseconds. */
-void __KDSleep(KDust timeout)
+/* kdThreadSleepVEN: Blocks the current thread for nanoseconds. */
+KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 {
 #if defined(_MSC_VER) && _MSC_VER <= 1800
 #define LONG_CAST (long)
@@ -881,9 +961,19 @@ void __KDSleep(KDust timeout)
     WaitForSingleObject(timer, INFINITE);
     CloseHandle(timer);
 #else
-    kdAssert(0);
+    KDust now,then;
+    now = then = kdGetTimeUST();
+    while( (now-then) < timeout )
+    {
+        now = kdGetTimeUST();
+    }
 #endif
+    return 0;
 }
+
+/******************************************************************************
+ * Events
+ ******************************************************************************/
 
 /* kdWaitEvent: Get next event from thread's event queue. */
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
@@ -891,22 +981,31 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     if(__kd_lastevent != KD_NULL)
     {
         kdFreeEvent(__kd_lastevent);
-        __kd_lastevent = KD_NULL;
     }
     if(timeout != -1)
     {
-        __KDSleep(timeout);
+        kdThreadSleepVEN(timeout);
     }
     kdPumpEvents();
     if(kdQueueSizeVEN(kdThreadSelf()->eventqueue) > 0)
     {
         __kd_lastevent = (KDEvent *)kdQueuePopHeadVEN(kdThreadSelf()->eventqueue);
     }
+    else
+    {
+        __kd_lastevent = KD_NULL;
+        kdSetError(KD_EAGAIN);
+    }
     return __kd_lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
+static void *__kd_userptr = KD_NULL;
+static KDThreadMutex *__kd_userptrmtx = KD_NULL;
 KD_API void KD_APIENTRY kdSetEventUserptr(KD_UNUSED void *userptr)
 {
+    kdThreadMutexLock(__kd_userptrmtx);
+    __kd_userptr = userptr;
+    kdThreadMutexUnlock(__kd_userptrmtx);
 }
 
 /* kdDefaultEvent: Perform default processing on an unrecognized event. */
@@ -965,6 +1064,8 @@ struct KDWindow
     Display *nativedisplay;
 #endif
     EGLint format;
+    void* eventuserptr;
+    KDThread *originthr;
 };
 #if defined(KD_WINDOW_ANDROID)
 static AInputQueue *__kd_androidinputqueue = KD_NULL;
@@ -1349,6 +1450,11 @@ KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype
 KD_API KDEvent *KD_APIENTRY kdCreateEvent(void)
 {
     KDEvent *event = (KDEvent*)kdMalloc(sizeof(KDEvent));
+    if(event == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
     event->timestamp = 0;
     event->type = -1;
     event->userptr = KD_NULL;
@@ -1386,7 +1492,6 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
  * Application startup and exit.
  ******************************************************************************/
 extern const char *__progname;
-static KDThread *__kd_mainthread = KD_NULL;
 const char* __kdAppName(KD_UNUSED const char *argv0)
 {
 #ifdef __GLIBC__
@@ -1403,27 +1508,28 @@ const char* __kdAppName(KD_UNUSED const char *argv0)
 
 #ifdef __ANDROID__
 /* All Android events are send to the mainthread */
+static KDThread *__kd_androidmainthread =  KD_NULL;
 static ANativeActivity *__kd_androidactivity =  KD_NULL;
 static KDThreadMutex *__kd_androidactivity_mutex =  KD_NULL;
 static void __kd_AndroidOnDestroy(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_QUIT;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static void __kd_AndroidOnStart(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static void __kd_AndroidOnResume(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static void* __kd_AndroidOnSaveInstanceState(ANativeActivity *activity, size_t *len)
@@ -1436,21 +1542,21 @@ static void __kd_AndroidOnPause(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static void __kd_AndroidOnStop(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static void __kd_AndroidOnConfigurationChanged(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_ORIENTATION;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static void __kd_AndroidOnLowMemory(ANativeActivity *activity)
@@ -1463,7 +1569,7 @@ static void __kd_AndroidOnWindowFocusChanged(ANativeActivity *activity, int focu
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_FOCUS;
     event->data.windowfocus.focusstate = focused;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static ANativeWindow *__kd_androidwindow =  KD_NULL;
@@ -1473,9 +1579,6 @@ static void __kd_AndroidOnNativeWindowCreated(ANativeActivity *activity, ANative
     kdThreadMutexLock(__kd_androidwindow_mutex);
     __kd_androidwindow = window;
     kdThreadMutexUnlock(__kd_androidwindow_mutex);
-    KDEvent *event = kdCreateEvent();
-    event->type = KD_EVENT_WINDOW_REDRAW;
-    kdPostThreadEvent(event, __kd_mainthread);
 }
 
 static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANativeWindow *window)
@@ -1485,7 +1588,7 @@ static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANati
     kdThreadMutexUnlock(__kd_androidwindow_mutex);
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_CLOSE;
-    kdPostThreadEvent(event, __kd_mainthread);
+    kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
 static void __kd_AndroidOnInputQueueCreated(ANativeActivity *activity, AInputQueue *queue)
@@ -1505,22 +1608,14 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 
 static void __kdMathInit(void);
 static void __kdMathCleanup(void);
-
-typedef struct
+KD_API int main(int argc, char **argv)
 {
-    KDint argc;
-    KDchar **argv;
-} __KDMainArgs;
-static void* __kdMainInjector( void *arg)
-{
-    __KDMainArgs *mainargs = (__KDMainArgs *) arg;
-    if(mainargs == KD_NULL)
-    {
-        kdAssert(0);
-    }
-
+    __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
+#if !defined(__ANDROID__)
+    __kd_thread = (KDThread *)kdMalloc(sizeof(KDThread));
+    __kd_thread->eventqueue = kdQueueCreateVEN(100);
+#endif
     __kdMathInit();
-
 #ifdef KD_VFS_SUPPORTED
     struct PHYSFS_Allocator allocator= {0};
     allocator.Deinit = KD_NULL;
@@ -1529,8 +1624,8 @@ static void* __kdMainInjector( void *arg)
     allocator.Malloc = (void *(*)(PHYSFS_uint64))kdMalloc;
     allocator.Realloc = (void *(*)(void*, PHYSFS_uint64))kdRealloc;
     PHYSFS_setAllocator(&allocator);
-    PHYSFS_init(mainargs->argv[0]);
-    const KDchar *prefdir = PHYSFS_getPrefDir("libKD", __kdAppName(mainargs->argv[0]));
+    PHYSFS_init(argv[0]);
+    const KDchar *prefdir = PHYSFS_getPrefDir("libKD", __kdAppName(argv[0]));
     PHYSFS_setWriteDir(prefdir);
     PHYSFS_mount(prefdir, "/", 0);
     PHYSFS_mkdir("/res");
@@ -1538,23 +1633,23 @@ static void* __kdMainInjector( void *arg)
     PHYSFS_mkdir("/tmp");
 #endif
 
-    __kd_mainthread = __kd_thread;
-
-#ifdef __ANDROID__
-    kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
+    KDint result = 0;
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
+    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
+    KDMAIN kdmain = KD_NULL;
+#endif
+#if defined(__ANDROID__)
+    result = kdMain(argc, (const KDchar *const *)argv);
     kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
-#elif __EMSCRIPTEN__
-    kdMain(mainargs->argc, (const KDchar *const *)mainargs->argv);
+#elif defined(__EMSCRIPTEN__)
+    result = kdMain(argc, (const KDchar *const *)argv);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     HMODULE handle = GetModuleHandle(0);
-    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
-    KDMAIN kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
-    (*kdmain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
+    kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
+    result = kdmain(argc, (const KDchar *const *)argv);
 #else
-    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
-    KDMAIN kdmain = KD_NULL;
     void *app = dlopen(NULL, RTLD_NOW);
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
@@ -1564,20 +1659,27 @@ static void* __kdMainInjector( void *arg)
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.\n");
         kdAssert(0);
     }
-    (*kdmain)(mainargs->argc, (const KDchar *const *)mainargs->argv);
+    result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);
 #endif
 
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_deinit();
 #endif
-
     __kdMathCleanup();
-
-    return 0;
+#if !defined(__ANDROID__)
+    kdQueueFreeVEN(__kd_thread->eventqueue);
+    kdFree(__kd_thread);
+#endif
+    kdThreadMutexFree(__kd_userptrmtx);
+    return result;
 }
 
 #ifdef __ANDROID__
+static void* __kdAndroidMain( void *arg)
+{
+    main(0, KD_NULL);
+}
 void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_t savedStateSize)
 {
     __kd_androidwindow_mutex = kdThreadMutexCreate(KD_NULL);
@@ -1603,29 +1705,8 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_
     ANativeActivity_setWindowFlags(__kd_androidactivity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
     kdThreadMutexUnlock(__kd_androidactivity_mutex);
 
-    __KDMainArgs mainargs = {0};
-    mainargs.argc = 0;
-    mainargs.argv = KD_NULL;
-    KDThread *thread = kdThreadCreate(KD_NULL, __kdMainInjector, &mainargs);
-    kdThreadDetach(thread);
-}
-#else
-KD_API int main(int argc, char **argv)
-{
-    __KDMainArgs mainargs = {0};
-    mainargs.argc = argc;
-    mainargs.argv = argv;
-
-#ifdef __EMSCRIPTEN__
-    __kdMainInjector(&mainargs);
-#else
-    KDThreadAttr *mainattr = kdThreadAttrCreate();
-    __kdThreadAttrSetDebugName(mainattr, "KDThread (Main)");
-    KDThread * mainthread = kdThreadCreate(mainattr, __kdMainInjector, &mainargs);
-    kdThreadJoin(mainthread, KD_NULL);
-    kdThreadAttrFree(mainattr);
-#endif
-    return 0;
+    __kd_androidmainthread = kdThreadCreate(KD_NULL, __kdAndroidMain, KD_NULL);
+    kdThreadDetach(__kd_androidmainthread);
 }
 #endif
 
@@ -1741,7 +1822,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
     if (base < 0 || base == 1 || base > 36) {
         if (endptr != 0)
             *endptr = (KDchar *)nptr;
-        errno = KD_EINVAL;
+        kdSetError(KD_EINVAL);
         return 0;
     }
     /*
@@ -1812,7 +1893,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
             if (acc < cutoff || (acc == cutoff && c > cutlim)) {
                 any = -1;
                 acc = KDINT_MIN;
-                errno = ERANGE;
+                kdSetError(KD_ERANGE);
             } else {
                 any = 1;
                 acc *= base;
@@ -1822,7 +1903,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
             if (acc > cutoff || (acc == cutoff && c > cutlim)) {
                 any = -1;
                 acc = KDINT_MAX;
-                errno = KD_ERANGE;
+                kdSetError(KD_ERANGE);
             } else {
                 any = 1;
                 acc *= base;
@@ -1830,7 +1911,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
             }
         }
     }
-    if (endptr != 0)
+    if (endptr != KD_NULL)
         *endptr = (KDchar *) (any ? s - 1 : nptr);
     return (KDint)acc;
 }
@@ -1847,7 +1928,7 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
     if (base < 0 || base == 1 || base > 36) {
         if (endptr != 0)
             *endptr = (KDchar *)nptr;
-        errno = KD_EINVAL;
+        kdSetError(KD_EINVAL);
         return 0;
     }
     s = nptr;
@@ -1886,7 +1967,7 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
         if (acc > cutoff || (acc == cutoff && c > cutlim)) {
             any = -1;
             acc = KDUINT_MAX;
-            errno = KD_ERANGE;
+            kdSetError(KD_ERANGE);
         } else {
             any = 1;
             acc *= (KDuint)base;
@@ -1946,7 +2027,8 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize buflen)
 {
 #if defined(_MSC_VER) && defined(_M_ARM)
-    kdSetError(KD_EOPNOTSUPP);
+    /* TODO: Implement for this platform */
+    kdAssert(0);
     return -1;
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     HCRYPTPROV provider = 0;
@@ -1985,7 +2067,17 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 /* kdGetLocale: Determine the current language and locale. */
 KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 {
-    return setlocale(LC_ALL,NULL);
+#if defined(KD_FREESTANDING)
+    return "";
+#else
+    const KDchar *result = setlocale(LC_ALL,NULL);
+    if(result == NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    return result;
+#endif
 }
 
 /******************************************************************************
@@ -1995,7 +2087,13 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 /* kdMalloc: Allocate memory. */
 KD_API void *KD_APIENTRY kdMalloc(KDsize size)
 {
-    return malloc(size);
+    void* result = malloc(size);
+    if(result == NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    return result;
 }
 
 /* kdFree: Free allocated memory block. */
@@ -2007,7 +2105,13 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 /* kdRealloc: Resize memory block. */
 KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
 {
-    return realloc(ptr, size);
+    void* result = realloc(ptr, size);
+    if(result == NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    return result;
 }
 
 /******************************************************************************
@@ -3317,8 +3421,8 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     k=0;
     if (ix < 0x00800000) {          /* x < 2**-126  */
         if ((ix&0x7fffffffF)==0)
-        return -(KDfloat32)KD_INFINITY;        /* log(+-0)=-inf */
-        if (ix<0) return (KDfloat32)KD_NAN;    /* log(-#) = NaN */
+        return -two25/(volatile KDfloat32)0.0f;        /* log(+-0)=-inf */
+        if (ix<0) return (x-x)/0.0f;    /* log(-#) = NaN */
         k -= 25; x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix,x);
     }
@@ -3328,7 +3432,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     i = (ix+(0x95f64<<3))&0x800000;
     SET_FLOAT_WORD(x,ix|(i^0x3f800000));    /* normalize x or x/2 */
     k += (i>>23);
-    f = x-(KDfloat32)1.0;
+    f = x-1.0f;
     if((0x007fffff&(0x8000+ix))<0xc000) {   /* -2**-9 <= f < 2**-9 */
         if(f==0.0f) {
         if(k==0) {
@@ -4611,6 +4715,7 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 /* kdGetTimeUST: Get the current unadjusted system time. */
 KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 {
+    /* TODO: Implement nanosecond timesource */
     return clock();
 }
 
@@ -4623,21 +4728,20 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 /* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
 KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 {
-    KDTm *retval = (KDTm*)gmtime((const time_t*)timep);
-    *result = *retval;
-    return retval;
+    result = (KDTm*)gmtime((const time_t*)timep);
+    return result;
 }
 KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 {
-    KDTm *retval = (KDTm*)localtime((const time_t*)timep);
-    *result = *retval;
-    return retval;
+    result = (KDTm*)localtime((const time_t*)timep);
+    return result;
 }
 
 /* kdUSTAtEpoch: Get the UST corresponding to KDtime 0. */
 KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    /* TODO: Implement*/
+    kdAssert(0);
     return 0;
 }
 
@@ -4658,7 +4762,7 @@ static void* __kdTimerHandler(void *arg)
     __KDTimerPayload* payload = (__KDTimerPayload*)arg;
     for(;;)
     {
-        __KDSleep(payload->interval);
+        kdThreadSleepVEN(payload->interval);
 
         /* Post event to the original thread */
         KDEvent *timerevent = kdCreateEvent();
@@ -4688,18 +4792,43 @@ static void* __kdTimerHandler(void *arg)
 struct KDTimer
 {
     KDThread* thread;
+    KDThread* originthr;
     __KDTimerPayload* payload;
 };
 KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
 {
+    if(periodic != KD_TIMER_ONESHOT && periodic != KD_TIMER_PERIODIC_AVERAGE && periodic != KD_TIMER_PERIODIC_MINIMUM)
+    {
+        kdAssert(0);
+    }
+
     __KDTimerPayload* payload = (__KDTimerPayload*)kdMalloc(sizeof(__KDTimerPayload));
+    if(payload == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
     payload->interval = interval;
     payload->periodic = periodic;
     payload->eventuserptr = eventuserptr;
     payload->destination = kdThreadSelf();
 
     KDTimer *timer = (KDTimer*)kdMalloc(sizeof(KDTimer));
+    if(timer == KD_NULL)
+    {
+        kdFree(payload);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
     timer->thread = kdThreadCreate(KD_NULL, __kdTimerHandler, payload);
+    if(timer->thread == KD_NULL)
+    {
+        kdFree(timer);
+        kdFree(payload);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    timer->originthr = kdThreadSelf();
     timer->payload = payload;
     return timer;
 }
@@ -4707,6 +4836,11 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
 /* kdCancelTimer: Cancel and free a timer. */
 KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 {
+    if(timer->originthr != kdThreadSelf())
+    {
+        kdSetError(KD_EINVAL);
+        return -1;
+    }
     /* Post quit event to the timer thread */
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_QUIT;
@@ -5338,19 +5472,19 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KD_UNUSED KDuint af, KD_UNUSED const
 /* kdStateGeti, kdStateGetl, kdStateGetf: get state value(s) */
 KD_API KDint KD_APIENTRY kdStateGeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint32 *buffer)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EIO);
     return -1;  
 }
 
 KD_API KDint KD_APIENTRY kdStateGetl(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint64 *buffer)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EIO);
     return -1; 
 }
 
 KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDfloat32 *buffer)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EIO);
     return -1; 
 }
 
@@ -5358,13 +5492,13 @@ KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint 
 /* kdOutputSeti, kdOutputSetf: set outputs */
 KD_API KDint KD_APIENTRY kdOutputSeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDint32 *buffer)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EIO);
     return -1; 
 }
 
 KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDfloat32 *buffer)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EIO);
     return -1; 
 }
 
@@ -5395,70 +5529,90 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 #endif
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
-    if(!__kd_window)
+    if(__kd_window != KD_NULL)
     {
-        KDWindow *window = (KDWindow *)kdMalloc(sizeof(KDWindow));
-#if defined(KD_WINDOW_ANDROID)
-        eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-#elif defined(KD_WINDOW_WIN32)
-        WNDCLASS windowclass = { 0 };
-        HINSTANCE instance = GetModuleHandle(KD_NULL);
-        GetClassInfo(instance, "", &windowclass);
-        windowclass.lpszClassName = "OpenKODE";
-        windowclass.lpfnWndProc = windowcallback;
-        windowclass.hInstance = instance;
-        windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
-        RegisterClass(&windowclass);
-        window->nativewindow = CreateWindow("OpenKODE", "OpenKODE", WS_POPUP|WS_VISIBLE, 0, 0,
-                                            GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
-                                            KD_NULL, KD_NULL, instance, KD_NULL);
-        /* Activate raw input */
-        RAWINPUTDEVICE device[2];
-        /* Mouse */
-        device[0].usUsagePage = 1;
-        device[0].usUsage = 2;
-        device[0].dwFlags = RIDEV_NOLEGACY;
-        device[0].hwndTarget = window->nativewindow;
-        /* Keyboard */
-        device[1].usUsagePage = 1;
-        device[1].usUsage = 6;
-        device[1].dwFlags = RIDEV_NOLEGACY;
-        device[1].hwndTarget = window->nativewindow;
-        RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
-#elif defined(KD_WINDOW_X11)
-        XInitThreads();
-        window->nativedisplay = XOpenDisplay(NULL);
-        window->nativewindow = XCreateSimpleWindow(window->nativedisplay,
-            XRootWindow(window->nativedisplay, XDefaultScreen(window->nativedisplay)), 0, 0,
-            (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)),
-            (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)), 0,
-            XBlackPixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)),
-            XWhitePixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)));
-        XStoreName(window->nativedisplay, window->nativewindow, "OpenKODE");
-        Atom wm_del_win_msg = XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False);
-        XSetWMProtocols(window->nativedisplay, window->nativewindow, &wm_del_win_msg, 1);
-        Atom mwm_prop_hints = XInternAtom(window->nativedisplay, "_MOTIF_WM_HINTS", True);
-        const KDuint8 mwm_hints[5] = { 2, 0, 0, 0, 0 };
-        XChangeProperty(window->nativedisplay, window->nativewindow, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8*)&mwm_hints, 5);
-        Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
-        Atom netwm_hints[3];
-        netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FULLSCREEN", False);
-        netwm_hints[1] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
-        XChangeProperty(window->nativedisplay, window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8*)&netwm_hints, 3);
-        KDEvent *event = kdCreateEvent();
-        event->type = KD_EVENT_WINDOW_REDRAW;
-        kdPostThreadEvent(event, __kd_mainthread);
-#endif
-        __kd_window = window;
+        /* One window only */
+        kdSetError(KD_EPERM);
+        return KD_NULL;
     }
-    return __kd_window;
+
+    KDWindow *window = (KDWindow *)kdMalloc(sizeof(KDWindow));
+    if(window == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    if(eventuserptr == KD_NULL)
+    {
+        window->eventuserptr = window;
+    }
+    else
+    {
+        window->eventuserptr = eventuserptr;
+    }
+    window->originthr = kdThreadSelf();
+#if defined(KD_WINDOW_ANDROID)
+    eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
+#elif defined(KD_WINDOW_WIN32)
+    WNDCLASS windowclass = { 0 };
+    HINSTANCE instance = GetModuleHandle(KD_NULL);
+    GetClassInfo(instance, "", &windowclass);
+    windowclass.lpszClassName = "OpenKODE";
+    windowclass.lpfnWndProc = windowcallback;
+    windowclass.hInstance = instance;
+    windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
+    RegisterClass(&windowclass);
+    window->nativewindow = CreateWindow("OpenKODE", "OpenKODE", WS_POPUP|WS_VISIBLE, 0, 0,
+                                        GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+                                        KD_NULL, KD_NULL, instance, KD_NULL);
+    /* Activate raw input */
+    RAWINPUTDEVICE device[2];
+    /* Mouse */
+    device[0].usUsagePage = 1;
+    device[0].usUsage = 2;
+    device[0].dwFlags = RIDEV_NOLEGACY;
+    device[0].hwndTarget = window->nativewindow;
+    /* Keyboard */
+    device[1].usUsagePage = 1;
+    device[1].usUsage = 6;
+    device[1].dwFlags = RIDEV_NOLEGACY;
+    device[1].hwndTarget = window->nativewindow;
+    RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
+#elif defined(KD_WINDOW_X11)
+    XInitThreads();
+    window->nativedisplay = XOpenDisplay(NULL);
+    window->nativewindow = XCreateSimpleWindow(window->nativedisplay,
+        XRootWindow(window->nativedisplay, XDefaultScreen(window->nativedisplay)), 0, 0,
+        (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)),
+        (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)), 0,
+        XBlackPixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)),
+        XWhitePixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)));
+    XStoreName(window->nativedisplay, window->nativewindow, "OpenKODE");
+    Atom wm_del_win_msg = XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(window->nativedisplay, window->nativewindow, &wm_del_win_msg, 1);
+    Atom mwm_prop_hints = XInternAtom(window->nativedisplay, "_MOTIF_WM_HINTS", True);
+    const KDuint8 mwm_hints[5] = { 2, 0, 0, 0, 0 };
+    XChangeProperty(window->nativedisplay, window->nativewindow, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8*)&mwm_hints, 5);
+    Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
+    Atom netwm_hints[3];
+    netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FULLSCREEN", False);
+    netwm_hints[1] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
+    XChangeProperty(window->nativedisplay, window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8*)&netwm_hints, 3);
+#endif
+    __kd_window = window; 
+    return window;
 }
 
 /* kdDestroyWindow: Destroy a window. */
 KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 {
+    if(window->originthr != kdThreadSelf())
+    {
+        kdSetError(KD_EINVAL);
+        return -1;
+    }
 #if defined(KD_WINDOW_WIN32)
     DestroyWindow(window->nativewindow);
 #elif defined(KD_WINDOW_X11)
@@ -5479,17 +5633,14 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(KD_WINDOW_ANDROID) || defined(KD_WINDOW_NULL)
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
-#elif defined(KD_WINDOW_X11)
+#if defined(KD_WINDOW_X11)
         XMoveResizeWindow(window->nativedisplay, window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
         XFlush(window->nativedisplay);
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostThreadEvent(event, kdThreadSelf());
-#endif
         return 0;
+#endif
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -5498,17 +5649,14 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-#if defined(KD_WINDOW_ANDROID) || defined(KD_WINDOW_NULL)
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
-#elif defined(KD_WINDOW_X11)
+#if defined(KD_WINDOW_X11)
         XStoreName(window->nativedisplay, window->nativewindow, param);
         XFlush(window->nativedisplay);
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostThreadEvent(event, kdThreadSelf());
-#endif
         return 0;
+#endif
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -5524,17 +5672,15 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(KD_WINDOW_NULL)
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
-#elif defined(KD_WINDOW_ANDROID)
+#if defined(KD_WINDOW_ANDROID)
         param[0] = ANativeWindow_getWidth(window->nativewindow);
         param[1] = ANativeWindow_getHeight(window->nativewindow);
+        return 0;
 #elif defined(KD_WINDOW_X11)
         param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
         param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
-#endif
         return 0;
+#endif
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -5543,13 +5689,10 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
-#if defined(KD_WINDOW_ANDROID) || defined(KD_WINDOW_NULL)
-        kdSetError(KD_EOPNOTSUPP);
-        return -1;
-#elif defined(KD_WINDOW_X11)
+#if defined(KD_WINDOW_X11)
         XFetchName(window->nativedisplay, window->nativewindow, &param);
-#endif
         return 0;
+#endif
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -5587,19 +5730,39 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 /* kdHandleAssertion: Handle assertion failure. */
 KD_API void KD_APIENTRY kdHandleAssertion(KD_UNUSED const KDchar *condition, KD_UNUSED const KDchar *filename, KD_UNUSED KDint linenumber)
 {
-
+    #define messagelimit 4096
+    KDchar message[messagelimit] = "";
+    KDchar line[128] = "";
+    kdLtostr(line, 128, linenumber);
+    kdStrncat_s(message, messagelimit, "Assertion in file: ", messagelimit);
+    kdStrncat_s(message, messagelimit, filename, messagelimit);
+    kdStrncat_s(message, messagelimit, " (", messagelimit);
+    kdStrncat_s(message, 1024, line, 1024);
+    kdStrncat_s(message, messagelimit, ")", messagelimit);
+    kdLogMessage(message);
+    #undef messagelimit
+    kdExit(EXIT_FAILURE);
 }
 
 /* kdLogMessage: Output a log message. */
 #ifndef KD_NDEBUG
 KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 {
+    KDsize stringsize = kdStrlen(string)+2;
+    KDchar* newstring = kdMalloc(sizeof(KDchar)*stringsize);
+    kdMemset(newstring, 0, stringsize);
+    kdStrncat_s(newstring, stringsize, string, stringsize);
+    if(newstring[(stringsize-3)] != '\n')
+    {
+        kdStrncat_s(newstring, stringsize, "\n", stringsize);
+    }
 #ifdef __ANDROID__
-    __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), string);
+    __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
 #else
-    printf("%s", string);
+    printf("%s", newstring);
     fflush(stdout);
 #endif
+    kdFree(newstring);
 }
 #endif
 
