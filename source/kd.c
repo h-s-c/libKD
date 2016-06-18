@@ -179,56 +179,10 @@
             return ret;
         }
     #endif
-    /* MSVC threads.h */
-    #if defined(KD_THREAD_C11) || defined(KD_THREAD_WIN32)
-        static BOOL CALLBACK call_once_callback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
-        {
-            void(*func)(void) = KD_NULL;
-            kdMemcpy(&func, &param, sizeof(param));
-            func();
-            return TRUE;
-        }
-    #endif
-    #if defined(KD_THREAD_C11)
-        #include <thr/threads.h>
-        #undef thrd_sleep
-        int thrd_sleep(const struct timespec* time_point, KD_UNUSED struct timespec* remaining)
-        {
-            KDint64 timeout = time_point->tv_sec ? time_point->tv_sec * 1000000000 : 0;
-            timeout += time_point->tv_nsec;
-            HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
-            if(!timer) { kdAssert(0); }
-            LARGE_INTEGER li = {{ 0 }};
-            li.QuadPart = -(timeout / 100);
-            if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0)) { kdAssert(0); }
-            WaitForSingleObject(timer, INFINITE);
-            CloseHandle(timer);
-            return 0;
-        }
-        #if defined(_MSC_VER) && _MSC_VER == 1900
-        typedef INIT_ONCE once_flag;
-        void call_once(once_flag* flag, void(*func)(void))
-        {
-            void* pfunc = KD_NULL;
-            kdMemcpy(&pfunc, &func, sizeof(func));
-            InitOnceExecuteOnce(flag, call_once_callback, pfunc, NULL);
-        }
-        #endif
-    #endif
 	/* MSVC redefinition fix*/
 	#ifndef inline
 	#define inline __inline
     #endif
-    /* Debugging helpers*/
-    #pragma pack(push,8)
-    struct THREADNAME_INFO
-    {
-        KDuint32    type;       // must be 0x1000
-        const KDchar* name;       // pointer to name (in user addr space)
-        KDuint32    threadid;   // thread ID (-1=caller thread)
-        KDuint32    flags;      // reserved for future use, must be zero
-    };
-    #pragma pack(pop)
 #endif
 
 /******************************************************************************
@@ -411,6 +365,18 @@ struct KDThread
     const KDThreadAttr *attr;
     __KDThreadStartArgs *start_args;
 };
+
+#if defined(_MSC_VER)
+#pragma pack(push,8)
+struct THREADNAME_INFO
+{
+    KDuint32    type;       // must be 0x1000
+    const KDchar* name;       // pointer to name (in user addr space)
+    KDuint32    threadid;   // thread ID (-1=caller thread)
+    KDuint32    flags;      // reserved for future use, must be zero
+};
+#pragma pack(pop)
+#endif
 
 static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
 static void* __kdThreadStart(void *args)
@@ -626,7 +592,15 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
-
+#if defined(KD_THREAD_WIN32)
+static BOOL CALLBACK call_once_callback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
+        {
+            void(*func)(void) = KD_NULL;
+            kdMemcpy(&func, &param, sizeof(param));
+            func();
+            return TRUE;
+        }
+#endif
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void))
 {
 #if defined(KD_THREAD_C11)
