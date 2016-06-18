@@ -94,7 +94,11 @@
     #define KD_NDEBUG
 #endif
 
-#define kdAssert(c) kdHandleAssertion(c, __FILE__, __LINE__)
+#ifdef KD_NDEBUG
+    #define kdAssert(c) ((void) 0)
+#else
+    #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+#endif
 
 typedef khronos_int32_t     KDint32;
 typedef khronos_uint32_t    KDuint32;

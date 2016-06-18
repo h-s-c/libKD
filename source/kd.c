@@ -568,7 +568,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         result = *retval;
     }
 #if defined(KD_THREAD_C11)
-    error = thrd_join(thread->ntaivethread, result);
+    error = thrd_join(thread->nativethread, result);
     if(error == thrd_error)
 #elif defined(KD_THREAD_POSIX)
     error = pthread_join(thread->nativethread, retval);
@@ -3413,6 +3413,7 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
 }
 
 /* kdLogf: Natural logarithm function. */
+static volatile float vzero = 0.0;
 KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
 {
     KDfloat32 hfsq,f,s,z,R,w,t1,t2,dk;
@@ -3421,7 +3422,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     k=0;
     if (ix < 0x00800000) {          /* x < 2**-126  */
         if ((ix&0x7fffffffF)==0)
-        return -two25/(volatile KDfloat32)0.0f;        /* log(+-0)=-inf */
+        return -two25/vzero;        /* log(+-0)=-inf */
         if (ix<0) return (x-x)/0.0f;    /* log(-#) = NaN */
         k -= 25; x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix,x);
@@ -5728,20 +5729,24 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
  ******************************************************************************/
 
 /* kdHandleAssertion: Handle assertion failure. */
-KD_API void KD_APIENTRY kdHandleAssertion(KD_UNUSED const KDchar *condition, KD_UNUSED const KDchar *filename, KD_UNUSED KDint linenumber)
+KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
 {
     #define messagelimit 4096
     KDchar message[messagelimit] = "";
     KDchar line[128] = "";
     kdLtostr(line, 128, linenumber);
-    kdStrncat_s(message, messagelimit, "Assertion in file: ", messagelimit);
+    kdStrncat_s(message, messagelimit, "---Assertion---\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "Condition: ", messagelimit);
+    kdStrncat_s(message, messagelimit, condition, messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
+    kdStrncat_s(message, messagelimit, "File: ", messagelimit);
     kdStrncat_s(message, messagelimit, filename, messagelimit);
-    kdStrncat_s(message, messagelimit, " (", messagelimit);
-    kdStrncat_s(message, 1024, line, 1024);
+    kdStrncat_s(message, messagelimit, "(", messagelimit);
+    kdStrncat_s(message, messagelimit, line, messagelimit);
     kdStrncat_s(message, messagelimit, ")", messagelimit);
     kdLogMessage(message);
     #undef messagelimit
-    kdExit(EXIT_FAILURE);
+    kdExit(EXIT_FAILURE);  
 }
 
 /* kdLogMessage: Output a log message. */
