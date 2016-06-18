@@ -3050,7 +3050,7 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
     if(ix>=0x3f800000) {        /* |x| >= 1 */
         if(ix==0x3f800000) {    /* |x| == 1 */
         if(hx>0) return 0.0;    /* acos(1) = 0 */
-        else return KD_PI_F+(KDfloat32)2.0*pio2_lo;  /* acos(-1)= pi */
+        else return KD_PI_F+2.0f*pio2_lo;  /* acos(-1)= pi */
         }
         return (x-x)/(x-x);     /* acos(|x|>1) is NaN */
     }
@@ -3062,16 +3062,16 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
         r = p/q;
         return pio2_hi - (x - (pio2_lo-x*r));
     } else  if (hx<0) {     /* x < -0.5 */
-        z = (1.0f+x)*(KDfloat32)0.5;
+        z = (1.0f+x)*0.5f;
         p = z*(pS0+z*(pS1+z*pS2));
         q = 1.0f+z*qS1;
         s = kdSqrtf(z);
         r = p/q;
         w = r*s-pio2_lo;
-        return KD_PI_F - (KDfloat32)2.0*(s+w);
+        return KD_PI_F - 2.0f*(s+w);
     } else {            /* x > 0.5 */
         KDint32 idf;
-        z = (1.0f-x)*(KDfloat32)0.5;
+        z = (1.0f-x)*0.5f;
         s = kdSqrtf(z);
         df = s;
         GET_FLOAT_WORD(idf,df);
@@ -3081,7 +3081,7 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
         q = 1.0f+z*qS1;
         r = p/q;
         w = r*s+c;
-        return (KDfloat32)2.0*(df+w);
+        return 2.0f*(df+w);
     }
 }
 
@@ -3221,10 +3221,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
     /* compute y/x */
     k = (iy-ix)>>23;
     if(k > 26) {            /* |y/x| >  2**26 */
-        z=KD_PI_2_F+(KDfloat32)0.5*pi_lo;
+        z=KD_PI_2_F+0.5f*pi_lo;
         m&=1;
     }
-    else if(k<-26&&hx<0) z=0.0;     /* 0 > |y|/x > -2**-26 */
+    else if(k<-26&&hx<0) z=0.0f;     /* 0 > |y|/x > -2**-26 */
     else z=kdAtanf(kdFabsf(y/x));   /* safe to do y/x */
     switch (m) {
         case 0: return       z  ;   /* atan(+,+) */
@@ -3244,7 +3244,7 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
     ix = hx & 0x7fffffff;
     if(ix <= 0x3f490fda) {      /* |x| ~<= pi/4 */
         if(ix<0x39800000)       /* |x| < 2**-12 */
-        if(((int)x)==0) return 1.0; /* 1 with inexact if x != 0 */
+        if(((int)x)==0) return 1.0f; /* 1 with inexact if x != 0 */
         return __kdCosdf(x);
     }
     if(ix<=0x407b53d1) {        /* |x| ~<= 5*pi/4 */
@@ -3447,7 +3447,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
         if(k==0) return f-R; else {dk=(KDfloat32)k;
                  return dk*ln2_hi-((R-dk*ln2_lo)-f);}
     }
-    s = f/((KDfloat32)2.0+f);
+    s = f/(2.0f+f);
     dk = (KDfloat32)k;
     z = s*s;
     i = ix-(0x6147a<<3);
@@ -3762,14 +3762,14 @@ static KDfloat32 __kdCeilf_Generic(KDfloat32 x)
     j0 = ((i0>>23)&0xff)-0x7f;
     if(j0<23) {
         if(j0<0) {  /* raise inexact if x != 0 */
-        if(huge+x>(KDfloat32)0.0) {/* return 0*sign(x) if |x|<1 */
+        if(huge+x>0.0f) {/* return 0*sign(x) if |x|<1 */
             if(i0<0) {i0=0x80000000;}
             else if(i0!=0) { i0=0x3f800000;}
         }
         } else {
         i = (0x007fffff)>>j0;
         if((i0&i)==0) return x; /* x is integral */
-        if(huge+x>(KDfloat32)0.0) { /* raise inexact flag */
+        if(huge+x>0.0f) { /* raise inexact flag */
             if(i0>0) i0 += (0x00800000)>>j0;
             i0 &= (~i);
         }
