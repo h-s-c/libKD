@@ -1480,7 +1480,6 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
 KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
     kdFree(event);
-    event = KD_NULL;
 }
 
 /******************************************************************************
@@ -1635,7 +1634,7 @@ KD_API int main(int argc, char **argv)
 
     KDint result = 0;
 #if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
-    typedef KDint(KD_APIENTRY *KDMAIN)(KDint argc, const KDchar *const *argv);
+    typedef KDint(KD_APIENTRY *KDMAIN)(KDint, const KDchar *const *);
     KDMAIN kdmain = KD_NULL;
 #endif
 #if defined(__ANDROID__)
@@ -1741,7 +1740,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
  * Utility library functions
  *
  * Notes:
- * - kdAbs, kdStrtol and kdStrtoul copied from the BSD libc developed at the 
+ * - kdAbs, kdStrtol and kdStrtoul copied from the BSD libc developed at the
  *   University of California, Berkeley
  ******************************************************************************/
 /******************************************************************************
@@ -2008,7 +2007,7 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     else  if(base == 16 )
     {
         return snprintf(buffer, buflen, "%x", number);
-    } 
+    }
     kdSetError(KD_EINVAL);
     return -1;
 }
@@ -2135,7 +2134,7 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
  * Mathematical functions
  *
  * Notes:
- * - Generic codepath copied from FDLIBM developed at Sun Microsystems, Inc. 
+ * - Generic codepath copied from FDLIBM developed at Sun Microsystems, Inc.
  ******************************************************************************/
 /******************************************************************************
  * ====================================================
@@ -2143,7 +2142,7 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
  *
  * Developed at SunSoft, a Sun Microsystems, Inc. business.
  * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice 
+ * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
  ******************************************************************************/
@@ -2363,23 +2362,23 @@ static const KDfloat32 pS1 = -4.2743422091e-02f;
 static const KDfloat32 pS2 = -8.6563630030e-03f;
 static const KDfloat32 qS1 = -7.0662963390e-01f;
 /* |cos(x) - c(x)| < 2**-34.1 (~[-5.37e-11, 5.295e-11]). */
-static const KDfloat64KHR 
+static const KDfloat64KHR
 C0  = -4.9999999725103100e-01,                      /* -0x1ffffffd0c5e81.0p-54 */
 C1  =  4.1666623323739063e-02,                      /*  0x155553e1053a42.0p-57 */
 C2  = -1.3886763774609929e-03,                      /* -0x16c087e80f1e27.0p-62 */
 C3  =  2.4390448796277409e-05;                      /*  0x199342e0ee5069.0p-68 */
 /* |sin(x)/x - s(x)| < 2**-37.5 (~[-4.89e-12, 4.824e-12]). */
-static const KDfloat64KHR 
+static const KDfloat64KHR
 S1 = -1.6666666641626524e-01,                       /* -0x15555554cbac77.0p-55 */
 S2 =  8.3333293858894632e-03,                       /* 0x111110896efbb2.0p-59 */
 S3 = -1.9839334836096632e-04,                       /* -0x1a00f9e2cae774.0p-65 */
 S4 =  2.7183114939898219e-06;                       /* 0x16cd878c3b46a7.0p-71 */
 
-static const KDfloat64KHR         
+static const KDfloat64KHR
 two24   =  1.67772160000000000000e+07, /* 0x41700000, 0x00000000 */
 twon24  =  5.96046447753906250000e-08; /* 0x3E700000, 0x00000000 */
 
-static const KDfloat32 two24f = 16777216.0; /* 0x4b800000 */
+static const KDfloat32 two24f = 16777216.0f; /* 0x4b800000 */
 
 /*
  * pio2_1:   first 25 bits of pi/2
@@ -2413,10 +2412,10 @@ ln2_lo =   9.0580006145e-06f,    /* 0x3717f7d1 */
 two25 =    3.355443200e+07f, /* 0x4c000000 */
 twom25 =    2.9802322388e-08f, /* 0x33000000 */
 /* |(log(1+s)-log(1-s))/s - Lg(s)| < 2**-34.24 (~[-4.95e-11, 4.97e-11]). */
-Lg1 =6.6666662693023682e-01,      /* 0xaaaaaa.0p-24f */
-Lg2 =4.0000972151756287e-01,      /* 0xccce13.0p-25f */
-Lg3 =2.8498786687850952e-01,      /* 0x91e9ee.0p-25f */
-Lg4 =2.4279078841209412e-01;      /* 0xf89e26.0p-26f */
+Lg1 =6.6666662693023682e-01f,      /* 0xaaaaaa.0p-24f */
+Lg2 =4.0000972151756287e-01f,      /* 0xccce13.0p-25f */
+Lg3 =2.8498786687850952e-01f,      /* 0x91e9ee.0p-25f */
+Lg4 =2.4279078841209412e-01f;      /* 0xf89e26.0p-26f */
 
 static const KDfloat32
 bp[] = {1.0f, 1.5f,},
@@ -2449,14 +2448,14 @@ twom54 = 5.55111512312578270212e-17; /* 0x3C900000, 0x00000000 */
 
 static const KDfloat32 Zero[] = {0.0f, -0.0f,};
 
-static const KDfloat32 atanhi[] = 
+static const KDfloat32 atanhi[] =
 {
   4.6364760399e-01f,                                 /* atan(0.5)hi 0x3eed6338 */
   7.8539812565e-01f,                                 /* atan(1.0)hi 0x3f490fda */
   9.8279368877e-01f,                                 /* atan(1.5)hi 0x3f7b985e */
   1.5707962513e+00f,                                 /* atan(inf)hi 0x3fc90fda */
 };
-static const KDfloat32 atanlo[] = 
+static const KDfloat32 atanlo[] =
 {
   5.0121582440e-09f,                                 /* atan(0.5)lo 0x31ac3769 */
   3.7748947079e-08f,                                 /* atan(1.0)lo 0x33222168 */
@@ -2467,8 +2466,8 @@ static const KDfloat32 atanlo[] =
 /*
  * Table of constants for 2/pi, 396 Hex digits (476 decimal) of 2/pi
  *
- *      integer array, contains the (24*i)-th to (24*i+23)-th 
- *      bit of 2/pi after binary point. The corresponding 
+ *      integer array, contains the (24*i)-th to (24*i+23)-th
+ *      bit of 2/pi after binary point. The corresponding
  *      floating value is
  *
  *          ipio2[i] * 2^(-24(i+1)).
@@ -2477,17 +2476,17 @@ static const KDfloat32 atanlo[] =
  *     For quad precision (e0 <= 16360, jk = 6), this is 686.
  */
 static const KDint32 ipio2[] = {
-0xA2F983, 0x6E4E44, 0x1529FC, 0x2757D1, 0xF534DD, 0xC0DB62, 
-0x95993C, 0x439041, 0xFE5163, 0xABDEBB, 0xC561B7, 0x246E3A, 
-0x424DD2, 0xE00649, 0x2EEA09, 0xD1921C, 0xFE1DEB, 0x1CB129, 
-0xA73EE8, 0x8235F5, 0x2EBB44, 0x84E99C, 0x7026B4, 0x5F7E41, 
-0x3991D6, 0x398353, 0x39F49C, 0x845F8B, 0xBDF928, 0x3B1FF8, 
-0x97FFDE, 0x05980F, 0xEF2F11, 0x8B5A0A, 0x6D1F6D, 0x367ECF, 
-0x27CB09, 0xB74F46, 0x3F669E, 0x5FEA2D, 0x7527BA, 0xC7EBE5, 
-0xF17B3D, 0x0739F7, 0x8A5292, 0xEA6BFB, 0x5FB11F, 0x8D5D08, 
-0x560330, 0x46FC7B, 0x6BABF0, 0xCFBC20, 0x9AF436, 0x1DA9E3, 
-0x91615E, 0xE61B08, 0x659985, 0x5F14A0, 0x68408D, 0xFFD880, 
-0x4D7327, 0x310606, 0x1556CA, 0x73A8C9, 0x60E27B, 0xC08C6B, 
+0xA2F983, 0x6E4E44, 0x1529FC, 0x2757D1, 0xF534DD, 0xC0DB62,
+0x95993C, 0x439041, 0xFE5163, 0xABDEBB, 0xC561B7, 0x246E3A,
+0x424DD2, 0xE00649, 0x2EEA09, 0xD1921C, 0xFE1DEB, 0x1CB129,
+0xA73EE8, 0x8235F5, 0x2EBB44, 0x84E99C, 0x7026B4, 0x5F7E41,
+0x3991D6, 0x398353, 0x39F49C, 0x845F8B, 0xBDF928, 0x3B1FF8,
+0x97FFDE, 0x05980F, 0xEF2F11, 0x8B5A0A, 0x6D1F6D, 0x367ECF,
+0x27CB09, 0xB74F46, 0x3F669E, 0x5FEA2D, 0x7527BA, 0xC7EBE5,
+0xF17B3D, 0x0739F7, 0x8A5292, 0xEA6BFB, 0x5FB11F, 0x8D5D08,
+0x560330, 0x46FC7B, 0x6BABF0, 0xCFBC20, 0x9AF436, 0x1DA9E3,
+0x91615E, 0xE61B08, 0x659985, 0x5F14A0, 0x68408D, 0xFFD880,
+0x4D7327, 0x310606, 0x1556CA, 0x73A8C9, 0x60E27B, 0xC08C6B,
 #if LDBL_MAX_EXP > 1024
 #if LDBL_MAX_EXP > 16384
 #error "ipio2 table needs to be expanded"
@@ -2789,7 +2788,7 @@ static KDfloat64KHR __kdScalbn (KDfloat64KHR x, KDint n)
         if (n > 50000)  /* in case integer overflow in n+k */
         return huge*__kdCopysign(huge,x);   /*overflow*/
         else return tiny*__kdCopysign(tiny,x);  /*underflow*/
-    } 
+    }
     k += 54;                /* subnormal result */
     SET_HIGH_WORD(x,(hx&0x800fffff)|(k<<20));
     return x*twom54;
@@ -2880,9 +2879,9 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
     for(i=0;i<=m;i++,j++) f[i] = (j<0)? 0.0f : (KDfloat64KHR) ipio2[j];
     /* compute q[0],q[1],...q[jk] */
     for (i=0;i<=jk;i++) {
-        for(j=0,fw=0.0;j<=jx;j++) 
+        for(j=0,fw=0.0;j<=jx;j++)
         {
-            fw += x[j]*f[jx+i-j]; 
+            fw += x[j]*f[jx+i-j];
         }
         q[i] = fw;
     }
@@ -2904,7 +2903,7 @@ recompute:
         i  = (iq[jz-1]>>(24-q0)); n += i;
         iq[jz-1] -= i<<(24-q0);
         ih = iq[jz-1]>>(23-q0);
-    } 
+    }
     else if(q0==0) ih = iq[jz-1]>>23;
     else if(z>=0.5) ih=2;
     if(ih>0) {  /* q > 0.5 */
@@ -2951,7 +2950,7 @@ recompute:
         while(iq[jz]==0) { jz--; q0-=24;}
     } else { /* break z into 24-bit if necessary */
         z = __kdScalbn(z,-q0);
-        if(z>=two24) { 
+        if(z>=two24) {
         fw = (KDfloat64KHR)((KDint32)(twon24*z));
         iq[jz] = (KDint32)(z-two24*fw);
         jz += 1; q0 += 24;
@@ -2973,30 +2972,30 @@ recompute:
         case 0:
         fw = 0.0;
         for (i=jz;i>=0;i--) fw += fq[i];
-        y[0] = (ih==0)? fw: -fw; 
+        y[0] = (ih==0)? fw: -fw;
         break;
         case 1:
         case 2:
         fw = 0.0;
-        for (i=jz;i>=0;i--) fw += fq[i]; 
+        for (i=jz;i>=0;i--) fw += fq[i];
         STRICT_ASSIGN(KDfloat64KHR,fw,fw);
-        y[0] = (ih==0)? fw: -fw; 
+        y[0] = (ih==0)? fw: -fw;
         fw = fq[0]-fw;
         for (i=1;i<=jz;i++) fw += fq[i];
-        y[1] = (ih==0)? fw: -fw; 
+        y[1] = (ih==0)? fw: -fw;
         break;
         case 3: /* painful */
         for (i=jz;i>0;i--) {
-            fw      = fq[i-1]+fq[i]; 
+            fw      = fq[i-1]+fq[i];
             fq[i]  += fq[i-1]-fw;
             fq[i-1] = fw;
         }
         for (i=jz;i>1;i--) {
-            fw      = fq[i-1]+fq[i]; 
+            fw      = fq[i-1]+fq[i];
             fq[i]  += fq[i-1]-fw;
             fq[i-1] = fw;
         }
-        for (fw=0.0,i=jz;i>=2;i--) fw += fq[i]; 
+        for (fw=0.0,i=jz;i>=2;i--) fw += fq[i];
         if(ih==0) {
             y[0] =  fq[0]; y[1] =  fq[1]; y[2] =  fw;
         } else {
@@ -3118,7 +3117,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
 }
 
 /* kdAtanf: Arc tangent function. */
-static const KDfloat32 aT[] = 
+static const KDfloat32 aT[] =
 {
   3.3333328366e-01f,
  -1.9999158382e-01f,
@@ -4055,10 +4054,10 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
     EXTRACT_WORDS(ix0,ix1,x);
 
     /* take care of Inf and NaN */
-    if((ix0&0x7ff00000)==0x7ff00000) {          
+    if((ix0&0x7ff00000)==0x7ff00000) {
         return x*x+x;       /* sqrt(NaN)=NaN, sqrt(+inf)=+inf
                        sqrt(-inf)=sNaN */
-    } 
+    }
     /* take care of zero */
     if(ix0<=0) {
         if(((ix0&(~sign))|ix1)==0) return x;/* sqrt(+-0) = +-0 */
@@ -4092,12 +4091,12 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
     r = 0x00200000;     /* r = moving bit from right to left */
 
     while(r!=0) {
-        t = s0+r; 
-        if(t<=ix0) { 
-        s0   = t+r; 
-        ix0 -= t; 
-        q   += r; 
-        } 
+        t = s0+r;
+        if(t<=ix0) {
+        s0   = t+r;
+        ix0 -= t;
+        q   += r;
+        }
         ix0 += ix0 + ((ix1&sign)>>31);
         ix1 += ix1;
         r>>=1;
@@ -4105,9 +4104,9 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
 
     r = sign;
     while(r!=0) {
-        t1 = s1+r; 
+        t1 = s1+r;
         t  = s0;
-        if((t<ix0)||((t==ix0)&&(t1<=ix1))) { 
+        if((t<ix0)||((t==ix0)&&(t1<=ix1))) {
         s1  = t1+r;
         if(((t1&sign)==(KDuint32)sign)&&(s1&sign)==0) s0 += 1;
         ix0 -= t;
@@ -4128,7 +4127,7 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
             if (q1==(KDuint32)0xffffffff) { q1=0; q += 1;}
         else if (z>1.0f) {
             if (q1==(KDuint32)0xfffffffe) q+=1;
-            q1+=2; 
+            q1+=2;
         } else
                 q1 += (q1&1);
         }
@@ -4284,7 +4283,7 @@ static void __kdMathCleanup(void)
  * String and memory functions
  *
  * Notes:
- * - Generic codepath copied from the BSD libc developed at the 
+ * - Generic codepath copied from the BSD libc developed at the
  *   University of California, Berkeley
  * - kdStrcpy_s/kdStrncat_s based on strlcpy/strlcat by Todd C. Miller
  ******************************************************************************/
@@ -4413,7 +4412,7 @@ static void* __kdBcopy(void *dst0, const void *src0, size_t length)
     }
 done:
     return (dst0);
-} 
+}
 
  /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
@@ -4513,7 +4512,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
  */
 
 /* Magic numbers for the algorithm */
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_) 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
 static const KDuint64 mask01 = 0x0101010101010101;
 static const KDuint64 mask80 = 0x8080808080808080;
 #elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM)
@@ -4572,7 +4571,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
             testbyte(1);
             testbyte(2);
             testbyte(3);
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_) 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
             testbyte(4);
             testbyte(5);
             testbyte(6);
@@ -4668,7 +4667,7 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
 /* kdStrncpy_s: Copy a string with an overrun check. */
 KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srclen)
 {
-    if (buflen != 0) 
+    if (buflen != 0)
     {
         char *d = buf;
         const char *s = src;
@@ -5337,7 +5336,7 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdNameLookup(KD_UNUSED KDint af, KD_UNUSED const KDchar *hostname, KD_UNUSED void *eventuserptr)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdNameLookupCancel: Selectively cancels ongoing kdNameLookup operations. */
@@ -5354,75 +5353,75 @@ struct KDSocket
 KD_API KDSocket *KD_APIENTRY kdSocketCreate(KD_UNUSED KDint type, KD_UNUSED void *eventuserptr)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return KD_NULL; 
+    return KD_NULL;
 }
 
 /* kdSocketClose: Closes a socket. */
 KD_API KDint KD_APIENTRY kdSocketClose(KD_UNUSED KDSocket *socket)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdSocketBind: Bind a socket. */
 KD_API KDint KD_APIENTRY kdSocketBind(KD_UNUSED KDSocket *socket, KD_UNUSED const struct KDSockaddr *addr, KD_UNUSED KDboolean reuse)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdSocketGetName: Get the local address of a socket. */
 KD_API KDint KD_APIENTRY kdSocketGetName(KD_UNUSED KDSocket *socket, KD_UNUSED struct KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdSocketConnect: Connects a socket. */
 KD_API KDint KD_APIENTRY kdSocketConnect(KD_UNUSED KDSocket *socket, KD_UNUSED const KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdSocketListen: Listen on a socket. */
 KD_API KDint KD_APIENTRY kdSocketListen(KD_UNUSED KDSocket *socket, KD_UNUSED KDint backlog)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdSocketAccept: Accept an incoming connection. */
 KD_API KDSocket *KD_APIENTRY kdSocketAccept(KD_UNUSED KDSocket *socket, KD_UNUSED KDSockaddr *addr, KD_UNUSED void *eventuserptr)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return KD_NULL; 
+    return KD_NULL;
 }
 
 /* kdSocketSend, kdSocketSendTo: Send data to a socket. */
 KD_API KDint KD_APIENTRY kdSocketSend(KD_UNUSED KDSocket *socket, KD_UNUSED const void *buf, KD_UNUSED KDint len)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 KD_API KDint KD_APIENTRY kdSocketSendTo(KD_UNUSED KDSocket *socket, KD_UNUSED const void *buf, KD_UNUSED KDint len, KD_UNUSED const KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdSocketRecv, kdSocketRecvFrom: Receive data from a socket. */
 KD_API KDint KD_APIENTRY kdSocketRecv(KD_UNUSED KDSocket *socket, KD_UNUSED void *buf, KD_UNUSED KDint len)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 KD_API KDint KD_APIENTRY kdSocketRecvFrom(KD_UNUSED KDSocket *socket, KD_UNUSED void *buf, KD_UNUSED KDint len, KD_UNUSED KDSockaddr *addr)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdHtonl: Convert a 32-bit integer from host to network byte order. */
@@ -5457,14 +5456,14 @@ KD_API KDuint16 KD_APIENTRY kdNtohs(KD_UNUSED KDuint16 netshort)
 KD_API KDint KD_APIENTRY kdInetAton(KD_UNUSED const KDchar *cp, KD_UNUSED KDuint32 *inp)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return -1; 
+    return -1;
 }
 
 /* kdInetNtop: Convert a network address to textual form. */
 KD_API const KDchar *KD_APIENTRY kdInetNtop(KD_UNUSED KDuint af, KD_UNUSED const void *src, KD_UNUSED KDchar *dst, KD_UNUSED KDsize cnt)
 {
     kdSetError(KD_EOPNOTSUPP);
-    return KD_NULL; 
+    return KD_NULL;
 }
 
 /******************************************************************************
@@ -5474,19 +5473,19 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KD_UNUSED KDuint af, KD_UNUSED const
 KD_API KDint KD_APIENTRY kdStateGeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint32 *buffer)
 {
     kdSetError(KD_EIO);
-    return -1;  
+    return -1;
 }
 
 KD_API KDint KD_APIENTRY kdStateGetl(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint64 *buffer)
 {
     kdSetError(KD_EIO);
-    return -1; 
+    return -1;
 }
 
 KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDfloat32 *buffer)
 {
     kdSetError(KD_EIO);
-    return -1; 
+    return -1;
 }
 
 
@@ -5494,13 +5493,13 @@ KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint 
 KD_API KDint KD_APIENTRY kdOutputSeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDint32 *buffer)
 {
     kdSetError(KD_EIO);
-    return -1; 
+    return -1;
 }
 
 KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDfloat32 *buffer)
 {
     kdSetError(KD_EIO);
-    return -1; 
+    return -1;
 }
 
 /******************************************************************************
@@ -5602,7 +5601,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
     XChangeProperty(window->nativedisplay, window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8*)&netwm_hints, 3);
 #endif
-    __kd_window = window; 
+    __kd_window = window;
     return window;
 }
 
@@ -5746,7 +5745,7 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
     kdStrncat_s(message, messagelimit, ")", messagelimit);
     kdLogMessage(message);
     #undef messagelimit
-    kdExit(EXIT_FAILURE);  
+    kdExit(EXIT_FAILURE);
 }
 
 /* kdLogMessage: Output a log message. */
@@ -6032,12 +6031,12 @@ KD_API void KD_APIENTRY kdQueuePushHeadVEN(KDQueueVEN *queue, void *value)
     node->next = KD_NULL;
 
     kdThreadMutexLock(queue->mutex);
-    if((node->next = queue->head) != KD_NULL) 
+    if((node->next = queue->head) != KD_NULL)
     {
         node->next->prev = node;
     }
     queue->head = node;
-    if(!queue->tail) 
+    if(!queue->tail)
     {
         queue->tail = node;
     }
@@ -6053,12 +6052,12 @@ KD_API void KD_APIENTRY kdQueuePushTailVEN(KDQueueVEN *queue, void *value)
     node->next = KD_NULL;
 
     kdThreadMutexLock(queue->mutex);
-    if((node->prev = queue->tail) != KD_NULL) 
+    if((node->prev = queue->tail) != KD_NULL)
     {
         queue->tail->next = node;
     }
     queue->tail = node;
-    if(!queue->head) 
+    if(!queue->head)
     {
         queue->head = node;
     }
@@ -6072,14 +6071,14 @@ KD_API void* KD_APIENTRY kdQueuePopHeadVEN(KDQueueVEN *queue)
     void *value = KD_NULL;
 
     kdThreadMutexLock(queue->mutex);
-    if(queue->head) 
+    if(queue->head)
     {
         node = queue->head;
-        if((queue->head = node->next) != KD_NULL) 
+        if((queue->head = node->next) != KD_NULL)
         {
             queue->head->prev = KD_NULL;
         }
-        if(queue->tail == node) 
+        if(queue->tail == node)
         {
             queue->tail = KD_NULL;
         }
