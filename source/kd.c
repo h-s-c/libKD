@@ -3423,7 +3423,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     if (ix < 0x00800000) {          /* x < 2**-126  */
         if ((ix&0x7fffffffF)==0)
         return -two25/vzero;        /* log(+-0)=-inf */
-        if (ix<0) return (x-x)/0.0f;    /* log(-#) = NaN */
+        if (ix<0) return (x-x)/(x-x);    /* log(-#) = NaN */
         k -= 25; x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix,x);
     }
