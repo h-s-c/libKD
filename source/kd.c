@@ -69,18 +69,22 @@
 #include <EGL/eglext.h>
 
 /******************************************************************************
- * C11 includes
+ * C includes
  ******************************************************************************/
 
 #include <errno.h>
-#include <float.h>
-#include <inttypes.h>
 #include <locale.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 
+/* Freestanding safe */
+#include <float.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+
+/* C11 */
 #if defined(KD_THREAD_C11) && !defined(_MSC_VER)
     #include <threads.h>
 #endif
@@ -5734,8 +5738,13 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     {
         kdStrncat_s(newstring, stringsize, "\n", stringsize);
     }
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
+#elif defined(__linux__)
+    syscall(SYS_write, 1, newstring, kdStrlen(newstring));
+#elif defined(_MSC_VER)
+    HANDLE stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    WriteFile(stdout, newstring, kdStrlen(newstring), (DWORD[]){0}, NULL);
 #else
     printf("%s", newstring);
     fflush(stdout);

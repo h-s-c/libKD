@@ -26,12 +26,6 @@
 
 #define MESA_EGL_NO_X11_HEADERS
 
-#if defined (KD_EXPORTS)
-    #define KHRONOS_DLL_EXPORTS
-#endif
-
-#include <KHR/khrplatform.h>
-
 /******************************************************************************
  * Implementation defined
  ******************************************************************************/
@@ -75,8 +69,21 @@
 #cmakedefine KD_WINDOW_SUPPORTED
 #cmakedefine KD_NO_STATIC_DATA
 
-#define KD_APIENTRY KHRONOS_APIENTRY
-#define KD_API KHRONOS_APICALL
+#if defined(_MSC_VER)
+    #define KD_APIENTRY __stdcall
+#else
+    #define KD_APIENTRY
+#endif
+
+#if defined(_MSC_VER)
+    #if defined(KD_EXPORTS)
+        #define KD_API __declspec(dllexport)
+    #else
+        #define KD_API __declspec(dllimport)
+    #endif
+#else
+    #define KD_API
+#endif
 
 #if __STDC_VERSION__ >= 201112L
     #define KD_NORETURN _Noreturn
@@ -100,15 +107,31 @@
     #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
 #endif
 
-typedef khronos_int32_t     KDint32;
-typedef khronos_uint32_t    KDuint32;
-typedef khronos_int64_t     KDint64;
-typedef khronos_uint64_t    KDuint64;
-typedef khronos_int16_t     KDint16;
-typedef khronos_uint16_t    KDuint16;
-typedef khronos_uintptr_t   KDuintptr;
-typedef khronos_usize_t     KDsize;
-typedef khronos_ssize_t     KDssize;
+#if defined(_MSC_VER)
+    typedef __int16             KDint16;
+    typedef unsigned __int16    KDuint16;
+    typedef __int32             KDint32;
+    typedef unsigned __int32    KDuint32;
+    typedef signed   __int64    KDint64;
+    typedef unsigned __int64    KDuint64;
+#else
+    typedef short               KDint16;
+    typedef unsigned short      KDuint16;
+    typedef int                 KDint32;
+    typedef unsigned int        KDuint32;
+    typedef signed   long       KDint64;
+    typedef unsigned long       KDuint64; 
+#endif
+
+#if defined(_MSC_VER) && defined(_WIN64)
+    typedef unsigned long long  KDuintptr;
+    typedef signed   long long  KDssize;
+    typedef unsigned long long  KDsize;
+#else
+    typedef unsigned long       KDuintptr;
+    typedef signed   long       KDssize;
+    typedef unsigned long       KDsize;
+#endif
 
 #define KDINT_MIN       (-0x7fffffff-1)
 #define KDINT_MAX       0x7fffffff
