@@ -8,7 +8,7 @@ build:
         name: install dependencies
         code: |
           apk update
-          apk add build-base python valgrind
+          apk add build-base python valgrind mesa-dev
           apk add git perl coreutils cmake
 
     - script:

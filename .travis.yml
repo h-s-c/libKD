@@ -74,7 +74,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'valgrind', 'binutils-gold']
+          packages: ['gcc-6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -85,7 +85,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'valgrind', 'binutils-gold']
+          packages: ['gcc-5', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -96,7 +96,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'valgrind', 'binutils-gold']
+          packages: ['gcc-4.9', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -107,7 +107,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'valgrind', 'binutils-gold']
+          packages: ['gcc-4.8', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -118,7 +118,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'valgrind', 'binutils-gold']
+          packages: ['gcc-4.7', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -129,7 +129,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.6', 'valgrind', 'binutils-gold']
+          packages: ['gcc-4.6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -140,7 +140,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.6', 'llvm-3.6', 'valgrind']
+          packages: ['clang-3.6', 'llvm-3.6', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -151,7 +151,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.5', 'llvm-3.5', 'valgrind']
+          packages: ['clang-3.5', 'llvm-3.5', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -162,7 +162,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['valgrind']
+          packages: ['valgrind', 'libegl1-mesa-dev']
       install: 
         - python ci-tools/install_cmake.py 
         - python ci-tools/install_icc.py
@@ -171,10 +171,27 @@ matrix:
 
     - os: osx
       compiler: clang
+      osx_image: xcode8
+      install: 
+        - brew update
+        - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: osx
+      compiler: clang
       osx_image: xcode7.3
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -184,6 +201,10 @@ matrix:
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
@@ -193,6 +214,10 @@ matrix:
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
@@ -202,6 +227,10 @@ matrix:
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
@@ -214,6 +243,10 @@ matrix:
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
@@ -223,6 +256,10 @@ matrix:
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
@@ -232,6 +269,10 @@ matrix:
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
@@ -241,5 +282,9 @@ matrix:
       install: 
         - brew update
         - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
