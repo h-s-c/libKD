@@ -385,7 +385,8 @@ struct THREADNAME_INFO
 #endif
 
 static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
-static KD_UNUSED void* __kdThreadStart(void *args)
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
+static void* __kdThreadStart(void *args)
 {
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
 
@@ -437,6 +438,7 @@ static KD_UNUSED void* __kdThreadStart(void *args)
     }
     return result;
 }
+#endif
 
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
@@ -4346,7 +4348,7 @@ static void* __kdBcopy(void *dst0, const void *src0, size_t length)
 #define TLOOP(s) if (t) TLOOP1(s)
 #define TLOOP1(s) do { s; } while (--t)
 
-    if ((KDuint64)dst < (KDuint64)src) {
+    if ((KDuintptr)dst < (KDuintptr)src) {
         /*
          * Copy forward.
          */

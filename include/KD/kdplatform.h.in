@@ -107,23 +107,33 @@
     #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
 #endif
 
-typedef short               KDint16;
-typedef unsigned short      KDuint16;
-typedef int                 KDint32;
-typedef unsigned int        KDuint32;
-
-/* LLP64 platform */
-#if defined(_WIN64)
-    typedef signed   long long  KDint64;
-    typedef unsigned long long  KDuint64; 
+#if defined(_MSC_VER)
+    typedef __int16                 KDint16;
+    typedef unsigned __int16        KDuint16;
+    typedef __int32                 KDint32;
+    typedef unsigned __int32        KDuint32;
+    typedef __int64                 KDint64;
+    typedef unsigned __int64        KDuint64;
 #else
-    typedef signed   long       KDint64;
-    typedef unsigned long       KDuint64; 
+    typedef short                   KDint16;
+    typedef unsigned short          KDuint16;
+    typedef int                     KDint32;
+    typedef unsigned int            KDuint32;
+    typedef signed   long long      KDint64;
+    typedef unsigned long long      KDuint64; 
 #endif
 
-typedef KDuint64            KDuintptr;
-typedef KDint64             KDssize;
-typedef KDuint64            KDsize;
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
+    typedef KDuint64                KDuintptr;
+    typedef KDint64                 KDssize;
+    typedef KDuint64                KDsize;
+#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM) || defined(__EMSCRIPTEN__)
+    typedef KDuint32                KDuintptr;
+    typedef KDint32                 KDssize;
+    typedef KDuint32                KDsize;
+#else
+#error Unsupported arch
+#endif
 
 #define KDINT_MIN       (-0x7fffffff-1)
 #define KDINT_MAX       0x7fffffff
