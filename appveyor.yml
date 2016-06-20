@@ -13,10 +13,13 @@ before_build:
   - appveyor DownloadFile https://github.com/h-s-c/ci-tools/releases/download/0.1/OpenCppCoverage.7z
   - 7z x OpenCppCoverage.7z > nul
   - set PATH=%cd%\OpenCppCoverage;%PATH%
-  - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-  - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-  - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-  - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+  - cd include & mkdir EGL & cd EGL
+  - appveyor DownloadFile https://www.khronos.org/registry/egl/api/EGL/egl.h
+  - appveyor DownloadFile https://www.khronos.org/registry/egl/api/EGL/eglext.h
+  - appveyor DownloadFile https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+  - cd .. & mkdir KHR & cd KHR
+  - appveyor DownloadFile https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+  - cd .. & cd ..
   
 build_script:
   - git submodule update --init --recursive
