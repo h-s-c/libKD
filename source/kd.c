@@ -2240,7 +2240,7 @@ KDboolean KD_APIENTRY __kdDispatchFuncSIMD(void* optimalinfo, void* candidateinf
     {
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
         KDint abcd[4] = {0,0,0,0};
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__MINGW32__)
         __cpuid(abcd, 0x00000001);
 #elif defined(__GNUC__)
         __cpuid_count(0x00000001, 0, abcd[0], abcd[1], abcd[2], abcd[3]);
@@ -5742,9 +5742,8 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
 #elif defined(__linux__)
     syscall(SYS_write, 1, newstring, kdStrlen(newstring));
-#elif defined(_MSC_VER)
-    HANDLE stdout = GetStdHandle(STD_OUTPUT_HANDLE);
-    WriteFile(stdout, newstring, kdStrlen(newstring), (DWORD[]){0}, NULL);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, kdStrlen(newstring), (DWORD[]){0}, NULL);
 #else
     printf("%s", newstring);
     fflush(stdout);

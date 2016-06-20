@@ -107,31 +107,23 @@
     #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
 #endif
 
-#if defined(_MSC_VER)
-    typedef __int16             KDint16;
-    typedef unsigned __int16    KDuint16;
-    typedef __int32             KDint32;
-    typedef unsigned __int32    KDuint32;
-    typedef signed   __int64    KDint64;
-    typedef unsigned __int64    KDuint64;
+typedef short               KDint16;
+typedef unsigned short      KDuint16;
+typedef int                 KDint32;
+typedef unsigned int        KDuint32;
+
+/* LLP64 platform */
+#if defined(_WIN64)
+    typedef signed   long long  KDint64;
+    typedef unsigned long long  KDuint64; 
 #else
-    typedef short               KDint16;
-    typedef unsigned short      KDuint16;
-    typedef int                 KDint32;
-    typedef unsigned int        KDuint32;
     typedef signed   long       KDint64;
     typedef unsigned long       KDuint64; 
 #endif
 
-#if defined(_MSC_VER) && defined(_WIN64)
-    typedef unsigned long long  KDuintptr;
-    typedef signed   long long  KDssize;
-    typedef unsigned long long  KDsize;
-#else
-    typedef unsigned long       KDuintptr;
-    typedef signed   long       KDssize;
-    typedef unsigned long       KDsize;
-#endif
+typedef KDuint64            KDuintptr;
+typedef KDint64             KDssize;
+typedef KDuint64            KDsize;
 
 #define KDINT_MIN       (-0x7fffffff-1)
 #define KDINT_MAX       0x7fffffff
