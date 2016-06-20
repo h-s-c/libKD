@@ -120,19 +120,17 @@
     typedef int                     KDint32;
     typedef unsigned int            KDuint32;
     typedef signed   long long      KDint64;
-    typedef unsigned long long      KDuint64; 
+    typedef unsigned long long      KDuint64;
 #endif
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
-    typedef KDuint64                KDuintptr;
-    typedef KDint64                 KDssize;
-    typedef KDuint64                KDsize;
-#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM) || defined(__EMSCRIPTEN__)
-    typedef KDuint32                KDuintptr;
-    typedef KDint32                 KDssize;
-    typedef KDuint32                KDsize;
+#if defined(_WIN64)
+    typedef unsigned long long      KDuintptr;
+    typedef signed   long long      KDssize;
+    typedef unsigned long long      KDsize;
 #else
-#error Unsupported arch
+    typedef unsigned long           KDuintptr;
+    typedef signed   long           KDssize;
+    typedef unsigned long           KDsize;
 #endif
 
 #define KDINT_MIN       (-0x7fffffff-1)
