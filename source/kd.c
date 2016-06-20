@@ -103,7 +103,9 @@
 #if  defined(__unix__) || defined(__APPLE__)
     #include <unistd.h>
 
-    #include <cpuid.h>
+    #ifndef __EMSCRIPTEN__
+        #include <cpuid.h>
+    #endif
     #if defined(__x86_64__) || defined(__i386__)
         #include <x86intrin.h>
     #elif defined(__ARM_NEON__)
@@ -383,7 +385,7 @@ struct THREADNAME_INFO
 #endif
 
 static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
-static void* __kdThreadStart(void *args)
+static KD_UNUSED void* __kdThreadStart(void *args)
 {
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *) args;
 
@@ -530,7 +532,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
-    KDint error = 0;
+    KD_UNUSED KDint error = 0;
     KDint resinit = 0;
     KD_UNUSED KDint* result = &resinit;
     if(retval != KD_NULL)
@@ -618,7 +620,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #else
     if(once_control == 0)
     {
-        once_control = 1;
+        once_control = (void*)1;
         init_routine();
     }
 #endif
@@ -726,6 +728,8 @@ struct KDThreadCond
     pthread_cond_t nativecond;
 #elif defined(KD_THREAD_WIN32)
     CONDITION_VARIABLE nativecond;
+#else
+    KDint placebo;
 #endif
 };
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
@@ -4493,7 +4497,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 #if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
 static const KDuint64 mask01 = 0x0101010101010101;
 static const KDuint64 mask80 = 0x8080808080808080;
-#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM)
+#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM) || defined(__EMSCRIPTEN__)
 static const KDuint64 mask01 = 0x01010101;
 static const KDuint64 mask80 = 0x80808080;
 #else
