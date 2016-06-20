@@ -5749,7 +5749,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 #elif defined(__linux__)
     syscall(SYS_write, 1, newstring, kdStrlen(newstring));
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, kdStrlen(newstring), (DWORD[]){0}, NULL);
+    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, (DWORD)kdStrlen(newstring), (DWORD[]){0}, NULL);
 #else
     printf("%s", newstring);
     fflush(stdout);
