@@ -103,7 +103,7 @@
 #if  defined(__unix__) || defined(__APPLE__)
     #include <unistd.h>
 
-    #ifndef __EMSCRIPTEN__
+    #if !defined(__EMSCRIPTEN__) && !defined(__ANDROID__)
         #include <cpuid.h>
     #endif
     #if defined(__x86_64__) || defined(__i386__)
@@ -418,7 +418,7 @@ static void* __kdThreadStart(void *args)
 #pragma warning(pop)
 #elif defined(KD_THREAD_POSIX)
 #if defined(__linux__)
-    prctl(PR_SET_NAME, (KDuint64)threadname, 0UL, 0UL, 0UL);
+    prctl(PR_SET_NAME, (long)threadname, 0UL, 0UL, 0UL);
 #elif defined(__APPLE__)
     pthread_setname_np(threadname);
 #endif
@@ -1662,6 +1662,7 @@ KD_API int main(int argc, char **argv)
 static void* __kdAndroidMain( void *arg)
 {
     main(0, KD_NULL);
+    return 0;
 }
 void ANativeActivity_onCreate(ANativeActivity *activity, void* savedState, size_t savedStateSize)
 {
