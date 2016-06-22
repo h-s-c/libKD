@@ -48,7 +48,7 @@ static void KD_APIENTRY kd_callback(const KDEvent *event)
     }
 }
 
-#if defined(GL_DEBUG_OUTPUT_KHR)
+#if defined(GL_KHR_debug)
 static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
     kdLogMessage(message);
@@ -73,7 +73,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     const EGLint egl_context_attributes[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
-#if defined(EGL_CONTEXT_FLAGS_KHR) && defined(EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR)    
+#if defined(EGL_KHR_create_context)    
         EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
 #endif
         EGL_NONE,
@@ -94,13 +94,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
 
-#if defined(GL_DEBUG_OUTPUT_KHR)
+#if defined(GL_KHR_debug)
     if(kdStrstrVEN((const KDchar*)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
     {
         glEnable(GL_DEBUG_OUTPUT_KHR);
-#if defined(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR)
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-#endif
         PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
         glDebugMessageCallback(&gl_callback, KD_NULL);
     }
