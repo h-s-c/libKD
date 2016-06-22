@@ -74,10 +74,6 @@ project (KD C)
         set(KD_LD_FLAGS "${KD_CC_FLAGS}")
     endif()
 
-    if(CMAKE_C_COMPILER_ID STREQUAL "Intel")
-        set(KD_CC_FLAGS "${KD_CC_FLAGS} -std=c11")
-    endif()
-
     if(KD_BUILD_VFS)
         list(APPEND KD_LIBRARIES physfs)
         set(KD_VFS_SUPPORTED "On")
