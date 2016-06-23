@@ -170,8 +170,7 @@
     #include <dirent.h>
     /* MSVC 12 and lower is missing some things */
     #if defined(_MSC_VER) && _MSC_VER <= 1800
-        struct timespec
-        {
+        struct timespec {
             long tv_sec;
             long tv_nsec;
         };
@@ -264,8 +263,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribut
  ******************************************************************************/
 
 /* kdThreadAttrCreate: Create a thread attribute object. */
-struct KDThreadAttr
-{
+struct KDThreadAttr {
 #if defined(KD_THREAD_POSIX)
     pthread_attr_t nativeattr;
 #endif
@@ -351,15 +349,13 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 
 /* kdThreadCreate: Create a new thread. */
 static KD_THREADLOCAL KDThread *__kd_thread = KD_NULL;
-typedef struct
-{
+typedef struct {
     void *(*start_routine)(void *);
     void *arg;
     KDThread *thread;
 } __KDThreadStartArgs;
 
-struct KDThread
-{
+struct KDThread {
 #if defined(KD_THREAD_C11)
     thrd_t nativethread;
 #elif defined(KD_THREAD_POSIX)
@@ -374,8 +370,7 @@ struct KDThread
 
 #if defined(_MSC_VER)
 #pragma pack(push, 8)
-struct THREADNAME_INFO
-{
+struct THREADNAME_INFO {
     KDuint32 type;       // must be 0x1000
     const KDchar *name;  // pointer to name (in user addr space)
     KDuint32 threadid;   // thread ID (-1=caller thread)
@@ -398,8 +393,7 @@ static void *__kdThreadStart(void *args)
 #pragma warning(disable : 6312)
 #pragma warning(disable : 6322)
     /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
-    struct THREADNAME_INFO info =
-    {
+    struct THREADNAME_INFO info = {
         .type = 0x1000 ,
         .name = threadname,
         .threadid = GetCurrentThreadId(),
@@ -631,8 +625,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #endif /* ndef KD_NO_STATIC_DATA */
 
 /* kdThreadMutexCreate: Create a mutex. */
-struct KDThreadMutex
-{
+struct KDThreadMutex {
 #if defined(KD_THREAD_C11)
     mtx_t nativemutex;
 #elif defined(KD_THREAD_POSIX)
@@ -722,8 +715,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 }
 
 /* kdThreadCondCreate: Create a condition variable. */
-struct KDThreadCond
-{
+struct KDThreadCond {
 #if defined(KD_THREAD_C11)
     cnd_t nativecond;
 #elif defined(KD_THREAD_POSIX)
@@ -833,8 +825,7 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
 }
 
 /* kdThreadSemCreate: Create a semaphore. */
-struct KDThreadSem
-{
+struct KDThreadSem {
     KDuint count;
     KDThreadMutex *mutex;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
@@ -914,7 +905,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #else
 #define LONG_CAST
 #endif
-    struct timespec ts = {0};
+    struct timespec ts = { 0 };
     /* Determine seconds from the overall nanoseconds */
     if((timeout % 1000000000) == 0)
     {
@@ -942,7 +933,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
     {
         kdAssert(0);
     }
-    LARGE_INTEGER li = {{0}};
+    LARGE_INTEGER li = {{ 0 }};
     li.QuadPart = -(timeout / 100);
     if(!SetWaitableTimer(timer, &li, 0, KD_NULL, KD_NULL, 0))
     {
@@ -1011,14 +1002,13 @@ KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
-typedef struct
-{
+typedef struct {
     KDCallbackFunc *func;
     KDint eventtype;
     void *eventuserptr;
 } __KDCallback;
 static KD_THREADLOCAL KDuint __kd_callbacks_index = 0;
-static KD_THREADLOCAL __KDCallback __kd_callbacks[999] = {{0}};
+static KD_THREADLOCAL __KDCallback __kd_callbacks[999] = {{ 0 }};
 static KDboolean __kdExecCallback(KDEvent *event)
 {
     for(KDuint callback = 0; callback < __kd_callbacks_index; callback++)
@@ -1039,8 +1029,7 @@ static KDboolean __kdExecCallback(KDEvent *event)
 }
 
 #if defined(KD_WINDOW_SUPPORTED)
-struct KDWindow
-{
+struct KDWindow {
 #if defined(KD_WINDOW_NULL)
     KDint nativewindow;
     void *nativedisplay;
@@ -1120,7 +1109,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 #elif defined(KD_WINDOW_WIN32)
     if(__kd_window)
     {
-        MSG msg = {0};
+        MSG msg = { 0 };
         while(PeekMessage(&msg, __kd_window->nativewindow, 0, 0, PM_REMOVE) != 0)
         {
             KDEvent *event = kdCreateEvent();
@@ -1140,7 +1129,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 }
                 case WM_INPUT:
                 {
-                    KDchar buffer[sizeof(RAWINPUT)] = {0};
+                    KDchar buffer[sizeof(RAWINPUT)] = { 0 };
                     KDsize size = sizeof(RAWINPUT);
                     GetRawInputData((HRAWINPUT)msg.lParam, RID_INPUT, buffer, (PUINT)&size, sizeof(RAWINPUTHEADER));
                     RAWINPUT *raw = (RAWINPUT *)buffer;
@@ -1269,7 +1258,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         while(XPending(__kd_window->nativedisplay) > 0)
         {
             KDEvent *event = kdCreateEvent();
-            XEvent xevent = {0};
+            XEvent xevent = { 0 };
             XNextEvent(__kd_window->nativedisplay, &xevent);
             switch(xevent.type)
             {
@@ -1606,7 +1595,7 @@ KD_API int main(int argc, char **argv)
 #endif
     __kdMathInit();
 #ifdef KD_VFS_SUPPORTED
-    struct PHYSFS_Allocator allocator = {0};
+    struct PHYSFS_Allocator allocator = { 0 };
     allocator.Deinit = KD_NULL;
     allocator.Free = kdFree;
     allocator.Init = KD_NULL;
@@ -2211,8 +2200,7 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 #endif
 #endif
 
-enum __KD_SIMDTYPE
-{
+enum __KD_SIMDTYPE {
     __KD_GENERIC = 0,
     /* x86 */
     __KD_SSE = 1,
@@ -2226,14 +2214,12 @@ enum __KD_SIMDTYPE
     __KD_NEON = 99,
 };
 
-enum __KD_SIMDDETECT
-{
+enum __KD_SIMDDETECT {
     __KD_COMPILE,
     __KD_RUNTIME,
 };
 
-struct __kd_simdinfo
-{
+struct __kd_simdinfo {
     enum __KD_SIMDTYPE type;
     enum __KD_SIMDDETECT detect;
 } __kd_simdinfo;
@@ -2668,8 +2654,7 @@ static const KDfloat64KHR PIo2[] = {
  * A union which permits us to convert between a float and a 32 bit
  * int.
  */
-typedef union
-{
+typedef union {
   KDfloat32 value;
   KDuint word;                                 /* FIXME: Assumes 32 bit int.  */
 } ieee_float_shape_type;
@@ -2698,16 +2683,13 @@ typedef union
  * A union which permits us to convert between a double and two 32 bit
  * ints.
  */
-typedef union
-{
+typedef union {
   KDfloat64KHR value;
-  struct
-  {
+  struct {
     KDuint32 lsw;
     KDuint32 msw;
   } parts;
-  struct
-  {
+  struct {
     KDuint64 w;
   } xparts;
 } ieee_double_shape_type;
@@ -5499,8 +5481,7 @@ KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
  ******************************************************************************/
 
 /* kdSetTimer: Set timer. */
-typedef struct
-{
+typedef struct {
     KDint64 interval;
     KDint periodic;
     void *eventuserptr;
@@ -5538,8 +5519,7 @@ static void *__kdTimerHandler(void *arg)
     }
     return 0;
 }
-struct KDTimer
-{
+struct KDTimer {
     KDThread *thread;
     KDThread *originthr;
     __KDTimerPayload *payload;
@@ -5605,8 +5585,7 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
  ******************************************************************************/
 
 /* kdFopen: Open a file from the file system. */
-struct KDFile
-{
+struct KDFile {
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_File *file;
 #else
@@ -5765,8 +5744,7 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 #endif
 }
 
-typedef struct
-{
+typedef struct {
 #ifdef _MSC_VER
     KDint seekorigin_kd;
 #else
@@ -5895,7 +5873,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
     KDint retval = -1;
 #ifdef KD_VFS_SUPPORTED
-    struct PHYSFS_Stat physfsstat = {0};
+    struct PHYSFS_Stat physfsstat = { 0 };
     if(PHYSFS_stat(pathname, &physfsstat) != 0)
     {
         retval = 0;
@@ -5916,7 +5894,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         buf->st_mtime = (KDtime)physfsstat.modtime;
     }
 #else
-    struct stat posixstat = {0};
+    struct stat posixstat = { 0 };
     retval = stat(pathname, &posixstat);
 
     buf->st_mode = posixstat.st_mode;
@@ -5940,7 +5918,7 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
     buf->st_size = (KDoff)PHYSFS_fileLength(file->file);
     buf->st_mtime = 0;
 #else
-    struct stat posixstat = {0};
+    struct stat posixstat = { 0 };
     retval = fstat(fileno(file->file), &posixstat);
 
     buf->st_mode = posixstat.st_mode;
@@ -5956,8 +5934,7 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
     return retval;
 }
 
-typedef struct
-{
+typedef struct {
     KDint accessmode_kd;
     KDint accessmode;
 } __KDAccessMode;
@@ -5999,8 +5976,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 }
 
 /* kdOpenDir: Open a directory ready for listing. */
-struct KDDir
-{
+struct KDDir {
 #ifdef KD_VFS_SUPPORTED
     char **dir;
 #else
@@ -6071,7 +6047,7 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
     GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL);
     return freespace;
 #else
-    struct statfs buf = {0};
+    struct statfs buf = { 0 };
     statfs(temp, &buf);
     return (buf.f_bsize / 1024L) * buf.f_bavail;
 #endif
@@ -6095,8 +6071,7 @@ KD_API void KD_APIENTRY kdNameLookupCancel(KD_UNUSED void *eventuserptr)
 }
 
 /* kdSocketCreate: Creates a socket. */
-struct KDSocket
-{
+struct KDSocket {
     KDint placebo;
 };
 KD_API KDSocket *KD_APIENTRY kdSocketCreate(KD_UNUSED KDint type, KD_UNUSED void *eventuserptr)
@@ -6303,7 +6278,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
-    WNDCLASS windowclass = {0};
+    WNDCLASS windowclass = { 0 };
     HINSTANCE instance = GetModuleHandle(KD_NULL);
     GetClassInfo(instance, "", &windowclass);
     windowclass.lpszClassName = "OpenKODE";
@@ -6514,7 +6489,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 #elif defined(__linux__)
     syscall(SYS_write, 1, newstring, kdStrlen(newstring));
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, (DWORD)kdStrlen(newstring), (DWORD[]){0}, NULL);
+    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, (DWORD)kdStrlen(newstring), (DWORD[]){ 0 }, NULL);
 #else
     printf("%s", newstring);
     fflush(stdout);
@@ -6532,21 +6507,17 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
  ******************************************************************************/
 
 #if defined(KD_ATOMIC_C11)
-struct KDAtomicIntVEN
-{
+struct KDAtomicIntVEN {
     atomic_int value;
 };
-struct KDAtomicPtrVEN
-{
+struct KDAtomicPtrVEN {
     atomic_uintptr_t value;
 };
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_LEGACY)
-struct KDAtomicIntVEN
-{
+struct KDAtomicIntVEN {
     KDint value;
 };
-struct KDAtomicPtrVEN
-{
+struct KDAtomicPtrVEN {
     void *value;
 };
 #endif
@@ -6703,8 +6674,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
  * Dispatcher
  ******************************************************************************/
 
-struct KDDispatchVEN
-{
+struct KDDispatchVEN {
     KDDispatchFuncVEN *filterfunc;
     KDuintptr optimalfunc;
     void *optimalinfo;
@@ -6750,15 +6720,13 @@ KD_API KDuintptr KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN *disp)
  ******************************************************************************/
 
 typedef struct __KDQueueNode __KDQueueNode;
-struct __KDQueueNode
-{
+struct __KDQueueNode {
     __KDQueueNode *next;
     __KDQueueNode *prev;
     void *value;
 };
 
-struct KDQueueVEN
-{
+struct KDQueueVEN {
     KDThreadMutex *mutex;
     __KDQueueNode *head;
     __KDQueueNode *tail;
