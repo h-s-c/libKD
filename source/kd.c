@@ -2837,7 +2837,9 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
         GET_HIGH_WORD(hx, x);
         k = ((hx & 0x7ff00000) >> 20) - 54;
         if(n < -50000)
+        {
             return tiny * x; /*underflow*/
+        }
     }
     if(k == 0x7ff)
     {
@@ -2845,7 +2847,9 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
     } /* NaN or Inf */
     k = k + n;
     if(k > 0x7fe)
+    {
         return huge * __kdCopysign(huge, x); /* overflow  */
+    }
     if(k > 0)                                /* normal result */
     {
         SET_HIGH_WORD(x, (hx & 0x800fffff) | (k << 20));
@@ -2854,9 +2858,13 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
     if(k <= -54)
     {
         if(n > 50000)                            /* in case integer overflow in n+k */
+        {
             return huge * __kdCopysign(huge, x); /*overflow*/
+        }
         else
+        {
             return tiny * __kdCopysign(tiny, x); /*underflow*/
+        }
     }
     k += 54; /* subnormal result */
     SET_HIGH_WORD(x, (hx & 0x800fffff) | (k << 20));
@@ -2878,7 +2886,9 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
         GET_FLOAT_WORD(ix, x);
         k = ((ix & 0x7f800000) >> 23) - 25;
         if(n < -50000)
+        {
             return tiny * x; /*underflow*/
+        }
     }
     if(k == 0xff)
     {
@@ -2886,7 +2896,9 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
     } /* NaN or Inf */
     k = k + n;
     if(k > 0xfe)
+    {
         return huge * __kdCopysignf(huge, x); /* overflow  */
+    }
     if(k > 0)                                 /* normal result */
     {
         SET_FLOAT_WORD(x, (ix & 0x807fffff) | (k << 23));
@@ -2895,9 +2907,13 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
     if(k <= -25)
     {
         if(n > 50000)                             /* in case integer overflow in n+k */
+        {
             return huge * __kdCopysignf(huge, x); /*overflow*/
+        }
         else
+        {
             return tiny * __kdCopysignf(tiny, x); /*underflow*/
+        }
     }
     k += 25; /* subnormal result */
     SET_FLOAT_WORD(x, (ix & 0x807fffff) | (k << 23));
@@ -3035,11 +3051,15 @@ recompute:
             switch(q0)
             {
                 case 1:
+                {
                     iq[jz - 1] &= 0x7fffff;
                     break;
+                }
                 case 2:
+                {
                     iq[jz - 1] &= 0x3fffff;
                     break;
+                }
             }
         }
         if(ih == 2)
@@ -3122,6 +3142,7 @@ recompute:
     switch(prec)
     {
         case 0:
+        {
             fw = 0.0;
             for(i = jz; i >= 0; i--)
             {
@@ -3129,8 +3150,10 @@ recompute:
             }
             y[0] = (ih == 0) ? fw : -fw;
             break;
+        }
         case 1:
         case 2:
+        {
             fw = 0.0;
             for(i = jz; i >= 0; i--)
             {
@@ -3145,7 +3168,9 @@ recompute:
             }
             y[1] = (ih == 0) ? fw : -fw;
             break;
+        }
         case 3: /* painful */
+        {
             for(i = jz; i > 0; i--)
             {
                 fw = fq[i - 1] + fq[i];
@@ -3174,6 +3199,7 @@ recompute:
                 y[1] = -fq[1];
                 y[2] = -fw;
             }
+        }
     }
     return n & 7;
 }
@@ -3330,13 +3356,12 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
 }
 
 /* kdAtanf: Arc tangent function. */
-static const KDfloat32 aT[] =
-{
-  3.3333328366e-01f,
- -1.9999158382e-01f,
-  1.4253635705e-01f,
- -1.0648017377e-01f,
-  6.1687607318e-02f,
+static const KDfloat32 aT[] = {
+    3.3333328366e-01f,
+    -1.9999158382e-01f,
+    1.4253635705e-01f,
+    -1.0648017377e-01f,
+    6.1687607318e-02f,
 };
 KD_API KDfloat32 KD_APIENTRY kdAtanf(KDfloat32 x)
 {
@@ -3351,9 +3376,13 @@ KD_API KDfloat32 KD_APIENTRY kdAtanf(KDfloat32 x)
             return x + x;
         } /* NaN */
         if(hx > 0)
+        {
             return atanhi[3] + *(volatile KDfloat32 *)&atanlo[3];
+        }
         else
+        {
             return -atanhi[3] - *(volatile KDfloat32 *)&atanlo[3];
+        }
     }
     if(ix < 0x3ee00000)
     { /* |x| < 0.4375 */
@@ -3439,16 +3468,24 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
         {
             case 0:
             case 1:
+            {
                 return y; /* atan(+-0,+anything)=+-0 */
+            }
             case 2:
+            {
                 return KD_PI_F + tiny; /* atan(+0,-anything) = pi */
+            }
             case 3:
+            {
                 return -KD_PI_F - tiny; /* atan(-0,-anything) =-pi */
+            }
         }
     }
     /* when x = 0 */
     if(ix == 0)
+    {
         return (hy < 0) ? -KD_PI_2_F - tiny : KD_PI_2_F + tiny;
+    }
 
     /* when x is INF */
     if(ix == 0x7f800000)
@@ -3458,13 +3495,21 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
             switch(m)
             {
                 case 0:
+                {
                     return KD_PI_4_F + tiny; /* atan(+INF,+INF) */
+                }
                 case 1:
+                {
                     return -KD_PI_4_F - tiny; /* atan(-INF,+INF) */
+                }
                 case 2:
+                {
                     return 3.0f * KD_PI_4_F + tiny; /*atan(+INF,-INF)*/
+                }
                 case 3:
+                {
                     return -3.0f * KD_PI_4_F - tiny; /*atan(-INF,-INF)*/
+                }
             }
         }
         else
@@ -3472,19 +3517,29 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
             switch(m)
             {
                 case 0:
+                {
                     return 0.0f; /* atan(+...,+INF) */
+                }
                 case 1:
+                {
                     return -0.0f; /* atan(-...,+INF) */
+                }
                 case 2:
+                {
                     return KD_PI_F + tiny; /* atan(+...,-INF) */
+                }
                 case 3:
+                {
                     return -KD_PI_F - tiny; /* atan(-...,-INF) */
+                }
             }
         }
     }
     /* when y is INF */
     if(iy == 0x7f800000)
+    {
         return (hy < 0) ? -KD_PI_2_F - tiny : KD_PI_2_F + tiny;
+    }
 
     /* compute y/x */
     k = (iy - ix) >> 23;
@@ -3494,19 +3549,31 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
         m &= 1;
     }
     else if(k < -26 && hx < 0)
+    {
         z = 0.0f; /* 0 > |y|/x > -2**-26 */
+    }
     else
+    {
         z = kdAtanf(kdFabsf(y / x)); /* safe to do y/x */
+    }
     switch(m)
     {
         case 0:
+        {
             return z; /* atan(+,+) */
+        }
         case 1:
+        {
             return -z; /* atan(-,+) */
+        }
         case 2:
+        {
             return KD_PI_F - (z - pi_lo); /* atan(+,-) */
+        }
         default:                          /* case 3 */
+        {
             return (z - pi_lo) - KD_PI_F; /* atan(-,-) */
+        }
     }
 }
 
@@ -3575,10 +3642,22 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
         n = __kdRemPio2f(x, &y);
         switch(n & 3)
         {
-            case 0: return __kdCosdf(y);
-            case 1: return __kdSindf(-y);
-            case 2: return -__kdCosdf(y);
-            default: return __kdSindf(y);
+            case 0:
+            { 
+                return __kdCosdf(y);
+            }
+            case 1: 
+            {
+                return __kdSindf(-y);
+            }
+            case 2: 
+            { 
+                return -__kdCosdf(y);
+            }
+            default: 
+            {
+                return __kdSindf(y);
+            }
         }
     }
 }
@@ -3648,10 +3727,22 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
         n = __kdRemPio2f(x, &y);
         switch(n & 3)
         {
-            case 0: return __kdSindf(y);
-            case 1: return __kdCosdf(y);
-            case 2: return __kdSindf(-y);
-            default: return -__kdCosdf(y);
+            case 0:
+            { 
+                return __kdSindf(y);
+            }
+            case 1:
+            {
+                return __kdCosdf(y);
+            }
+            case 2:
+            {
+                return __kdSindf(-y);
+            }
+            default:
+            {
+                return -__kdCosdf(y);
+            }
         }
     }
 }
@@ -3727,11 +3818,17 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
             return x + x;
         } /* NaN */
         if(hx == 0x7f800000)
+        {
             return (xsb == 0) ? x : 0.0f; /* exp(+-inf)={inf,0} */
+        }
         if(x > o_threshold)
+        {
             return huge * huge; /* overflow */
+        }
         if(x < u_threshold)
+        {
             return twom100 * twom100; /* underflow */
+        }
     }
     /* argument reduction */
     if(hx > 0x3eb17218)
@@ -3765,9 +3862,13 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
     /* x is now in primary range */
     t = x * x;
     if(k >= -125)
+    {
         SET_FLOAT_WORD(twopk, 0x3f800000 + (k << 23));
+    }
     else
+    {
         SET_FLOAT_WORD(twopk, 0x3f800000 + ((k + 100) << 23));
+    }
     c = x - t * (P1 + t * P2);
     if(k == 0)
     {
@@ -3806,7 +3907,9 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
             return -two25 / vzero;
         } /* log(+-0)=-inf */
         if(ix < 0)
+        {
             return (x - x) / (x - x); /* log(-#) = NaN */
+        }
         k -= 25;
         x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix, x);
@@ -3972,7 +4075,9 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     if(hy == 0x3f000000)
     {               /* y is  0.5 */
         if(hx >= 0) /* x >= +0 */
+        {
             return kdSqrtf(x);
+        }
     }
     ax = kdFabsf(x);
     /* special value of x */
@@ -3980,7 +4085,9 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     {
         z = ax; /*x is +-0,+-inf,+-1*/
         if(hy < 0)
+        {
             z = 1.0f / z; /* z = (1/|x|) */
+        }
         if(hx < 0)
         {
             if(((ix - 0x3f800000) | yisint) == 0)
@@ -3988,25 +4095,35 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
                 z = (z - z) / (z - z); /* (-1)**non-int is NaN */
             }
             else if(yisint == 1)
+            {
                 z = -z; /* (x<0)**odd = -(|x|**odd) */
+            }
         }
         return z;
     }
     n = ((KDuint32)hx >> 31) - 1;
     /* (x<0)**(non-int) is NaN */
     if((n | yisint) == 0)
+    {
         return (x - x) / (x - x);
+    }
     sn = 1.0f; /* s (sign of result -ve**odd) = -1 else = 1 */
     if((n | (yisint - 1)) == 0)
+    {
         sn = -1.0f; /* (-ve)**(odd int) */
+    }
     /* |y| is huge */
     if(iy > 0x4d000000)
     { /* if |y| > 2**27 */
         /* over/underflow if x is not close to one */
         if(ix < 0x3f7ffff8)
+        {
             return (hy < 0) ? sn * huge * huge : sn * tiny * tiny;
+        }
         if(ix > 0x3f800007)
+        {
             return (hy > 0) ? sn * huge * huge : sn * tiny * tiny;
+        }
         /* now |1-x| is tiny <= 2**-20, suffice to compute
        log(x) by x-x^2/2+x^3/3-x^4/4 */
         t = ax - 1; /* t has 20 trailing zeros */
@@ -4034,9 +4151,13 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         /* determine interval */
         ix = j | 0x3f800000; /* normalize ix */
         if(j <= 0x1cc471)
+        {
             k = 0; /* |x|<sqrt(3/2) */
+        }
         else if(j < 0x5db3d7)
+        {
             k = 1; /* |x|<sqrt(3)   */
+        }
         else
         {
             k = 0;
@@ -4090,18 +4211,26 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     z = p_l + p_h;
     GET_FLOAT_WORD(j, z);
     if(j > 0x43000000)           /* if z > 128 */
+    {
         return sn * huge * huge; /* overflow */
+    }
     else if(j == 0x43000000)
     { /* if z == 128 */
         if(p_l + ovt > z - p_h)
+        {
             return sn * huge * huge; /* overflow */
+        }
     }
     else if((j & 0x7fffffff) > 0x43160000) /* z <= -150 */
+    {
         return sn * tiny * tiny;           /* underflow */
+    }
     else if((KDuint32)j == 0xc3160000)
     { /* z == -150 */
         if(p_l <= z - p_h)
+        {
             return sn * tiny * tiny; /* underflow */
+        }
     }
     /*
      * compute 2**(p_h+p_l)
@@ -4116,7 +4245,9 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         SET_FLOAT_WORD(t, n & ~(0x007fffff >> k));
         n = ((n & 0x007fffff) | 0x00800000) >> (23 - k);
         if(j < 0)
+        {
             n = -n;
+        }
         p_h -= t;
     }
     t = p_l + p_h;
@@ -4133,9 +4264,13 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     GET_FLOAT_WORD(j, z);
     j += (n << 23);
     if((j >> 23) <= 0)
+    {
         z = __kdScalbnf(z, n); /* subnormal output */
+    }
     else
+    {
         SET_FLOAT_WORD(z, j);
+    }
     return sn * z;
 }
 
@@ -4287,7 +4422,9 @@ static KDfloat32 __kdCeilf_Generic(KDfloat32 x)
             if(huge + x > 0.0f)
             { /* raise inexact flag */
                 if(i0 > 0)
+                {
                     i0 += (0x00800000) >> j0;
+                }
                 i0 &= (~i);
             }
         }
@@ -4543,8 +4680,8 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
     hx ^= sx;             /* |x| */
     hy &= 0x7fffffff;     /* |y| */
     /* purge off exception values */
-    if(hy == 0 || (hx >= 0x7f800000) || /* y=0,or x not finite */
-    (hy > 0x7f800000))
+    /* y=0,or x not finite */
+    if(hy == 0 || (hx >= 0x7f800000) || (hy > 0x7f800000))
     { /* or y is NaN */
         return (x * y) / (x * y);
     }
@@ -4553,33 +4690,47 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
         return x;
     } /* |x|<|y| return x */
     if(hx == hy)
+    {
         return Zero[(KDuint32)sx >> 31]; /* |x|=|y| return x*0*/
+    }
     /* determine ix = ilogb(x) */
     if(hx < 0x00800000)
     { /* subnormal x */
         for(ix = -126, i = (hx << 8); i > 0; i <<= 1)
+        {
             ix -= 1;
+        }
     }
     else
+    {
         ix = (hx >> 23) - 127;
+    }
     /* determine iy = ilogb(y) */
     if(hy < 0x00800000)
     { /* subnormal y */
         for(iy = -126, i = (hy << 8); i >= 0; i <<= 1)
+        {
             iy -= 1;
+        }
     }
     else
+    {
         iy = (hy >> 23) - 127;
+    }
     /* set up {hx,lx}, {hy,ly} and align y to x */
     if(ix >= -126)
+    {
         hx = 0x00800000 | (0x007fffff & hx);
+    }
     else
     { /* subnormal x, shift x to normal */
         n = -126 - ix;
         hx = hx << n;
     }
     if(iy >= -126)
+    {
         hy = 0x00800000 | (0x007fffff & hy);
+    }
     else
     { /* subnormal y, shift y to normal */
         n = -126 - iy;
@@ -4597,7 +4748,9 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
         else
         {
             if(hz == 0) /* return sign(x)*0 */
+            {
                 return Zero[(KDuint32)sx >> 31];
+            }
             hx = hz + hz;
         }
     }
@@ -4608,7 +4761,9 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
     }
     /* convert back to floating value and restore the sign */
     if(hx == 0) /* return sign(x)*0 */
+    {
         return Zero[(KDuint32)sx >> 31];
+    }
     while(hx < 0x00800000)
     { /* normalize x */
         hx = hx + hx;
@@ -4832,7 +4987,9 @@ static KDfloat64KHR __kdFloorKHR_Generic(KDfloat64KHR x)
             if(huge + x > 0.0)
             { /* raise inexact flag */
                 if(i0 < 0)
+                {
                     i0 += (0x00100000) >> j0;
+                }
                 i0 &= (~i);
                 i1 = 0;
             }
@@ -4861,12 +5018,16 @@ static KDfloat64KHR __kdFloorKHR_Generic(KDfloat64KHR x)
             if(i0 < 0)
             {
                 if(j0 == 20)
+                {
                     i0 += 1;
+                }
                 else
                 {
                     j = i1 + (1 << (52 - j0));
                     if((KDint32)j < i1)
+                    {
                         i0 += 1; /* got a carry */
+                    }
                     i1 = j;
                 }
             }
@@ -5397,8 +5558,8 @@ KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *s
 {
     if(buflen != 0)
     {
-        char *d = buf;
-        const char *s = src;
+        KDchar *d = buf;
+        const KDchar *s = src;
 
         do
         {
