@@ -4,18 +4,17 @@ AllowShortCaseLabelsOnASingleLine: true
 AllowShortIfStatementsOnASingleLine: true
 BraceWrapping:
   AfterControlStatement: true
-  AfterEnum: true
   AfterFunction: true
-  AfterStruct: true
-  AfterUnion: true
   BeforeElse: true
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
+BreakBeforeTernaryOperators: false
 ContinuationIndentWidth: 0
 Cpp11BracedListStyle: true
-DerivePointerAlignment: true
+DerivePointerAlignment: false
 IndentCaseLabels: true
 MaxEmptyLinesToKeep: 2
+PointerAlignment: Right
 SortIncludes: false
 SpaceBeforeParens: Never
 SpacesBeforeTrailingComments: 2
