@@ -1,0 +1,21 @@
+BasedOnStyle: WebKit
+AlignTrailingComments: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+BraceWrapping:
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeElse: true
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Custom
+ContinuationIndentWidth: 0
+Cpp11BracedListStyle: true
+DerivePointerAlignment: true
+IndentCaseLabels: true
+MaxEmptyLinesToKeep: 2
+SortIncludes: false
+SpaceBeforeParens: Never
+SpacesBeforeTrailingComments: 2
