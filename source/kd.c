@@ -519,7 +519,10 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #pragma warning(push)
 #pragma warning(disable : 4127)
 #endif
-    while(1);
+    while(1)
+    {
+        ;
+    }
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
@@ -1710,7 +1713,10 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 #pragma warning(push)
 #pragma warning(disable : 4127)
 #endif
-    while(1);
+    while(1)
+    {
+        ;
+    }
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
@@ -5220,7 +5226,7 @@ static const KDuint64 mask80 = 0x80808080;
     do                            \
     {                             \
         if(p[x] == '\0')          \
-            return (p - str + x); \
+            return (p - str + (x)); \
     } while(0)
 
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
