@@ -1,7 +1,6 @@
 BasedOnStyle: WebKit
+AlignAfterOpenBracket: DontAlign
 AlignTrailingComments: true
-AllowShortCaseLabelsOnASingleLine: true
-AllowShortIfStatementsOnASingleLine: true
 BraceWrapping:
   AfterControlStatement: true
   AfterFunction: true
@@ -9,7 +8,7 @@ BraceWrapping:
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: false
-ContinuationIndentWidth: 0
+ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 IndentCaseLabels: true
