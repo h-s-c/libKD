@@ -3085,7 +3085,9 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
                 { /* add q[jz+1] to q[jz+k] */
                     f[jx + i] = (KDfloat64KHR)ipio2[jv + i];
                     for(j = 0, fw = 0.0; j <= jx; j++)
+                    {
                         fw += x[j] * f[jx + i - j];
+                    }
                     q[i] = fw;
                 }
                 jz += k;
@@ -4509,7 +4511,9 @@ static KDfloat32 __kdFloorf_Generic(KDfloat32 x)
             if(huge + x > 0.0f)
             { /* raise inexact flag */
                 if(i0 < 0)
+                {
                     i0 += (0x00800000) >> j0;
+                }
                 i0 &= (~i);
             }
         }
