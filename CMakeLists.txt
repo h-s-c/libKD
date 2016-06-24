@@ -66,6 +66,9 @@ project (KD C)
             set(KD_CC_FLAGS "${KD_CC_FLAGS} -mmusl")
         elseif(KD_BUILD_STDLIB MATCHES "none")
             set(KD_CC_FLAGS "${KD_CC_FLAGS} -nostdlib -ffreestanding")
+            # disable __chkstk_ms
+            set(KD_CC_FLAGS "${KD_CC_FLAGS} -fno-stack-check -fno-stack-protector -mno-stack-arg-probe")
+            set(KD_FREESTANDING "On")
         endif()
         if(EMSCRIPTEN)
             # -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=20

@@ -175,15 +175,6 @@
             long tv_sec;
             long tv_nsec;
         };
-        int snprintf ( char * s, size_t n, const char * format, ... )
-        {
-            int ret;
-            va_list arg;
-            va_start(arg, format);
-            ret = vsnprintf(s, n, format, arg);
-            va_end(arg);
-            return ret;
-        }
     #endif
 	/* MSVC redefinition fix*/
 	#ifndef inline
@@ -203,17 +194,46 @@
 /******************************************************************************
  * Errors
  ******************************************************************************/
-static KD_THREADLOCAL KDint lasterror = 0;
+typedef struct {
+    KDCallbackFunc *func;
+    KDint eventtype;
+    void *eventuserptr;
+} __KDCallback;
+typedef struct {
+    void *(*start_routine)(void *);
+    void *arg;
+    KDThread *thread;
+} __KDThreadStartArgs;
+
+struct KDThread {
+#if defined(KD_THREAD_C11)
+    thrd_t nativethread;
+#elif defined(KD_THREAD_POSIX)
+    pthread_t nativethread;
+#elif defined(KD_THREAD_WIN32)
+    HANDLE nativethread;
+#endif
+    void *tlsptr;
+    KDThreadStorageKeyKHR tlsid;
+    const KDThreadAttr *attr;
+    __KDThreadStartArgs *start_args;
+    KDQueueVEN *eventqueue;
+    KDEvent *lastevent;
+    KDint lasterror;
+    KDuint callbacks_index;
+    __KDCallback **callbacks;
+};
+
 /* kdGetError: Get last error indication. */
 KD_API KDint KD_APIENTRY kdGetError(void)
 {
-    return lasterror;
+    return kdThreadSelf()->lasterror;
 }
 
 /* kdSetError: Set last error indication. */
 KD_API void KD_APIENTRY kdSetError(KDint error)
 {
-    lasterror = error;
+    kdThreadSelf()->lasterror = error;
 }
 
 /******************************************************************************
@@ -350,26 +370,6 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
-static KD_THREADLOCAL KDThread *__kd_thread = KD_NULL;
-typedef struct {
-    void *(*start_routine)(void *);
-    void *arg;
-    KDThread *thread;
-} __KDThreadStartArgs;
-
-struct KDThread {
-#if defined(KD_THREAD_C11)
-    thrd_t nativethread;
-#elif defined(KD_THREAD_POSIX)
-    pthread_t nativethread;
-#elif defined(KD_THREAD_WIN32)
-    HANDLE nativethread;
-#endif
-    KDQueueVEN *eventqueue;
-    const KDThreadAttr *attr;
-    __KDThreadStartArgs *start_args;
-};
-
 #if defined(_MSC_VER)
 #pragma pack(push, 8)
 struct THREADNAME_INFO {
@@ -381,7 +381,6 @@ struct THREADNAME_INFO {
 #pragma pack(pop)
 #endif
 
-static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
 static void *__kdThreadStart(void *args)
 {
@@ -424,10 +423,10 @@ static void *__kdThreadStart(void *args)
 
     void *result = start_args->start_routine(start_args->arg);
 
-    if(__kd_lastevent != KD_NULL)
+    if(__kd_thread->lastevent != KD_NULL)
     {
-        kdFreeEvent(__kd_lastevent);
-        __kd_lastevent = KD_NULL;
+        kdFreeEvent(__kd_thread->lastevent );
+        __kd_thread->lastevent = KD_NULL;
     }
     return result;
 }
@@ -455,11 +454,16 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         return KD_NULL;
     }
     thread->attr = attr;
+    thread->lastevent = KD_NULL;
+    thread->lasterror = 0;
+    thread->callbacks_index = 0;
+    thread->callbacks = kdMalloc(999 * sizeof(__KDCallback*));;
 
     __KDThreadStartArgs *start_args = (__KDThreadStartArgs *)kdMalloc(sizeof(__KDThreadStartArgs));
     if(start_args == KD_NULL)
     {
         kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread->callbacks);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
@@ -483,6 +487,8 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if(error != 0)
     {
         kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread->start_args);
+        kdFree(thread->callbacks);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
@@ -492,6 +498,8 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     {
         kdThreadDetach(thread);
         kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread->start_args);
+        kdFree(thread->callbacks);
         kdFree(thread);
         return KD_NULL;
     }
@@ -557,6 +565,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     }
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread->start_args);
+    kdFree(thread->callbacks);
     kdFree(thread);
     return 0;
 }
@@ -961,25 +970,27 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 /* kdWaitEvent: Get next event from thread's event queue. */
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
-    if(__kd_lastevent != KD_NULL)
+    KDEvent *lastevent = kdThreadSelf()->lastevent;
+    KDQueueVEN *eventqueue = kdThreadSelf()->eventqueue;
+    if(lastevent != KD_NULL)
     {
-        kdFreeEvent(__kd_lastevent);
+        kdFreeEvent(lastevent);
     }
     if(timeout != -1)
     {
         kdThreadSleepVEN(timeout);
     }
     kdPumpEvents();
-    if(kdQueueSizeVEN(kdThreadSelf()->eventqueue) > 0)
+    if(kdQueueSizeVEN(eventqueue) > 0)
     {
-        __kd_lastevent = (KDEvent *)kdQueuePopHeadVEN(kdThreadSelf()->eventqueue);
+        lastevent = (KDEvent *)kdQueuePopHeadVEN(eventqueue);
     }
     else
     {
-        __kd_lastevent = KD_NULL;
+        lastevent = KD_NULL;
         kdSetError(KD_EAGAIN);
     }
-    return __kd_lastevent;
+    return lastevent;
 }
 /* kdSetEventUserptr: Set the userptr for global events. */
 static void *__kd_userptr = KD_NULL;
@@ -1004,24 +1015,19 @@ KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
-typedef struct {
-    KDCallbackFunc *func;
-    KDint eventtype;
-    void *eventuserptr;
-} __KDCallback;
-static KD_THREADLOCAL KDuint __kd_callbacks_index = 0;
-static KD_THREADLOCAL __KDCallback __kd_callbacks[999] = {{0}};
 static KDboolean __kdExecCallback(KDEvent *event)
 {
-    for(KDuint callback = 0; callback < __kd_callbacks_index; callback++)
+    KDuint callbacks_index = kdThreadSelf()->callbacks_index;
+    __KDCallback** callbacks = kdThreadSelf()->callbacks;
+    for(KDuint callback = 0; callback < callbacks_index; callback++)
     {
-        if(__kd_callbacks[callback].func != KD_NULL)
+        if(callbacks[callback]->func != KD_NULL)
         {
-            KDboolean typematch = __kd_callbacks[callback].eventtype == event->type || __kd_callbacks[callback].eventtype == 0;
-            KDboolean userptrmatch = __kd_callbacks[callback].eventuserptr == event->userptr;
+            KDboolean typematch = callbacks[callback]->eventtype == event->type || callbacks[callback]->eventtype == 0;
+            KDboolean userptrmatch = callbacks[callback]->eventuserptr == event->userptr;
             if(typematch && userptrmatch)
             {
-                __kd_callbacks[callback].func(event);
+                callbacks[callback]->func(event);
                 kdFreeEvent(event);
                 return 1;
             }
@@ -1410,20 +1416,22 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 /* kdInstallCallback: Install or remove a callback function for event processing. */
 KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype, void *eventuserptr)
 {
-    for(KDuint callback = 0; callback < __kd_callbacks_index; callback++)
+    KDuint callbacks_index = kdThreadSelf()->callbacks_index;
+    __KDCallback** callbacks = kdThreadSelf()->callbacks;
+    for(KDuint callback = 0; callback < callbacks_index; callback++)
     {
-        KDboolean typematch = __kd_callbacks[callback].eventtype == eventtype || __kd_callbacks[callback].eventtype == 0;
-        KDboolean userptrmatch = __kd_callbacks[callback].eventuserptr == eventuserptr;
+        KDboolean typematch = callbacks[callback]->eventtype == eventtype || callbacks[callback]->eventtype == 0;
+        KDboolean userptrmatch = callbacks[callback]->eventuserptr == eventuserptr;
         if(typematch && userptrmatch)
         {
-            __kd_callbacks[callback].func = func;
+            callbacks[callback]->func = func;
             return 0;
         }
     }
-    __kd_callbacks[__kd_callbacks_index].func = func;
-    __kd_callbacks[__kd_callbacks_index].eventtype = eventtype;
-    __kd_callbacks[__kd_callbacks_index].eventuserptr = eventuserptr;
-    __kd_callbacks_index++;
+    callbacks[callbacks_index]->func = func;
+    callbacks[callbacks_index]->eventtype = eventtype;
+    callbacks[callbacks_index]->eventuserptr = eventuserptr;
+    callbacks_index++;
     return 0;
 }
 
@@ -2034,13 +2042,52 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
 }
 
 /* kdLtostr, kdUltostr: Convert an integer to a string. */
+/* FIXME: Itoa isnt optimal .. */
+/* 
+ * Note the difference in return value when the buffer is not large enough; 
+ * [C99] snprintf returns the length the string would have been if the buffer
+ * had been long enough, whereas kdLtostr and kdUltostr return -1.
+ * MSVC sprintf_s returns -1
+ */
+
+/* K&R implementation */
+void __kdItoa(KDint n, KDchar *s)
+{
+    KDint i, j, sign;
+    KDchar c;
+
+    if((sign = n) < 0) /* record sign */
+    {
+        n = -n; /* make n positive */
+    }
+    i = 0;
+    do
+    {                          /* generate digits in reverse order */
+        s[i++] = n % 10 + '0'; /* get next digit */
+    } while((n /= 10) > 0);    /* delete it */
+    if(sign < 0)
+    {
+        s[i++] = '-';
+    }
+    s[i] = '\0';
+
+    /* reverse:  reverse string s in place */
+    for(i = 0, j = kdStrlen(s) - 1; i < j; i++, j--)
+    {
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
 KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
 {
     if(buflen == 0)
     {
         return -1;
     }
-    return snprintf(buffer, buflen, "%i", number);
+    __kdItoa(number, buffer);
+    return 0;
 }
 
 KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint number, KDint base)
@@ -2049,20 +2096,8 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         return -1;
     }
-    if(base == 10 || base == 0)
-    {
-        return snprintf(buffer, buflen, "%u", number);
-    }
-    else if(base == 8)
-    {
-        return snprintf(buffer, buflen, "%o", number);
-    }
-    else if(base == 16)
-    {
-        return snprintf(buffer, buflen, "%x", number);
-    }
-    kdSetError(KD_EINVAL);
-    return -1;
+    __kdItoa(number, buffer);
+    return 0;
 }
 
 /* kdFtostr: Convert a float to a string. */
@@ -2072,7 +2107,8 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     {
         return -1;
     }
-    return snprintf(buffer, buflen, "%f", number);
+    __kdItoa(number, buffer);
+    return 0;
 }
 
 /* kdCryptoRandom: Return random data. */
@@ -2184,17 +2220,26 @@ KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
  * Thread-local storage.
  ******************************************************************************/
 
-static KD_THREADLOCAL void *tlsptr = KD_NULL;
+static  KDThreadStorageKeyKHR __kdtlskey = 0;
+static const KDchar* __kdtlskeyptr = "OpenKODE";
+static KDThreadOnce __kdtlsinit = KD_THREAD_ONCE_INIT;
+static void __kdInitTLS(void)
+{
+    __kdtlskey = kdMapThreadStorageKHR(__kdtlskeyptr);
+}
+
 /* kdGetTLS: Get the thread-local storage pointer. */
 KD_API void *KD_APIENTRY kdGetTLS(void)
 {
-    return tlsptr;
+    kdThreadOnce(&__kdtlsinit, __kdInitTLS);
+    return kdGetThreadStorageKHR(__kdtlskey);
 }
 
 /* kdSetTLS: Set the thread-local storage pointer. */
 KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 {
-    tlsptr = ptr;
+    kdThreadOnce(&__kdtlsinit, __kdInitTLS);
+    kdSetThreadStorageKHR(__kdtlskey, ptr);
 }
 
 /******************************************************************************
@@ -6193,7 +6238,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 }
 
 /* kdReadDir: Return the next file in a directory. */
-static KD_THREADLOCAL KDDirent *__kd_lastdirent = KD_NULL;
+static KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
 #ifdef KD_VFS_SUPPORTED
