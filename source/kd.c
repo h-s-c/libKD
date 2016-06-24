@@ -401,7 +401,10 @@ static void *__kdThreadStart(void *args)
         __try
         {
             RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR *)&info);
-        } __except(EXCEPTION_CONTINUE_EXECUTION)
+        }
+        /* clang-format off */
+        __except(EXCEPTION_CONTINUE_EXECUTION)
+        /* clang-format on */
         {
         }
     }
