@@ -2991,104 +2991,108 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
         q[i] = fw;
     }
     jz = jk;
-recompute:
-    /* distill q[] into iq[] reversingly */
-    for(i = 0, j = jz, z = q[jz]; j > 0; i++, j--)
+    KDboolean recompute = 0;
+    do
     {
-        fw = (KDfloat64KHR)((KDint32)(twon24 * z));
-        iq[i] = (KDint32)(z - two24 * fw);
-        z = q[j - 1] + fw;
-    }
-    /* compute n */
-    z = __kdScalbn(z, q0);            /* actual value of z */
-    z -= 8.0 * kdFloorKHR(z * 0.125); /* trim off integer >= 8 */
-    n = (KDint32)z;
-    z -= (KDfloat64KHR)n;
-    ih = 0;
-    if(q0 > 0)
-    { /* need iq[jz-1] to determine n */
-        i = (iq[jz - 1] >> (24 - q0));
-        n += i;
-        iq[jz - 1] -= i << (24 - q0);
-        ih = iq[jz - 1] >> (23 - q0);
-    }
-    else if(q0 == 0)
-    {
-        ih = iq[jz - 1] >> 23;
-    }
-    else if(z >= 0.5)
-    {
-        ih = 2;
-    }
-    if(ih > 0)
-    { /* q > 0.5 */
-        n += 1;
-        carry = 0;
-        for(i = 0; i < jz; i++)
-        { /* compute 1-q */
-            j = iq[i];
-            if(carry == 0)
-            {
-                if(j != 0)
-                {
-                    carry = 1;
-                    iq[i] = 0x1000000 - j;
-                }
-            }
-            else
-            {
-                iq[i] = 0xffffff - j;
-            }
+        recompute = 0;
+        /* distill q[] into iq[] reversingly */
+        for(i = 0, j = jz, z = q[jz]; j > 0; i++, j--)
+        {
+            fw = (KDfloat64KHR)((KDint32)(twon24 * z));
+            iq[i] = (KDint32)(z - two24 * fw);
+            z = q[j - 1] + fw;
         }
+        /* compute n */
+        z = __kdScalbn(z, q0);            /* actual value of z */
+        z -= 8.0 * kdFloorKHR(z * 0.125); /* trim off integer >= 8 */
+        n = (KDint32)z;
+        z -= (KDfloat64KHR)n;
+        ih = 0;
         if(q0 > 0)
-        { /* rare case: chance is 1 in 12 */
-            switch(q0)
-            {
-                case 1:
-                {
-                    iq[jz - 1] &= 0x7fffff;
-                    break;
-                }
-                case 2:
-                {
-                    iq[jz - 1] &= 0x3fffff;
-                    break;
-                }
-            }
+        { /* need iq[jz-1] to determine n */
+            i = (iq[jz - 1] >> (24 - q0));
+            n += i;
+            iq[jz - 1] -= i << (24 - q0);
+            ih = iq[jz - 1] >> (23 - q0);
         }
-        if(ih == 2)
+        else if(q0 == 0)
         {
-            z = 1.0f - z;
-            if(carry != 0)
-            {
-                z -= __kdScalbn(1.0f, q0);
-            }
+            ih = iq[jz - 1] >> 23;
         }
-    }
-    /* check if recomputation is needed */
-    if(z == 0.0f)
-    {
-        j = 0;
-        for(i = jz - 1; i >= jk; i--)
+        else if(z >= 0.5)
         {
-            j |= iq[i];
+            ih = 2;
         }
-        if(j == 0)
-        { /* need recomputation */
-            for(k = 1; iq[jk - k] == 0; k++)
-            {
-            } /* k = no. of terms needed */
-            for(i = jz + 1; i <= jz + k; i++)
-            { /* add q[jz+1] to q[jz+k] */
-                f[jx + i] = (KDfloat64KHR)ipio2[jv + i];
-                for(j = 0, fw = 0.0; j <= jx; j++)
-                    fw += x[j] * f[jx + i - j];
-                q[i] = fw;
+        if(ih > 0)
+        { /* q > 0.5 */
+            n += 1;
+            carry = 0;
+            for(i = 0; i < jz; i++)
+            { /* compute 1-q */
+                j = iq[i];
+                if(carry == 0)
+                {
+                    if(j != 0)
+                    {
+                        carry = 1;
+                        iq[i] = 0x1000000 - j;
+                    }
+                }
+                else
+                {
+                    iq[i] = 0xffffff - j;
+                }
             }
-            jz += k;
-            goto recompute;
+            if(q0 > 0)
+            { /* rare case: chance is 1 in 12 */
+                switch(q0)
+                {
+                    case 1:
+                    {
+                        iq[jz - 1] &= 0x7fffff;
+                        break;
+                    }
+                    case 2:
+                    {
+                        iq[jz - 1] &= 0x3fffff;
+                        break;
+                    }
+                }
+            }
+            if(ih == 2)
+            {
+                z = 1.0f - z;
+                if(carry != 0)
+                {
+                    z -= __kdScalbn(1.0f, q0);
+                }
+            }
         }
-    }
+        /* check if recomputation is needed */
+        if(z == 0.0f)
+        {
+            j = 0;
+            for(i = jz - 1; i >= jk; i--)
+            {
+                j |= iq[i];
+            }
+            if(j == 0)
+            { /* need recomputation */
+                for(k = 1; iq[jk - k] == 0; k++)
+                {
+                } /* k = no. of terms needed */
+                for(i = jz + 1; i <= jz + k; i++)
+                { /* add q[jz+1] to q[jz+k] */
+                    f[jx + i] = (KDfloat64KHR)ipio2[jv + i];
+                    for(j = 0, fw = 0.0; j <= jx; j++)
+                        fw += x[j] * f[jx + i - j];
+                    q[i] = fw;
+                }
+                jz += k;
+                recompute = 1;
+            }
+        }
+    } while(recompute);
     /* chop off zero terms */
     if(z == 0.0)
     {
@@ -5172,23 +5176,8 @@ static void *__kdBcopy(void *dst0, const void *src0, size_t length)
 
     if(length == 0 || dst == src)
     { /* nothing to do */
-        goto done;
+        return (dst0);
     }
-
-/*
-     * Macros: loop-t-times; and loop-t-times, t>0
-     */
-#define TLOOP(s)  \
-    if(t)         \
-    {             \
-        TLOOP1(s) \
-    }
-#define TLOOP1(s) \
-    do            \
-    {             \
-        s;        \
-    } while(--t)
-
     if((KDuintptr)dst < (KDuintptr)src)
     {
         /*
@@ -5210,15 +5199,32 @@ static void *__kdBcopy(void *dst0, const void *src0, size_t length)
                 t = wsize - (t & wmask);
             }
             length -= t;
-            TLOOP1(*dst++ = *src++);
+            do
+            {
+                *dst++ = *src++;
+            } while(--t);
         }
         /*
          * Copy whole words, then mop up any trailing bytes.
          */
         t = length / wsize;
-        TLOOP(*(word *)dst = *(word *)src; src += wsize; dst += wsize);
+        if(t)
+        {
+            do
+            {
+                *(word *)dst = *(word *)src;
+                src += wsize;
+                dst += wsize;
+            } while(--t);
+        }
         t = length & wmask;
-        TLOOP(*dst++ = *src++);
+        if(t)
+        {
+            do
+            {
+                *dst++ = *src++;
+            } while(--t);
+        }
     }
     else
     {
@@ -5241,14 +5247,30 @@ static void *__kdBcopy(void *dst0, const void *src0, size_t length)
                 t &= wmask;
             }
             length -= t;
-            TLOOP1(*--dst = *--src);
+            do
+            {
+                *--dst = *--src;
+            } while(--t);
         }
         t = length / wsize;
-        TLOOP(src -= wsize; dst -= wsize; *(word *)dst = *(word *)src);
+        if(t)
+        {
+            do
+            {
+                src -= wsize;
+                dst -= wsize;
+                *(word *)dst = *(word *)src;
+            } while(--t);
+        }
         t = length & wmask;
-        TLOOP(*--dst = *--src);
+        if(t)
+        {
+            do
+            {
+                *--dst = *--src;
+            } while(--t);
+        }
     }
-done:
     return (dst0);
 }
 
