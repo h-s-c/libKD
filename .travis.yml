@@ -8,7 +8,7 @@ matrix:
       sudo: required
       addons:
         apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'ca-certificates']
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
         - COVERITY_SCAN_PROJECT_NAME="h-s-c/libKD"
