@@ -854,6 +854,7 @@ KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
     sem->condition = kdThreadCondCreate(KD_NULL);
     if(sem->condition == KD_NULL)
     {
+        kdFree(sem);
         kdSetError(KD_ENOSPC);
         return KD_NULL;
     }
