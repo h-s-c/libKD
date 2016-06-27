@@ -847,6 +847,7 @@ KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
     sem->mutex = kdThreadMutexCreate(KD_NULL);
     if(sem->mutex == KD_NULL)
     {
+        kdFree(sem);
         kdSetError(KD_ENOSPC);
         return KD_NULL;
     }
@@ -854,6 +855,7 @@ KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
     sem->condition = kdThreadCondCreate(KD_NULL);
     if(sem->condition == KD_NULL)
     {
+        kdThreadMutexFree(sem->mutex);
         kdFree(sem);
         kdSetError(KD_ENOSPC);
         return KD_NULL;
