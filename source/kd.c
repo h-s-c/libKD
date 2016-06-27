@@ -4244,7 +4244,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     {
         return sn * tiny * tiny; /* underflow */
     }
-    else if((KDuint32)j == 0xc3160000)
+    else if((j & 0xffffffff) == 0xc3160000)
     { /* z == -150 */
         if(p_l <= z - p_h)
         {
