@@ -4848,9 +4848,13 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
         {
             ix0 <<= 1;
         }
-        m -= i - 1;
-        ix0 |= (ix1 >> (32 - i));
-        ix1 <<= i;
+        /* Bit shifting by 32 is undefined behaviour*/
+        if(i <= 0)
+        {
+            m -= i - 1;
+            ix0 |= (ix1 >> (32 - i));
+            ix1 <<= i;
+        }
     }
     m -= 1023; /* unbias exponent */
     ix0 = (ix0 & 0x000fffff) | 0x00100000;
