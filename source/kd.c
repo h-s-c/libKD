@@ -5804,6 +5804,10 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 struct KDFile {
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_File *file;
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    HANDLE file;
+    KDboolean eof;
+    KDboolean error;
 #else
     FILE *file;
 #endif
@@ -5812,21 +5816,106 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
 #ifdef KD_VFS_SUPPORTED
-    if(kdStrcmp(mode, "wb") == 0)
+    switch(mode[0])
     {
-        file->file = PHYSFS_openWrite(pathname);
+        case 'w':
+        {
+            file->file = PHYSFS_openWrite(pathname);
+            break;
+        }
+        case 'r':
+        {
+            file->file = PHYSFS_openRead(pathname);
+            break;
+        }
+        case 'a':
+        {
+            file->file = PHYSFS_openAppend(pathname);
+            break;
+        }
+        default:
+        {
+            kdAssert(0);
+            break;
+        }
     }
-    else if(kdStrcmp(mode, "rb") == 0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    DWORD access = 0;
+    DWORD create = 0;
+    switch(mode[0])
     {
-        file->file = PHYSFS_openRead(pathname);
+        case 'w':
+        {
+            access = GENERIC_WRITE;
+            create = CREATE_ALWAYS;
+            break;
+        }
+        case 'r':
+        {
+            access = GENERIC_READ;
+            create = OPEN_EXISTING;
+            break;
+        }
+        case 'a':
+        {
+            access = GENERIC_READ | GENERIC_WRITE;
+            create = OPEN_ALWAYS;
+            break;
+        }
+        default:
+        {
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
+        }
     }
-    else if(kdStrcmp(mode, "ab") == 0)
+    if(mode[1] == '+' || mode[2] == '+')
     {
-        file->file = PHYSFS_openAppend(pathname);
+        access = GENERIC_READ | GENERIC_WRITE;
+    }
+    file->file = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, create, 0, NULL);
+    if(file->file == INVALID_HANDLE_VALUE)
+    {
+        DWORD error = GetLastError();
+        switch(error)
+        {
+            case(ERROR_FILE_NOT_FOUND):
+            case(ERROR_PATH_NOT_FOUND):
+            {
+                kdSetError(KD_ENOENT);
+                break;
+            }
+            case(ERROR_TOO_MANY_OPEN_FILES):
+            {
+                kdSetError(KD_EMFILE);
+                break;
+            }
+            case(ERROR_ACCESS_DENIED):
+            {
+                kdSetError(KD_EACCES);
+                break;
+            }
+            case(ERROR_NOT_ENOUGH_MEMORY):
+            case(ERROR_OUTOFMEMORY):
+            {
+                kdSetError(KD_ENOMEM);
+                break;
+            }
+            default:
+            {
+                /* TODO: Handle other errorcodes */
+                kdAssert(0);
+            }
+        }
+        return KD_NULL;
+    }
+    if(mode[0] == 'a')
+    {
+        SetFilePointer(file, 0, NULL, FILE_END);
     }
 #else
     file->file = fopen(pathname, mode);
 #endif
+    file->eof = 0;
     return file;
 }
 
@@ -5836,23 +5925,38 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
     KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     retval = PHYSFS_close(file->file);
+    if(retval == 0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    retval = CloseHandle(file->file);
+    if(retval == 0)
 #else
     retval = fclose(file->file);
+    if(retval == EOF)
 #endif
+    {
+        return KD_EOF;
+    }
     kdFree(file);
-    return retval;
+    return 0;
 }
 
 /* kdFflush: Flush an open file. */
 KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 {
-    KDint retval = 0;
+    KD_UNUSED KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     retval = PHYSFS_flush(file->file);
+    if(retval == 0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    return 0;
 #else
     retval = fflush(file->file);
+    if(retval == EOF)
 #endif
-    return retval;
+    {
+        return KD_EOF;
+    }
+    return 0;
 }
 
 /* kdFread: Read from a file. */
@@ -5861,6 +5965,9 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     KDsize retval = 0;
 #ifdef KD_VFS_SUPPORTED
     retval = (KDsize)PHYSFS_readBytes(file->file, buffer, size);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    DWORD bytesread = 0;
+    retval = ReadFile(file, buffer, count * size, &bytesread, NULL) ? bytesread / size : 0;
 #else
     retval = fread(buffer, size, count, file->file);
 #endif
@@ -5873,6 +5980,9 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     KDsize retval = 0;
 #ifdef KD_VFS_SUPPORTED
     retval = (KDsize)PHYSFS_writeBytes(file->file, buffer, size);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    DWORD byteswritten = 0;
+    retval = WriteFile(file, buffer, count * size, &byteswritten, NULL) ? byteswritten / size : 0;
 #else
     retval = fwrite(buffer, size, count, file->file);
 #endif
@@ -5908,11 +6018,25 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 {
     KDchar *line = KD_NULL;
-#ifdef KD_VFS_SUPPORTED
-    /* TODO: Loop this until '\n' or 'EOF' */
-    kdAssert(0);
-    PHYSFS_readBytes(file->file, buffer, 1);
+#if defined(KD_VFS_SUPPORTED) || defined(_MSC_VER) || defined(__MINGW32__)
     line = buffer;
+    for(KDsize i = buflen; i > 1; --i)
+    {
+        KDint character = kdGetc(file);
+        if(character == KD_EOF)
+        {
+            if(i == buflen - 1)
+            {
+                return KD_NULL;
+            }
+            break;
+        }
+        *line++ = character;
+        if(character == '\n')
+        {
+            break;
+        }
+    }
 #else
     line = fgets(buffer, (KDint)buflen, file->file);
 #endif
@@ -5922,32 +6046,38 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 /* kdFEOF: Check for end of file. */
 KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 {
-    KDint retval = 0;
+    KD_UNUSED KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     retval = PHYSFS_eof(file->file);
+    if(retval != 0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    if(file->eof == 1)
 #else
     retval = feof(file->file);
+    if(retval != 0)
 #endif
-    return retval;
+    {
+        return KD_EOF;
+    }
+    return 0;
 }
 
 /* kdFerror: Check for an error condition on an open file. */
 KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 {
-    KDint retval = 0;
+    KD_UNUSED KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_ErrorCode errorcode = PHYSFS_getLastErrorCode();
     if(errorcode != PHYSFS_ERR_OK)
-    {
-        retval = KD_EOF;
-    }
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    if(file->error == 1)
 #else
     if(ferror(file->file) != 0)
+#endif
     {
         retval = KD_EOF;
     }
-#endif
-    return retval;
+    return 0;
 }
 
 /* kdClearerr: Clear a file's error and end-of-file indicators. */
@@ -5955,6 +6085,9 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 {
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_setErrorCode(PHYSFS_ERR_OK);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    file->eof = 0;
+    file->error = 0;
 #else
     clearerr(file->file);
 #endif
@@ -7066,10 +7199,10 @@ KD_API void *KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
  ******************************************************************************/
 
 /* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
-KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void * id);
+KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void *id);
 
 /* kdSetThreadStorageKHR: Stores thread-local data. */
-KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR key, void * data);
+KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR key, void *data);
 
 /* kdGetThreadStorageKHR: Retrieves previously stored thread-local data. */
-KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKHR key);
+KD_API void *KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKHR key);
