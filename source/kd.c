@@ -6033,7 +6033,7 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
             }
             break;
         }
-        *line++ = character;
+        *line++ = (KDchar)character;
         if(character == '\n')
         {
             break;
@@ -6045,15 +6045,14 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 /* kdFEOF: Check for end of file. */
 KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 {
-    KD_UNUSED KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
-    retval = PHYSFS_eof(file->file);
-    if(retval != 0)
+    KDint error = PHYSFS_eof(file->file);
+    if(error != 0)
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     if(file->eof == 1)
 #else
-    retval = feof(file->file);
-    if(retval != 0)
+    KDint error = feof(file->file);
+    if(error != 0)
 #endif
     {
         return KD_EOF;
@@ -6064,7 +6063,6 @@ KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 /* kdFerror: Check for an error condition on an open file. */
 KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 {
-    KD_UNUSED KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_ErrorCode errorcode = PHYSFS_getLastErrorCode();
     if(errorcode != PHYSFS_ERR_OK)
@@ -6074,7 +6072,7 @@ KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
     if(ferror(file->file) != 0)
 #endif
     {
-        retval = KD_EOF;
+        return KD_EOF;
     }
     return 0;
 }
