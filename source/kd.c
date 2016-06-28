@@ -5971,7 +5971,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     retval = (KDsize)PHYSFS_readBytes(file->file, buffer, size);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     DWORD bytesread = 0;
-    retval = ReadFile(file, buffer, count * size, &bytesread, NULL) ? bytesread / size : 0;
+    retval = ReadFile(file, buffer, (DWORD)count * size, &bytesread, NULL) ? bytesread / size : 0;
 #else
     retval = fread(buffer, size, count, file->file);
 #endif
@@ -5986,7 +5986,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     retval = (KDsize)PHYSFS_writeBytes(file->file, buffer, size);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     DWORD byteswritten = 0;
-    retval = WriteFile(file, buffer, count * size, &byteswritten, NULL) ? byteswritten / size : 0;
+    retval = WriteFile(file, buffer, (DWORD)count * size, &byteswritten, NULL) ? byteswritten / size : 0;
 #else
     retval = fwrite(buffer, size, count, file->file);
 #endif
