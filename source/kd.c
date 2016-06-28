@@ -5806,11 +5806,11 @@ struct KDFile {
     PHYSFS_File *file;
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     HANDLE file;
-    KDboolean eof;
-    KDboolean error;
 #else
     FILE *file;
 #endif
+    KDboolean eof;
+    KDboolean error;
 };
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
@@ -6017,9 +6017,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 /* kdFgets: Read a line of text from an open file. */
 KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 {
-    KDchar *line = KD_NULL;
-#if defined(KD_VFS_SUPPORTED) || defined(_MSC_VER) || defined(__MINGW32__)
-    line = buffer;
+    KDchar *line = buffer;
     for(KDsize i = buflen; i > 1; --i)
     {
         KDint character = kdGetc(file);
@@ -6037,9 +6035,6 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
             break;
         }
     }
-#else
-    line = fgets(buffer, (KDint)buflen, file->file);
-#endif
     return line;
 }
 
