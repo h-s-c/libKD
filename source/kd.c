@@ -5926,16 +5926,15 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 /* kdFclose: Close an open file. */
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
-    KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
-    retval = PHYSFS_close(file->file);
-    if(retval == 0)
+    KDint error = PHYSFS_close(file->file);
+    if(error == 0)
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    retval = CloseHandle(file->file);
-    if(retval == 0)
+    KDint error = CloseHandle(file->file);
+    if(error == 0)
 #else
-    retval = fclose(file->file);
-    if(retval == EOF)
+    KDint error = fclose(file->file);
+    if(error == EOF)
 #endif
     {
         return KD_EOF;
@@ -5947,15 +5946,14 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 /* kdFflush: Flush an open file. */
 KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 {
-    KD_UNUSED KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
-    retval = PHYSFS_flush(file->file);
-    if(retval == 0)
+    KDint error = PHYSFS_flush(file->file);
+    if(error == 0)
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     return 0;
 #else
-    retval = fflush(file->file);
-    if(retval == EOF)
+    KDint error = fflush(file->file);
+    if(error == EOF)
 #endif
     {
         return KD_EOF;
