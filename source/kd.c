@@ -4832,7 +4832,7 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
             ix0 <<= 1;
         }
         /* Bit shifting by 32 is undefined behaviour*/
-        if(i <= 0)
+        if(i > 0)
         {
             m -= i - 1;
             ix0 |= (ix1 >> (32 - i));
