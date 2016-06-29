@@ -59,7 +59,7 @@ project (KD C)
     endif()
 
     if(MSVC)
-        set(KD_CC_FLAGS "${KD_CC_FLAGS} /W4 /WX /wd4100")
+        set(KD_CC_FLAGS "${KD_CC_FLAGS} /W4 /WX /wd4100 /wd4127")
     else()
         set(KD_CC_FLAGS "${KD_CC_FLAGS} -Wall -Wextra -Werror -Wshadow -pedantic -Wno-attributes -Wno-missing-field-initializers -Wno-unused-parameter")
         set(KD_CC_FLAGS "${KD_CC_FLAGS} -march=native -mtune=native")

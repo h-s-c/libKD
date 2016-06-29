@@ -514,17 +514,10 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
 #endif
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4127)
-#endif
     while(1)
     {
         ;
     }
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
@@ -1711,18 +1704,11 @@ int WINAPI WinMainCRTStartup(void)
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
 #if defined(_MSC_VER) || defined(__MINGW32__)
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4127)
-#endif
     ExitProcess(status);
     while(1)
     {
         ;
     }
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 #else
     exit(status);
 #endif
@@ -2221,9 +2207,6 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 #pragma warning(push)
 #pragma warning(disable : 4723)
 #pragma warning(disable : 4756)
-#if _MSC_VER <= 1800
-#pragma warning(disable : 4127)
-#endif
 #endif
 
 enum __KD_SIMDTYPE {
@@ -5480,10 +5463,6 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         if(va & vb)
         {
             p = (const KDchar *)(lp);
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4127)
-#endif
             testbyte(0);
             testbyte(1);
             testbyte(2);
@@ -5493,9 +5472,6 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
             testbyte(5);
             testbyte(6);
             testbyte(7);
-#endif
-#if defined(_MSC_VER)
-#pragma warning(pop)
 #endif
         }
     }
@@ -5969,7 +5945,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     retval = (KDsize)PHYSFS_readBytes(file->file, buffer, size);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     DWORD bytesread = 0;
-    retval = ReadFile(file, buffer, (DWORD)count * size, &bytesread, NULL) ? bytesread / size : 0;
+    retval = ReadFile(file->file, buffer, (DWORD)(count * size), &bytesread, NULL) ? bytesread / size : 0;
 #else
     retval = fread(buffer, size, count, file->file);
 #endif
@@ -5984,7 +5960,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     retval = (KDsize)PHYSFS_writeBytes(file->file, buffer, size);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     DWORD byteswritten = 0;
-    retval = WriteFile(file, buffer, (DWORD)count * size, &byteswritten, NULL) ? byteswritten / size : 0;
+    retval = WriteFile(file->file, buffer, (DWORD)(count * size), &byteswritten, NULL) ? byteswritten / size : 0;
 #else
     retval = fwrite(buffer, size, count, file->file);
 #endif
