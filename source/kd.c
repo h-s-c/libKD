@@ -5950,7 +5950,7 @@ KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
     KDint error = PHYSFS_flush(file->file);
     if(error == 0)
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    return 0;
+    if(0)
 #else
     KDint error = fflush(file->file);
     if(error == EOF)
