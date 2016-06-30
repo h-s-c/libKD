@@ -907,11 +907,11 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
     /* Determine seconds from the overall nanoseconds */
     if((timeout % 1000000000) == 0)
     {
-        ts.tv_sec = LONG_CAST timeout / 1000000000;
+        ts.tv_sec = LONG_CAST(timeout / 1000000000);
     }
     else
     {
-        ts.tv_sec = LONG_CAST(timeout - (timeout % 1000000000)) / 1000000000;
+        ts.tv_sec = LONG_CAST((timeout - (timeout % 1000000000)) / 1000000000);
     }
 #undef LONG_CAST
     /* Remaining nanoseconds */
@@ -6065,43 +6065,62 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 }
 
 typedef struct {
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
     KDint seekorigin_kd;
 #else
     KDuint seekorigin_kd;
 #endif
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    DWORD seekorigin;
+#else
     KDint seekorigin;
+#endif
 } __KDSeekOrigin;
 
-#ifndef KD_VFS_SUPPORTED
-static __KDSeekOrigin seekorigins_c[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
+#ifdef KD_VFS_SUPPORTED
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, FILE_BEGIN}, {KD_SEEK_CUR, FILE_CURRENT}, {KD_SEEK_END, FILE_END}};
+#else
+static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
 #endif
 
 /* kdFseek: Reposition the file position indicator in a file. */
 KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
 {
-    KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     /* TODO: Support other seek origins*/
     if(origin == KD_SEEK_SET)
     {
-        retval = PHYSFS_seek(file->file, (PHYSFS_uint64)offset);
+        KDint error = PHYSFS_seek(file->file, (PHYSFS_uint64)offset);
+        if(error == 0)
+        {
+            return -1
+        }
     }
     else
     {
         kdAssert(0);
     }
 #else
-    for(KDuint i = 0; i < sizeof(seekorigins_c) / sizeof(seekorigins_c[0]); i++)
+    for(KDuint i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
     {
-        if(seekorigins_c[i].seekorigin_kd == origin)
+        if(seekorigins[i].seekorigin_kd == origin)
         {
-            retval = fseek(file->file, (KDint32)offset, seekorigins_c[i].seekorigin);
+#if defined(_MSC_VER) || defined(__MINGW32__)
+            DWORD error = SetFilePointer(file->file, (LONG)offset, NULL, seekorigins[i].seekorigin);
+            if(error == INVALID_SET_FILE_POINTER)
+#else
+            KDint error = fseek(file->file, (KDint32)offset, seekorigins[i].seekorigin);
+            if(error != 0)
+#endif
+            {
+                return -1;
+            }
             break;
         }
     }
 #endif
-    return retval;
+    return 0;
 }
 
 /* kdFtell: Get the file position of an open file. */
@@ -6110,6 +6129,12 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
     KDoff position = 0;
 #ifdef KD_VFS_SUPPORTED
     position = (KDoff)PHYSFS_tell(file->file);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    position = (KDoff)SetFilePointer(file->file, 0, NULL, FILE_CURRENT);
+    if(position == INVALID_SET_FILE_POINTER)
+    {
+        kdAssert(0);
+    }
 #else
     position = ftell(file->file);
 #endif
@@ -6145,26 +6170,40 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 /* kdRename: Rename a file. */
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
-    KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     /* TODO: Implement kdRename */
     kdAssert(0);
+    if(0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    KDint error = MoveFile(src, dest);
+    if(error == 0)
 #else
-    retval = rename(src, dest);
+    KDint error = rename(src, dest);
+    if(error != 0)
 #endif
-    return retval;
+    {
+        return -1;
+    }
+    return 0;
 }
 
 /* kdRemove: Delete a file. */
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
-    KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
-    retval = PHYSFS_delete(pathname);
+    KDint error = PHYSFS_delete(pathname);
+    if(error == 0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    KDint error = DeleteFile(pathname);
+    if(error == 0)
 #else
-    retval = remove(pathname);
+    KDint error = remove(pathname);
+    if(error != 0)
 #endif
-    return retval;
+    {
+        return -1;
+    }
+    return 0;
 }
 
 /* kdTruncate: Truncate or extend a file. */
