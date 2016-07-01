@@ -190,14 +190,6 @@
 	#define inline __inline
     #endif
 #endif
-
-/******************************************************************************
-* Middleware
-******************************************************************************/
-
-#ifdef KD_VFS_SUPPORTED
-    #include <physfs.h>
-#endif
 /* clang-format on */
 
 /******************************************************************************
@@ -1649,22 +1641,6 @@ KD_API int main(int argc, char **argv)
     __kd_thread->eventqueue = kdQueueCreateVEN(100);
 #endif
     __kdMathInit();
-#ifdef KD_VFS_SUPPORTED
-    struct PHYSFS_Allocator allocator = {0};
-    allocator.Deinit = KD_NULL;
-    allocator.Free = kdFree;
-    allocator.Init = KD_NULL;
-    allocator.Malloc = (void *(*)(PHYSFS_uint64))kdMalloc;
-    allocator.Realloc = (void *(*)(void *, PHYSFS_uint64))kdRealloc;
-    PHYSFS_setAllocator(&allocator);
-    PHYSFS_init(argv[0]);
-    const KDchar *prefdir = PHYSFS_getPrefDir("libKD", __kdAppName(argv[0]));
-    PHYSFS_setWriteDir(prefdir);
-    PHYSFS_mount(prefdir, "/", 0);
-    PHYSFS_mkdir("/res");
-    PHYSFS_mkdir("/data");
-    PHYSFS_mkdir("/tmp");
-#endif
 
     KDint result = 0;
 #if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
@@ -1696,9 +1672,6 @@ KD_API int main(int argc, char **argv)
     dlclose(app);
 #endif
 
-#ifdef KD_VFS_SUPPORTED
-    PHYSFS_deinit();
-#endif
     __kdMathCleanup();
 #if !defined(__ANDROID__)
     kdQueueFreeVEN(__kd_thread->eventqueue);
@@ -5839,9 +5812,7 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 
 /* kdFopen: Open a file from the file system. */
 struct KDFile {
-#ifdef KD_VFS_SUPPORTED
-    PHYSFS_File *file;
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     HANDLE file;
 #else
     FILE *file;
@@ -5852,31 +5823,7 @@ struct KDFile {
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
-#ifdef KD_VFS_SUPPORTED
-    switch(mode[0])
-    {
-        case 'w':
-        {
-            file->file = PHYSFS_openWrite(pathname);
-            break;
-        }
-        case 'r':
-        {
-            file->file = PHYSFS_openRead(pathname);
-            break;
-        }
-        case 'a':
-        {
-            file->file = PHYSFS_openAppend(pathname);
-            break;
-        }
-        default:
-        {
-            kdAssert(0);
-            break;
-        }
-    }
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     DWORD access = 0;
     DWORD create = 0;
     switch(mode[0])
@@ -5930,14 +5877,12 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 /* kdFclose: Close an open file. */
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
-#ifdef KD_VFS_SUPPORTED
-    KDint error = PHYSFS_close(file->file);
-    if(error == 0)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
-    KDint error = CloseHandle(file->file);
+    KDint error = 0;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    error = CloseHandle(file->file);
     if(error == 0)
 #else
-    KDint error = fclose(file->file);
+    error = fclose(file->file);
     if(error == EOF)
 #endif
     {
@@ -5950,10 +5895,7 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 /* kdFflush: Flush an open file. */
 KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 {
-#ifdef KD_VFS_SUPPORTED
-    KDint error = PHYSFS_flush(file->file);
-    if(error == 0)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     if(0)
 #else
     KDint error = fflush(file->file);
@@ -5969,9 +5911,7 @@ KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDsize retval = 0;
-#ifdef KD_VFS_SUPPORTED
-    retval = (KDsize)PHYSFS_readBytes(file->file, buffer, size);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     DWORD bytesread = 0;
     retval = ReadFile(file->file, buffer, (DWORD)(count * size), &bytesread, NULL) ? bytesread / size : 0;
 #else
@@ -5984,9 +5924,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
 KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDsize retval = 0;
-#ifdef KD_VFS_SUPPORTED
-    retval = (KDsize)PHYSFS_writeBytes(file->file, buffer, size);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     DWORD byteswritten = 0;
     retval = WriteFile(file->file, buffer, (DWORD)(count * size), &byteswritten, NULL) ? byteswritten / size : 0;
 #else
@@ -5999,10 +5937,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
     KDint byte = 0;
-#ifdef KD_VFS_SUPPORTED
-    PHYSFS_readBytes(file->file, &byte, 1);
-    if(0)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     BOOL error = ReadFile(file->file, &byte, 1, (DWORD[]){0}, NULL);
     if(error == TRUE)
 #else
@@ -6018,10 +5953,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-#ifdef KD_VFS_SUPPORTED
-    PHYSFS_writeBytes(file->file, &c, 1);
-    if(0)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     BOOL error = WriteFile(file->file, &c, 1, (DWORD[]){0}, NULL);
     if(error == TRUE)
 #else
@@ -6061,10 +5993,7 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 /* kdFEOF: Check for end of file. */
 KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 {
-#ifdef KD_VFS_SUPPORTED
-    KDint error = PHYSFS_eof(file->file);
-    if(error != 0)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     if(file->eof == 1)
 #else
     KDint error = feof(file->file);
@@ -6079,10 +6008,7 @@ KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 /* kdFerror: Check for an error condition on an open file. */
 KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 {
-#ifdef KD_VFS_SUPPORTED
-    PHYSFS_ErrorCode errorcode = PHYSFS_getLastErrorCode();
-    if(errorcode != PHYSFS_ERR_OK)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     if(file->error == 1)
 #else
     if(ferror(file->file) != 0)
@@ -6096,9 +6022,7 @@ KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 /* kdClearerr: Clear a file's error and end-of-file indicators. */
 KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 {
-#ifdef KD_VFS_SUPPORTED
-    PHYSFS_setErrorCode(PHYSFS_ERR_OK);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     file->eof = 0;
     file->error = 0;
 #else
@@ -6119,8 +6043,7 @@ typedef struct {
 #endif
 } __KDSeekOrigin;
 
-#ifdef KD_VFS_SUPPORTED
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
 static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, FILE_BEGIN}, {KD_SEEK_CUR, FILE_CURRENT}, {KD_SEEK_END, FILE_END}};
 #else
 static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
@@ -6129,21 +6052,6 @@ static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SE
 /* kdFseek: Reposition the file position indicator in a file. */
 KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
 {
-#ifdef KD_VFS_SUPPORTED
-    /* TODO: Support other seek origins*/
-    if(origin == KD_SEEK_SET)
-    {
-        KDint error = PHYSFS_seek(file->file, (PHYSFS_uint64)offset);
-        if(error == 0)
-        {
-            return -1
-        }
-    }
-    else
-    {
-        kdAssert(0);
-    }
-#else
     for(KDuint i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
     {
         if(seekorigins[i].seekorigin_kd == origin)
@@ -6161,7 +6069,6 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
             break;
         }
     }
-#endif
     return 0;
 }
 
@@ -6169,9 +6076,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
 KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 {
     KDoff position = 0;
-#ifdef KD_VFS_SUPPORTED
-    position = (KDoff)PHYSFS_tell(file->file);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     position = (KDoff)SetFilePointer(file->file, 0, NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
     {
@@ -6187,9 +6092,7 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 {
     KDint retval = 0;
-#ifdef KD_VFS_SUPPORTED
-    retval = PHYSFS_mkdir(pathname);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     retval = CreateDirectory(pathname, NULL);
 #else
     retval = mkdir(pathname, S_IRWXU);
@@ -6201,9 +6104,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 {
     KDint retval = 0;
-#ifdef KD_VFS_SUPPORTED
-    retval = PHYSFS_delete(pathname);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     retval = RemoveDirectory(pathname);
 #else
     retval = rmdir(pathname);
@@ -6214,11 +6115,7 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 /* kdRename: Rename a file. */
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
-#ifdef KD_VFS_SUPPORTED
-    /* TODO: Implement kdRename */
-    kdAssert(0);
-    if(0)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     KDint error = MoveFile(src, dest);
     if(error == 0)
 #else
@@ -6234,10 +6131,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 /* kdRemove: Delete a file. */
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
-#ifdef KD_VFS_SUPPORTED
-    KDint error = PHYSFS_delete(pathname);
-    if(error == 0)
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     KDint error = DeleteFile(pathname);
     if(error == 0)
 #else
@@ -6254,10 +6148,7 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
     KDint retval = 0;
-#ifdef KD_VFS_SUPPORTED
-    /* TODO: Implement kdTruncate */
-    kdAssert(0);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     /* TODO: Implement kdTruncate on Windows */
     kdAssert(0);
 #else
@@ -6270,28 +6161,6 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
     KDint retval = -1;
-#ifdef KD_VFS_SUPPORTED
-    struct PHYSFS_Stat physfsstat = {0};
-    if(PHYSFS_stat(pathname, &physfsstat) != 0)
-    {
-        retval = 0;
-        if(physfsstat.filetype == PHYSFS_FILETYPE_DIRECTORY)
-        {
-            buf->st_mode = 0x4000;
-        }
-        else if(physfsstat.filetype == PHYSFS_FILETYPE_REGULAR)
-        {
-            buf->st_mode = 0x8000;
-        }
-        else
-        {
-            buf->st_mode = 0x0000;
-            retval = -1;
-        }
-        buf->st_size = (KDoff)physfsstat.filesize;
-        buf->st_mtime = (KDtime)physfsstat.modtime;
-    }
-#else
     struct stat posixstat = {0};
     retval = stat(pathname, &posixstat);
 
@@ -6304,18 +6173,12 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 #else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
 #endif
-#endif
     return retval;
 }
 
 KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 {
     KDint retval = -1;
-#ifdef KD_VFS_SUPPORTED
-    buf->st_mode = 0x0000;
-    buf->st_size = (KDoff)PHYSFS_fileLength(file->file);
-    buf->st_mtime = 0;
-#else
     struct stat posixstat = {0};
     retval = fstat(fileno(file->file), &posixstat);
 
@@ -6327,7 +6190,6 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
     buf->st_mtime = posixstat.st_mtimespec.tv_sec;
 #else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
-#endif
 #endif
     return retval;
 }
@@ -6347,10 +6209,6 @@ static KD_UNUSED __KDAccessMode accessmode[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
     KDint retval = -1;
-#ifdef KD_VFS_SUPPORTED
-    /* TODO: Implement kdAccess */
-    kdAssert(0);
-#else
     for(KDuint i = 0; i < sizeof(accessmode) / sizeof(accessmode[0]); i++)
     {
         if(accessmode[i].accessmode_kd == amode)
@@ -6359,26 +6217,17 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
             break;
         }
     }
-#endif
     return retval;
 }
 
 /* kdOpenDir: Open a directory ready for listing. */
 struct KDDir {
-#ifdef KD_VFS_SUPPORTED
-    char **dir;
-#else
     DIR *dir;
-#endif
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
-#ifdef KD_VFS_SUPPORTED
-    dir->dir = PHYSFS_enumerateFiles(pathname);
-#else
     dir->dir = opendir(pathname);
-#endif
     return dir;
 }
 
@@ -6386,37 +6235,15 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 static KD_THREADLOCAL KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
-#ifdef KD_VFS_SUPPORTED
-    KDboolean next = 0;
-    for(KDchar **i = dir->dir; *i != KD_NULL; i++)
-    {
-        if(__kd_lastdirent == KD_NULL || next == 1)
-        {
-            __kd_lastdirent->d_name = *i;
-        }
-        else
-        {
-            if(kdStrcmp(__kd_lastdirent->d_name, *i) == 0)
-            {
-                next = 1;
-            }
-        }
-    }
-#else
     struct dirent *posixdirent = readdir(dir->dir);
     __kd_lastdirent->d_name = posixdirent->d_name;
-#endif
     return __kd_lastdirent;
 }
 
 /* kdCloseDir: Close a directory. */
 KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 {
-#ifdef KD_VFS_SUPPORTED
-    PHYSFS_freeList(&dir->dir);
-#else
     closedir(dir->dir);
-#endif
     kdFree(dir);
     return 0;
 }
@@ -6424,12 +6251,7 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 /* kdGetFree: Get free space on a drive. */
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
-#ifdef KD_VFS_SUPPORTED
-    const KDchar *temp = PHYSFS_getRealDir(pathname);
-#else
     const KDchar *temp = pathname;
-#endif
-
 #if defined(_MSC_VER) || defined(__MINGW32__)
     KDuint64 freespace = 0;
     GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL);

@@ -39,7 +39,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
 set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
 set(KD_BUILD_TESTS "On" CACHE BOOL "Build with tests")
-set(KD_BUILD_VFS "Off" CACHE BOOL "Build with virtual filesystem")
 set(KD_BUILD_STDLIB "default" CACHE STRING "Build with libc (default/musl/none)")
 set_property(CACHE KD_BUILD_STDLIB PROPERTY STRINGS "default" "musl" "none") 
 
@@ -79,11 +78,6 @@ project (KD C)
 
     if(CMAKE_C_COMPILER_ID STREQUAL "Intel")
         set(KD_CC_FLAGS "${KD_CC_FLAGS} -std=c11")
-    endif()
-
-    if(KD_BUILD_VFS)
-        list(APPEND KD_LIBRARIES physfs)
-        set(KD_VFS_SUPPORTED "On")
     endif()
 
     set(KD_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/source/kd.c)
