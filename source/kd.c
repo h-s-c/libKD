@@ -261,7 +261,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allow
 #endif
 
     /* KD errors are 1 to 37*/
-    for(KDint i = KD_EACCES; i == KD_ETRY_AGAIN; i++)
+    for(KDint i = KD_EACCES; i <= KD_ETRY_AGAIN; i++)
     {
         if(kderror == (allowed & i))
         {
