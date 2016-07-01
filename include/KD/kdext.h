@@ -30,6 +30,18 @@
 #include <KD/KHR_thread_storage.h>
 
 /******************************************************************************
+ * Errors (extensions)
+ ******************************************************************************/
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+typedef DWORD KDPlatformError;
+#else
+typedef KDint KDPlatformError;
+#endif
+
+KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allowed);
+
+/******************************************************************************
  * Threads and synchronization (extensions)
  ******************************************************************************/
 

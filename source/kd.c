@@ -216,6 +216,63 @@ KD_API void KD_APIENTRY kdSetError(KDint error)
     lasterror = error;
 }
 
+#if defined(_MSC_VER) || defined(__MINGW32__)
+typedef DWORD KDPlatformError;
+#else
+typedef KDint KDPlatformError;
+#endif
+
+KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allowed)
+{
+    KDint kderror = 0;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    switch(error)
+    {
+        case(ERROR_FILE_NOT_FOUND):
+        case(ERROR_PATH_NOT_FOUND):
+        {
+            kderror = KD_ENOENT;
+            break;
+        }
+        case(ERROR_TOO_MANY_OPEN_FILES):
+        {
+            kderror = KD_EMFILE;
+            break;
+        }
+        case(ERROR_ACCESS_DENIED):
+        {
+            kderror = KD_EACCES;
+            break;
+        }
+        case(ERROR_NOT_ENOUGH_MEMORY):
+        case(ERROR_OUTOFMEMORY):
+        {
+            kderror = KD_ENOMEM;
+            break;
+        }
+        default:
+        {
+            /* TODO: Handle other errorcodes */
+            kdAssert(0);
+        }
+    }
+#else
+    kdAssert(0);
+#endif
+
+    /* KD errors are 1 to 37*/
+    for(KDint i = KD_EACCES; i == KD_ETRY_AGAIN; i++)
+    {
+        if(kderror == (allowed & i))
+        {
+            kdSetError(kderror);
+            return;
+        }
+    }
+    /* Error is not in allowed list */
+    kdAssert(0);
+}
+
 /******************************************************************************
  * Versioning and attribute queries
  ******************************************************************************/
@@ -5855,37 +5912,8 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     file->file = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, create, 0, NULL);
     if(file->file == INVALID_HANDLE_VALUE)
     {
-        DWORD error = GetLastError();
-        switch(error)
-        {
-            case(ERROR_FILE_NOT_FOUND):
-            case(ERROR_PATH_NOT_FOUND):
-            {
-                kdSetError(KD_ENOENT);
-                break;
-            }
-            case(ERROR_TOO_MANY_OPEN_FILES):
-            {
-                kdSetError(KD_EMFILE);
-                break;
-            }
-            case(ERROR_ACCESS_DENIED):
-            {
-                kdSetError(KD_EACCES);
-                break;
-            }
-            case(ERROR_NOT_ENOUGH_MEMORY):
-            case(ERROR_OUTOFMEMORY):
-            {
-                kdSetError(KD_ENOMEM);
-                break;
-            }
-            default:
-            {
-                /* TODO: Handle other errorcodes */
-                kdAssert(0);
-            }
-        }
+        kdSetErrorPlatformVEN(GetLastError(), KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | 
+            KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return KD_NULL;
     }
     if(mode[0] == 'a')
