@@ -5973,23 +5973,37 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     KDint byte = 0;
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_readBytes(file->file, &byte, 1);
+    if(0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    BOOL error = ReadFile(file->file, &byte, 1, (DWORD[]){0}, NULL);
+    if(error == TRUE)
 #else
     byte = fgetc(file->file);
+    if(byte == EOF)
 #endif
+    {
+        return KD_EOF;
+    }
     return byte;
 }
 
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-    KDint byte = 0;
 #ifdef KD_VFS_SUPPORTED
     PHYSFS_writeBytes(file->file, &c, 1);
-    byte = c;
+    if(0)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    BOOL error = WriteFile(file->file, &c, 1, (DWORD[]){0}, NULL);
+    if(error == TRUE)
 #else
-    byte = fputc(c, file->file);
+    KDint error = fputc(c, file->file);
+    if(error == EOF)
 #endif
-    return byte;
+    {
+        return KD_EOF;
+    }
+    return c;
 }
 
 /* kdFgets: Read a line of text from an open file. */
@@ -6148,7 +6162,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 #ifdef KD_VFS_SUPPORTED
     retval = PHYSFS_mkdir(pathname);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    retval = mkdir(pathname);
+    retval = CreateDirectory(pathname, NULL);
 #else
     retval = mkdir(pathname, S_IRWXU);
 #endif
@@ -6161,6 +6175,8 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
     KDint retval = 0;
 #ifdef KD_VFS_SUPPORTED
     retval = PHYSFS_delete(pathname);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    retval = RemoveDirectory(pathname);
 #else
     retval = rmdir(pathname);
 #endif
