@@ -5856,8 +5856,8 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     file->file = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, create, 0, NULL);
     if(file->file == INVALID_HANDLE_VALUE)
     {
-        kdSetErrorPlatformVEN(GetLastError(), KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | 
-            KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
+        kdSetErrorPlatformVEN(GetLastError(), KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR |
+                KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return KD_NULL;
     }
     if(mode[0] == 'a')
@@ -6713,6 +6713,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
  * Atomics
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #   define KD_ATOMIC_WIN32
 #elif defined(__INTEL_COMPILER)
@@ -6752,6 +6753,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 #else
 #   define KD_ATOMIC_MUTEX
 #endif
+/* clang-format on */
 
 #if defined(KD_ATOMIC_C11)
 struct KDAtomicIntVEN {
