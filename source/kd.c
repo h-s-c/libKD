@@ -412,22 +412,12 @@ struct KDThread {
     HANDLE nativethread;
 #endif
     KDQueueVEN *eventqueue;
-    const KDThreadAttr *attr;
+    KDEvent *lastevent;
     __KDThreadStartArgs *start_args;
+    const KDThreadAttr *attr;
+    KDDirent *lastdirent;
 };
 
-#if defined(_MSC_VER)
-#pragma pack(push, 8)
-struct THREADNAME_INFO {
-    KDuint32 type;       // must be 0x1000
-    const KDchar *name;  // pointer to name (in user addr space)
-    KDuint32 threadid;   // thread ID (-1=caller thread)
-    KDuint32 flags;      // reserved for future use, must be zero
-};
-#pragma pack(pop)
-#endif
-
-static KD_THREADLOCAL KDEvent *__kd_lastevent = KD_NULL;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
 static void *__kdThreadStart(void *args)
 {
@@ -441,6 +431,16 @@ static void *__kdThreadStart(void *args)
 #pragma warning(disable : 6312)
 #pragma warning(disable : 6322)
     /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
+#if defined(_MSC_VER)
+#pragma pack(push, 8)
+    struct THREADNAME_INFO {
+        KDuint32 type;       // must be 0x1000
+        const KDchar *name;  // pointer to name (in user addr space)
+        KDuint32 threadid;   // thread ID (-1=caller thread)
+        KDuint32 flags;      // reserved for future use, must be zero
+    };
+#pragma pack(pop)
+#endif
     struct THREADNAME_INFO info = {.type = 0x1000, .name = threadname, .threadid = GetCurrentThreadId(), .flags = 0};
     if(IsDebuggerPresent())
     {
@@ -470,10 +470,9 @@ static void *__kdThreadStart(void *args)
 
     void *result = start_args->start_routine(start_args->arg);
 
-    if(__kd_lastevent != KD_NULL)
+    if(__kd_thread->lastevent != KD_NULL)
     {
-        kdFreeEvent(__kd_lastevent);
-        __kd_lastevent = KD_NULL;
+        kdFreeEvent(__kd_thread->lastevent);
     }
     return result;
 }
@@ -500,16 +499,29 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-    thread->attr = attr;
 
-    __KDThreadStartArgs *start_args = (__KDThreadStartArgs *)kdMalloc(sizeof(__KDThreadStartArgs));
-    if(start_args == KD_NULL)
+    thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
+    if(thread->lastdirent == KD_NULL)
     {
         kdQueueFreeVEN(thread->eventqueue);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
+
+    __KDThreadStartArgs *start_args = (__KDThreadStartArgs *)kdMalloc(sizeof(__KDThreadStartArgs));
+    if(start_args == KD_NULL)
+    {
+        kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread->lastdirent);
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
+
+    thread->attr = attr;
+    thread->lastevent = KD_NULL;
+
     start_args->start_routine = start_routine;
     start_args->arg = arg;
     start_args->thread = thread;
@@ -529,6 +541,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if(error != 0)
     {
         kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread->lastdirent);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
@@ -538,6 +551,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     {
         kdThreadDetach(thread);
         kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread->lastdirent);
         kdFree(thread);
         return KD_NULL;
     }
@@ -595,6 +609,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         return -1;
     }
     kdQueueFreeVEN(thread->eventqueue);
+    kdFree(thread->lastdirent);
     kdFree(thread->start_args);
     kdFree(thread);
     return 0;
@@ -1003,26 +1018,29 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 /* kdWaitEvent: Get next event from thread's event queue. */
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
-    if(__kd_lastevent != KD_NULL)
+    KDQueueVEN *eventqueue = kdThreadSelf()->eventqueue;
+    KDEvent *lastevent = kdThreadSelf()->lastevent;
+    if(lastevent != KD_NULL)
     {
-        kdFreeEvent(__kd_lastevent);
+        kdFreeEvent(lastevent);
     }
     if(timeout != -1)
     {
         kdThreadSleepVEN(timeout);
     }
     kdPumpEvents();
-    if(kdQueueSizeVEN(kdThreadSelf()->eventqueue) > 0)
+    if(kdQueueSizeVEN(eventqueue) > 0)
     {
-        __kd_lastevent = (KDEvent *)kdQueuePopHeadVEN(kdThreadSelf()->eventqueue);
+        lastevent = (KDEvent *)kdQueuePopHeadVEN(eventqueue);
     }
     else
     {
-        __kd_lastevent = KD_NULL;
+        lastevent = KD_NULL;
         kdSetError(KD_EAGAIN);
     }
-    return __kd_lastevent;
+    return lastevent;
 }
+
 /* kdSetEventUserptr: Set the userptr for global events. */
 static void *__kd_userptr = KD_NULL;
 static KDThreadMutex *__kd_userptrmtx = KD_NULL;
@@ -6229,12 +6247,12 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 }
 
 /* kdReadDir: Return the next file in a directory. */
-static KD_THREADLOCAL KDDirent *__kd_lastdirent = KD_NULL;
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
+    KDDirent *lastdirent = kdThreadSelf()->lastdirent;
     struct dirent *posixdirent = readdir(dir->dir);
-    __kd_lastdirent->d_name = posixdirent->d_name;
-    return __kd_lastdirent;
+    lastdirent->d_name = posixdirent->d_name;
+    return lastdirent;
 }
 
 /* kdCloseDir: Close a directory. */
