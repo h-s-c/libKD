@@ -33,10 +33,6 @@
 #cmakedefine KD_THREAD_C11
 #cmakedefine KD_THREAD_POSIX
 #cmakedefine KD_THREAD_WIN32
-#cmakedefine KD_ATOMIC_C11
-#cmakedefine KD_ATOMIC_WIN32
-#cmakedefine KD_ATOMIC_BUILTIN
-#cmakedefine KD_ATOMIC_LEGACY
 #cmakedefine KD_WINDOW_X11
 #cmakedefine KD_WINDOW_WIN32
 #cmakedefine KD_WINDOW_ANDROID
