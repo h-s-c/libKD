@@ -1654,6 +1654,8 @@ KD_API int main(int argc, char **argv)
 #if !defined(__ANDROID__)
     __kd_thread = (KDThread *)kdMalloc(sizeof(KDThread));
     __kd_thread->eventqueue = kdQueueCreateVEN(100);
+    __kd_thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
+    __kd_thread->lastevent = KD_NULL;
 #endif
     __kdMathInit();
 
