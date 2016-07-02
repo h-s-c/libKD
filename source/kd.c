@@ -2834,7 +2834,7 @@ KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
     KDuint32 hx, hy;
     GET_HIGH_WORD(hx, x);
     GET_HIGH_WORD(hy, y);
-    SET_HIGH_WORD(x, (hx & 0x7fffffff) | (hy & 0x80000000));
+    SET_HIGH_WORD(x, (hx & KDINT_MAX) | (hy & 0x80000000));
     return x;
 }
 
@@ -2843,7 +2843,7 @@ KDfloat32 __kdCopysignf(KDfloat32 x, KDfloat32 y)
     KDuint32 ix, iy;
     GET_FLOAT_WORD(ix, x);
     GET_FLOAT_WORD(iy, y);
-    SET_FLOAT_WORD(x, (ix & 0x7fffffff) | (iy & 0x80000000));
+    SET_FLOAT_WORD(x, (ix & KDINT_MAX) | (iy & 0x80000000));
     return x;
 }
 
@@ -2854,7 +2854,7 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
     k = (hx & 0x7ff00000) >> 20; /* extract exponent */
     if(k == 0)
     { /* 0 or subnormal x */
-        if((lx | (hx & 0x7fffffff)) == 0)
+        if((lx | (hx & KDINT_MAX)) == 0)
         {
             return x;
         } /* +-0 */
@@ -2900,16 +2900,16 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
 {
     KDint32 k, ix;
     GET_FLOAT_WORD(ix, x);
-    k = (ix & 0x7f800000) >> 23; /* extract exponent */
+    k = (ix & KD_INFINITY) >> 23; /* extract exponent */
     if(k == 0)
     { /* 0 or subnormal x */
-        if((ix & 0x7fffffff) == 0)
+        if((ix & KDINT_MAX) == 0)
         {
             return x;
         } /* +-0 */
         x *= two25;
         GET_FLOAT_WORD(ix, x);
-        k = ((ix & 0x7f800000) >> 23) - 25;
+        k = ((ix & KD_INFINITY) >> 23) - 25;
         if(n < -50000)
         {
             return tiny * x; /*underflow*/
@@ -3242,7 +3242,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     KDfloat32 z;
     KDint32 e0, n, ix, hx;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     /* 33+53 bit pi is good enough for medium size */
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
@@ -3258,7 +3258,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     /*
      * all other (large) arguments
      */
-    if(ix >= 0x7f800000)
+    if(ix >= KD_INFINITY)
     { /* x is inf or NaN */
         *y = x - x;
         return 0;
@@ -3283,7 +3283,7 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
     KDfloat32 z, p, q, r, w, s, c, df;
     KDint32 hx, ix;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     if(ix >= 0x3f800000)
     { /* |x| >= 1 */
         if(ix == 0x3f800000)
@@ -3344,7 +3344,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
     KDfloat32 t, w, p, q, s;
     KDint32 hx, ix;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     if(ix >= 0x3f800000)
     { /* |x| >= 1 */
         if(ix == 0x3f800000)
@@ -3399,10 +3399,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtanf(KDfloat32 x)
     KDfloat32 w, s1, s2, z;
     KDint32 ix, hx, id;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     if(ix >= 0x4c800000)
     { /* if |x| >= 2**26 */
-        if(ix > 0x7f800000)
+        if(ix > KD_INFINITY)
         {
             return x + x;
         } /* NaN */
@@ -3479,10 +3479,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
     KDfloat32 z;
     KDint32 k, m, hx, hy, ix, iy;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     GET_FLOAT_WORD(hy, y);
-    iy = hy & 0x7fffffff;
-    if((ix > 0x7f800000) || (iy > 0x7f800000))
+    iy = hy & KDINT_MAX;
+    if((ix > KD_INFINITY) || (iy > KD_INFINITY))
     { /* x or y is NaN */
         return x + y;
     }
@@ -3519,9 +3519,9 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
     }
 
     /* when x is INF */
-    if(ix == 0x7f800000)
+    if(ix == KD_INFINITY)
     {
-        if(iy == 0x7f800000)
+        if(iy == KD_INFINITY)
         {
             switch(m)
             {
@@ -3567,7 +3567,7 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
         }
     }
     /* when y is INF */
-    if(iy == 0x7f800000)
+    if(iy == KD_INFINITY)
     {
         return (hy < 0) ? -KD_PI_2_F - tiny : KD_PI_2_F + tiny;
     }
@@ -3614,7 +3614,7 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
     KDfloat64KHR y;
     KDint32 n, hx, ix;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     if(ix <= 0x3f490fda)
     { /* |x| ~<= pi/4 */
         if(ix < 0x39800000)
@@ -3663,7 +3663,7 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
         }
     }
     /* cos(Inf or NaN) is NaN */
-    else if(ix >= 0x7f800000)
+    else if(ix >= KD_INFINITY)
     {
         return x - x;
         /* general argument reduction needed */
@@ -3699,7 +3699,7 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
     KDfloat64KHR y;
     KDint32 n, hx, ix;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     if(ix <= 0x3f490fda)
     { /* |x| ~<= pi/4 */
         if(ix < 0x39800000)
@@ -3748,7 +3748,7 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
         }
     }
     /* sin(Inf or NaN) is NaN */
-    else if(ix >= 0x7f800000)
+    else if(ix >= KD_INFINITY)
     {
         return x - x;
         /* general argument reduction needed */
@@ -3784,7 +3784,7 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
     KDfloat64KHR y;
     KDint32 n, hx, ix;
     GET_FLOAT_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT_MAX;
     if(ix <= 0x3f490fda)
     { /* |x| ~<= pi/4 */
         if(ix < 0x39800000)
@@ -3819,7 +3819,7 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
         }
     }
     /* tan(Inf or NaN) is NaN */
-    else if(ix >= 0x7f800000)
+    else if(ix >= KD_INFINITY)
     {
         return x - x;
         /* general argument reduction needed */
@@ -3840,15 +3840,15 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
     KDuint32 hx;
     GET_FLOAT_WORD(hx, x);
     xsb = (hx >> 31) & 1; /* sign bit of x */
-    hx &= 0x7fffffff;     /* high word of |x| */
+    hx &= KDINT_MAX;     /* high word of |x| */
     /* filter out non-finite argument */
     if(hx >= 0x42b17218)
     { /* if |x|>=88.721... */
-        if(hx > 0x7f800000)
+        if(hx > KD_INFINITY)
         {
             return x + x;
         } /* NaN */
-        if(hx == 0x7f800000)
+        if(hx == KD_INFINITY)
         {
             return (xsb == 0) ? x : 0.0f; /* exp(+-inf)={inf,0} */
         }
@@ -3933,7 +3933,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     k = 0;
     if(ix < 0x00800000)
     { /* x < 2**-126  */
-        if((ix & 0x7fffffffF) == 0)
+        if((ix & KD_INFINITY) == 0)
         {
             return -two25 / vzero;
         } /* log(+-0)=-inf */
@@ -3945,7 +3945,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
         x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix, x);
     }
-    if(ix >= 0x7f800000)
+    if(ix >= KD_INFINITY)
     {
         return x + x;
     }
@@ -4020,7 +4020,7 @@ KD_API KDfloat32 KD_APIENTRY kdFabsf(KDfloat32 x)
 {
     KDuint32 ix;
     GET_FLOAT_WORD(ix, x);
-    SET_FLOAT_WORD(x, ix & 0x7fffffff);
+    SET_FLOAT_WORD(x, ix & KDINT_MAX);
     return x;
 }
 
@@ -4033,8 +4033,8 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     KDint32 hx, hy, ix, iy, is;
     GET_FLOAT_WORD(hx, x);
     GET_FLOAT_WORD(hy, y);
-    ix = hx & 0x7fffffff;
-    iy = hy & 0x7fffffff;
+    ix = hx & KDINT_MAX;
+    iy = hy & KDINT_MAX;
     /* y==zero: x**0 = 1 */
     if(iy == 0)
     {
@@ -4046,7 +4046,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         return 1.0f;
     }
     /* y!=zero: result is NaN if either arg is NaN */
-    if(ix > 0x7f800000 || iy > 0x7f800000)
+    if(ix > KD_INFINITY || iy > KD_INFINITY)
     {
         return (x + 0.0f) + (y + 0.0f);
     }
@@ -4073,7 +4073,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         }
     }
     /* special value of y */
-    if(iy == 0x7f800000)
+    if(iy == KD_INFINITY)
     { /* y is +-inf */
         if(ix == 0x3f800000)
         {
@@ -4112,7 +4112,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     }
     ax = kdFabsf(x);
     /* special value of x */
-    if(ix == 0x7f800000 || ix == 0 || ix == 0x3f800000)
+    if(ix == KD_INFINITY || ix == 0 || ix == 0x3f800000)
     {
         z = ax; /*x is +-0,+-inf,+-1*/
         if(hy < 0)
@@ -4252,11 +4252,11 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
             return sn * huge * huge; /* overflow */
         }
     }
-    else if((j & 0x7fffffff) > 0x43160000) /* z <= -150 */
+    else if((j & KDINT_MAX) > 0x43160000) /* z <= -150 */
     {
         return sn * tiny * tiny; /* underflow */
     }
-    else if((j & 0xffffffff) == 0xc3160000)
+    else if((j & KDUINT_MAX) == 0xc3160000)
     { /* z == -150 */
         if(p_l <= z - p_h)
         {
@@ -4266,13 +4266,13 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     /*
      * compute 2**(p_h+p_l)
      */
-    i = j & 0x7fffffff;
+    i = j & KDINT_MAX;
     k = (i >> 23) - 0x7f;
     n = 0;
     if(i > 0x3f000000)
     { /* if |z| > 0.5, set n = [z+0.5] */
         n = j + (0x00800000 >> (k + 1));
-        k = ((n & 0x7fffffff) >> 23) - 0x7f; /* new k for n */
+        k = ((n & KDINT_MAX) >> 23) - 0x7f; /* new k for n */
         SET_FLOAT_WORD(t, n & ~(0x007fffff >> k));
         n = ((n & 0x007fffff) | 0x00800000) >> (23 - k);
         if(j < 0)
@@ -4314,7 +4314,7 @@ static KDfloat32 __kdSqrtf_Generic(KDfloat32 x)
     KDuint32 r;
     GET_FLOAT_WORD(ix, x);
     /* take care of Inf and NaN */
-    if((ix & 0x7f800000) == 0x7f800000)
+    if((ix & KD_INFINITY) == KD_INFINITY)
     {
         return x * x + x; /* sqrt(NaN)=NaN, sqrt(+inf)=+inf, sqrt(-inf)=sNaN */
     }
@@ -4526,7 +4526,7 @@ static KDfloat32 __kdFloorf_Generic(KDfloat32 x)
                 {
                     i0 = 0;
                 }
-                else if((i0 & 0x7fffffff) != 0)
+                else if((i0 & KDINT_MAX) != 0)
                 {
                     i0 = 0xbf800000;
                 }
@@ -4604,7 +4604,7 @@ static KDfloat32 __kdRoundf_Generic(KDfloat32 x)
     KDfloat32 t;
     KDuint32 hx;
     GET_FLOAT_WORD(hx, x);
-    if((hx & 0x7fffffff) == 0x7f800000)
+    if((hx & KDINT_MAX) == KD_INFINITY)
     {
         return (x + x);
     }
@@ -4711,10 +4711,10 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
     GET_FLOAT_WORD(hy, y);
     sx = hx & 0x80000000; /* sign of x */
     hx ^= sx;             /* |x| */
-    hy &= 0x7fffffff;     /* |y| */
+    hy &= KDINT_MAX;     /* |y| */
     /* purge off exception values */
     /* y=0,or x not finite */
-    if(hy == 0 || (hx >= 0x7f800000) || (hy > 0x7f800000))
+    if(hy == 0 || (hx >= KD_INFINITY) || (hy > KD_INFINITY))
     { /* or y is NaN */
         return (x * y) / (x * y);
     }
@@ -4927,7 +4927,7 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
         if(z >= 1.0f)
         {
             z = 1.0f + tiny;
-            if(q1 == (KDuint32)0xffffffff)
+            if(q1 == (KDuint32)KDUINT_MAX)
             {
                 q1 = 0;
                 q += 1;
@@ -5007,7 +5007,7 @@ static KDfloat64KHR __kdFloorKHR_Generic(KDfloat64KHR x)
                 {
                     i0 = i1 = 0;
                 }
-                else if(((i0 & 0x7fffffff) | i1) != 0)
+                else if(((i0 & KDINT_MAX) | i1) != 0)
                 {
                     i0 = 0xbff00000;
                     i1 = 0;
@@ -5045,7 +5045,7 @@ static KDfloat64KHR __kdFloorKHR_Generic(KDfloat64KHR x)
     }
     else
     {
-        i = ((KDuint32)(0xffffffff)) >> (j0 - 20);
+        i = ((KDuint32)(KDUINT_MAX)) >> (j0 - 20);
         if((i1 & i) == 0)
         {
             return x;
