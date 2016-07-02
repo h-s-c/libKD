@@ -1692,6 +1692,8 @@ KD_API int main(int argc, char **argv)
     __kdMathCleanup();
 #if !defined(__ANDROID__)
     kdQueueFreeVEN(__kd_thread->eventqueue);
+    kdFree(__kd_thread->lastevent);
+    kdFree(__kd_thread->lastdirent);
     kdFree(__kd_thread);
 #endif
     kdThreadMutexFree(__kd_userptrmtx);
