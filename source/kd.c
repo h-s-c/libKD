@@ -397,12 +397,6 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 
 /* kdThreadCreate: Create a new thread. */
 static KD_THREADLOCAL KDThread *__kd_thread = KD_NULL;
-typedef struct {
-    void *(*start_routine)(void *);
-    void *arg;
-    KDThread *thread;
-} __KDThreadStartArgs;
-
 struct KDThread {
 #if defined(KD_THREAD_C11)
     thrd_t nativethread;
@@ -411,20 +405,21 @@ struct KDThread {
 #elif defined(KD_THREAD_WIN32)
     HANDLE nativethread;
 #endif
-    KDQueueVEN *eventqueue;
-    KDEvent *lastevent;
-    __KDThreadStartArgs *start_args;
+    void *(*start_routine)(void *);
+    void *arg;
     const KDThreadAttr *attr;
+    KDQueueVEN *eventqueue;
+    KDListVEN *callbacklist;
     KDDirent *lastdirent;
+    KDEvent *lastevent;
 };
 
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
-static void *__kdThreadStart(void *args)
+static void *__kdThreadStart(void *init)
 {
-    __KDThreadStartArgs *start_args = (__KDThreadStartArgs *)args;
-
+    KDThread *thread = (KDThread *)init;
     /* Set the thread name */
-    KD_UNUSED const char *threadname = start_args->thread->attr ? start_args->thread->attr->debugname : "KDThread";
+    KD_UNUSED const char *threadname = thread->attr ? thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 4204)
@@ -462,36 +457,20 @@ static void *__kdThreadStart(void *args)
     pthread_setname_np(threadname);
 #endif
 #endif
-
-    /* We have to clean up start_args somehow */
-    start_args->thread->start_args = start_args;
-
-    __kd_thread = start_args->thread;
-
-    void *result = start_args->start_routine(start_args->arg);
-
-    if(__kd_thread->lastevent != KD_NULL)
-    {
-        kdFreeEvent(__kd_thread->lastevent);
-    }
+    __kd_thread = thread;
+    void *result = thread->start_routine(thread->arg);
     return result;
 }
 #endif
 
-KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
+static KDThread *__kdThreadInit(void)
 {
-#if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
-    kdSetError(KD_ENOSYS);
-    return KD_NULL;
-#endif
-
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
     if(thread == KD_NULL)
     {
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-
     thread->eventqueue = kdQueueCreateVEN(100);
     if(thread->eventqueue == KD_NULL)
     {
@@ -499,40 +478,62 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-
+    thread->callbacklist = kdListCreateVEN();
+    if(thread->callbacklist == KD_NULL)
+    {
+        kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
     thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
     if(thread->lastdirent == KD_NULL)
     {
+        kdListFreeVEN(thread->callbacklist);
         kdQueueFreeVEN(thread->eventqueue);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-
-    __KDThreadStartArgs *start_args = (__KDThreadStartArgs *)kdMalloc(sizeof(__KDThreadStartArgs));
-    if(start_args == KD_NULL)
-    {
-        kdQueueFreeVEN(thread->eventqueue);
-        kdFree(thread->lastdirent);
-        kdFree(thread);
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
-
-    thread->attr = attr;
     thread->lastevent = KD_NULL;
+    return thread;
+}
 
-    start_args->start_routine = start_routine;
-    start_args->arg = arg;
-    start_args->thread = thread;
+static void __kdThreadFree(KDThread *thread)
+{
+    if(thread->lastevent != KD_NULL)
+    {
+        kdFreeEvent(thread->lastevent);
+    }
+    kdFree(thread->lastdirent);
+    kdListFreeVEN(thread->callbacklist);
+    kdQueueFreeVEN(thread->eventqueue);
+    kdFree(thread);
+}
+
+KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
+{
+#if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
+    kdSetError(KD_ENOSYS);
+    return KD_NULL;
+#endif
+    KDThread * thread = __kdThreadInit();
+    if(thread == KD_NULL)
+    {
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
+    thread->start_routine = start_routine;
+    thread->arg = arg;
+    thread->attr = attr;
 
     KDint error = 0;
 #if defined(KD_THREAD_C11)
-    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadStart, start_args);
+    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadStart, thread);
 #elif defined(KD_THREAD_POSIX)
-    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, start_args);
+    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, thread);
 #elif defined(KD_THREAD_WIN32)
-    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)start_args, 0, KD_NULL);
+    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)thread 0, KD_NULL);
     error = thread->nativethread ? 0 : 1;
 #else
     kdAssert(0);
@@ -540,9 +541,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 
     if(error != 0)
     {
-        kdQueueFreeVEN(thread->eventqueue);
-        kdFree(thread->lastdirent);
-        kdFree(thread);
+        __kdThreadFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
@@ -550,9 +549,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if(attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(thread);
-        kdQueueFreeVEN(thread->eventqueue);
-        kdFree(thread->lastdirent);
-        kdFree(thread);
+        __kdThreadFree(thread);
         return KD_NULL;
     }
 
@@ -608,10 +605,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         kdSetError(KD_EINVAL);
         return -1;
     }
-    kdQueueFreeVEN(thread->eventqueue);
-    kdFree(thread->lastdirent);
-    kdFree(thread->start_args);
-    kdFree(thread);
+    __kdThreadFree(thread);
     return 0;
 }
 
@@ -1652,10 +1646,7 @@ KD_API int main(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
 #if !defined(__ANDROID__)
-    __kd_thread = (KDThread *)kdMalloc(sizeof(KDThread));
-    __kd_thread->eventqueue = kdQueueCreateVEN(100);
-    __kd_thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
-    __kd_thread->lastevent = KD_NULL;
+    __kd_thread =  __kdThreadInit();
 #endif
     __kdMathInit();
 
@@ -1691,10 +1682,7 @@ KD_API int main(int argc, char **argv)
 
     __kdMathCleanup();
 #if !defined(__ANDROID__)
-    kdQueueFreeVEN(__kd_thread->eventqueue);
-    kdFree(__kd_thread->lastevent);
-    kdFree(__kd_thread->lastdirent);
-    kdFree(__kd_thread);
+    __kdThreadFree(__kd_thread);
 #endif
     kdThreadMutexFree(__kd_userptrmtx);
     return result;
@@ -7043,6 +7031,26 @@ KD_API KDuintptr KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN *disp)
         kdAssert(0);
     }
     return disp->optimalfunc;
+}
+
+/******************************************************************************
+ * List
+ ******************************************************************************/
+
+struct KDListVEN {
+    KDint dummy;
+};
+
+KD_API KDListVEN* KD_APIENTRY kdListCreateVEN(void)
+{
+    KDListVEN *list = (KDListVEN *)kdMalloc(sizeof(KDListVEN));
+    return list;
+}
+
+KD_API KDint KD_APIENTRY kdListFreeVEN(KDListVEN* list)
+{
+    kdFree(list);
+    return 0;
 }
 
 /******************************************************************************
