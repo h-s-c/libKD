@@ -1653,15 +1653,12 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
-static void __kdMathInit(void);
-static void __kdMathCleanup(void);
 KD_API int main(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
 #if !defined(__ANDROID__)
     __kd_thread = __kdThreadInit();
 #endif
-    __kdMathInit();
 
     KDint result = 0;
 #if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
@@ -1693,7 +1690,6 @@ KD_API int main(int argc, char **argv)
     dlclose(app);
 #endif
 
-    __kdMathCleanup();
 #if !defined(__ANDROID__)
     __kdThreadFree(__kd_thread);
 #endif
@@ -2258,198 +2254,6 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 #pragma warning(disable : 4756)
 #endif
 
-enum __KD_SIMDTYPE {
-    __KD_GENERIC = 0,
-    /* x86 */
-    __KD_SSE = 1,
-    __KD_SSE2 = 2,
-    __KD_SSE3 = 3,
-    __KD_SSSE3 = 4,
-    __KD_SSE4_1 = 5,
-    __KD_SSE4_2 = 6,
-    __KD_AVX = 7,
-    /* ARM */
-    __KD_NEON = 99,
-};
-
-enum __KD_SIMDDETECT {
-    __KD_COMPILE,
-    __KD_RUNTIME,
-};
-
-struct __kd_simdinfo {
-    enum __KD_SIMDTYPE type;
-    enum __KD_SIMDDETECT detect;
-} __kd_simdinfo;
-
-KDboolean KD_APIENTRY __kdDispatchFuncSIMD(void *optimalinfo, void *candidateinfo)
-{
-    struct __kd_simdinfo *optimalsimdinfo = (struct __kd_simdinfo *)optimalinfo;
-    struct __kd_simdinfo *candidatesimdinfo = (struct __kd_simdinfo *)candidateinfo;
-
-    if(optimalinfo && (candidatesimdinfo->type < optimalsimdinfo->type))
-    {
-        return 0;
-    }
-
-    if(candidatesimdinfo->detect == __KD_COMPILE)
-    {
-        switch(candidatesimdinfo->type)
-        {
-#if defined(__aarch64_) || defined(__arm__) || defined(_M_ARM)
-#ifdef __ARM_NEON__
-            case __KD_NEON:
-            {
-                return 1;
-            }
-#endif
-#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
-#ifdef __AVX__
-            case __KD_AVX:
-            {
-                return 1;
-            }
-#endif
-#ifdef __SSE4_2__
-            case __KD_SSE4_2:
-            {
-                return 1;
-            }
-#endif
-#ifdef __SSE4_2__
-            case __KD_SSE4_1:
-            {
-                return 1;
-            }
-#endif
-#ifdef __SSSE3__
-            case __KD_SSSE3:
-            {
-                return 1;
-            }
-#endif
-#ifdef __SSE3__
-            case __KD_SSE3:
-            {
-                return 1;
-            }
-#endif
-#ifdef __SSE2__
-            case __KD_SSE2:
-            {
-                return 1;
-            }
-#endif
-#ifdef __SSE__
-            case __KD_SSE:
-            {
-                return 1;
-            }
-#endif
-#endif
-            case __KD_GENERIC:
-            {
-                return 1;
-            }
-            default:
-            {
-                break;
-            }
-        }
-    }
-    else if(candidatesimdinfo->detect == __KD_RUNTIME)
-    {
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
-        KDint abcd[4] = {0, 0, 0, 0};
-#if defined(_MSC_VER) || defined(__MINGW32__)
-        __cpuid(abcd, 0x00000001);
-#elif defined(__GNUC__)
-        __cpuid_count(0x00000001, 0, abcd[0], abcd[1], abcd[2], abcd[3]);
-#else
-        kdAssert(0);
-#endif
-#endif
-        switch(candidatesimdinfo->type)
-        {
-/* TODO: detect NEON runtime support */
-#if defined(__aarch64_) || defined(__arm__) || defined(_M_ARM)
-#ifdef __ARM_NEON__
-            case __KD_NEON:
-            {
-                return 1;
-            }
-#endif
-#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86)
-            case __KD_AVX:
-            {
-                if((abcd[2] & ((KDint)1 << 28)) != 0)
-                {
-                    return 1;
-                }
-                break;
-            }
-            case __KD_SSE4_2:
-            {
-                if((abcd[2] & ((KDint)1 << 20)) != 0)
-                {
-                    return 1;
-                }
-                break;
-            }
-            case __KD_SSE4_1:
-            {
-                if((abcd[2] & ((KDint)1 << 19)) != 0)
-                {
-                    return 1;
-                }
-                break;
-            }
-            case __KD_SSSE3:
-            {
-                if((abcd[2] & ((KDint)1 << 9)) != 0)
-                {
-                    return 1;
-                }
-                break;
-            }
-            case __KD_SSE3:
-            {
-                if((abcd[2] & ((KDint)1 << 0)) != 0)
-                {
-                    return 1;
-                }
-                break;
-            }
-            case __KD_SSE2:
-            {
-                if((abcd[3] & ((KDint)1 << 26)) != 0)
-                {
-                    return 1;
-                }
-                break;
-            }
-            case __KD_SSE:
-            {
-                if((abcd[3] & ((KDint)1 << 25)) != 0)
-                {
-                    return 1;
-                }
-                break;
-            }
-#endif
-            case __KD_GENERIC:
-            {
-                return 1;
-            }
-            default:
-            {
-                break;
-            }
-        }
-    }
-    return 0;
-}
-
 /* TODO: Cleanup */
 static volatile KDfloat32
     twom100 = 7.8886090522e-31f, /* 2**-100=0x0d800000 */
@@ -2967,48 +2771,17 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
     return x * twom25;
 }
 
-static inline KDint __kdIrint_Generic(KDfloat64KHR x)
+static KDint __kdIrint(KDfloat64KHR x)
 {
-    /* TODO: naive assumptions*/
+#ifdef __SSE2__
+    return _mm_cvtsd_si32(_mm_load_sd(&x));
+#else
     if(x >= 0)
     {
         return (KDint)(x + 0.5);
     }
     return (KDint)(x - 0.5);
-}
-
-static inline KDint __kdIrint_SSE2(KDfloat64KHR x)
-{
-    KDint result = 0;
-#ifdef __SSE2__
-    result = _mm_cvtsd_si32(_mm_load_sd(&x));
-#else
-    kdAssert(0);
 #endif
-    return result;
-}
-
-static KDDispatchVEN *kddispatchirint = KD_NULL;
-typedef KDint (*KDIRINT)(KDfloat64KHR);
-static KDIRINT kdirint = KD_NULL;
-static void __kdIrintInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sse2info = {.type = __KD_SSE2, .detect = __KD_COMPILE};
-    kddispatchirint = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchirint, &genericinfo, (KDuintptr)&__kdIrint_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchirint, &sse2info, (KDuintptr)&__kdIrint_SSE2);
-    kdirint = (KDIRINT)kdDispatchGetOptimalVEN(kddispatchirint);
-}
-
-static void __kdIrintCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchirint);
-}
-
-static KDint __kdIrint(KDfloat64KHR x)
-{
-    return kdirint(x);
 }
 
 static const KDint init_jk[] = {3, 4, 4, 6}; /* initial value for jk */
@@ -4328,8 +4101,13 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
 }
 
 /* kdSqrtf: Square root function. */
-static KDfloat32 __kdSqrtf_Generic(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
 {
+#ifdef __SSE2__
+    KDfloat32 result = 0.0f;
+    _mm_store_ss(&result, _mm_sqrt_ss(_mm_load_ss(&x)));
+    return result;
+#else
     KDfloat32 z;
     KDint32 sign = (KDint32)0x80000000;
     KDint32 ix, s, q, m, t, i;
@@ -4406,45 +4184,17 @@ static KDfloat32 __kdSqrtf_Generic(KDfloat32 x)
     ix += (m << 23);
     SET_FLOAT_WORD(z, ix);
     return z;
-}
-
-static inline KDfloat32 __kdSqrtf_SSE2(KDfloat32 x)
-{
-    KDfloat32 result = 0.0f;
-#ifdef __SSE2__
-    _mm_store_ss(&result, _mm_sqrt_ss(_mm_load_ss(&x)));
-#else
-    kdAssert(0);
 #endif
-    return result;
-}
-
-static KDDispatchVEN *kddispatchsqrtf = KD_NULL;
-typedef KDfloat32 (*KDSQRTF)(KDfloat32);
-static KDSQRTF kdsqrtf = KD_NULL;
-static void __kdSqrtfInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sse2info = {.type = __KD_SSE2, .detect = __KD_COMPILE};
-    kddispatchsqrtf = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchsqrtf, &genericinfo, (KDuintptr)&__kdSqrtf_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchsqrtf, &sse2info, (KDuintptr)&__kdSqrtf_SSE2);
-    kdsqrtf = (KDSQRTF)kdDispatchGetOptimalVEN(kddispatchsqrtf);
-}
-
-static void __kdSqrtfCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchsqrtf);
-}
-
-KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
-{
-    return kdsqrtf(x);
 }
 
 /* kdCeilf: Return ceiling value. */
-static KDfloat32 __kdCeilf_Generic(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
 {
+#ifdef __SSE4_1__
+    KDfloat32 result = 0.0f;
+    _mm_store_ss(&result, _mm_ceil_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
+    return result;
+#else
     KDint32 i0, j0;
     KDuint32 i;
     GET_FLOAT_WORD(i0, x);
@@ -4495,45 +4245,17 @@ static KDfloat32 __kdCeilf_Generic(KDfloat32 x)
     }
     SET_FLOAT_WORD(x, i0);
     return x;
-}
-
-static inline KDfloat32 __kdCeilf_SSE4_1(KDfloat32 x)
-{
-    KDfloat32 result = 0.0f;
-#ifdef __SSE4_1__
-    _mm_store_ss(&result, _mm_ceil_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
-#else
-    kdAssert(0);
 #endif
-    return result;
-}
-
-static KDDispatchVEN *kddispatchceilf = KD_NULL;
-typedef KDfloat32 (*KDCEILF)(KDfloat32);
-static KDCEILF kdceilf = KD_NULL;
-static void __kdCeilfInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sse41info = {.type = __KD_SSE4_1, .detect = __KD_COMPILE};
-    kddispatchceilf = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchceilf, &genericinfo, (KDuintptr)&__kdCeilf_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchceilf, &sse41info, (KDuintptr)&__kdCeilf_SSE4_1);
-    kdceilf = (KDCEILF)kdDispatchGetOptimalVEN(kddispatchceilf);
-}
-
-static void __kdCeilfCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchceilf);
-}
-
-KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
-{
-    return kdceilf(x);
 }
 
 /* kdFloorf: Return floor value. */
-static KDfloat32 __kdFloorf_Generic(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
 {
+#ifdef __SSE4_1__
+    KDfloat32 result = 0.0f;
+    _mm_store_ss(&result, _mm_floor_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
+    return result;
+#else
     KDint32 i0, j0;
     KDuint32 i;
     GET_FLOAT_WORD(i0, x);
@@ -4584,45 +4306,17 @@ static KDfloat32 __kdFloorf_Generic(KDfloat32 x)
     }
     SET_FLOAT_WORD(x, i0);
     return x;
-}
-
-static inline KDfloat32 __kdFloorf_SSE4_1(KDfloat32 x)
-{
-    KDfloat32 result = 0.0f;
-#ifdef __SSE4_1__
-    _mm_store_ss(&result, _mm_floor_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
-#else
-    kdAssert(0);
 #endif
-    return result;
-}
-
-static KDDispatchVEN *kddispatchfloorf = KD_NULL;
-typedef KDfloat32 (*KDFLOORF)(KDfloat32);
-static KDFLOORF kdfloorf = KD_NULL;
-static void __kdFloorfInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sse41info = {.type = __KD_SSE4_1, .detect = __KD_COMPILE};
-    kddispatchfloorf = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchfloorf, &genericinfo, (KDuintptr)&__kdFloorf_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchfloorf, &sse41info, (KDuintptr)&__kdFloorf_SSE4_1);
-    kdfloorf = (KDFLOORF)kdDispatchGetOptimalVEN(kddispatchfloorf);
-}
-
-static void __kdFloorfCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchfloorf);
-}
-
-KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
-{
-    return kdfloorf(x);
 }
 
 /* kdRoundf: Round value to nearest integer. */
-static KDfloat32 __kdRoundf_Generic(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY kdRoundf(KDfloat32 x)
 {
+#ifdef __SSE4_1__
+    KDfloat32 result = 0.0f;
+    _mm_store_ss(&result, _mm_round_ss(_mm_load_ss(&result), _mm_load_ss(&x), _MM_FROUND_TO_NEAREST_INT));
+    return result;
+#else
     KDfloat32 t;
     KDuint32 hx;
     GET_FLOAT_WORD(hx, x);
@@ -4648,6 +4342,7 @@ static KDfloat32 __kdRoundf_Generic(KDfloat32 x)
         }
         return (-t);
     }
+#endif
 }
 
 static inline KDfloat32 __kdRoundf_SSE4_1(KDfloat32 x)
@@ -4661,68 +4356,17 @@ static inline KDfloat32 __kdRoundf_SSE4_1(KDfloat32 x)
     return result;
 }
 
-static KDDispatchVEN *kddispatchroundf = KD_NULL;
-typedef KDfloat32 (*KDROUNDF)(KDfloat32);
-static KDROUNDF kdroundf = KD_NULL;
-static void __kdRoundfInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sse41info = {.type = __KD_SSE4_1, .detect = __KD_COMPILE};
-    kddispatchroundf = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchroundf, &genericinfo, (KDuintptr)&__kdRoundf_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchroundf, &sse41info, (KDuintptr)&__kdRoundf_SSE4_1);
-    kdroundf = (KDROUNDF)kdDispatchGetOptimalVEN(kddispatchroundf);
-}
-
-static void __kdRoundfCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchroundf);
-}
-
-KD_API KDfloat32 KD_APIENTRY kdRoundf(KDfloat32 x)
-{
-    return kdroundf(x);
-}
-
 /* kdInvsqrtf: Inverse square root function. */
-static inline KDfloat32 KD_APIENTRY __kdInvsqrtf_Generic(KDfloat32 x)
-{
-    return 1.0f / kdSqrtf(x);
-}
-
-static inline KDfloat32 KD_APIENTRY __kdInvsqrtf_SSE(KDfloat32 x)
-{
-    KDfloat32 result = 0.0f;
-#ifdef __SSE__
-    _mm_store_ss(&result, _mm_rsqrt_ss(_mm_load_ss(&x)));
-    result = (0.5f * (result + 1.0f / (x * result)));
-#else
-    kdAssert(0);
-#endif
-    return result;
-}
-
-static KDDispatchVEN *kddispatchinvsqrtf = KD_NULL;
-typedef KDfloat32 (*KDINVSQRTF)(KDfloat32);
-static KDINVSQRTF kdinvsqrtf = KD_NULL;
-static void __kdInvsqrtfInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sseinfo = {.type = __KD_SSE, .detect = __KD_COMPILE};
-    kddispatchinvsqrtf = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchinvsqrtf, &genericinfo, (KDuintptr)&__kdInvsqrtf_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchinvsqrtf, &sseinfo, (KDuintptr)&__kdInvsqrtf_SSE);
-    kdinvsqrtf = (KDINVSQRTF)kdDispatchGetOptimalVEN(kddispatchinvsqrtf);
-}
-
-static void __kdInvsqrtfCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchinvsqrtf);
-}
-
 KD_API KDfloat32 KD_APIENTRY kdInvsqrtf(KDfloat32 x)
 {
-    return kdinvsqrtf(x);
+#ifdef __SSE__
+    KDfloat32 result = 0.0f;
+    _mm_store_ss(&result, _mm_rsqrt_ss(_mm_load_ss(&x)));
+    result = (0.5f * (result + 1.0f / (x * result)));
+    return result;
+#else
+    return 1.0f / kdSqrtf(x);
+#endif
 }
 
 /* kdFmodf: Calculate floating point remainder. */
@@ -4839,8 +4483,13 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
     return x; /* exact output */
 }
 
-static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
+KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
 {
+#ifdef __SSE2__
+    KDfloat64KHR result = 0.0;
+    _mm_store_sd(&result, _mm_sqrt_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
+    return result;
+#else
     KDfloat64KHR z;
     KDint32 sign = (KDint)0x80000000;
     KDint32 ix0, s0, q, m, t, i;
@@ -4977,44 +4626,16 @@ static KDfloat64KHR __kdSqrtKHR_Generic(KDfloat64KHR x)
     ix0 += (m << 20);
     INSERT_WORDS(z, ix0, ix1);
     return z;
-}
-
-static inline KDfloat64KHR __kdSqrtKHR_SSE2(KDfloat64KHR x)
-{
-    KDfloat64KHR result = 0.0;
-#ifdef __SSE2__
-    _mm_store_sd(&result, _mm_sqrt_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
-#else
-    kdAssert(0);
 #endif
+}
+
+KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
+{
+#ifdef __SSE4_1__
+    KDfloat64KHR result = 0.0;
+    _mm_store_sd(&result, _mm_floor_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
     return result;
-}
-
-static KDDispatchVEN *kddispatchsqrtkhr = KD_NULL;
-typedef KDfloat64KHR (*KDSQRTKHR)(KDfloat64KHR);
-static KDSQRTKHR kdsqrtkhr = KD_NULL;
-static void __kdSqrtKHRInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sse2info = {.type = __KD_SSE2, .detect = __KD_COMPILE};
-    kddispatchsqrtkhr = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchsqrtkhr, &genericinfo, (KDuintptr)&__kdSqrtKHR_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchsqrtkhr, &sse2info, (KDuintptr)&__kdSqrtKHR_SSE2);
-    kdsqrtkhr = (KDSQRTKHR)kdDispatchGetOptimalVEN(kddispatchsqrtkhr);
-}
-
-static void __kdSqrtKHRCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchsqrtkhr);
-}
-
-KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
-{
-    return kdsqrtkhr(x);
-}
-
-static KDfloat64KHR __kdFloorKHR_Generic(KDfloat64KHR x)
-{
+#else
     KDint32 i0, i1, j0;
     KDuint32 i, j;
     EXTRACT_WORDS(i0, i1, x);
@@ -5095,64 +4716,7 @@ static KDfloat64KHR __kdFloorKHR_Generic(KDfloat64KHR x)
     }
     INSERT_WORDS(x, i0, i1);
     return x;
-}
-
-static inline KDfloat64KHR __kdFloorKHR_SSE4_1(KDfloat64KHR x)
-{
-    KDfloat64KHR result = 0.0;
-#ifdef __SSE4_1__
-    _mm_store_sd(&result, _mm_floor_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
-#else
-    kdAssert(0);
 #endif
-    return result;
-}
-
-static KDDispatchVEN *kddispatchfloorkhr = KD_NULL;
-typedef KDfloat64KHR (*KDFLOORKHR)(KDfloat64KHR);
-static KDFLOORKHR kdfloorkhr = KD_NULL;
-static void __kdFloorKHRInit(void)
-{
-    struct __kd_simdinfo genericinfo = {.type = __KD_GENERIC, .detect = __KD_COMPILE};
-    struct __kd_simdinfo sse41info = {.type = __KD_SSE2, .detect = __KD_COMPILE};
-    kddispatchfloorkhr = kdDispatchCreateVEN(&__kdDispatchFuncSIMD);
-    kdDispatchInstallCandidateVEN(kddispatchfloorkhr, &genericinfo, (KDuintptr)&__kdFloorKHR_Generic);
-    kdDispatchInstallCandidateVEN(kddispatchfloorkhr, &sse41info, (KDuintptr)&__kdFloorKHR_SSE4_1);
-    kdfloorkhr = (KDFLOORKHR)kdDispatchGetOptimalVEN(kddispatchfloorkhr);
-}
-
-static void __kdFloorKHRCleanup(void)
-{
-    kdDispatchFreeVEN(kddispatchfloorkhr);
-}
-
-KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
-{
-    return kdfloorkhr(x);
-}
-
-static void __kdMathInit(void)
-{
-    __kdIrintInit();
-    __kdSqrtfInit();
-    __kdCeilfInit();
-    __kdFloorfInit();
-    __kdRoundfInit();
-    __kdInvsqrtfInit();
-    __kdSqrtKHRInit();
-    __kdFloorKHRInit();
-}
-
-static void __kdMathCleanup(void)
-{
-    __kdIrintCleanup();
-    __kdSqrtfCleanup();
-    __kdCeilfCleanup();
-    __kdFloorfCleanup();
-    __kdRoundfCleanup();
-    __kdInvsqrtfCleanup();
-    __kdSqrtKHRCleanup();
-    __kdFloorKHRCleanup();
 }
 
 #if defined(_MSC_VER)
@@ -6998,51 +6562,6 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
     kdThreadMutexUnlock(object->mutex);
     return retval;
 #endif
-}
-
-/******************************************************************************
- * Dispatcher
- ******************************************************************************/
-
-struct KDDispatchVEN {
-    KDDispatchFuncVEN *filterfunc;
-    KDuintptr optimalfunc;
-    void *optimalinfo;
-};
-
-KD_API KDDispatchVEN *KD_APIENTRY kdDispatchCreateVEN(KDDispatchFuncVEN *filterfunc)
-{
-    KDDispatchVEN *disp = (KDDispatchVEN *)kdMalloc(sizeof(KDDispatchVEN));
-    disp->filterfunc = filterfunc;
-    disp->optimalfunc = (KDuintptr)KD_NULL;
-    disp->optimalinfo = KD_NULL;
-    return disp;
-}
-
-KD_API KDint KD_APIENTRY kdDispatchFreeVEN(KDDispatchVEN *disp)
-{
-    kdFree(disp);
-    return 0;
-}
-
-KD_API KDint KD_APIENTRY kdDispatchInstallCandidateVEN(KDDispatchVEN *disp, void *candidateinfo, KDuintptr candidatefunc)
-{
-    if((*disp->filterfunc)(disp->optimalinfo, candidateinfo))
-    {
-        disp->optimalfunc = candidatefunc;
-        disp->optimalinfo = candidateinfo;
-        return 0;
-    }
-    return -1;
-}
-
-KD_API KDuintptr KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN *disp)
-{
-    if(!disp->optimalfunc)
-    {
-        kdAssert(0);
-    }
-    return disp->optimalfunc;
 }
 
 /******************************************************************************

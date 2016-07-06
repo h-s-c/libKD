@@ -107,19 +107,6 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
 KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void* expected, void* desired);
 
 /******************************************************************************
- * Dispatcher
- ******************************************************************************/
-
-typedef struct KDDispatchVEN KDDispatchVEN;
-typedef KDboolean(KD_APIENTRY KDDispatchFuncVEN)(void* optimalinfo, void* candidateinfo);
-
-KD_API KDDispatchVEN* KD_APIENTRY kdDispatchCreateVEN(KDDispatchFuncVEN* filterfunc);
-KD_API KDint KD_APIENTRY kdDispatchFreeVEN(KDDispatchVEN* disp);
-
-KD_API KDint KD_APIENTRY kdDispatchInstallCandidateVEN(KDDispatchVEN* disp, void* candidateinfo, KDuintptr candidatefunc);
-KD_API KDuintptr KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN* disp);
-
-/******************************************************************************
  * Queue (threadsafe)
  ******************************************************************************/
 
