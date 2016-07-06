@@ -120,15 +120,6 @@ KD_API KDint KD_APIENTRY kdDispatchInstallCandidateVEN(KDDispatchVEN* disp, void
 KD_API KDuintptr KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN* disp);
 
 /******************************************************************************
- * List
- ******************************************************************************/
-
-typedef struct KDListVEN KDListVEN;
-
-KD_API KDListVEN* KD_APIENTRY kdListCreateVEN(void);
-KD_API KDint KD_APIENTRY kdListFreeVEN(KDListVEN* list);
-
-/******************************************************************************
  * Queue (threadsafe)
  ******************************************************************************/
 

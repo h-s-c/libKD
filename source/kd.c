@@ -192,17 +192,38 @@
 /******************************************************************************
  * Errors
  ******************************************************************************/
-static KD_THREADLOCAL KDint lasterror = 0;
+
+typedef struct __KDCallback __KDCallback;
+struct KDThread {
+#if defined(KD_THREAD_C11)
+    thrd_t nativethread;
+#elif defined(KD_THREAD_POSIX)
+    pthread_t nativethread;
+#elif defined(KD_THREAD_WIN32)
+    HANDLE nativethread;
+#endif
+    void *(*start_routine)(void *);
+    void *arg;
+    const KDThreadAttr *attr;
+    KDQueueVEN *eventqueue;
+    KDDirent *lastdirent;
+    KDEvent *lastevent;
+    KDint lasterror;
+    KDuint callbackindex;
+    __KDCallback **callbacks;
+    void *tlsptr;
+};
+
 /* kdGetError: Get last error indication. */
 KD_API KDint KD_APIENTRY kdGetError(void)
 {
-    return lasterror;
+    return kdThreadSelf()->lasterror;
 }
 
 /* kdSetError: Set last error indication. */
 KD_API void KD_APIENTRY kdSetError(KDint error)
 {
-    lasterror = error;
+    kdThreadSelf()->lasterror = error;
 }
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -397,23 +418,6 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 
 /* kdThreadCreate: Create a new thread. */
 static KD_THREADLOCAL KDThread *__kd_thread = KD_NULL;
-struct KDThread {
-#if defined(KD_THREAD_C11)
-    thrd_t nativethread;
-#elif defined(KD_THREAD_POSIX)
-    pthread_t nativethread;
-#elif defined(KD_THREAD_WIN32)
-    HANDLE nativethread;
-#endif
-    void *(*start_routine)(void *);
-    void *arg;
-    const KDThreadAttr *attr;
-    KDQueueVEN *eventqueue;
-    KDListVEN *callbacklist;
-    KDDirent *lastdirent;
-    KDEvent *lastevent;
-};
-
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
 static void *__kdThreadStart(void *init)
 {
@@ -425,7 +429,7 @@ static void *__kdThreadStart(void *init)
 #pragma warning(disable : 4204)
 #pragma warning(disable : 6312)
 #pragma warning(disable : 6322)
-    /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
+/* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
 #if defined(_MSC_VER)
 #pragma pack(push, 8)
     struct THREADNAME_INFO {
@@ -478,35 +482,41 @@ static KDThread *__kdThreadInit(void)
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-    thread->callbacklist = kdListCreateVEN();
-    if(thread->callbacklist == KD_NULL)
-    {
-        kdQueueFreeVEN(thread->eventqueue);
-        kdFree(thread);
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
     thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
     if(thread->lastdirent == KD_NULL)
     {
-        kdListFreeVEN(thread->callbacklist);
         kdQueueFreeVEN(thread->eventqueue);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
     thread->lastevent = KD_NULL;
+    thread->lasterror = 0;
+    thread->callbackindex = 0;
+    thread->callbacks = (__KDCallback **)kdMalloc(sizeof(__KDCallback *));
+    if(thread->callbacks == KD_NULL)
+    {
+        kdFree(thread->lastdirent);
+        kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
     return thread;
 }
 
 static void __kdThreadFree(KDThread *thread)
 {
+    for(KDsize i = 0; i < thread->callbackindex; i++)
+    {
+        kdFree(thread->callbacks[i]);
+    }
+    kdFree(thread->callbacks);
     if(thread->lastevent != KD_NULL)
     {
         kdFreeEvent(thread->lastevent);
     }
     kdFree(thread->lastdirent);
-    kdListFreeVEN(thread->callbacklist);
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
 }
@@ -517,7 +527,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     kdSetError(KD_ENOSYS);
     return KD_NULL;
 #endif
-    KDThread * thread = __kdThreadInit();
+    KDThread *thread = __kdThreadInit();
     if(thread == KD_NULL)
     {
         kdSetError(KD_EAGAIN);
@@ -1058,24 +1068,24 @@ KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
-typedef struct {
+struct __KDCallback {
     KDCallbackFunc *func;
     KDint eventtype;
     void *eventuserptr;
-} __KDCallback;
-static KD_THREADLOCAL KDuint __kd_callbacks_index = 0;
-static KD_THREADLOCAL __KDCallback __kd_callbacks[999] = {{0}};
+};
 static KDboolean __kdExecCallback(KDEvent *event)
 {
-    for(KDuint callback = 0; callback < __kd_callbacks_index; callback++)
+    KDuint callbackindex = kdThreadSelf()->callbackindex;
+    __KDCallback **callbacks = kdThreadSelf()->callbacks;
+    for(KDuint i = 0; i < callbackindex; i++)
     {
-        if(__kd_callbacks[callback].func != KD_NULL)
+        if(callbacks[i]->func != KD_NULL)
         {
-            KDboolean typematch = __kd_callbacks[callback].eventtype == event->type || __kd_callbacks[callback].eventtype == 0;
-            KDboolean userptrmatch = __kd_callbacks[callback].eventuserptr == event->userptr;
+            KDboolean typematch = callbacks[i]->eventtype == event->type || callbacks[i]->eventtype == 0;
+            KDboolean userptrmatch = callbacks[i]->eventuserptr == event->userptr;
             if(typematch && userptrmatch)
             {
-                __kd_callbacks[callback].func(event);
+                callbacks[i]->func(event);
                 kdFreeEvent(event);
                 return 1;
             }
@@ -1464,20 +1474,23 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 /* kdInstallCallback: Install or remove a callback function for event processing. */
 KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype, void *eventuserptr)
 {
-    for(KDuint callback = 0; callback < __kd_callbacks_index; callback++)
+    KDuint callbackindex = kdThreadSelf()->callbackindex;
+    __KDCallback **callbacks = kdThreadSelf()->callbacks;
+    for(KDuint i = 0; i < callbackindex; i++)
     {
-        KDboolean typematch = __kd_callbacks[callback].eventtype == eventtype || __kd_callbacks[callback].eventtype == 0;
-        KDboolean userptrmatch = __kd_callbacks[callback].eventuserptr == eventuserptr;
+        KDboolean typematch = callbacks[i]->eventtype == eventtype || callbacks[i]->eventtype == 0;
+        KDboolean userptrmatch = callbacks[i]->eventuserptr == eventuserptr;
         if(typematch && userptrmatch)
         {
-            __kd_callbacks[callback].func = func;
+            callbacks[i]->func = func;
             return 0;
         }
     }
-    __kd_callbacks[__kd_callbacks_index].func = func;
-    __kd_callbacks[__kd_callbacks_index].eventtype = eventtype;
-    __kd_callbacks[__kd_callbacks_index].eventuserptr = eventuserptr;
-    __kd_callbacks_index++;
+    callbacks[callbackindex] = (__KDCallback *)kdMalloc(sizeof(__KDCallback));
+    callbacks[callbackindex]->func = func;
+    callbacks[callbackindex]->eventtype = eventtype;
+    callbacks[callbackindex]->eventuserptr = eventuserptr;
+    kdThreadSelf()->callbackindex++;
     return 0;
 }
 
@@ -1646,7 +1659,7 @@ KD_API int main(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
 #if !defined(__ANDROID__)
-    __kd_thread =  __kdThreadInit();
+    __kd_thread = __kdThreadInit();
 #endif
     __kdMathInit();
 
@@ -2210,17 +2223,16 @@ KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
  * Thread-local storage.
  ******************************************************************************/
 
-static KD_THREADLOCAL void *tlsptr = KD_NULL;
 /* kdGetTLS: Get the thread-local storage pointer. */
 KD_API void *KD_APIENTRY kdGetTLS(void)
 {
-    return tlsptr;
+    return kdThreadSelf()->tlsptr;
 }
 
 /* kdSetTLS: Set the thread-local storage pointer. */
 KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 {
-    tlsptr = ptr;
+    kdThreadSelf()->tlsptr = ptr;
 }
 
 /******************************************************************************
@@ -3850,7 +3862,7 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
     KDuint32 hx;
     GET_FLOAT_WORD(hx, x);
     xsb = (hx >> 31) & 1; /* sign bit of x */
-    hx &= KDINT_MAX;     /* high word of |x| */
+    hx &= KDINT_MAX;      /* high word of |x| */
     /* filter out non-finite argument */
     if(hx >= 0x42b17218)
     { /* if |x|>=88.721... */
@@ -4721,7 +4733,7 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
     GET_FLOAT_WORD(hy, y);
     sx = hx & 0x80000000; /* sign of x */
     hx ^= sx;             /* |x| */
-    hy &= KDINT_MAX;     /* |y| */
+    hy &= KDINT_MAX;      /* |y| */
     /* purge off exception values */
     /* y=0,or x not finite */
     if(hy == 0 || (hx >= KD_INFINITY) || (hy > KD_INFINITY))
@@ -7034,26 +7046,6 @@ KD_API KDuintptr KD_APIENTRY kdDispatchGetOptimalVEN(KDDispatchVEN *disp)
 }
 
 /******************************************************************************
- * List
- ******************************************************************************/
-
-struct KDListVEN {
-    KDint dummy;
-};
-
-KD_API KDListVEN* KD_APIENTRY kdListCreateVEN(void)
-{
-    KDListVEN *list = (KDListVEN *)kdMalloc(sizeof(KDListVEN));
-    return list;
-}
-
-KD_API KDint KD_APIENTRY kdListFreeVEN(KDListVEN* list)
-{
-    kdFree(list);
-    return 0;
-}
-
-/******************************************************************************
  * Queue (threadsafe)
  ******************************************************************************/
 
@@ -7125,7 +7117,8 @@ KD_API void KD_APIENTRY kdQueuePushTailVEN(KDQueueVEN *queue, void *value)
     node->next = KD_NULL;
 
     kdThreadMutexLock(queue->mutex);
-    if((node->prev = queue->tail) != KD_NULL)
+    node->prev = queue->tail;
+    if(node->prev != KD_NULL)
     {
         queue->tail->next = node;
     }
@@ -7147,7 +7140,8 @@ KD_API void *KD_APIENTRY kdQueuePopHeadVEN(KDQueueVEN *queue)
     if(queue->head)
     {
         node = queue->head;
-        if((queue->head = node->next) != KD_NULL)
+        queue->head = node->next;
+        if(queue->head != KD_NULL)
         {
             queue->head->prev = KD_NULL;
         }
@@ -7177,7 +7171,8 @@ KD_API void *KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
     if(queue->head)
     {
         node = queue->tail;
-        if((queue->tail = node->prev) != KD_NULL)
+        queue->tail = node->prev;
+        if(queue->tail != KD_NULL)
         {
             queue->tail->next = KD_NULL;
         }
@@ -7197,16 +7192,3 @@ KD_API void *KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
 
     return value;
 }
-
-/******************************************************************************
- * Thread storage
- ******************************************************************************/
-
-/* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
-KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void *id);
-
-/* kdSetThreadStorageKHR: Stores thread-local data. */
-KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR key, void *data);
-
-/* kdGetThreadStorageKHR: Retrieves previously stored thread-local data. */
-KD_API void *KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKHR key);
