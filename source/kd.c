@@ -4399,17 +4399,6 @@ KD_API KDfloat32 KD_APIENTRY kdRoundf(KDfloat32 x)
 #endif
 }
 
-static inline KDfloat32 __kdRoundf_SSE4_1(KDfloat32 x)
-{
-    KDfloat32 result = 0.0f;
-#ifdef __SSE4_1__
-    _mm_store_ss(&result, _mm_round_ss(_mm_load_ss(&result), _mm_load_ss(&x), _MM_FROUND_TO_NEAREST_INT));
-#else
-    kdAssert(0);
-#endif
-    return result;
-}
-
 /* kdInvsqrtf: Inverse square root function. */
 KD_API KDfloat32 KD_APIENTRY kdInvsqrtf(KDfloat32 x)
 {
