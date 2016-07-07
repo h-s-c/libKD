@@ -101,15 +101,6 @@
 #if  defined(__unix__) || defined(__APPLE__)
     #include <unistd.h>
 
-    #if !defined(__EMSCRIPTEN__) && !defined(__ANDROID__)
-        #include <cpuid.h>
-    #endif
-    #if defined(__x86_64__) || defined(__i386__)
-        #include <x86intrin.h>
-    #elif defined(__ARM_NEON__)
-        #include <arm_neon.h>
-    #endif
-
     #include <sys/stat.h>
     #include <sys/syscall.h>
     #include <sys/utsname.h>
@@ -6334,7 +6325,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     }
 #if defined(__ANDROID__)
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
-#elif defined(__linux__)
+#elif defined(__linux__) && !defined(__TINYC__)
     syscall(SYS_write, 1, newstring, kdStrlen(newstring));
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, (DWORD)kdStrlen(newstring), (DWORD[]){0}, NULL);

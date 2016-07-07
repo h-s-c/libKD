@@ -171,6 +171,17 @@ matrix:
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
       script: python ci-tools/run_ctest.py
 
+    - os: linux
+      compiler: tcc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['tcc', 'valgrind', 'libegl1-mesa-dev']
+      install: python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
     - os: osx
       compiler: clang
       osx_image: xcode8
