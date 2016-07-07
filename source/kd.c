@@ -39,25 +39,20 @@
 
 /* clang-format off */
 #ifdef __unix__
-    #ifdef __linux__
-        #define _GNU_SOURCE
-    #endif
-    #ifdef __EMSCRIPTEN__
-        #define _POSIX_SOURCE
-    #endif
-    #include <sys/param.h>
-    #ifdef BSD
-        #define _BSD_SOURCE
-    #endif
+#   ifdef __linux__
+#       define _GNU_SOURCE
+#   endif
+#   ifdef __EMSCRIPTEN__
+#       define _POSIX_SOURCE
+#   endif
+#   include <sys/param.h>
+#   ifdef BSD
+#       define _BSD_SOURCE
+#   endif
 #endif
 
 #ifdef _MSC_VER
-#define _CRT_SECURE_NO_WARNINGS 1
-#endif
-
-/* XSI streams are optional and not supported by MinGW */
-#if defined(__MINGW32__)
-    #define ENODATA    61
+#   define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
 /******************************************************************************
@@ -73,118 +68,149 @@
  * C includes
  ******************************************************************************/
 
-#include <errno.h>
-#include <locale.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-
 /* Freestanding safe */
 #include <float.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/* C11 */
-#if defined(KD_THREAD_C11) && !defined(_MSC_VER)
-    #include <threads.h>
+#if !defined(KD_FREESTANDING)
+#   include <errno.h>
+#   include <locale.h>
+#   include <stdlib.h>
+#   include <stdio.h>
+#   include <time.h>
 #endif
 
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
 
-#if defined(KD_THREAD_POSIX)
-#include <pthread.h>
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#   ifndef WIN32_LEAN_AND_MEAN
+#       define WIN32_LEAN_AND_MEAN
+#   endif
+#   include <windows.h>
+/* CryptGenRandom etc. */
+#   include <wincrypt.h>
+/* R_OK/W_OK/X_OK */
+#   include <direct.h>
+/* _mm_* */
+#   include <intrin.h>
+/* MSVC redefinition fix*/
+#   ifndef inline
+#       define inline __inline
+#   endif
 #endif
 
 #if  defined(__unix__) || defined(__APPLE__)
-    #include <unistd.h>
-
-    #if !defined(__TINYC__)  
-        #if defined(__x86_64__) || defined(__i386__)
-            #include <x86intrin.h>        
-        #elif defined(__ARM_NEON__)       
-            #include <arm_neon.h>     
-        #endif
-    #endif
-
-    #include <sys/stat.h>
-    #include <sys/syscall.h>
-    #include <sys/utsname.h>
-    #if defined(__APPLE__)
-        #include<sys/mount.h>
-    #else
-        #include<sys/vfs.h>
-    #endif
-    #include <fcntl.h>
-    #include <dirent.h>
-    #include <dlfcn.h>
-
-    #if defined(__linux__)
-        #include <sys/prctl.h>
-    #endif
-
-    /* POSIX reserved but OpenKODE uses this */
-    #undef st_mtime
-
-    #if defined(__ANDROID__)
-        #include <android/log.h>
-        #include <android/native_activity.h>
-        #include <android/native_window.h>
-        #include <android/window.h>
-    #else
-        #if defined(KD_WINDOW_SUPPORTED)
-            #include <X11/Xlib.h>
-            #include <X11/Xutil.h>
-        #endif
-    #endif
+#   include <unistd.h>
+#   include <fcntl.h>
+#   include <dirent.h>
+#   include <dlfcn.h>
+#   include <sys/stat.h>
+#   include <sys/syscall.h>
+#   include <sys/utsname.h>
+#   if defined(__APPLE__)
+#       include <sys/mount.h>
+#   else
+#       include <sys/vfs.h>
+#   endif
+#   if defined(__linux__)
+#       include <sys/prctl.h>
+#   endif
+#   if !defined(__TINYC__)  
+#       if defined(__x86_64__) || defined(__i386__)
+#           include <x86intrin.h>        
+#       elif defined(__ARM_NEON__)       
+#           include <arm_neon.h>     
+#       endif
+#   endif
+#   if defined(__ANDROID__)
+#       include <android/log.h>
+#       include <android/native_activity.h>
+#       include <android/native_window.h>
+#       include <android/window.h>
+#   else
+#       if defined(KD_WINDOW_SUPPORTED)
+#           include <X11/Xlib.h>
+#           include <X11/Xutil.h>
+#       endif
+#   endif
+/* POSIX reserved but OpenKODE uses this */
+#   undef st_mtime
 #endif
 
 #if defined(__EMSCRIPTEN__)
-    #include <emscripten/emscripten.h>
+#   include <emscripten/emscripten.h>
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-    #endif
-    #include <windows.h>
-    #include <wincrypt.h>
-    #include <bcrypt.h>
-	#include <objbase.h>
-	#include <direct.h>
-	#include <io.h>
-    #include <intrin.h>
-	/* Fix POSIX name warning */
-	#define mkdir _mkdir
-	#define rmdir _rmdir
-	#define fileno _fileno
-	#define access _access
-    /* Windows has some POSIX support */
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <dirent.h>
-    /* MSVC 12 and lower is missing some things */
-    #if defined(_MSC_VER) && _MSC_VER <= 1800
-        struct timespec {
-            long tv_sec;
-            long tv_nsec;
-        };
-        int snprintf ( char * s, size_t n, const char * format, ... )
-        {
-            int ret;
-            va_list arg;
-            va_start(arg, format);
-            ret = vsnprintf(s, n, format, arg);
-            va_end(arg);
-            return ret;
-        }
-    #endif
-	/* MSVC redefinition fix*/
-	#ifndef inline
-	#define inline __inline
-    #endif
+#   define KD_ATOMIC_WIN32
+#   define KD_THREAD_WIN32
+#elif defined(__INTEL_COMPILER)
+#   if defined(__GNUC__)
+#       define KD_ATOMIC_SYNC
+#       define KD_THREAD_POSIX
+#       include <pthread.h>
+#   else
+#       define KD_ATOMIC_WIN32
+#       define KD_THREAD_WIN32
+#   endif
+#elif defined(__clang__)
+#   if (__clang_major__ > 3)
+#       if __has_include(<stdatomic.h>)
+#           define KD_ATOMIC_C11
+#           include <stdatomic.h>
+#       else
+#           define KD_ATOMIC_BUILTIN
+#       endif
+#   elif (__clang_major__ == 3) && (__clang_minor__ >= 1)
+#       define KD_ATOMIC_BUILTIN
+#   else
+#       define KD_ATOMIC_SYNC
+#   endif
+#   if __has_include(<threads.h>)
+#       define KD_THREAD_C11
+#       include <threads.h>
+#   elif __has_include(<pthread.h>)
+#       define KD_THREAD_POSIX
+#       include <pthread.h>
+#   endif
+#elif defined(__GNUC__)
+/* GCC 5 introduces __has_include*/
+#   if (__GNUC__ > 4)
+#       if __has_include(<stdatomic.h>)
+#           define KD_ATOMIC_C11
+#           include <stdatomic.h>
+#       else
+#           define KD_ATOMIC_BUILTIN
+#       endif
+#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
+#       define KD_ATOMIC_BUILTIN
+#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1)
+#       define KD_ATOMIC_SYNC
+#   else
+#       define KD_ATOMIC_MUTEX
+#   endif
+#   if (__GNUC__ > 4)
+#       if __has_include(<threads.h>)
+#           define KD_THREAD_C11
+#           include <threads.h>
+#       elif __has_include(<pthread.h>)
+#           define KD_THREAD_POSIX
+#           include <pthread.h>
+#       endif
+#   else
+#       define KD_THREAD_POSIX
+#       include <pthread.h>
+#   endif
+#elif defined(__TINYC__)
+#   define KD_ATOMIC_MUTEX
+#   define KD_THREAD_POSIX
+#   include <pthread.h>
+#else
+#   define KD_ATOMIC_MUTEX
 #endif
 /* clang-format on */
 
@@ -1000,24 +1026,21 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 /* kdThreadSleepVEN: Blocks the current thread for nanoseconds. */
 KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 {
-#if defined(_MSC_VER) && _MSC_VER <= 1800
-#define LONG_CAST (long)
-#else
-#define LONG_CAST
-#endif
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX)
     struct timespec ts = {0};
     /* Determine seconds from the overall nanoseconds */
     if((timeout % 1000000000) == 0)
     {
-        ts.tv_sec = LONG_CAST(timeout / 1000000000);
+        ts.tv_sec = (timeout / 1000000000);
     }
     else
     {
-        ts.tv_sec = LONG_CAST((timeout - (timeout % 1000000000)) / 1000000000);
+        ts.tv_sec = (timeout - (timeout % 1000000000)) / 1000000000;
     }
-#undef LONG_CAST
+
     /* Remaining nanoseconds */
     ts.tv_nsec = (KDint32)timeout - ((KDint32)ts.tv_sec * 1000000000);
+#endif
 
 #if defined(KD_THREAD_C11)
     thrd_sleep(&ts, NULL);
@@ -1690,7 +1713,7 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
-KD_API int main(int argc, char **argv)
+int __kdPreMain(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
 #if !defined(__ANDROID__)
@@ -1752,9 +1775,9 @@ KD_API int main(int argc, char **argv)
 }
 
 #ifdef __ANDROID__
-static void *__kdAndroidMain(void *arg)
+static void *__kdAndroidPreMain(void *arg)
 {
-    main(0, KD_NULL);
+    __kdPreMain(0, KD_NULL);
     return 0;
 }
 void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_t savedStateSize)
@@ -1782,22 +1805,27 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
     ANativeActivity_setWindowFlags(__kd_androidactivity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
     kdThreadMutexUnlock(__kd_androidactivity_mutex);
 
-    __kd_androidmainthread = kdThreadCreate(KD_NULL, __kdAndroidMain, KD_NULL);
+    __kd_androidmainthread = kdThreadCreate(KD_NULL, __kdAndroidPreMain, KD_NULL);
     kdThreadDetach(__kd_androidmainthread);
 }
 #endif
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
 #if defined(KD_FREESTANDING)
+#if defined(_MSC_VER) || defined(__MINGW32__)
 int WINAPI mainCRTStartup(void)
 {
-    return main(0, KD_NULL);
+    return __kdPreMain(0, KD_NULL);
 }
 int WINAPI WinMainCRTStartup(void)
 {
-    return main(0, KD_NULL);
+    return __kdPreMain(0, KD_NULL);
 }
 #endif
+#else
+int main(int argc, char **argv)
+{
+    return __kdPreMain(argc, argv);
+}
 #endif
 
 /* kdExit: Exit the application. */
@@ -1862,7 +1890,13 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 /* kdStrtof: Convert a string to a floating point number. */
 KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    /* TODO: Implement */
+    kdAssert(0);
+    return 0.0f; 
+#else
     return strtof(s, endptr);
+#endif
 }
 
 /* kdStrtol, kdStrtoul: Convert a string to an integer. */
@@ -2129,7 +2163,13 @@ KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
     {
         return -1;
     }
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    /* TODO: Implement */
+    kdAssert(0);
+    return 0; 
+#else
     return snprintf(buffer, buflen, "%i", number);
+#endif
 }
 
 KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint number, KDint base)
@@ -2138,6 +2178,10 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         return -1;
     }
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    /* TODO: Implement */
+    kdAssert(0);
+#else
     if(base == 10 || base == 0)
     {
         return snprintf(buffer, buflen, "%u", number);
@@ -2150,6 +2194,7 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         return snprintf(buffer, buflen, "%x", number);
     }
+#endif
     kdSetError(KD_EINVAL);
     return -1;
 }
@@ -2161,7 +2206,13 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     {
         return -1;
     }
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    /* TODO: Implement */
+    kdAssert(0);
+    return 0; 
+#else
     return snprintf(buffer, buflen, "%f", number);
+#endif
 }
 
 /* kdCryptoRandom: Return random data. */
@@ -5298,32 +5349,66 @@ KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 /* kdGetTimeUST: Get the current unadjusted system time. */
 KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 {
-    /* TODO: Implement nanosecond timesource */
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    FILETIME filetime;
+    ULARGE_INTEGER largeuint;
+    GetSystemTimeAsFileTime(&filetime);
+    largeuint.LowPart = filetime.dwLowDateTime ;
+    largeuint.HighPart= filetime.dwHighDateTime;
+    return largeuint.QuadPart ;
+#elif defined(__linux__)
+    struct timespec time = {0};
+    clock_gettime(CLOCK_MONOTONIC_RAW, &time);
+    return time.tv_nsec;
+#else
     return clock();
+#endif
 }
 
 /* kdTime: Get the current wall clock time. */
 KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    FILETIME filetime;
+    ULARGE_INTEGER largeuint;
+    GetSystemTimeAsFileTime(&filetime);
+    largeuint.LowPart = filetime.dwLowDateTime ;
+    largeuint.HighPart= filetime.dwHighDateTime;
+    /* See RtlTimeToSecondsSince1970 */
+    KDtime time = (KDtime)((largeuint.QuadPart / 10000000) - 11644473600LL);
+    (*timep) = time;
+    return time;
+#else
     return time((time_t *)timep);
+#endif
 }
 
 /* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
 KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 {
-    result = (KDTm *)gmtime((const time_t *)timep);
-    return result;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    /* TODO: Implement */
+    kdAssert(0);
+    return KD_NULL; 
+#else
+    return (KDTm *)gmtime_r((const time_t *)timep, (struct tm *)result);
+#endif
 }
 KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 {
-    result = (KDTm *)localtime((const time_t *)timep);
-    return result;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    /* TODO: Implement */
+    kdAssert(0);
+    return KD_NULL; 
+#else
+    return (KDTm *)localtime_r((const time_t *)timep, (struct tm *)result);
+#endif
 }
 
 /* kdUSTAtEpoch: Get the UST corresponding to KDtime 0. */
 KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
 {
-    /* TODO: Implement*/
+    /* TODO: Implement */
     kdAssert(0);
     return 0;
 }
@@ -5443,12 +5528,14 @@ struct KDFile {
 #else
     FILE *file;
 #endif
+    const KDchar *pathname;
     KDboolean eof;
     KDboolean error;
 };
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
+    file->pathname = pathname;
 #if defined(_MSC_VER) || defined(__MINGW32__)
     DWORD access = 0;
     DWORD create = 0;
@@ -5787,37 +5874,59 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
     KDint retval = -1;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    retval = 0;
+    WIN32_FIND_DATA data;
+    FindFirstFile(pathname, &data);
+    if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    {
+        buf->st_mode = 0x4000;
+    }
+    else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
+    {
+        buf->st_mode = 0x8000;
+    }
+    else
+    {
+        kdAssert(0);
+    }
+    buf->st_size = (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
+
+    ULARGE_INTEGER largeuint;
+    largeuint.LowPart = data.ftLastWriteTime.dwLowDateTime ;
+    largeuint.HighPart= data.ftLastWriteTime.dwHighDateTime;
+    /* See RtlTimeToSecondsSince1970 */
+    buf->st_mtime =  (KDtime)((largeuint.QuadPart / 10000000) - 11644473600LL);
+#else
     struct stat posixstat = {0};
     retval = stat(pathname, &posixstat);
-
-    buf->st_mode = posixstat.st_mode;
+    if(posixstat.st_mode & S_IFDIR)
+    {
+        buf->st_mode = 0x4000;
+    }
+    else if(posixstat.st_mode & S_IFREG)
+    {
+        buf->st_mode = 0x8000;
+    }
+    else
+    {
+        kdAssert(0);
+    }
     buf->st_size = posixstat.st_size;
-#if defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(__ANDROID__)
     buf->st_mtime = posixstat.st_mtime;
 #elif defined(__APPLE__)
     buf->st_mtime = posixstat.st_mtimespec.tv_sec;
 #else
     buf->st_mtime = posixstat.st_mtim.tv_sec;
+#endif
 #endif
     return retval;
 }
 
 KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 {
-    KDint retval = -1;
-    struct stat posixstat = {0};
-    retval = fstat(fileno(file->file), &posixstat);
-
-    buf->st_mode = posixstat.st_mode;
-    buf->st_size = posixstat.st_size;
-#if defined(__ANDROID__) || defined(_MSC_VER) || defined(__MINGW32__)
-    buf->st_mtime = posixstat.st_mtime;
-#elif defined(__APPLE__)
-    buf->st_mtime = posixstat.st_mtimespec.tv_sec;
-#else
-    buf->st_mtime = posixstat.st_mtim.tv_sec;
-#endif
-    return retval;
+    return kdStat(file->pathname, buf);
 }
 
 typedef struct {
@@ -5825,35 +5934,58 @@ typedef struct {
     KDint accessmode;
 } __KDAccessMode;
 
-#if defined(_MSC_VER)
-static __KDAccessMode accessmode[] = {{KD_R_OK, 04}, {KD_W_OK, 02}, {KD_X_OK, 00}};
-#else
 static KD_UNUSED __KDAccessMode accessmode[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
-#endif
-
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
     KDint retval = -1;
-    for(KDuint i = 0; i < sizeof(accessmode) / sizeof(accessmode[0]); i++)
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    WIN32_FIND_DATA data;
+    HANDLE error = FindFirstFile(pathname, &data);
+    if(error != INVALID_HANDLE_VALUE)
     {
-        if(accessmode[i].accessmode_kd == amode)
+        if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
         {
-            retval = access(pathname, accessmode[i].accessmode);
-            break;
+            if(amode & KD_X_OK || amode & KD_R_OK)
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            return 0;
         }
     }
+#else
+    KDint accessmode_posix = 0;
+    for(KDuint i = 0; i < sizeof(accessmode) / sizeof(accessmode[0]); i++)
+    {
+        if(accessmode[i].accessmode_kd & amode)
+        {
+            accessmode_posix |= accessmode[i].accessmode;
+        }
+    }
+    retval = access(pathname, accessmode_posix);
+#endif
     return retval;
 }
 
 /* kdOpenDir: Open a directory ready for listing. */
 struct KDDir {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    HANDLE dir;
+#else
     DIR *dir;
+#endif
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    dir->dir = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
+#else
     dir->dir = opendir(pathname);
+#endif
     return dir;
 }
 
@@ -5861,15 +5993,25 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
     KDDirent *lastdirent = kdThreadSelf()->lastdirent;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    WIN32_FIND_DATA data;
+    FindNextFile(dir->dir, &data);
+    lastdirent->d_name = data.cFileName;
+#else
     struct dirent *posixdirent = readdir(dir->dir);
     lastdirent->d_name = posixdirent->d_name;
+#endif
     return lastdirent;
 }
 
 /* kdCloseDir: Close a directory. */
 KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    FindClose(dir->dir);
+#else
     closedir(dir->dir);
+#endif
     kdFree(dir);
     return 0;
 }
@@ -6341,48 +6483,6 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 /******************************************************************************
  * Atomics
  ******************************************************************************/
-
-/* clang-format off */
-#if defined(_MSC_VER) || defined(__MINGW32__)
-#   define KD_ATOMIC_WIN32
-#elif defined(__INTEL_COMPILER)
-#   if defined(__GNUC__)
-#       define KD_ATOMIC_SYNC
-#   else
-#       define KD_ATOMIC_WIN32
-#   endif
-#elif defined(__clang__)
-#   if (__clang_major__ > 3)
-#       if __has_include(<stdatomic.h>)
-#           include <stdatomic.h>
-#           define KD_ATOMIC_C11
-#       else
-#           define KD_ATOMIC_BUILTIN
-#       endif
-#   elif (__clang_major__ == 3) && (__clang_minor__ >= 1)
-#       define KD_ATOMIC_BUILTIN
-#   else
-#       define KD_ATOMIC_SYNC
-#   endif
-#elif defined(__GNUC__)
-#   if (__GNUC__ > 4)
-#       if __has_include(<stdatomic.h>)
-#           include <stdatomic.h>
-#           define KD_ATOMIC_C11
-#       else
-#           define KD_ATOMIC_BUILTIN
-#       endif
-#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
-#       define KD_ATOMIC_BUILTIN
-#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1)
-#       define KD_ATOMIC_SYNC
-#   else
-#       define KD_ATOMIC_MUTEX
-#   endif
-#else
-#   define KD_ATOMIC_MUTEX
-#endif
-/* clang-format on */
 
 #if defined(KD_ATOMIC_C11)
 struct KDAtomicIntVEN {

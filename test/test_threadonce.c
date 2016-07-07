@@ -22,9 +22,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
- #include <KD/kdext.h>
-
-#include <stdio.h>
+#include <KD/kdext.h>
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
@@ -51,7 +49,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     for(KDint i = 0 ; i < THREAD_COUNT ; i++)
     {
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if (threads[i] == KD_NULL)
+        if(threads[i] == KD_NULL)
         {
             kdAssert(0);
         }
@@ -62,7 +60,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     }
 
     KDint test = kdAtomicIntLoadVEN(test_once_count);
-    if (test != 1)
+    if(test != 1)
     {
         kdAssert(0);
     }

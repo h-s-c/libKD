@@ -30,7 +30,7 @@ struct recurse {
 };
 static KDint32 testrecurse(KDint32 count, struct recurse *lastrecurse)
 {
-    if (count != 625)
+    if(count != 625)
     {
         struct recurse thisrecurse;
         thisrecurse.value = ++count;

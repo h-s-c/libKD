@@ -30,9 +30,6 @@
  * Implementation defined
  ******************************************************************************/
 
-#cmakedefine KD_THREAD_C11
-#cmakedefine KD_THREAD_POSIX
-#cmakedefine KD_THREAD_WIN32
 #cmakedefine KD_WINDOW_X11
 #cmakedefine KD_WINDOW_WIN32
 #cmakedefine KD_WINDOW_ANDROID
@@ -54,17 +51,23 @@
 #cmakedefine KD_WINDOW_SUPPORTED
 #cmakedefine KD_NO_STATIC_DATA
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     #define KD_APIENTRY __stdcall
 #else
     #define KD_APIENTRY
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__MINGW32__)
     #if defined(KD_EXPORTS)
         #define KD_API __declspec(dllexport)
     #else
         #define KD_API __declspec(dllimport)
+    #endif
+#elif defined(__GNUC__) || defined(__clang__)
+    #if defined(KD_EXPORTS)
+        #define KD_API __attribute__((dllexport))
+    #else
+        #define KD_API __attribute__((dllimport))
     #endif
 #else
     #define KD_API
@@ -73,10 +76,10 @@
 #if __STDC_VERSION__ >= 201112L
     #define KD_NORETURN _Noreturn
 #else
-    #if defined(__GNUC__) || defined(__clang__)
-        #define KD_NORETURN __attribute__((__noreturn__))
-    #elif defined(_MSC_VER)
+    #if defined(_MSC_VER) || defined(__MINGW32__)
         #define KD_NORETURN __declspec(noreturn)
+    #elif defined(__GNUC__) || defined(__clang__)
+        #define KD_NORETURN __attribute__((__noreturn__))
     #else
         #define KD_NORETURN 
     #endif
