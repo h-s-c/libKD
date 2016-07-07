@@ -65,9 +65,9 @@
     #endif
 #elif defined(__GNUC__) || defined(__clang__)
     #if defined(KD_EXPORTS)
-        #define KD_API __attribute__ ((visibility ("default")))
+        #define KD_API __attribute__((visibility ("default")))
     #else
-        #define KD_API __attribute__ ((visibility ("hidden")))
+        #define KD_API __attribute__((visibility ("hidden")))
     #endif
 #else
     #define KD_API
