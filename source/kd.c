@@ -417,11 +417,33 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
-static KD_THREADLOCAL KDThread *__kd_thread = KD_NULL;
+#if defined(KD_THREAD_C11)
+static tss_t __kd_threadlocal;
+#elif defined(KD_THREAD_POSIX)
+static pthread_key_t __kd_threadlocal;
+#elif defined(KD_THREAD_WIN32)
+static DWORD __kd_threadlocal;
+#else
+static KDThread *__kd_threadlocal;
+#endif
+
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
+static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;
+static void __kdThreadInitOnce(void)
+{
+#if defined(KD_THREAD_C11)
+    tss_create(&__kd_threadlocal, KD_NULL);
+#elif defined(KD_THREAD_POSIX)
+    pthread_key_create(&__kd_threadlocal, KD_NULL);
+#elif defined(KD_THREAD_WIN32)
+    __kd_threadlocal = FlsAlloc(KD_NULL);
+#endif
+}
+
 static void *__kdThreadStart(void *init)
 {
     KDThread *thread = (KDThread *)init;
+    kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
     /* Set the thread name */
     KD_UNUSED const char *threadname = thread->attr ? thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
@@ -454,14 +476,21 @@ static void *__kdThreadStart(void *init)
         }
     }
 #pragma warning(pop)
-#elif defined(KD_THREAD_POSIX)
-#if defined(__linux__)
+#elif defined(__linux__)
     prctl(PR_SET_NAME, (long)threadname, 0UL, 0UL, 0UL);
-#elif defined(__APPLE__)
+#endif
+
+#if defined(KD_THREAD_C11)
+    tss_set(__kd_threadlocal, thread);
+#elif defined(KD_THREAD_POSIX)
+    pthread_setspecific(__kd_threadlocal, thread);
+#if defined(__APPLE__)
     pthread_setname_np(threadname);
 #endif
+#elif defined(KD_THREAD_WIN32)
+    FlsSetValue(__kd_threadlocal, thread);
 #endif
-    __kd_thread = thread;
+
     void *result = thread->start_routine(thread->arg);
     return result;
 }
@@ -527,6 +556,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     kdSetError(KD_ENOSYS);
     return KD_NULL;
 #endif
+
     KDThread *thread = __kdThreadInit();
     if(thread == KD_NULL)
     {
@@ -543,7 +573,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #elif defined(KD_THREAD_POSIX)
     error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, thread);
 #elif defined(KD_THREAD_WIN32)
-    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)thread 0, KD_NULL);
+    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)thread, 0, KD_NULL);
     error = thread->nativethread ? 0 : 1;
 #else
     kdAssert(0);
@@ -649,7 +679,15 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-    return __kd_thread;
+#if defined(KD_THREAD_C11)
+    return tss_get(__kd_threadlocal);
+#elif defined(KD_THREAD_POSIX)
+    return pthread_getspecific(__kd_threadlocal);
+#elif defined(KD_THREAD_WIN32)
+    return FlsGetValue(__kd_threadlocal);
+#else
+    return __kd_threadlocal;
+#endif
 }
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
@@ -1657,7 +1695,17 @@ KD_API int main(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
 #if !defined(__ANDROID__)
-    __kd_thread = __kdThreadInit();
+    KDThread *thread = __kdThreadInit();
+    kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
+#if defined(KD_THREAD_C11)
+    tss_set(__kd_threadlocal, thread);
+#elif defined(KD_THREAD_POSIX)
+    pthread_setspecific(__kd_threadlocal, thread);
+#elif defined(KD_THREAD_WIN32)
+    FlsSetValue(__kd_threadlocal, thread);
+#else
+    __kd_threadlocal = thread;
+#endif
 #endif
 
     KDint result = 0;
@@ -1691,7 +1739,14 @@ KD_API int main(int argc, char **argv)
 #endif
 
 #if !defined(__ANDROID__)
-    __kdThreadFree(__kd_thread);
+#if defined(KD_THREAD_C11)
+    tss_delete(__kd_threadlocal);
+#elif defined(KD_THREAD_POSIX)
+    pthread_key_delete(__kd_threadlocal);
+#elif defined(KD_THREAD_WIN32)
+    FlsFree(__kd_threadlocal);
+#endif
+    __kdThreadFree(thread);
 #endif
     kdThreadMutexFree(__kd_userptrmtx);
     return result;
