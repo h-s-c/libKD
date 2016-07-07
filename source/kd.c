@@ -5352,10 +5352,11 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 #if defined(_MSC_VER) || defined(__MINGW32__)
     FILETIME filetime;
     ULARGE_INTEGER largeuint;
+    /* 100-nanosecond intervals */
     GetSystemTimeAsFileTime(&filetime);
     largeuint.LowPart = filetime.dwLowDateTime ;
     largeuint.HighPart= filetime.dwHighDateTime;
-    return largeuint.QuadPart ;
+    return largeuint.QuadPart * 100;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
