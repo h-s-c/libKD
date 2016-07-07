@@ -5357,8 +5357,8 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     largeuint.HighPart= filetime.dwHighDateTime;
     return largeuint.QuadPart ;
 #elif defined(__linux__)
-    struct timespec time = {0};
-    clock_gettime(CLOCK_MONOTONIC_RAW, &time);
+    struct timespec ts = {0};
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return time.tv_nsec;
 #else
     return clock();
@@ -5890,13 +5890,16 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     {
         kdAssert(0);
     }
-    buf->st_size = (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
+    LARGE_INTEGER size;
+    size.LowPart = data.nFileSizeLow ;
+    size.HighPart= data.nFileSizeHigh;
+    buf->st_size = size.QuadPart;
 
-    ULARGE_INTEGER largeuint;
-    largeuint.LowPart = data.ftLastWriteTime.dwLowDateTime ;
-    largeuint.HighPart= data.ftLastWriteTime.dwHighDateTime;
+    ULARGE_INTEGER time;
+    time.LowPart = data.ftLastWriteTime.dwLowDateTime ;
+    time.HighPart= data.ftLastWriteTime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
-    buf->st_mtime =  (KDtime)((largeuint.QuadPart / 10000000) - 11644473600LL);
+    buf->st_mtime =  (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
 #else
     struct stat posixstat = {0};
     retval = stat(pathname, &posixstat);
@@ -5929,12 +5932,6 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
     return kdStat(file->pathname, buf);
 }
 
-typedef struct {
-    KDint accessmode_kd;
-    KDint accessmode;
-} __KDAccessMode;
-
-static KD_UNUSED __KDAccessMode accessmode[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
@@ -5957,15 +5954,20 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
         }
     }
 #else
-    KDint accessmode_posix = 0;
-    for(KDuint i = 0; i < sizeof(accessmode) / sizeof(accessmode[0]); i++)
+    typedef struct __KDAccessMode {
+        KDint accessmode_kd;
+        KDint accessmode_posix;
+    } __KDAccessMode;
+    __KDAccessMode accessmodes[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
+    KDint accessmode = 0;
+    for(KDuint i = 0; i < sizeof(accessmodes) / sizeof(accessmodes[0]); i++)
     {
-        if(accessmode[i].accessmode_kd & amode)
+        if(accessmodes[i].accessmode_kd & amode)
         {
-            accessmode_posix |= accessmode[i].accessmode;
+            accessmode |= accessmodes[i].accessmode_posix;
         }
     }
-    retval = access(pathname, accessmode_posix);
+    retval = access(pathname, accessmode);
 #endif
     return retval;
 }

@@ -301,3 +301,6 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+
+  allow_failures:
+    - compiler: icc # Unstable
