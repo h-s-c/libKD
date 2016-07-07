@@ -101,6 +101,14 @@
 #if  defined(__unix__) || defined(__APPLE__)
     #include <unistd.h>
 
+    #if !defined(__TINYC__)  
+        #if defined(__x86_64__) || defined(__i386__)
+            #include <x86intrin.h>        
+        #elif defined(__ARM_NEON__)       
+            #include <arm_neon.h>     
+        #endif
+    #endif
+
     #include <sys/stat.h>
     #include <sys/syscall.h>
     #include <sys/utsname.h>
