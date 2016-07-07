@@ -1713,7 +1713,7 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
-int __kdPreMain(int argc, char **argv)
+static int __kdPreMain(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
 #if !defined(__ANDROID__)
@@ -1822,7 +1822,10 @@ int WINAPI WinMainCRTStartup(void)
 }
 #endif
 #else
-int main(int argc, char **argv)
+#ifdef main
+#undef main
+#endif
+KD_API int main(int argc, char **argv)
 {
     return __kdPreMain(argc, argv);
 }
@@ -5360,7 +5363,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return time.tv_nsec;
+    return ts.tv_nsec;
 #else
     return clock();
 #endif
