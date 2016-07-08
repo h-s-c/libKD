@@ -186,18 +186,6 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: clang-3.4
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.4', 'llvm-3.4', 'valgrind', 'libegl1-mesa-dev']
-      install: python ci-tools/install_cmake.py
-      before_script: alias clang-3.4=clang
-      script: python ci-tools/run_ctest.py
-
-    - os: linux
       compiler: icc
       dist: trusty
       sudo: required
