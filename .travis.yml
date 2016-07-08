@@ -141,7 +141,10 @@ matrix:
       sudo: required
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty']
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
+              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-3.9', 'llvm-3.9', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
@@ -152,7 +155,10 @@ matrix:
       sudo: required
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-3.8']
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main'
+              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-3.8', 'llvm-3.8', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
@@ -163,7 +169,10 @@ matrix:
       sudo: required
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-3.7']
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.7 main'
+              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-3.7', 'llvm-3.7', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
