@@ -4875,21 +4875,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  ******************************************************************************/
 
-
-/*
- * sizeof(word) MUST BE A POWER OF TWO
- * SO THAT wmask BELOW IS ALL ONES
- */
-typedef int word; /* "word" used for optimal copy speed */
-
-#define wsize sizeof(word)
-#define wmask (wsize - 1)
-
 /*
  * Copy a block of memory, handling overlap.
- * This is the routine that actually implements
- * (the portable versions of) bcopy, memcpy, and memmove.
+ * This is the routine that actually implements kdMemcpy, and kdMemmove.
  */
+typedef KDint word; /* "word" used for optimal copy speed */
+#define wsize sizeof(word)
+#define wmask (wsize - 1)
 static void *__kdBcopy(void *dst0, const void *src0, size_t length)
 {
     KDint8 *dst = dst0;
@@ -4995,6 +4987,8 @@ static void *__kdBcopy(void *dst0, const void *src0, size_t length)
     }
     return (dst0);
 }
+#undef wmask
+#undef wsize
 
 /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
@@ -5096,7 +5090,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
  *
  *  ((x - 0x01....01) & ~x & 0x80....80)
  *
- * would evaluate to a non-zero value iff any of the bytes in the
+ * would evaluate to a non-zero value if any of the bytes in the
  * original word is zero.
  *
  * On multi-issue processors, we can divide the above expression into:
@@ -5110,19 +5104,6 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
  * Henry S. Warren, Jr.
  */
 
-/* Magic numbers for the algorithm */
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
-static const KDuint64 mask01 = 0x0101010101010101;
-static const KDuint64 mask80 = 0x8080808080808080;
-#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM) || defined(__EMSCRIPTEN__)
-static const KDuint64 mask01 = 0x01010101;
-static const KDuint64 mask80 = 0x80808080;
-#else
-#error Unsupported arch
-#endif
-
-#define LONGPTR_MASK (sizeof(KDint64) - 1)
-
 /* Helper function to return string length if we caught the zero byte. */
 #define testbyte(x)                 \
     do                              \
@@ -5135,6 +5116,16 @@ static const KDuint64 mask80 = 0x80808080;
 
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
+/* Magic numbers for the algorithm */
+#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
+    const KDuint64 mask01 = 0x0101010101010101;
+    const KDuint64 mask80 = 0x8080808080808080;
+#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM) || defined(__EMSCRIPTEN__)
+    const KDuint64 mask01 = 0x01010101;
+    const KDuint64 mask80 = 0x80808080;
+#else
+#error Unsupported arch
+#endif
     const KDchar *p;
     const KDuint64 *lp;
     KDint64 va, vb;
@@ -5145,11 +5136,11 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
      * if there is a nul character is within this accessible word
      * first.
      *
-     * p and (p & ~LONGPTR_MASK) must be equally accessible since
+     * p and (p & ~(sizeof(KDint64) - 1)) must be equally accessible since
      * they always fall in the same memory page, as long as page
      * boundaries is integral multiple of word size.
      */
-    lp = (const KDuint64 *)((KDuintptr)str & ~LONGPTR_MASK);
+    lp = (const KDuint64 *)((KDuintptr)str & ~(sizeof(KDint64) - 1));
     va = (*lp - mask01);
     vb = ((~*lp) & mask80);
     lp++;
@@ -5186,6 +5177,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         }
     }
 }
+#undef testbyte
 
 /* kdStrnlen: Determine the length of a string. */
 KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
