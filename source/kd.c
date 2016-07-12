@@ -2166,13 +2166,38 @@ KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
     {
         return -1;
     }
-#if defined(_MSC_VER) || defined(__MINGW32__)
-    /* TODO: Implement */
-    kdAssert(0);
-    return 0; 
-#else
-    return snprintf(buffer, buflen, "%i", number);
-#endif
+    KDboolean isneg = 1;
+    if (number >= 0) 
+    {
+        number = -number;
+        isneg = 0;
+    }
+    buffer[buflen] = '\0';
+    KDssize size = 0;
+    do {
+        buflen--;
+        buffer[buflen] = (char) ('0' - number % 10);
+        number /= 10;
+        size++;
+    } while (number && buflen);
+    if(number && !buflen)
+    {
+        return -1;
+    }
+    if(isneg) 
+    {
+        if(buflen)
+        {
+            buflen--;
+            buffer[buflen] = '-';
+            size++;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+    return size;
 }
 
 KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint number, KDint base)
