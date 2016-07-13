@@ -1896,7 +1896,7 @@ KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 #if defined(_MSC_VER) || defined(__MINGW32__)
     /* TODO: Implement */
     kdAssert(0);
-    return 0.0f; 
+    return 0.0f;
 #else
     return strtof(s, endptr);
 #endif
@@ -2160,71 +2160,51 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
 }
 
 /* kdLtostr, kdUltostr: Convert an integer to a string. */
-KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
+/* Based on K&R itoa() */
+static KDssize __kdItoa(KDchar *buffer, KDsize buflen, KDint number, KDint base)
 {
     if(buflen == 0)
     {
         return -1;
     }
-    KDboolean isneg = 1;
-    if (number >= 0) 
+
+    KDint sign = number;
+    if(sign < 0)
     {
         number = -number;
-        isneg = 0;
     }
-    buffer[buflen] = '\0';
+
     KDssize size = 0;
-    do {
-        buflen--;
-        buffer[buflen] = (char) ('0' - number % 10);
-        number /= 10;
-        size++;
-    } while (number && buflen);
-    if(number && !buflen)
+    do
     {
-        return -1;
+        buffer[size++] = number % base + '0';
+    } while((number /= base) > 0);
+
+    if(sign < 0)
+    {
+        buffer[size++] = '-';
     }
-    if(isneg) 
+
+    buffer[size] = '\0';
+
+    KDchar temp;
+    for(KDint i = 0, j = kdStrlen(buffer) - 1; i < j; i++, j--)
     {
-        if(buflen)
-        {
-            buflen--;
-            buffer[buflen] = '-';
-            size++;
-        }
-        else
-        {
-            return -1;
-        }
+        temp = buffer[i];
+        buffer[i] = buffer[j];
+        buffer[j] = temp;
     }
     return size;
 }
 
+KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
+{
+    return __kdItoa(buffer, buflen, number, 10);
+}
+
 KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint number, KDint base)
 {
-    if(buflen == 0)
-    {
-        return -1;
-    }
-#if defined(_MSC_VER) || defined(__MINGW32__)
-    /* TODO: Implement */
-    kdAssert(0);
-#else
-    if(base == 10 || base == 0)
-    {
-        return snprintf(buffer, buflen, "%u", number);
-    }
-    else if(base == 8)
-    {
-        return snprintf(buffer, buflen, "%o", number);
-    }
-    else if(base == 16)
-    {
-        return snprintf(buffer, buflen, "%x", number);
-    }
-#endif
-    kdSetError(KD_EINVAL);
-    return -1;
+    return __kdItoa(buffer, buflen, (KDint)number, base);
 }
 
 /* kdFtostr: Convert a float to a string. */
@@ -2237,7 +2217,7 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
 #if defined(_MSC_VER) || defined(__MINGW32__)
     /* TODO: Implement */
     kdAssert(0);
-    return 0; 
+    return 0;
 #else
     return snprintf(buffer, buflen, "%f", number);
 #endif
@@ -2308,7 +2288,8 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((__malloc__))
 #endif
-KD_API void *KD_APIENTRY kdMalloc(KDsize size)
+KD_API void *KD_APIENTRY
+kdMalloc(KDsize size)
 {
     void *result = KD_NULL;
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -2338,7 +2319,8 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((__malloc__))
 #endif
-KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
+KD_API void *KD_APIENTRY
+kdRealloc(void *ptr, KDsize size)
 {
     void *result = KD_NULL;
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -5380,8 +5362,8 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     ULARGE_INTEGER largeuint;
     /* 100-nanosecond intervals */
     GetSystemTimeAsFileTime(&filetime);
-    largeuint.LowPart = filetime.dwLowDateTime ;
-    largeuint.HighPart= filetime.dwHighDateTime;
+    largeuint.LowPart = filetime.dwLowDateTime;
+    largeuint.HighPart = filetime.dwHighDateTime;
     return largeuint.QuadPart * 100;
 #elif defined(__linux__)
     struct timespec ts = {0};
@@ -5399,8 +5381,8 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
     FILETIME filetime;
     ULARGE_INTEGER largeuint;
     GetSystemTimeAsFileTime(&filetime);
-    largeuint.LowPart = filetime.dwLowDateTime ;
-    largeuint.HighPart= filetime.dwHighDateTime;
+    largeuint.LowPart = filetime.dwLowDateTime;
+    largeuint.HighPart = filetime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
     KDtime time = (KDtime)((largeuint.QuadPart / 10000000) - 11644473600LL);
     (*timep) = time;
@@ -5416,7 +5398,7 @@ KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 #if defined(_MSC_VER) || defined(__MINGW32__)
     /* TODO: Implement */
     kdAssert(0);
-    return KD_NULL; 
+    return KD_NULL;
 #else
     return (KDTm *)gmtime_r((const time_t *)timep, (struct tm *)result);
 #endif
@@ -5426,7 +5408,7 @@ KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 #if defined(_MSC_VER) || defined(__MINGW32__)
     /* TODO: Implement */
     kdAssert(0);
-    return KD_NULL; 
+    return KD_NULL;
 #else
     return (KDTm *)localtime_r((const time_t *)timep, (struct tm *)result);
 #endif
@@ -5918,15 +5900,15 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         kdAssert(0);
     }
     LARGE_INTEGER size;
-    size.LowPart = data.nFileSizeLow ;
-    size.HighPart= data.nFileSizeHigh;
+    size.LowPart = data.nFileSizeLow;
+    size.HighPart = data.nFileSizeHigh;
     buf->st_size = size.QuadPart;
 
     ULARGE_INTEGER time;
-    time.LowPart = data.ftLastWriteTime.dwLowDateTime ;
-    time.HighPart= data.ftLastWriteTime.dwHighDateTime;
+    time.LowPart = data.ftLastWriteTime.dwLowDateTime;
+    time.HighPart = data.ftLastWriteTime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
-    buf->st_mtime =  (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
+    buf->st_mtime = (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
 #else
     struct stat posixstat = {0};
     retval = stat(pathname, &posixstat);

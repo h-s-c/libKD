@@ -25,16 +25,16 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDchar string[10];
+    KDchar string[20];
     KDssize size = 0;
-    size = kdLtostr(string, 10, 1234567890);
+    size = kdLtostr(string, 20, 1234567890);
     kdAssert(kdStrcmp(string, "1234567890") == 0);
     kdAssert(size == 10);
-    size = kdLtostr(string, 10, -1234567890);
-    kdAssert(kdStrcmp(string, "1234567890") == 0);
-    kdAssert(size == -1);
-    size = kdLtostr(string, 11, -1234567890);
+    size = kdLtostr(string, 20, -1234567890);
     kdAssert(kdStrcmp(string, "-1234567890") == 0);
     kdAssert(size == 11);
+    size = kdUltostr(string, 20, 1234567890, 10);
+    kdAssert(kdStrcmp(string, "1234567890") == 0);
+    kdAssert(size == 10);
     return 0;
 }
