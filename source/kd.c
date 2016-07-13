@@ -5869,14 +5869,21 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 /* kdTruncate: Truncate or extend a file. */
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
-    KDint retval = 0;
 #if defined(_MSC_VER) || defined(__MINGW32__)
-    /* TODO: Implement kdTruncate on Windows */
-    kdAssert(0);
+    HANDLE file = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
+    BOOL error = SetFileValidData(file, (LONGLONG)length);
+    FindClose(file);
+    if(error == 0)
+    {
+        return -1;
+    }
+    else
+    {
+        return 0;
+    }
 #else
-    retval = truncate(pathname, length);
+    return truncate(pathname, length);
 #endif
-    return retval;
 }
 
 /* kdStat, kdFstat: Return information about a file. */
