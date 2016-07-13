@@ -2305,6 +2305,9 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
  ******************************************************************************/
 
 /* kdMalloc: Allocate memory. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((__malloc__))
+#endif
 KD_API void *KD_APIENTRY kdMalloc(KDsize size)
 {
     void *result = KD_NULL;
@@ -2332,6 +2335,9 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 }
 
 /* kdRealloc: Resize memory block. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((__malloc__))
+#endif
 KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
 {
     void *result = KD_NULL;

@@ -45,6 +45,14 @@
     #define KD_UNUSED
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+    #define KD_DEPRECATED __attribute__((__deprecated__))
+#elif defined(_MSC_VER)
+    #define KD_DEPRECATED __declspec(deprecated)
+#else
+    #define KD_DEPRECATED
+#endif
+
 /******************************************************************************
  * Specification defined
  ******************************************************************************/
@@ -65,9 +73,9 @@
     #endif
 #elif defined(__GNUC__) || defined(__clang__)
     #if defined(KD_EXPORTS)
-        #define KD_API __attribute__((visibility ("default")))
+        #define KD_API __attribute__((__visibility__("default")))
     #else
-        #define KD_API __attribute__((visibility ("hidden")))
+        #define KD_API __attribute__((__visibility__("hidden")))
     #endif
 #else
     #define KD_API
