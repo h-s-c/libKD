@@ -1,6 +1,3 @@
-[submodule "thirdparty/dirent"]
-    path = thirdparty/dirent
-    url = https://github.com/tronkko/dirent.git
 [submodule "ci-tools"]
     path = ci-tools
     url = https://github.com/h-s-c/ci-tools.git
