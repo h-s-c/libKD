@@ -2177,7 +2177,7 @@ static KDssize __kdItoa(KDchar *buffer, KDsize buflen, KDint number, KDint base)
     KDssize size = 0;
     do
     {
-        buffer[size++] = number % base + '0';
+        buffer[size++] = (KDchar)(number % base + '0');
     } while((number /= base) > 0);
 
     if(sign < 0)
@@ -2188,7 +2188,7 @@ static KDssize __kdItoa(KDchar *buffer, KDsize buflen, KDint number, KDint base)
     buffer[size] = '\0';
 
     KDchar temp;
-    for(KDint i = 0, j = kdStrlen(buffer) - 1; i < j; i++, j--)
+    for(KDsize i = 0, j = kdStrlen(buffer) - 1; i < j; i++, j--)
     {
         temp = buffer[i];
         buffer[i] = buffer[j];
