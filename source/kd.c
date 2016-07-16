@@ -1851,6 +1851,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
  * Notes:
  * - kdAbs, kdStrtol and kdStrtoul copied from the BSD libc developed at the
  *   University of California, Berkeley
+ * - __kdAtof and __kdItoa based on K&R Second Edition
  ******************************************************************************/
 /******************************************************************************
  * Copyright (c) 1990, 1993
@@ -1911,7 +1912,6 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
-/* Based on K&R atof() */
 static KDfloat32 __kdAtof(const KDchar *s)
 {
     KDfloat32 val, power;
@@ -2185,7 +2185,6 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
 }
 
 /* kdLtostr, kdUltostr: Convert an integer to a string. */
-/* Based on K&R itoa() */
 static KDssize __kdItoa(KDchar *buffer, KDsize buflen, KDint number, KDint base)
 {
     if(buflen == 0)
