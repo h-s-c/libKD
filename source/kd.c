@@ -1884,25 +1884,6 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
  * SUCH DAMAGE.
  ******************************************************************************/
 
-/* kdAbs: Compute the absolute value of an integer. */
-KD_API KDint KD_APIENTRY kdAbs(KDint i)
-{
-    return (i < 0 ? -i : i);
-}
-
-/* kdStrtof: Convert a string to a floating point number. */
-KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
-{
-#if defined(_MSC_VER) || defined(__MINGW32__)
-    /* TODO: Implement */
-    kdAssert(0);
-    return 0.0f;
-#else
-    return strtof(s, endptr);
-#endif
-}
-
-/* kdStrtol, kdStrtoul: Convert a string to an integer. */
 static KDint __kdIsalpha(KDint c)
 {
     return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
@@ -1923,6 +1904,50 @@ static KDint __kdIsupper(KDint c)
     return ((c >= 'A') && (c <= 'Z'));
 }
 
+/* kdAbs: Compute the absolute value of an integer. */
+KD_API KDint KD_APIENTRY kdAbs(KDint i)
+{
+    return (i < 0 ? -i : i);
+}
+
+/* kdStrtof: Convert a string to a floating point number. */
+/* Based on K&R atof() */
+static KDfloat32 __kdAtof(const KDchar *s)
+{
+    KDfloat32 val, power;
+    KDint i, sign;
+
+    for(i = 0; __kdIsspace(s[i]); i++)
+    {
+        ;
+    }
+    sign = (s[i] == '-') ? -1 : 1;
+    if(s[i] == '+' || s[i] == '-')
+    {
+        i++;
+    }
+    for(val = 0.0f; __kdIsdigit(s[i]); i++)
+    {
+        val = 10.0f * val + (s[i] - '0');
+    }
+    if(s[i] == '.')
+    {
+        i++;
+    }
+    for(power = 1.0f; __kdIsdigit(s[i]); i++)
+    {
+        val = 10.0f * val + (s[i] - '0');
+        power *= 10.0f;
+    }
+    return (KDfloat32)sign * val / power;
+}
+
+KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KD_UNUSED KDchar **endptr)
+{
+    return __kdAtof(s);
+}
+
+/* kdStrtol, kdStrtoul: Convert a string to an integer. */
 KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint base)
 {
     const KDchar *s;
