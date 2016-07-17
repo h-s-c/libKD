@@ -86,7 +86,7 @@
  * Platform includes
  ******************************************************************************/
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN
 #   endif
@@ -145,7 +145,7 @@
 #   include <emscripten/emscripten.h>
 #endif
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
 #   define KD_ATOMIC_WIN32
 #   define KD_THREAD_WIN32
 #elif defined(__INTEL_COMPILER)
@@ -251,7 +251,7 @@ KD_API void KD_APIENTRY kdSetError(KDint error)
     kdThreadSelf()->lasterror = error;
 }
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
 typedef DWORD KDPlatformError;
 #else
 typedef KDint KDPlatformError;
@@ -260,7 +260,7 @@ typedef KDint KDPlatformError;
 KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allowed)
 {
     KDint kderror = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     switch(error)
     {
         case(ERROR_FILE_NOT_FOUND):
@@ -332,7 +332,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     }
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
         return "Windows";
 #elif defined(__unix__) || defined(__APPLE__)
         static struct utsname name;
@@ -477,7 +477,6 @@ static void *__kdThreadStart(void *init)
 #pragma warning(disable : 6312)
 #pragma warning(disable : 6322)
 /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
-#if defined(_MSC_VER)
 #pragma pack(push, 8)
     struct THREADNAME_INFO {
         KDuint32 type;       // must be 0x1000
@@ -486,7 +485,6 @@ static void *__kdThreadStart(void *init)
         KDuint32 flags;      // reserved for future use, must be zero
     };
 #pragma pack(pop)
-#endif
     struct THREADNAME_INFO info = {.type = 0x1000, .name = threadname, .threadid = GetCurrentThreadId(), .flags = 0};
     if(IsDebuggerPresent())
     {
@@ -1742,7 +1740,7 @@ static int __kdPreMain(int argc, char **argv)
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
 #elif defined(__EMSCRIPTEN__)
     result = kdMain(argc, (const KDchar *const *)argv);
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(_WIN32)
     HMODULE handle = GetModuleHandle(0);
     kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
     result = kdmain(argc, (const KDchar *const *)argv);
@@ -1811,7 +1809,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 #endif
 
 #if defined(KD_FREESTANDING)
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
 int WINAPI mainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
@@ -1834,7 +1832,7 @@ KD_API int main(int argc, char **argv)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     ExitProcess(status);
     while(1)
     {
@@ -1849,9 +1847,9 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
  * Utility library functions
  *
  * Notes:
- * - kdAbs, kdStrtol and kdStrtoul copied from the BSD libc developed at the
- *   University of California, Berkeley
- * - __kdAtof and __kdItoa based on K&R Second Edition
+ * - Based on the BSD libc developed at the University of California, Berkeley
+ * - kdStrtof and __kdItoa based on K&R Second Edition
+ * - kdFtostr based on http://stackoverflow.com/a/7097567
  ******************************************************************************/
 /******************************************************************************
  * Copyright (c) 1990, 1993
@@ -1912,7 +1910,7 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
-static KDfloat32 __kdAtof(const KDchar *s)
+KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KD_UNUSED KDchar **endptr)
 {
     KDfloat32 val, power;
     KDint i, sign;
@@ -1940,11 +1938,6 @@ static KDfloat32 __kdAtof(const KDchar *s)
         power *= 10.0f;
     }
     return (KDfloat32)sign * val / power;
-}
-
-KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KD_UNUSED KDchar **endptr)
-{
-    return __kdAtof(s);
 }
 
 /* kdStrtol, kdStrtoul: Convert a string to an integer. */
@@ -2238,13 +2231,88 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     {
         return -1;
     }
-#if defined(_MSC_VER) || defined(__MINGW32__)
-    /* TODO: Implement */
-    kdAssert(0);
-    return 0;
-#else
-    return snprintf(buffer, buflen, "%f", number);
-#endif
+    if(number == 0.0f)
+    {
+        return (KDssize)kdStrcpy_s(buffer, buflen, "0");
+    }
+
+    KDboolean sign = (number < 0.0f);
+    if(sign)
+    {
+        number = -number;
+    }
+    /* Calculate magnitude */
+    KDint m = kdLogf(number) / kdLogf(10.0f);
+    KDboolean exp = (m >= 14 || (sign && m >= 9) || m <= -9);
+    if(sign)
+    {
+        *(buffer++) = '-';
+    }
+    /* Set up for scientific notation */
+    KDint m1 = 0;
+    if(exp)
+    {
+        if(m < 0)
+        {
+            m -= 1;
+        }
+        number = number / kdPowf(10.0f, (KDfloat32)m);
+        m1 = m;
+        m = 0;
+    }
+    if(m < 1)
+    {
+        m = 0;
+    }
+    /* Convert the number */
+    KDfloat32 precision = 0.000001f;
+    while(number > precision || m >= 0)
+    {
+        KDfloat32 weight = kdPowf(10.0f, (KDfloat32)m);
+        if(weight > 0.0f && weight < KD_INFINITY)
+        {
+            KDint digit = (KDint)kdFloorf(number / weight);
+            number -= (digit * weight);
+            *(buffer++) = '0' + digit;
+        }
+        if(m == 0 && number > 0.0f)
+        {
+            *(buffer++) = '.';
+        }
+        m--;
+    }
+    if(exp)
+    {
+        /* Convert the exponent */
+        *(buffer++) = 'e';
+        if(m1 > 0)
+        {
+            *(buffer++) = '+';
+        }
+        else
+        {
+            *(buffer++) = '-';
+            m1 = -m1;
+        }
+        m = 0;
+        while(m1 > 0)
+        {
+            *(buffer++) = '0' + m1 % 10;
+            m1 /= 10;
+            m++;
+        }
+        buffer -= m;
+        for(KDint i = 0, j = m - 1; i < j; i++, j--)
+        {
+            /* Swap without temporary */
+            buffer[i] ^= buffer[j];
+            buffer[j] ^= buffer[i];
+            buffer[i] ^= buffer[j];
+        }
+        buffer += m;
+    }
+    *(buffer) = '\0';
+    return m;
 }
 
 /* kdCryptoRandom: Return random data. */
@@ -2254,7 +2322,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
     /* TODO: Implement for this platform */
     kdAssert(0);
     return -1;
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(_WIN32)
     HCRYPTPROV provider = 0;
     KDboolean error = !CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
     if(error == 0)
@@ -2316,7 +2384,7 @@ KD_API void *KD_APIENTRY
 kdMalloc(KDsize size)
 {
     void *result = KD_NULL;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 #else
     result = malloc(size);
@@ -2332,7 +2400,7 @@ kdMalloc(KDsize size)
 /* kdFree: Free allocated memory block. */
 KD_API void KD_APIENTRY kdFree(void *ptr)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     HeapFree(GetProcessHeap(), 0, ptr);
 #else
     free(ptr);
@@ -2347,7 +2415,7 @@ KD_API void *KD_APIENTRY
 kdRealloc(void *ptr, KDsize size)
 {
     void *result = KD_NULL;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
 #else
     result = realloc(ptr, size);
@@ -2380,7 +2448,7 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
  * Mathematical functions
  *
  * Notes:
- * - Generic codepath copied from FDLIBM developed at Sun Microsystems, Inc.
+ * - Based on FDLIBM developed at Sun Microsystems, Inc.
  ******************************************************************************/
 /******************************************************************************
  * ====================================================
@@ -4861,8 +4929,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
  * String and memory functions
  *
  * Notes:
- * - Generic codepath copied from the BSD libc developed at the
- *   University of California, Berkeley
+ * - Based on the BSD libc developed at the University of California, Berkeley
  * - kdStrcpy_s/kdStrncat_s based on strlcpy/strlcat by Todd C. Miller
  ******************************************************************************/
 /******************************************************************************
@@ -5381,7 +5448,7 @@ KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 /* kdGetTimeUST: Get the current unadjusted system time. */
 KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     FILETIME filetime;
     ULARGE_INTEGER largeuint;
     /* 100-nanosecond intervals */
@@ -5401,7 +5468,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 /* kdTime: Get the current wall clock time. */
 KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     FILETIME filetime;
     ULARGE_INTEGER largeuint;
     GetSystemTimeAsFileTime(&filetime);
@@ -5419,7 +5486,7 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 /* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
 KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     /* TODO: Implement */
     kdAssert(0);
     return KD_NULL;
@@ -5429,7 +5496,7 @@ KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 }
 KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     /* TODO: Implement */
     kdAssert(0);
     return KD_NULL;
@@ -5556,7 +5623,7 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 
 /* kdFopen: Open a file from the file system. */
 struct KDFile {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     HANDLE file;
 #else
     FILE *file;
@@ -5569,7 +5636,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
     file->pathname = pathname;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
     switch(mode[0])
@@ -5624,7 +5691,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
     KDint error = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     error = CloseHandle(file->file);
     if(error == 0)
 #else
@@ -5641,7 +5708,7 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 /* kdFflush: Flush an open file. */
 KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     if(0)
 #else
     KDint error = fflush(file->file);
@@ -5657,7 +5724,7 @@ KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDsize retval = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     DWORD bytesread = 0;
     retval = ReadFile(file->file, buffer, (DWORD)(count * size), &bytesread, NULL) ? bytesread / size : 0;
 #else
@@ -5670,7 +5737,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
 KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDsize retval = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     DWORD byteswritten = 0;
     retval = WriteFile(file->file, buffer, (DWORD)(count * size), &byteswritten, NULL) ? byteswritten / size : 0;
 #else
@@ -5683,7 +5750,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
     KDint byte = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     BOOL error = ReadFile(file->file, &byte, 1, (DWORD[]){0}, NULL);
     if(error == TRUE)
 #else
@@ -5699,7 +5766,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     BOOL error = WriteFile(file->file, &c, 1, (DWORD[]){0}, NULL);
     if(error == TRUE)
 #else
@@ -5739,7 +5806,7 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 /* kdFEOF: Check for end of file. */
 KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     if(file->eof == 1)
 #else
     KDint error = feof(file->file);
@@ -5754,7 +5821,7 @@ KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 /* kdFerror: Check for an error condition on an open file. */
 KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     if(file->error == 1)
 #else
     if(ferror(file->file) != 0)
@@ -5768,7 +5835,7 @@ KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 /* kdClearerr: Clear a file's error and end-of-file indicators. */
 KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     file->eof = 0;
     file->error = 0;
 #else
@@ -5782,14 +5849,14 @@ typedef struct {
 #else
     KDuint seekorigin_kd;
 #endif
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     DWORD seekorigin;
 #else
     KDint seekorigin;
 #endif
 } __KDSeekOrigin;
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
 static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, FILE_BEGIN}, {KD_SEEK_CUR, FILE_CURRENT}, {KD_SEEK_END, FILE_END}};
 #else
 static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
@@ -5802,7 +5869,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
     {
         if(seekorigins[i].seekorigin_kd == origin)
         {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
             DWORD error = SetFilePointer(file->file, (LONG)offset, NULL, seekorigins[i].seekorigin);
             if(error == INVALID_SET_FILE_POINTER)
 #else
@@ -5822,7 +5889,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
 KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 {
     KDoff position = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     position = (KDoff)SetFilePointer(file->file, 0, NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
     {
@@ -5838,7 +5905,7 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 {
     KDint retval = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     retval = CreateDirectory(pathname, NULL);
 #else
     retval = mkdir(pathname, S_IRWXU);
@@ -5850,7 +5917,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 {
     KDint retval = 0;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     retval = RemoveDirectory(pathname);
 #else
     retval = rmdir(pathname);
@@ -5861,7 +5928,7 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 /* kdRename: Rename a file. */
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     KDint error = MoveFile(src, dest);
     if(error == 0)
 #else
@@ -5877,7 +5944,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 /* kdRemove: Delete a file. */
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     KDint error = DeleteFile(pathname);
     if(error == 0)
 #else
@@ -5893,7 +5960,7 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 /* kdTruncate: Truncate or extend a file. */
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     HANDLE file = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
     BOOL error = SetFileValidData(file, (LONGLONG)length);
     FindClose(file);
@@ -5914,7 +5981,7 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
     KDint retval = -1;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     retval = 0;
     WIN32_FIND_DATA data;
     FindFirstFile(pathname, &data);
@@ -5976,7 +6043,7 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
     KDint retval = -1;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     WIN32_FIND_DATA data;
     HANDLE error = FindFirstFile(pathname, &data);
     if(error != INVALID_HANDLE_VALUE)
@@ -6014,7 +6081,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 
 /* kdOpenDir: Open a directory ready for listing. */
 struct KDDir {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     HANDLE dir;
 #else
     DIR *dir;
@@ -6023,7 +6090,7 @@ struct KDDir {
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     dir->dir = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
 #else
     dir->dir = opendir(pathname);
@@ -6035,7 +6102,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
     KDDirent *lastdirent = kdThreadSelf()->lastdirent;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     WIN32_FIND_DATA data;
     FindNextFile(dir->dir, &data);
     lastdirent->d_name = data.cFileName;
@@ -6049,7 +6116,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 /* kdCloseDir: Close a directory. */
 KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     FindClose(dir->dir);
 #else
     closedir(dir->dir);
@@ -6062,7 +6129,7 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
     const KDchar *temp = pathname;
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_WIN32)
     KDuint64 freespace = 0;
     GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL);
     return freespace;
@@ -6508,7 +6575,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
 #elif defined(__linux__) && !defined(__TINYC__)
     syscall(SYS_write, 1, newstring, kdStrlen(newstring));
-#elif defined(_MSC_VER) || defined(__MINGW32__)
+#elif defined(_WIN32)
     WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, (DWORD)kdStrlen(newstring), (DWORD[]){0}, NULL);
 #else
     printf("%s", newstring);
