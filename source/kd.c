@@ -74,7 +74,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if !defined(KD_FREESTANDING)
+#if defined(KD_FREESTANDING)
 #   include <errno.h>
 #   include <locale.h>
 #   include <stdlib.h>
@@ -1808,8 +1808,8 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 }
 #endif
 
-#if defined(KD_FREESTANDING)
-#if defined(_WIN32)
+
+#if defined(_WIN32) && defined(KD_FREESTANDING)
 int WINAPI mainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
@@ -1818,11 +1818,7 @@ int WINAPI WinMainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
 }
-#endif
 #else
-#ifdef main
-#undef main
-#endif
 KD_API int main(int argc, char **argv)
 {
     return __kdPreMain(argc, argv);

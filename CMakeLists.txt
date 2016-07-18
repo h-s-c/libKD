@@ -186,7 +186,7 @@ project (KD C)
         add_definitions(-D_WIN32_WINNT=0x0600)
     endif()
 
-    if(EMSCRIPTEN OR MINGW OR ANDROID)
+    if(EMSCRIPTEN OR MINGW OR ANDROID OR KD_FREESTANDING)
         add_library(KD STATIC ${KD_SOURCE})
     else()
         add_library(KD SHARED ${KD_SOURCE})
