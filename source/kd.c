@@ -2238,7 +2238,7 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
         number = -number;
     }
     /* Calculate magnitude */
-    KDint m = kdLogf(number) / kdLogf(10.0f);
+    KDint m = (KDint)(kdLogf(number) / kdLogf(10.0f));
     KDboolean exp = (m >= 14 || (sign && m >= 9) || m <= -9);
     if(sign)
     {
@@ -2269,7 +2269,7 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
         {
             KDint digit = (KDint)kdFloorf(number / weight);
             number -= (digit * weight);
-            *(buffer++) = '0' + digit;
+            *(buffer++) = (KDchar)('0' + digit);
         }
         if(m == 0 && number > 0.0f)
         {
