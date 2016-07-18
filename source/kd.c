@@ -74,7 +74,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(KD_FREESTANDING)
+#if !defined(KD_FREESTANDING)
 #   include <errno.h>
 #   include <locale.h>
 #   include <stdlib.h>
