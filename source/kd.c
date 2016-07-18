@@ -5480,25 +5480,48 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
 }
 
 /* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
+static KDboolean __kdIsleap(KDint32 year)
+{
+    return (!((year) % 4) && (((year) % 100) || !((year) % 400)));
+}
 KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
 {
-#if defined(_WIN32)
-    /* TODO: Implement */
-    kdAssert(0);
-    return KD_NULL;
-#else
-    return (KDTm *)gmtime_r((const time_t *)timep, (struct tm *)result);
-#endif
+    KDint32 secs_per_day = 3600 * 24;
+    KDint32 days_in_secs = (KDint32)(*timep % secs_per_day);
+    KDint32 days = (KDint32)(*timep / secs_per_day);
+    result->tm_sec = days_in_secs % 60;
+    result->tm_min = (days_in_secs % 3600) / 60;
+    result->tm_hour = days_in_secs / 3600;
+    result->tm_wday = (days + 4) % 7;
+
+    KDint32 year = 1970;
+    while(days >= (__kdIsleap(year) ? 366 : 365))
+    {
+        days -= (__kdIsleap(year) ? 366 : 365);
+        year++;
+    }
+    result->tm_year = year - 1900;
+    result->tm_yday = days;
+    result->tm_mon = 0;
+
+    const KDint months[2][12] = {
+        {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+        {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
+
+    while(days >= months[__kdIsleap(year)][result->tm_mon])
+    {
+        days -= months[__kdIsleap(year)][result->tm_mon];
+        result->tm_mon++;
+    }
+    result->tm_mday = days + 1;
+    result->tm_isdst = 0;
+
+    return result;
 }
 KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 {
-#if defined(_WIN32)
-    /* TODO: Implement */
-    kdAssert(0);
-    return KD_NULL;
-#else
-    return (KDTm *)localtime_r((const time_t *)timep, (struct tm *)result);
-#endif
+    /* No timezone support */
+    return kdGmtime_r(timep, result);
 }
 
 /* kdUSTAtEpoch: Get the UST corresponding to KDtime 0. */
