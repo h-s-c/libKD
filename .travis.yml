@@ -79,6 +79,7 @@ matrix:
           packages: ['gcc-6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: gcc-5
@@ -90,6 +91,7 @@ matrix:
           packages: ['gcc-5', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: gcc-4.9
@@ -101,6 +103,7 @@ matrix:
           packages: ['gcc-4.9', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: gcc-4.8
@@ -112,6 +115,7 @@ matrix:
           packages: ['gcc-4.8', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: gcc-4.7
@@ -123,6 +127,7 @@ matrix:
           packages: ['gcc-4.7', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: gcc-4.6
@@ -134,6 +139,7 @@ matrix:
           packages: ['gcc-4.6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: clang-3.9
@@ -148,6 +154,7 @@ matrix:
           packages: ['clang-3.9', 'llvm-3.9', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: clang-3.8
@@ -162,6 +169,7 @@ matrix:
           packages: ['clang-3.8', 'llvm-3.8', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: clang-3.6
@@ -173,6 +181,7 @@ matrix:
           packages: ['clang-3.6', 'llvm-3.6', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: clang-3.5
@@ -184,6 +193,7 @@ matrix:
           packages: ['clang-3.5', 'llvm-3.5', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: icc
@@ -198,6 +208,7 @@ matrix:
         - python ci-tools/install_icc.py
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: linux
       compiler: tcc
@@ -222,6 +233,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -235,6 +247,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -248,6 +261,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -261,6 +275,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -274,6 +289,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -290,6 +306,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -303,6 +320,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -316,6 +334,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
     - os: osx
       compiler: clang
@@ -329,6 +348,7 @@ matrix:
         - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+      after_success: bash <(curl -s https://codecov.io/bash)
 
   allow_failures:
     - compiler: icc # Unstable

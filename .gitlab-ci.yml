@@ -7,3 +7,4 @@ default:
     - git submodule update --init --recursive
     - python ci-tools/install_cmake.py
     - python ci-tools/run_ctest.py
+    - bash <(curl -s https://codecov.io/bash)
