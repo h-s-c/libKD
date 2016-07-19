@@ -24,4 +24,3 @@ before_build:
 build_script:
   - git submodule update --init --recursive
   - python ci-tools/run_ctest.py
-  - bash <(curl -s https://codecov.io/bash)
