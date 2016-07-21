@@ -136,7 +136,7 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: clang-3.9
+      compiler: clang-4.0
       dist: trusty
       sudo: required
       addons:
@@ -144,6 +144,20 @@ matrix:
           sources: 
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
+              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
+          packages: ['clang-4.0', 'llvm-4.0', 'valgrind', 'libegl1-mesa-dev']
+      install: python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: linux
+      compiler: clang-3.9
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-3.9', 'llvm-3.9', 'valgrind', 'libegl1-mesa-dev']
       install: python ci-tools/install_cmake.py   
@@ -332,4 +346,4 @@ matrix:
 
   allow_failures:
     - compiler: icc # Unstable
-    - compiler: clang-3.9 # Unstable
+    - compiler: clang-4.0 # Unstable
