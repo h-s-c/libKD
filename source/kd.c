@@ -145,72 +145,14 @@
 #   include <emscripten/emscripten.h>
 #endif
 
-#if defined(_WIN32)
-#   define KD_ATOMIC_WIN32
-#   define KD_THREAD_WIN32
-#elif defined(__INTEL_COMPILER)
-#   if defined(__GNUC__)
-#       define KD_ATOMIC_SYNC
-#       define KD_THREAD_POSIX
-#       include <pthread.h>
-#   else
-#       define KD_ATOMIC_WIN32
-#       define KD_THREAD_WIN32
-#   endif
-#elif defined(__clang__)
-#   if (__clang_major__ > 3)
-#       if __has_include(<stdatomic.h>)
-#           define KD_ATOMIC_C11
-#           include <stdatomic.h>
-#       else
-#           define KD_ATOMIC_BUILTIN
-#       endif
-#   elif (__clang_major__ == 3) && (__clang_minor__ >= 1)
-#       define KD_ATOMIC_BUILTIN
-#   else
-#       define KD_ATOMIC_SYNC
-#   endif
-#   if __has_include(<threads.h>)
-#       define KD_THREAD_C11
-#       include <threads.h>
-#   elif __has_include(<pthread.h>)
-#       define KD_THREAD_POSIX
-#       include <pthread.h>
-#   endif
-#elif defined(__GNUC__)
-/* GCC 5 introduces __has_include*/
-#   if (__GNUC__ > 4)
-#       if __has_include(<stdatomic.h>)
-#           define KD_ATOMIC_C11
-#           include <stdatomic.h>
-#       else
-#           define KD_ATOMIC_BUILTIN
-#       endif
-#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
-#       define KD_ATOMIC_BUILTIN
-#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1)
-#       define KD_ATOMIC_SYNC
-#   else
-#       define KD_ATOMIC_MUTEX
-#   endif
-#   if (__GNUC__ > 4)
-#       if __has_include(<threads.h>)
-#           define KD_THREAD_C11
-#           include <threads.h>
-#       elif __has_include(<pthread.h>)
-#           define KD_THREAD_POSIX
-#           include <pthread.h>
-#       endif
-#   else
-#       define KD_THREAD_POSIX
-#       include <pthread.h>
-#   endif
-#elif defined(__TINYC__)
-#   define KD_ATOMIC_MUTEX
-#   define KD_THREAD_POSIX
+#if defined(KD_THREAD_POSIX)
 #   include <pthread.h>
-#else
-#   define KD_ATOMIC_MUTEX
+#elif defined(KD_THREAD_C11)
+#   include <threads.h>
+#endif
+
+#if defined(KD_THREAD_POSIX)
+#   include <stdatomic.h>
 #endif
 /* clang-format on */
 
