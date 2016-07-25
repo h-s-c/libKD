@@ -151,7 +151,7 @@
 #   include <threads.h>
 #endif
 
-#if defined(KD_THREAD_POSIX)
+#if defined(KD_ATOMIC_C11)
 #   include <stdatomic.h>
 #endif
 /* clang-format on */
