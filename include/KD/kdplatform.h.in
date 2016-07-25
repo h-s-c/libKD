@@ -60,7 +60,6 @@
 #   if defined(__GNUC__)
 #       define KD_ATOMIC_SYNC
 #       define KD_THREAD_POSIX
-#       include <pthread.h>
 #   else
 #       define KD_ATOMIC_WIN32
 #       define KD_THREAD_WIN32
@@ -69,7 +68,6 @@
 #   if (__clang_major__ > 3)
 #       if __has_include(<stdatomic.h>)
 #           define KD_ATOMIC_C11
-#           include <stdatomic.h>
 #       else
 #           define KD_ATOMIC_BUILTIN
 #       endif
