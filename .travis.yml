@@ -1,5 +1,9 @@
 language: c
 
+cache:
+  directories:
+    - ci-tools/cache
+
 matrix:
   include:
     - os: linux
