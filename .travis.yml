@@ -228,6 +228,38 @@ matrix:
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
+    - os: linux
+      compiler: x86_64-w64-mingw32-gcc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['mingw-w64', 'wine']
+      install: 
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: linux
+      compiler: i686-w64-mingw32-gcc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['mingw-w64', 'wine']
+      install: 
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
     - os: osx
       compiler: clang
       osx_image: xcode8
@@ -349,5 +381,7 @@ matrix:
       script: python ci-tools/run_ctest.py
 
   allow_failures:
+    - compiler: i686-w64-mingw32-gcc #Testing
+    - compiler: x86_64-w64-mingw32-gcc #Testing
     - compiler: icc # Unstable
     - compiler: clang-4.0 # Unstable
