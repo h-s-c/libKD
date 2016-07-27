@@ -237,8 +237,11 @@ matrix:
           sources: 
             - ubuntu-toolchain-r-test
             - sourceline: 'ppa:ubuntu-wine'
-          packages: ['mingw-w64', 'wine1.8']
-      before_install: sudo dpkg --add-architecture i386
+          packages: ['mingw-w64']
+      before_install: 
+        - sudo dpkg --add-architecture i386
+        - sudo apt-get update -qq
+        - sudo apt-get install -qq wine1.8
       install: 
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
@@ -256,8 +259,11 @@ matrix:
           sources: 
             - ubuntu-toolchain-r-test
             - sourceline: 'ppa:ubuntu-wine'
-          packages: ['mingw-w64', 'wine1.8']
-      before_install: sudo dpkg --add-architecture i386
+          packages: ['mingw-w64']
+      before_install: 
+        - sudo dpkg --add-architecture i386
+        - sudo apt-get update -qq
+        - sudo apt-get install -qq wine1.8
       install: 
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
