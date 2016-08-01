@@ -2692,11 +2692,19 @@ typedef union {
  * A union which permits us to convert between a double and two 32 bit
  * ints.
  */
+
 typedef union {
     KDfloat64KHR value;
     struct {
+#if defined(__BIG_ENDIAN__) || __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        /* Big endian */
+        KDuint32 msw;
+        KDuint32 lsw;
+#else
+        /* Little endian */
         KDuint32 lsw;
         KDuint32 msw;
+#endif
     } parts;
     struct {
         KDuint64 w;
