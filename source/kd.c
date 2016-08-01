@@ -2696,7 +2696,7 @@ typedef union {
 typedef union {
     KDfloat64KHR value;
     struct {
-#if defined(__BIG_ENDIAN__) || __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
         /* Big endian */
         KDuint32 msw;
         KDuint32 lsw;
