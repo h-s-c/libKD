@@ -47,10 +47,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(ANDROID "On")
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-    set(CMAKE_REQUIRED_INCLUDES "/usr/local/include" "/usr/include")
-endif()
-
 project (KD C)
     include(CPack)
     include(CTest)
