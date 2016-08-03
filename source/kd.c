@@ -111,7 +111,7 @@
 #   include <sys/stat.h>
 #   include <sys/syscall.h>
 #   include <sys/utsname.h>
-#   if defined(__APPLE__)
+#   if defined(__APPLE__) || defined(BSD)
 #       include <sys/mount.h>
 #   else
 #       include <sys/vfs.h>
