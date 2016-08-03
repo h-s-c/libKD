@@ -34,7 +34,7 @@
  ******************************************************************************/
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-typedef DWORD KDPlatformError;
+typedef KDuint KDPlatformError;
 #else
 typedef KDint KDPlatformError;
 #endif

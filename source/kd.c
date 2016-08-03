@@ -193,12 +193,6 @@ KD_API void KD_APIENTRY kdSetError(KDint error)
     kdThreadSelf()->lasterror = error;
 }
 
-#if defined(_WIN32)
-typedef DWORD KDPlatformError;
-#else
-typedef KDint KDPlatformError;
-#endif
-
 KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allowed)
 {
     KDint kderror = 0;
