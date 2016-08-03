@@ -40,9 +40,4 @@ if(EMSCRIPTEN)
 endif()
 
 include(FindPackageHandleStandardArgs)
-
-if(KD_BUILD_EXAMPLES)
-    find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY EGL_INCLUDE_DIR)
-else()
-    find_package_handle_standard_args(EGL DEFAULT_MSG EGL_INCLUDE_DIR)
-endif()
+find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY EGL_INCLUDE_DIR)
