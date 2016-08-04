@@ -1090,18 +1090,8 @@ static KDboolean __kdExecCallback(KDEvent *event)
 
 #if defined(KD_WINDOW_SUPPORTED)
 struct KDWindow {
-#if defined(KD_WINDOW_NULL)
-    KDint nativewindow;
-    void *nativedisplay;
-#elif defined(KD_WINDOW_ANDROID)
-    struct ANativeWindow *nativewindow;
-    void *nativedisplay;
-#elif defined(KD_WINDOW_WIN32)
-    HWND nativewindow;
-#elif defined(KD_WINDOW_X11)
-    Window nativewindow;
-    Display *nativedisplay;
-#endif
+    EGLNativeWindowType nativewindow;
+    EGLNativeDisplayType nativedisplay;
     EGLint format;
     void *eventuserptr;
     KDThread *originthr;
