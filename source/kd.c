@@ -132,7 +132,7 @@
 #       include <android/native_window.h>
 #       include <android/window.h>
 #   else
-#       if defined(KD_WINDOW_SUPPORTED)
+#       if defined(KD_WINDOW_X11)
 #           include <X11/Xlib.h>
 #           include <X11/Xutil.h>
 #       endif
