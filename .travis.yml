@@ -237,7 +237,7 @@ matrix:
           sources: 
             - ubuntu-toolchain-r-test
             - sourceline: 'ppa:ubuntu-wine'
-          packages: ['mingw-w64']
+          packages: ['mingw-w64', 'valgrind', 'binutils-gold']
       before_install: 
         - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
         - sudo dpkg --add-architecture i386
@@ -260,7 +260,7 @@ matrix:
           sources: 
             - ubuntu-toolchain-r-test
             - sourceline: 'ppa:ubuntu-wine'
-          packages: ['mingw-w64']
+          packages: ['mingw-w64', 'valgrind', 'binutils-gold']
       before_install: 
         - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
         - sudo dpkg --add-architecture i386
