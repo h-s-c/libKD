@@ -5914,7 +5914,8 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
 #if defined(_WIN32)
-    HANDLE file = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
+    WIN32_FIND_DATA data;
+    HANDLE file = FindFirstFile(pathname, &data);
     BOOL error = SetFileValidData(file, (LONGLONG)length);
     FindClose(file);
     if(error == 0)
@@ -6044,7 +6045,8 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
 #if defined(_WIN32)
-    dir->dir = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
+    WIN32_FIND_DATA data;
+    dir->dir = FindFirstFile(pathname, &data);
 #else
     dir->dir = opendir(pathname);
 #endif
