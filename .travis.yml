@@ -395,7 +395,5 @@ matrix:
       script: python ci-tools/run_ctest.py
 
   allow_failures:
-    - compiler: i686-w64-mingw32-gcc #Testing
-    - compiler: x86_64-w64-mingw32-gcc #Testing
     - compiler: icc # Unstable
     - compiler: clang-4.0 # Unstable
