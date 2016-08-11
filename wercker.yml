@@ -1,15 +1,32 @@
-box:
+box: busybox
+
+build-alpine:
+  box:
     id: alpine
     cmd: /bin/sh
-
-build:
   steps:
     - script:
         name: install dependencies
         code: |
           apk update
-          apk add build-base python valgrind mesa-dev
-          apk add git perl coreutils cmake
+          apk add build-base valgrind mesa-dev
+          apk add git perl python coreutils cmake
+
+    - script:
+        name: build code
+        code: |
+          git submodule update --init --recursive
+          python ci-tools/run_ctest.py
+
+build-ubuntu:
+  box: ubuntu
+  steps:
+    - script:
+        name: install dependencies
+        code: |
+          apt-get update -y
+          apt-get install -y build-essential valgrind libegl1-mesa-dev libx11-dev
+          apt-get install -y git perl python coreutils cmake
 
     - script:
         name: build code
