@@ -1,16 +1,10 @@
 box: busybox
 
-build-alpine:
-  box:
-    id: alpine
-    cmd: /bin/sh
+build-ubuntu:
+  box: ubuntu
   steps:
-    - script:
-        name: install dependencies
-        code: |
-          apk update
-          apk add build-base valgrind mesa-dev
-          apk add git perl python coreutils cmake
+    - install-packages:
+        packages: build-essential git perl python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
 
     - script:
         name: build code
@@ -18,15 +12,60 @@ build-alpine:
           git submodule update --init --recursive
           python ci-tools/run_ctest.py
 
-build-ubuntu:
-  box: ubuntu
+build-debian:
+  box: debian:unstable
+  steps:
+    - install-packages:
+        packages: build-essential git perl python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
+
+    - script:
+        name: build code
+        code: |
+          git submodule update --init --recursive
+          python ci-tools/run_ctest.py
+
+build-alpine:
+  box:
+    id: alpine
+    cmd: /bin/sh
   steps:
     - script:
-        name: install dependencies
+       name: install packages
         code: |
-          apt-get update -y
-          apt-get install -y build-essential valgrind libegl1-mesa-dev libx11-dev
-          apt-get install -y git perl python coreutils cmake
+          apk update
+          apk add build-base git perl python coreutils cmake valgrind mesa-dev
+
+    - script:
+        name: build code
+        code: |
+          git submodule update --init --recursive
+          python ci-tools/run_ctest.py
+
+build-fedora:
+  box: fedora
+  steps:
+    - script:
+       name: install packages
+        code: |
+          dnf -y update
+          dnf -y groupinstall "C Development Tools and Libraries"
+          dnf -y install git perl python coreutils cmake valgrind mesa-libEGL-devel libX11-devel
+
+    - script:
+        name: build code
+        code: |
+          git submodule update --init --recursive
+          python ci-tools/run_ctest.py
+
+build-opensuse:
+  box: opensuse:tumbleweed
+  steps:
+    - script:
+       name: install packages
+        code: |
+          zypper update --non-interactive
+          zypper install --non-interactive -t pattern devel_C_C++
+          zypper install --non-interactive git perl python coreutils cmake valgrind Mesa-libEGL-devel libX11-devel
 
     - script:
         name: build code
