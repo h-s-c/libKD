@@ -1,10 +1,10 @@
 box: busybox
 
 build-ubuntu:
-  box: ubuntu
+  box: ubuntu:devel
   steps:
     - install-packages:
-        packages: build-essential git perl python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
+        packages: build-essential git python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
 
     - script:
         name: build code
@@ -16,7 +16,7 @@ build-debian:
   box: debian:unstable
   steps:
     - install-packages:
-        packages: build-essential git perl python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
+        packages: build-essential git python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
 
     - script:
         name: build code
@@ -26,14 +26,14 @@ build-debian:
 
 build-alpine:
   box:
-    id: alpine
+    id: alpine:edge
     cmd: /bin/sh
   steps:
     - script:
         name: install packages
         code: |
           apk update
-          apk add build-base git perl python coreutils cmake valgrind mesa-dev
+          apk add build-base git python coreutils cmake valgrind mesa-dev
 
     - script:
         name: build code
@@ -42,14 +42,14 @@ build-alpine:
           python ci-tools/run_ctest.py
 
 build-fedora:
-  box: fedora
+  box: fedora:rawhide
   steps:
     - script:
         name: install packages
         code: |
           dnf -y update
           dnf -y groupinstall "C Development Tools and Libraries"
-          dnf -y install git perl python coreutils cmake valgrind mesa-libEGL-devel libX11-devel
+          dnf -y install git python coreutils cmake valgrind mesa-libEGL-devel libX11-devel
 
     - script:
         name: build code
@@ -65,7 +65,7 @@ build-opensuse:
         code: |
           zypper update --non-interactive
           zypper install --non-interactive -t pattern devel_C_C++
-          zypper install --non-interactive git perl python coreutils cmake valgrind Mesa-libEGL-devel libX11-devel
+          zypper install --non-interactive git python coreutils cmake valgrind Mesa-libEGL-devel libX11-devel
 
     - script:
         name: build code
