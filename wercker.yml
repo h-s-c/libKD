@@ -30,7 +30,7 @@ build-alpine:
     cmd: /bin/sh
   steps:
     - script:
-       name: install packages
+        name: install packages
         code: |
           apk update
           apk add build-base git perl python coreutils cmake valgrind mesa-dev
@@ -45,7 +45,7 @@ build-fedora:
   box: fedora
   steps:
     - script:
-       name: install packages
+        name: install packages
         code: |
           dnf -y update
           dnf -y groupinstall "C Development Tools and Libraries"
@@ -61,7 +61,7 @@ build-opensuse:
   box: opensuse:tumbleweed
   steps:
     - script:
-       name: install packages
+        name: install packages
         code: |
           zypper update --non-interactive
           zypper install --non-interactive -t pattern devel_C_C++
