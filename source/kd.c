@@ -193,16 +193,15 @@ KD_API void KD_APIENTRY kdSetError(KDint error)
     kdThreadSelf()->lasterror = error;
 }
 
-KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allowed)
+KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint allowed)
 {
     KDint kderror = 0;
 #if defined(_WIN32)
     switch(error)
     {
-        case(ERROR_FILE_NOT_FOUND):
-        case(ERROR_PATH_NOT_FOUND):
+        case(ERROR_ACCESS_DENIED):
         {
-            kderror = KD_ENOENT;
+            kderror = KD_EACCES;
             break;
         }
         case(ERROR_TOO_MANY_OPEN_FILES):
@@ -210,9 +209,10 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allow
             kderror = KD_EMFILE;
             break;
         }
-        case(ERROR_ACCESS_DENIED):
+        case(ERROR_FILE_NOT_FOUND):
+        case(ERROR_PATH_NOT_FOUND):
         {
-            kderror = KD_EACCES;
+            kderror = KD_ENOENT;
             break;
         }
         case(ERROR_NOT_ENOUGH_MEMORY):
@@ -228,7 +228,72 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformError error, KDint allow
         }
     }
 #else
-    kdAssert(0);
+    switch(error)
+    {
+        case(EACCES):
+        case(EROFS):
+        {
+            kderror = KD_EACCES;
+            break;
+        }
+        case(EBADF):
+        {
+            kderror = KD_EBADF;
+            break;
+        }
+        case(EFBIG):
+        {
+            kderror = KD_EFBIG;
+            break;
+        }
+        case(EINVAL):
+        {
+            kderror = KD_EINVAL;
+            break;
+        }
+        case(EIO):
+        {
+            kderror = KD_EIO;
+            break;
+        }
+        case(EISDIR):
+        {
+            kderror = KD_EISDIR;
+            break;
+        }
+        case(EMFILE):
+        case(ENFILE):
+        {
+            kderror = KD_EMFILE;
+            break;
+        }
+        case(ENAMETOOLONG):
+        {
+            kderror = KD_ENAMETOOLONG;
+            break;
+        }
+        case(ENOENT):
+        case(ENOTDIR):
+        {
+            kderror = KD_ENOENT;
+            break;
+        }
+        case(ENOMEM):
+        {
+            kderror = KD_ENOMEM;
+            break;
+        }
+        case(ENOSPC):
+        {
+            kderror = KD_ENOSPC;
+            break;
+        }
+        default:
+        {
+            /* TODO: Handle other errorcodes */
+            kdAssert(0);
+        }
+    }
 #endif
 
     /* KD errors are 1 to 37*/
@@ -5589,6 +5654,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
     file->pathname = pathname;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
@@ -5623,19 +5689,26 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         access = GENERIC_READ | GENERIC_WRITE;
     }
     file->file = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, create, 0, NULL);
-    if(file->file == INVALID_HANDLE_VALUE)
+    if(file->file != INVALID_HANDLE_VALUE)
     {
-        kdSetErrorPlatformVEN(GetLastError(), KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR |
-                KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
-        return KD_NULL;
+        if(mode[0] == 'a')
+        {
+            SetFilePointer(file, 0, NULL, FILE_END);
+        }
     }
-    if(mode[0] == 'a')
+    else
     {
-        SetFilePointer(file, 0, NULL, FILE_END);
-    }
+        error = GetLastError();
 #else
     file->file = fopen(pathname, mode);
+    if(file->file == NULL)
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR |
+            KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
+        return KD_NULL;
+    }
     file->eof = 0;
     return file;
 }
@@ -5643,15 +5716,20 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 /* kdFclose: Close an open file. */
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
-    KDint error = 0;
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    error = CloseHandle(file->file);
-    if(error == 0)
-#else
-    error = fclose(file->file);
-    if(error == EOF)
-#endif
+    retval = CloseHandle(file->file);
+    if(retval == 0)
     {
+        error = GetLastError();
+#else
+    retval = fclose(file->file);
+    if(retval == EOF)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
     kdFree(file);
@@ -5661,15 +5739,14 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 /* kdFflush: Flush an open file. */
 KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 {
-#if defined(_WIN32)
-    if(0)
-#else
-    KDint error = fflush(file->file);
-    if(error == EOF)
-#endif
+#if !defined(_WIN32)
+    KDint retval = fflush(file->file);
+    if(retval == EOF)
     {
+        kdSetErrorPlatformVEN(errno, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
+#endif
     return 0;
 }
 
@@ -5677,12 +5754,22 @@ KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDsize retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     DWORD bytesread = 0;
     retval = ReadFile(file->file, buffer, (DWORD)(count * size), &bytesread, NULL) ? bytesread / size : 0;
+    if(retval != size)
+    {
+        error = GetLastError();
 #else
     retval = fread(buffer, size, count, file->file);
+    if(retval != size)
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
+        return kdFerror(file);
+    }
     return retval;
 }
 
@@ -5690,45 +5777,65 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
 KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDsize retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     DWORD byteswritten = 0;
     retval = WriteFile(file->file, buffer, (DWORD)(count * size), &byteswritten, NULL) ? byteswritten / size : 0;
+    if(retval != size)
+    {
+        error = GetLastError();
 #else
     retval = fwrite(buffer, size, count, file->file);
+    if(retval != size)
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
+        return kdFerror(file);
+    }
     return retval;
 }
 
 /* kdGetc: Read next byte from an open file. */
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
-    KDint byte = 0;
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    BOOL error = ReadFile(file->file, &byte, 1, (DWORD[]){0}, NULL);
-    if(error == TRUE)
-#else
-    byte = fgetc(file->file);
-    if(byte == EOF)
-#endif
+    if(ReadFile(file->file, &retval, 1, (DWORD[]){0}, NULL) == TRUE)
     {
-        return KD_EOF;
+        error = GetLastError();
+#else
+    retval = fgetc(file->file);
+    if(retval == EOF)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
+        return kdFerror(file);
     }
-    return byte;
+    return retval;
 }
 
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    BOOL error = WriteFile(file->file, &c, 1, (DWORD[]){0}, NULL);
-    if(error == TRUE)
-#else
-    KDint error = fputc(c, file->file);
-    if(error == EOF)
-#endif
+    if(WriteFile(file->file, &retval , 1, (DWORD[]){0}, NULL) == TRUE)
     {
-        return KD_EOF;
+        error = GetLastError();
+#else
+    retval = fputc(retval , file->file);
+    if(retval == EOF)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
+        return kdFerror(file);
     }
+    c = retval;
     return c;
 }
 
@@ -5796,6 +5903,7 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 #endif
 }
 
+/* TODO: Cleanup */ 
 typedef struct {
 #if defined(_MSC_VER)
     KDint seekorigin_kd;
