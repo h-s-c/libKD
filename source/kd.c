@@ -288,6 +288,11 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
             kderror = KD_ENOSPC;
             break;
         }
+        case(EOVERFLOW):
+        {
+            kderror = KD_EOVERFLOW;
+            break;
+        }
         default:
         {
             /* TODO: Handle other errorcodes */
@@ -5926,18 +5931,23 @@ static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SE
 /* kdFseek: Reposition the file position indicator in a file. */
 KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
 {
+    KDPlatformErrorVEN error = 0;
     for(KDuint i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
     {
         if(seekorigins[i].seekorigin_kd == origin)
         {
 #if defined(_WIN32)
-            DWORD error = SetFilePointer(file->file, (LONG)offset, NULL, seekorigins[i].seekorigin);
-            if(error == INVALID_SET_FILE_POINTER)
-#else
-            KDint error = fseek(file->file, (KDint32)offset, seekorigins[i].seekorigin);
-            if(error != 0)
-#endif
+            DWORD retval = SetFilePointer(file->file, (LONG)offset, NULL, seekorigins[i].seekorigin);
+            if(retval == INVALID_SET_FILE_POINTER)
             {
+                error = GetLastError();
+#else
+            KDint retval = fseek(file->file, (KDint32)offset, seekorigins[i].seekorigin);
+            if(retval != 0)
+            {
+                error = errno;
+#endif
+                kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EINVAL | KD_EIO | KD_ENOMEM | KD_ENOSPC | KD_EOVERFLOW);
                 return -1;
             }
             break;
@@ -5950,15 +5960,21 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
 KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 {
     KDoff position = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     position = (KDoff)SetFilePointer(file->file, 0, NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
     {
-        kdAssert(0);
-    }
+        error = GetLastError();
 #else
     position = ftell(file->file);
+    if(position == -1)
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EOVERFLOW);
+        return -1;
+    }
     return position;
 }
 
