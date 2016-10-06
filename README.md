@@ -7,8 +7,8 @@
 [![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=Coverity Scan)](https://scan.coverity.com/projects/h-s-c-libkd)  
   
 [![Travis CI](https://img.shields.io/travis/h-s-c/libKD.svg?label=Travis CI)](https://travis-ci.org/h-s-c/libKD)  
-[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libkd.svg?label=AppVeyor CI)](https://ci.appveyor.com/project/h-s-c/libkd)  
-[![Wercker CI](https://img.shields.io/wercker/ci/56ddd4669d5cf1b5733fe8e0.svg?label=Wercker CI)](https://app.wercker.com/project/bykey/67442a3aa223b378b2bcaef188cc6459)
+[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libKD.svg?label=AppVeyor CI)](https://ci.appveyor.com/project/h-s-c/libKD)  
+[![Wercker CI](https://img.shields.io/wercker/ci/h-s-c/libKD.svg?label=Wercker CI)](https://app.wercker.com/h-s-c/libKD)
 
 ###About
 -   Cross-platform system API similar to POSIX or SDL
@@ -21,7 +21,7 @@
 -   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
 
 ###Compilers
--   Visual C++ 2013/2015, GCC/MinGW, Clang/Xcode, Emscripten
+-   Visual C++ 2013/2015, GCC/MinGW, Clang/Xcode, Intel C++, Tiny C, Emscripten
 
 ###Dependencies
 -   EGL, OpenGL ES (samples)

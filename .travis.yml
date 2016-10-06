@@ -1,5 +1,9 @@
 language: c
 
+cache:
+  directories:
+    - ci-tools/cache
+
 matrix:
   include:
     - os: linux
@@ -76,7 +80,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
+          packages: ['gcc-6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -87,7 +91,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
+          packages: ['gcc-5', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -98,7 +102,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
+          packages: ['gcc-4.9', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -109,7 +113,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
+          packages: ['gcc-4.8', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -120,7 +124,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
+          packages: ['gcc-4.7', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -131,7 +135,21 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev']
+          packages: ['gcc-4.6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
+      install: python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: linux
+      compiler: clang-4.0
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
+              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
+          packages: ['clang-4.0', 'llvm-4.0', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -143,9 +161,9 @@ matrix:
         apt:
           sources: 
             - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-3.9', 'llvm-3.9', 'valgrind', 'libegl1-mesa-dev']
+          packages: ['clang-3.9', 'llvm-3.9', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -159,7 +177,7 @@ matrix:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-3.8', 'llvm-3.8', 'valgrind', 'libegl1-mesa-dev']
+          packages: ['clang-3.8', 'llvm-3.8', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -170,7 +188,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.6', 'llvm-3.6', 'valgrind', 'libegl1-mesa-dev']
+          packages: ['clang-3.6', 'llvm-3.6', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -181,7 +199,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.5', 'llvm-3.5', 'valgrind', 'libegl1-mesa-dev']
+          packages: ['clang-3.5', 'llvm-3.5', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -192,7 +210,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['valgrind', 'libegl1-mesa-dev']
+          packages: ['valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: 
         - python ci-tools/install_cmake.py 
         - python ci-tools/install_icc.py
@@ -206,8 +224,54 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['tcc', 'valgrind', 'libegl1-mesa-dev']
+          packages: ['tcc', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: linux
+      compiler: x86_64-w64-mingw32-gcc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'ppa:ubuntu-wine'
+          packages: ['mingw-w64', 'valgrind', 'binutils-gold']
+      before_install: 
+        - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
+        - sudo dpkg --add-architecture i386
+        - sudo apt-get update -qq
+        - sudo apt-get install -qq wine1.8
+      install: 
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: linux
+      compiler: i686-w64-mingw32-gcc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'ppa:ubuntu-wine'
+          packages: ['mingw-w64', 'valgrind', 'binutils-gold']
+      before_install: 
+        - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
+        - sudo dpkg --add-architecture i386
+        - sudo apt-get update -qq
+        - sudo apt-get install -qq wine1.8
+      install: 
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: osx
@@ -238,45 +302,6 @@ matrix:
 
     - os: osx
       compiler: clang
-      osx_image: xcode7.2
-      install: 
-        - brew update
-        - brew install valgrind
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py  
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
-      osx_image: xcode7.1
-      install: 
-        - brew update
-        - brew install valgrind
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py  
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
-      osx_image: xcode7
-      install: 
-        - brew update
-        - brew install valgrind
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py  
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
       osx_image: xcode6.4
       before_install:
         - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall)" < /dev/null
@@ -291,45 +316,6 @@ matrix:
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
-    - os: osx
-      compiler: clang
-      osx_image: beta-xcode6.3
-      install: 
-        - brew update
-        - brew install valgrind
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py  
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
-      osx_image: beta-xcode6.2
-      install: 
-        - brew update
-        - brew install valgrind
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py  
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
-      osx_image: xcode6.1
-      install: 
-        - brew update
-        - brew install valgrind
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py  
-      script: python ci-tools/run_ctest.py
-
   allow_failures:
     - compiler: icc # Unstable
-    - compiler: clang-3.9 # Unstable
+    - compiler: clang-4.0 # Unstable
