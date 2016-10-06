@@ -5708,6 +5708,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     file->file = fopen(pathname, mode);
     if(file->file == NULL)
     {
+        kdFree(file->file);
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR |
