@@ -232,6 +232,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
     {
         case(EACCES):
         case(EROFS):
+        case(EISDIR):
         {
             kderror = KD_EACCES;
             break;
@@ -239,6 +240,17 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(EBADF):
         {
             kderror = KD_EBADF;
+            break;
+        }
+        case(EBUSY):
+        {
+            kderror = KD_EBUSY;
+            break;
+        }
+        case(EEXIST):
+        case(ENOTEMPTY):
+        {
+            kderror = KD_EEXIST;
             break;
         }
         case(EFBIG):
@@ -254,11 +266,6 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(EIO):
         {
             kderror = KD_EIO;
-            break;
-        }
-        case(EISDIR):
-        {
-            kderror = KD_EISDIR;
             break;
         }
         case(EMFILE):
@@ -5983,37 +5990,63 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 {
     KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     retval = CreateDirectory(pathname, NULL);
+    if(retval == 0)
+    {
+        error = GetLastError();
 #else
     retval = mkdir(pathname, S_IRWXU);
+    if(retval == -1)
+    {
+        error = errno;
 #endif
-    return retval;
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM | KD_ENOSPC);
+        return -1;
+    }
+    return 0;
 }
 
 /* kdRmdir: Delete a directory. */
 KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 {
     KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     retval = RemoveDirectory(pathname);
+    if(retval == 0)
+    {
+        error = GetLastError();
 #else
     retval = rmdir(pathname);
+    if(retval == -1)
+    {
+        error = errno;
 #endif
-    return retval;
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        return -1;
+    }
+    return 0;
 }
 
 /* kdRename: Rename a file. */
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    KDint error = MoveFile(src, dest);
-    if(error == 0)
-#else
-    KDint error = rename(src, dest);
-    if(error != 0)
-#endif
+    retval = MoveFile(src, dest);
+    if(retval == 0)
     {
+        error = GetLastError();
+#else
+    retval = rename(src, dest);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6022,14 +6055,20 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 /* kdRemove: Delete a file. */
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    KDint error = DeleteFile(pathname);
-    if(error == 0)
-#else
-    KDint error = remove(pathname);
-    if(error != 0)
-#endif
+    retval = DeleteFile(pathname);
+    if(retval == 0)
     {
+        error = GetLastError();
+#else
+    retval = remove(pathname);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
         return -1;
     }
     return 0;
