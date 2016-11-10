@@ -41,7 +41,7 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
    shader = glCreateShader ( type );
 
    if ( shader == 0 )
-   	return 0;
+      return 0;
 
    // Load the shader source
    glShaderSource ( shader, 1, &shaderSrc, KD_NULL  );

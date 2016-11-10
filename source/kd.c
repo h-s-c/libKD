@@ -3103,6 +3103,10 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
                         iq[jz - 1] &= 0x3fffff;
                         break;
                     }
+                    default:
+                    {
+                        break;
+                    }
                 }
             }
             if(ih == 2)
@@ -3245,6 +3249,10 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
                 y[1] = -fq[1];
                 y[2] = -fw;
             }
+        }
+        default:
+        {
+            break;
         }
     }
     return n & 7;
@@ -3525,6 +3533,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
             {
                 return -KD_PI_F - tiny; /* atan(-0,-anything) =-pi */
             }
+            default:
+            {
+                break;
+            }
         }
     }
     /* when x = 0 */
@@ -3556,6 +3568,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
                 {
                     return -3.0f * KD_PI_4_F - tiny; /*atan(-INF,-INF)*/
                 }
+                default:
+                {
+                    break;
+                }
             }
         }
         else
@@ -3577,6 +3593,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
                 case 3:
                 {
                     return -KD_PI_F - tiny; /* atan(-...,-INF) */
+                }
+                default:
+                {
+                    break;
                 }
             }
         }
