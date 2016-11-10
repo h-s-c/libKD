@@ -582,6 +582,10 @@ static void __kdThreadFree(KDThread *thread)
         kdFreeEvent(thread->lastevent);
     }
     kdFree(thread->lastdirent);
+    while(kdQueueSizeVEN(thread->eventqueue) > 0)
+    {
+        kdFreeEvent((KDEvent *)kdQueuePopHeadVEN(thread->eventqueue));
+    }
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
 }

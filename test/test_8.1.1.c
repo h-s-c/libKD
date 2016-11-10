@@ -39,7 +39,7 @@ static void* test_func( void *arg)
             kdDefaultEvent(event);
         }
     }
-	return 0;
+    return 0;
 }
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
@@ -64,7 +64,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     }
     for(KDint j = 0 ; j < THREAD_COUNT ;j++)
     {
-		kdThreadJoin(threads[j], KD_NULL);
+        kdThreadJoin(threads[j], KD_NULL);
     }
     return 0;
 }
