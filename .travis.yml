@@ -9,7 +9,7 @@ matrix:
     - os: linux
       compiler: gcc
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
@@ -27,7 +27,7 @@ matrix:
     - os: linux
       compiler: gcc
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
@@ -73,7 +73,7 @@ matrix:
     - os: linux
       compiler: gcc-6
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -84,7 +84,7 @@ matrix:
     - os: linux
       compiler: gcc-5
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -95,7 +95,7 @@ matrix:
     - os: linux
       compiler: gcc-4.9
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -106,7 +106,7 @@ matrix:
     - os: linux
       compiler: gcc-4.8
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -117,7 +117,7 @@ matrix:
     - os: linux
       compiler: gcc-4.7
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -128,7 +128,7 @@ matrix:
     - os: linux
       compiler: gcc-4.6
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -139,7 +139,7 @@ matrix:
     - os: linux
       compiler: clang-4.0
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: 
@@ -153,7 +153,7 @@ matrix:
     - os: linux
       compiler: clang-3.9
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: 
@@ -167,7 +167,7 @@ matrix:
     - os: linux
       compiler: clang-3.8
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: 
@@ -181,7 +181,7 @@ matrix:
     - os: linux
       compiler: clang-3.6
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -192,7 +192,7 @@ matrix:
     - os: linux
       compiler: clang-3.5
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -203,7 +203,7 @@ matrix:
     - os: linux
       compiler: icc
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -217,7 +217,7 @@ matrix:
     - os: linux
       compiler: tcc
       dist: trusty
-      sudo: false
+      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
