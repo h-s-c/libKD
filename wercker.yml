@@ -42,7 +42,7 @@ build-alpine:
           python ci-tools/run_ctest.py
 
 build-fedora:
-  box: fedora:rawhide
+  box: fedora:25
   steps:
     - script:
         name: install packages
