@@ -6101,79 +6101,95 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 /* kdTruncate: Truncate or extend a file. */
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     HANDLE file = FindFirstFile(pathname, &data);
-    BOOL error = SetFileValidData(file, (LONGLONG)length);
+    retval = (KDint)SetFileValidData(file, (LONGLONG)length);
     FindClose(file);
-    if(error == 0)
+    if(retval == 0)
     {
+        error = GetLastError();
+#else
+    retval = truncate(pathname, length);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
         return -1;
     }
-    else
-    {
-        return 0;
-    }
-#else
-    return truncate(pathname, length);
-#endif
+    return 0;
 }
 
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
-    KDint retval = -1;
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = 0;
     WIN32_FIND_DATA data;
-    FindFirstFile(pathname, &data);
-    if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE);
     {
-        buf->st_mode = 0x4000;
-    }
-    else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
-    {
-        buf->st_mode = 0x8000;
+        if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            buf->st_mode = 0x4000;
+        }
+        else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
+        {
+            buf->st_mode = 0x8000;
+        }
+        else
+        {
+            kdAssert(0);
+        }
+        LARGE_INTEGER size;
+        size.LowPart = data.nFileSizeLow;
+        size.HighPart = data.nFileSizeHigh;
+        buf->st_size = size.QuadPart;
+
+        ULARGE_INTEGER time;
+        time.LowPart = data.ftLastWriteTime.dwLowDateTime;
+        time.HighPart = data.ftLastWriteTime.dwHighDateTime;
+        /* See RtlTimeToSecondsSince1970 */
+        buf->st_mtime = (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
     }
     else
     {
-        kdAssert(0);
-    }
-    LARGE_INTEGER size;
-    size.LowPart = data.nFileSizeLow;
-    size.HighPart = data.nFileSizeHigh;
-    buf->st_size = size.QuadPart;
-
-    ULARGE_INTEGER time;
-    time.LowPart = data.ftLastWriteTime.dwLowDateTime;
-    time.HighPart = data.ftLastWriteTime.dwHighDateTime;
-    /* See RtlTimeToSecondsSince1970 */
-    buf->st_mtime = (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
+        error = GetLastError();
 #else
     struct stat posixstat = {0};
     retval = stat(pathname, &posixstat);
-    if(posixstat.st_mode & S_IFDIR)
+    if(retval == 0)
     {
-        buf->st_mode = 0x4000;
-    }
-    else if(posixstat.st_mode & S_IFREG)
-    {
-        buf->st_mode = 0x8000;
+        if (posixstat.st_mode & S_IFDIR)
+        {
+            buf->st_mode = 0x4000;
+        } else if (posixstat.st_mode & S_IFREG)
+        {
+            buf->st_mode = 0x8000;
+        } else
+        {
+            kdAssert(0);
+        }
+        buf->st_size = posixstat.st_size;
+#if defined(__ANDROID__)
+        buf->st_mtime = posixstat.st_mtime;
+#elif defined(__APPLE__)
+        buf->st_mtime = posixstat.st_mtimespec.tv_sec;
+#else
+        buf->st_mtime = posixstat.st_mtim.tv_sec;
+#endif
     }
     else
     {
-        kdAssert(0);
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM | KD_EOVERFLOW);
+        return -1;
     }
-    buf->st_size = posixstat.st_size;
-#if defined(__ANDROID__)
-    buf->st_mtime = posixstat.st_mtime;
-#elif defined(__APPLE__)
-    buf->st_mtime = posixstat.st_mtimespec.tv_sec;
-#else
-    buf->st_mtime = posixstat.st_mtim.tv_sec;
-#endif
-#endif
-    return retval;
+    return 0;
 }
 
 KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
@@ -6184,11 +6200,11 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
-    KDint retval = -1;
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    HANDLE error = FindFirstFile(pathname, &data);
-    if(error != INVALID_HANDLE_VALUE)
+    if(FindFirstFile(pathname, &data != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
         {
@@ -6202,6 +6218,9 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
             return 0;
         }
     }
+    else
+    {
+        error = GetLastError();
 #else
     typedef struct __KDAccessMode {
         KDint accessmode_kd;
@@ -6217,8 +6236,14 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
         }
     }
     retval = access(pathname, accessmode);
+    if(retval == -1)
+    {
+        error = errno;
 #endif
-    return retval;
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        return -1;
+    }
+    return 0;
 }
 
 /* kdOpenDir: Open a directory ready for listing. */
@@ -6231,28 +6256,63 @@ struct KDDir {
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
+    KDPlatformErrorVEN error = 0;
+    if(kdStrcmp(pathname, "/") == 0)
+    {
+        kdSetError(KD_EACCES);
+        return KD_NULL;
+    }
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     dir->dir = FindFirstFile(pathname, &data);
+    if(dir->dir == INVALID_HANDLE_VALUE)
+    {
+        error = GetLastError();
 #else
     dir->dir = opendir(pathname);
+    if(dir->dir == NULL)
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        kdFree(dir);
+        return KD_NULL;
+    }
     return dir;
 }
 
 /* kdReadDir: Return the next file in a directory. */
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
+    KDPlatformErrorVEN error = 0;
     KDDirent *lastdirent = kdThreadSelf()->lastdirent;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     FindNextFile(dir->dir, &data);
-    lastdirent->d_name = data.cFileName;
+    if(dir->dir != INVALID_HANDLE_VALUE)
+    {
+        lastdirent->d_name = data.cFileName;
+    }
+    else
+    {
+        error = GetLastError();
 #else
     struct dirent *posixdirent = readdir(dir->dir);
-    lastdirent->d_name = posixdirent->d_name;
+    if(posixdirent)
+    {
+        lastdirent->d_name = posixdirent->d_name;
+    }
+    else
+    {
+        error = errno;
 #endif
+        if(error != 0)
+        {
+            kdSetErrorPlatformVEN(error, KD_EIO | KD_ENOMEM);
+        }
+        return KD_NULL;
+    }
     return lastdirent;
 }
 
@@ -6271,16 +6331,27 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 /* kdGetFree: Get free space on a drive. */
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
+    KDPlatformErrorVEN error = 0;
+    KDoff freespace = 0;
     const KDchar *temp = pathname;
 #if defined(_WIN32)
-    KDuint64 freespace = 0;
-    GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL);
-    return freespace;
+    if(GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL) == 0)
+    {
+        error = GetLastError();
 #else
     struct statfs buf = {0};
-    statfs(temp, &buf);
-    return (buf.f_bsize / 1024L) * buf.f_bavail;
+    if(statfs(temp, &buf) == 0)
+    {
+        freespace = (buf.f_bsize / 1024L) * buf.f_bavail;
+    }
+    else
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSYS | KD_EOVERFLOW);
+        return (KDoff)-1;
+    }
+    return freespace;
 }
 
 /******************************************************************************
@@ -6706,13 +6777,17 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
 #ifndef KD_NDEBUG
 KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 {
-    KDsize stringsize = kdStrlen(string) + 2;
-    KDchar *newstring = kdMalloc(sizeof(KDchar) * stringsize);
-    kdMemset(newstring, 0, stringsize);
-    kdStrncat_s(newstring, stringsize, string, stringsize);
-    if(newstring[(stringsize - 3)] != '\n')
+    KDsize length = kdStrlen(string);
+    if(!length)
     {
-        kdStrncat_s(newstring, stringsize, "\n", stringsize);
+        return;
+    }
+    KDchar *newstring = kdMalloc(sizeof(KDchar) * (length + 1));
+    kdMemset(newstring, 0, length + 1);
+    kdStrncat_s(newstring, length + 1, string, length);
+    if(string[length - 1] != '\n')
+    {
+        kdStrncat_s(newstring,  length + 1, "\n",  length + 1);
     }
 #if defined(__ANDROID__)
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
