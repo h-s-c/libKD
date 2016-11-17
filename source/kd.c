@@ -6130,7 +6130,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE);
+    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
@@ -6204,7 +6204,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    if(FindFirstFile(pathname, &data != INVALID_HANDLE_VALUE)
+    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
         {
@@ -6265,8 +6265,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    dir->dir = FindFirstFile(pathname, &data);
-    if(dir->dir == INVALID_HANDLE_VALUE)
+    if(FindFirstFile(pathname, &data) == INVALID_HANDLE_VALUE)
     {
         error = GetLastError();
 #else
@@ -6289,8 +6288,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     KDDirent *lastdirent = kdThreadSelf()->lastdirent;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    FindNextFile(dir->dir, &data);
-    if(dir->dir != INVALID_HANDLE_VALUE)
+    if(FindNextFile(dir->dir, &data) != INVALID_HANDLE_VALUE)
     {
         lastdirent->d_name = data.cFileName;
     }
