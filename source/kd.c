@@ -6126,7 +6126,6 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
-    KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
@@ -6160,8 +6159,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         error = GetLastError();
 #else
     struct stat posixstat = {0};
-    retval = stat(pathname, &posixstat);
-    if(retval == 0)
+    if(stat(pathname, &posixstat) == 0)
     {
         if (posixstat.st_mode & S_IFDIR)
         {
@@ -6200,7 +6198,6 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
-    KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
@@ -6235,8 +6232,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
             accessmode |= accessmodes[i].accessmode_posix;
         }
     }
-    retval = access(pathname, accessmode);
-    if(retval == -1)
+    if(access(pathname, accessmode) == -1)
     {
         error = errno;
 #endif
@@ -6288,7 +6284,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     KDDirent *lastdirent = kdThreadSelf()->lastdirent;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    if(FindNextFile(dir->dir, &data) != INVALID_HANDLE_VALUE)
+    if(FindNextFile(dir->dir, &data) != 0)
     {
         lastdirent->d_name = data.cFileName;
     }
