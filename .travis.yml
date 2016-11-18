@@ -303,9 +303,6 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode6.4
-      before_install:
-        - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall)" < /dev/null
-        - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
       install: 
         - brew update
         - brew install valgrind wget
