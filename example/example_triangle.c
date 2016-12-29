@@ -16,6 +16,11 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
+
 typedef struct
 {
    // Handle to a program object
@@ -57,14 +62,14 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
       GLint infoLen = 0;
 
       glGetShaderiv ( shader, GL_INFO_LOG_LENGTH, &infoLen );
-      
+
       if ( infoLen > 1 )
       {
          char* infoLog = kdMalloc (sizeof(char) * infoLen );
 
          glGetShaderInfoLog ( shader, infoLen, KD_NULL , infoLog );
-         kdLogMessage ( infoLog );            
-         
+         kdLogMessage ( infoLog );
+
          kdFree ( infoLog );
       }
 
@@ -127,14 +132,14 @@ int Init ( UserData *userData )
       GLint infoLen = 0;
 
       glGetProgramiv ( programObject, GL_INFO_LOG_LENGTH, &infoLen );
-      
+
       if ( infoLen > 1 )
       {
          char* infoLog = kdMalloc (sizeof(char) * infoLen );
 
          glGetProgramInfoLog ( programObject, infoLen, KD_NULL , infoLog );
          kdLogMessage ( infoLog );
-         
+
          kdFree ( infoLog );
       }
 
@@ -157,9 +162,11 @@ void Draw ( UserData *userData )
    GLfloat vVertices[] = {  0.0f,  0.5f, 0.0f, 
                            -0.5f, -0.5f, 0.0f,
                             0.5f, -0.5f, 0.0f };
-      
+
    // Set the viewport
-   glViewport ( 0, 0, 320, 240 );
+   int width = 0; int height = 0; int isFullscreen = 0;
+   emscripten_get_canvas_size(&width, &height, &isFullscreen);
+   glViewport ( 0, 0, width, height);
    
    // Clear the color buffer
    glClear ( GL_COLOR_BUFFER_BIT );
@@ -183,7 +190,7 @@ void Draw ( UserData *userData )
 //    Initialize an EGL rendering context and all associated elements
 //
 EGLBoolean InitEGLContext ( UserData *userData,
-                            KDWindow *window,                             
+                            KDWindow *window,
                             EGLConfig config )
 {
    EGLContext context;
@@ -219,7 +226,39 @@ EGLBoolean InitEGLContext ( UserData *userData,
    userData->eglSurface = surface;
 
    return EGL_TRUE;
-} 
+}
+
+void Exit ( UserData *userData, KDWindow *window )
+{
+   // EGL clean up
+   eglMakeCurrent ( 0, 0, 0, 0 );
+   eglDestroySurface ( userData->eglDisplay, userData->eglSurface );
+   eglDestroyContext ( userData->eglDisplay, userData->eglContext );
+
+   // Destroy the window
+   kdDestroyWindow(window);
+}
+
+typedef struct MainloopArgs MainloopArgs;
+struct MainloopArgs {
+   UserData *userData;
+   KDWindow *window;
+};
+void Mainloop ( void* args )
+{
+   MainloopArgs* loopargs = (MainloopArgs*)args;
+
+   // Wait for an event
+   const KDEvent *evt = kdWaitEvent(0);
+   if (evt) {
+   // Exit app
+      if (evt->type == KD_EVENT_WINDOW_CLOSE)
+         Exit(loopargs->userData, loopargs->window);
+   }
+
+   // Draw frame
+   Draw(loopargs->userData);
+}
 
 /// 
 // kdMain() 
@@ -274,32 +313,21 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
    if ( !InitEGLContext ( &userData, window, config ) )
       kdExit ( 0 );
 
-   if ( !Init ( &userData ) )
+    if ( !Init ( &userData ) )
       kdExit ( 0 );
 
    // Main Loop
+   MainloopArgs loopargs = {.userData = &userData, .window = window};
+#ifdef __EMSCRIPTEN__
+   emscripten_set_main_loop_arg(Mainloop, (void*)&loopargs, 0, 1);
+#else
    while ( 1 )
    {
-      // Wait for an event
-      const KDEvent *evt = kdWaitEvent ( 0 );
-      if ( evt )
-      {
-         // Exit app
-         if ( evt->type == KD_EVENT_WINDOW_CLOSE)
-            break;
-      }
-
-      // Draw frame
-      Draw ( &userData );
+      Mainloop( (void*)loopargs);
    }
+#endif
 
-   // EGL clean up 
-   eglMakeCurrent ( 0, 0, 0, 0 );
-   eglDestroySurface ( userData.eglDisplay, userData.eglSurface );
-   eglDestroyContext ( userData.eglDisplay, userData.eglContext );
-
-   // Destroy the window
-   kdDestroyWindow(window);
+   Exit( &userData, window);
 
    return 0;
 }

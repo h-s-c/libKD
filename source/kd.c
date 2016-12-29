@@ -1060,11 +1060,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #if defined(KD_THREAD_C11)
     thrd_sleep(&ts, NULL);
 #elif defined(KD_THREAD_POSIX)
-#ifdef __EMSCRIPTEN__
-    emscripten_sleep_with_yield(timeout / 1000000);
-#else
     nanosleep(&ts, NULL);
-#endif
 #elif defined(KD_THREAD_WIN32)
     HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
     if(!timer)
@@ -1185,10 +1181,6 @@ static KDWindow *__kd_window = KD_NULL;
 #endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
-#ifdef __EMSCRIPTEN__
-    /* Give back control to the browser */
-    emscripten_sleep_with_yield(1);
-#endif
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
     for(KDuint i = 0; i < queuesize; i++)
     {
