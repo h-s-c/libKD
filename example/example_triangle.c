@@ -164,8 +164,13 @@ void Draw ( UserData *userData )
                             0.5f, -0.5f, 0.0f };
 
    // Set the viewport
-   int width = 0; int height = 0; int isFullscreen = 0;
+   int width = 0; int height = 0;
+   eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_WIDTH, &width);
+   eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_HEIGHT, &height);
+#ifdef __EMSCRIPTEN__
+   int isFullscreen = 0;
    emscripten_get_canvas_size(&width, &height, &isFullscreen);
+#endif
    glViewport ( 0, 0, width, height);
    
    // Clear the color buffer
@@ -323,7 +328,7 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
 #else
    while ( 1 )
    {
-      Mainloop( (void*)loopargs);
+      Mainloop((void*)&loopargs);
    }
 #endif
 
