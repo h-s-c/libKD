@@ -1753,8 +1753,8 @@ static int __kdPreMain(int argc, char **argv)
         kdAssert(0);
     }
     /* ISO C forbids assignment between function pointer and ‘void *’ */
-    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr)); // NOLINT
-    result = kdmain(argc, (const KDchar *const *)argv); // NOLINT
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
+    result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);
 #endif
 
@@ -3005,14 +3005,12 @@ static KDint __kdIrint(KDfloat64KHR x)
 #endif
 }
 
-static const KDint init_jk[] = {3, 4, 4, 6}; /* initial value for jk */
-static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, KDint prec)
+static KDint __kdRemPio2(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx)
 {
-    KDint32 jz, jx, jv, jp, jk, carry, n, iq[20], i, j, k, m, q0, ih;
+    KDint32 jz, jx, jv, carry, n, iq[20], i, j, k, m, q0, ih;
     KDfloat64KHR z, fw, f[20], fq[20], q[20];
     /* initialize jk*/
-    jk = init_jk[prec];
-    jp = jk;
+    static const KDint32 jk = 3;
     /* determine jx,jv,q0, note that 3>q0 */
     jx = nx - 1;
     jv = (e0 - 3) / 24;
@@ -3180,82 +3178,29 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
         q[i] = fw * (KDfloat64KHR)iq[i];
         fw *= twon24;
     }
-    /* compute PIo2[0,...,jp]*q[jz,...,0] */
+    /* compute PIo2[0,...,jk]*q[jz,...,0] */
     for(i = jz; i >= 0; i--)
     {
-        for(fw = 0.0, k = 0; k <= jp && k <= jz - i; k++)
+        for(fw = 0.0, k = 0; k <= jk && k <= jz - i; k++)
         {
             fw += PIo2[k] * q[i + k];
         }
         fq[jz - i] = fw;
     }
     /* compress fq[] into y[] */
-    switch(prec)
+    fw = 0.0;
+    for(i = jz; i >= 0; i--)
     {
-        case 0:
-        {
-            fw = 0.0;
-            for(i = jz; i >= 0; i--)
-            {
-                fw += fq[i];
-            }
-            y[0] = (ih == 0) ? fw : -fw;
-            break;
-        }
-        case 1:
-        case 2:
-        {
-            fw = 0.0;
-            for(i = jz; i >= 0; i--)
-            {
-                fw += fq[i];
-            }
-            STRICT_ASSIGN(KDfloat64KHR, fw, fw);
-            y[0] = (ih == 0) ? fw : -fw;
-            fw = fq[0] - fw;
-            for(i = 1; i <= jz; i++)
-            {
-                fw += fq[i];
-            }
-            y[1] = (ih == 0) ? fw : -fw;
-            break;
-        }
-        case 3: /* painful */
-        {
-            for(i = jz; i > 0; i--)
-            {
-                fw = fq[i - 1] + fq[i];
-                fq[i] += fq[i - 1] - fw;
-                fq[i - 1] = fw;
-            }
-            for(i = jz; i > 1; i--)
-            {
-                fw = fq[i - 1] + fq[i];
-                fq[i] += fq[i - 1] - fw;
-                fq[i - 1] = fw;
-            }
-            for(fw = 0.0, i = jz; i >= 2; i--)
-            {
-                fw += fq[i];
-            }
-            if(ih == 0)
-            {
-                y[0] = fq[0];
-                y[1] = fq[1];
-                y[2] = fw;
-            }
-            else
-            {
-                y[0] = -fq[0];
-                y[1] = -fq[1];
-                y[2] = -fw;
-            }
-        }
-        default:
-        {
-            break;
-        }
+        fw += fq[i];
     }
+    STRICT_ASSIGN(KDfloat64KHR, fw, fw);
+    y[0] = (ih == 0) ? fw : -fw;
+    fw = fq[0] - fw;
+    for(i = 1; i <= jz; i++)
+    {
+        fw += fq[i];
+    }
+    y[1] = (ih == 0) ? fw : -fw;
     return n & 7;
 }
 
@@ -3291,7 +3236,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     e0 = (ix >> 23) - 150; /* e0 = ilogb(|x|)-23; */
     SET_FLOAT_WORD(z, ix - ((KDint32)(e0 << 23)));
     tx[0] = z;
-    n = __kdRemPio2(tx, ty, e0, 1, 0);
+    n = __kdRemPio2(tx, ty, e0, 1);
     if(hx < 0)
     {
         *y = -ty[0];
@@ -5736,9 +5681,9 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     file->file = fopen(pathname, mode);
     if(file->file == NULL)
     {
-        kdFree(file->file);
         error = errno;
 #endif
+        kdFree(file);
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return KD_NULL;
     }
