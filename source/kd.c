@@ -582,10 +582,6 @@ static void __kdThreadFree(KDThread *thread)
         kdFreeEvent(thread->lastevent);
     }
     kdFree(thread->lastdirent);
-    while(kdQueueSizeVEN(thread->eventqueue) > 0)
-    {
-        kdFreeEvent((KDEvent *)kdQueuePopHeadVEN(thread->eventqueue));
-    }
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
 }
@@ -811,13 +807,16 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mute
 /* kdThreadMutexFree: Free a mutex. */
 KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
 {
+    if(mutex != KD_NULL)
+    {
+/* No need to free anything on WIN32*/
 #if defined(KD_THREAD_C11)
-    mtx_destroy(&mutex->nativemutex);
+        mtx_destroy(&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
-    pthread_mutex_destroy(&mutex->nativemutex);
-#elif defined(KD_THREAD_WIN32)
-/* No need to free anything */
+        pthread_mutex_destroy(&mutex->nativemutex);
 #endif
+    }
+
     kdFree(mutex);
     return 0;
 }
@@ -905,14 +904,11 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 /* kdThreadCondFree: Free a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
 {
+/* No need to free anything on WIN32*/
 #if defined(KD_THREAD_C11)
     cnd_destroy(&cond->nativecond);
 #elif defined(KD_THREAD_POSIX)
     pthread_cond_destroy(&cond->nativecond);
-#elif defined(KD_THREAD_WIN32)
-/* No need to free anything */
-#else
-    kdAssert(0);
 #endif
     kdFree(cond);
     return 0;
@@ -1513,7 +1509,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case MappingNotify:
                 {
                     XRefreshKeyboardMapping((XMappingEvent *)&xevent);
-                    break;
+                    /* Dont break here or we leak event */
                 }
                 default:
                 {
@@ -1544,6 +1540,11 @@ KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype
         }
     }
     callbacks[callbackindex] = (__KDCallback *)kdMalloc(sizeof(__KDCallback));
+    if(callbacks[callbackindex] == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return -1;
+    }
     callbacks[callbackindex]->func = func;
     callbacks[callbackindex]->eventtype = eventtype;
     callbacks[callbackindex]->eventuserptr = eventuserptr;
@@ -1745,15 +1746,15 @@ static int __kdPreMain(int argc, char **argv)
     result = kdmain(argc, (const KDchar *const *)argv);
 #else
     void *app = dlopen(NULL, RTLD_NOW);
-    /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
-    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     if(dlerror() != NULL)
     {
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.\n");
         kdAssert(0);
     }
-    result = kdmain(argc, (const KDchar *const *)argv);
+    /* ISO C forbids assignment between function pointer and ‘void *’ */
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr)); // NOLINT
+    result = kdmain(argc, (const KDchar *const *)argv); // NOLINT
     dlclose(app);
 #endif
 
@@ -2336,8 +2337,12 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
     return 0;
 #elif defined(__unix__) || defined(__APPLE__)
     FILE *urandom = fopen("/dev/urandom", "r");
-    KDsize result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
-    fclose(urandom);
+    KDsize result = 0;
+    if(urandom != NULL)
+    {
+        result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
+        fclose(urandom);
+    }
     if(result != buflen)
     {
         kdSetError(KD_ENOMEM);
@@ -5734,8 +5739,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         kdFree(file->file);
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR |
-            KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return KD_NULL;
     }
     file->eof = 0;
@@ -5852,11 +5856,11 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    if(WriteFile(file->file, &retval , 1, (DWORD[]){0}, NULL) == TRUE)
+    if(WriteFile(file->file, &retval, 1, (DWORD[]){0}, NULL) == TRUE)
     {
         error = GetLastError();
 #else
-    retval = fputc(retval , file->file);
+    retval = fputc(retval, file->file);
     if(retval == EOF)
     {
         error = errno;
@@ -5932,7 +5936,7 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 #endif
 }
 
-/* TODO: Cleanup */ 
+/* TODO: Cleanup */
 typedef struct {
 #if defined(_MSC_VER)
     KDint seekorigin_kd;
@@ -6018,7 +6022,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM | KD_ENOSPC);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return -1;
     }
     return 0;
@@ -6040,7 +6044,7 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6062,7 +6066,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6084,7 +6088,7 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6109,7 +6113,7 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6153,13 +6157,15 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     struct stat posixstat = {0};
     if(stat(pathname, &posixstat) == 0)
     {
-        if (posixstat.st_mode & S_IFDIR)
+        if(posixstat.st_mode & S_IFDIR)
         {
             buf->st_mode = 0x4000;
-        } else if (posixstat.st_mode & S_IFREG)
+        }
+        else if(posixstat.st_mode & S_IFREG)
         {
             buf->st_mode = 0x8000;
-        } else
+        }
+        else
         {
             kdAssert(0);
         }
@@ -6176,7 +6182,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM | KD_EOVERFLOW);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_EOVERFLOW);
         return -1;
     }
     return 0;
@@ -6228,7 +6234,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6262,7 +6268,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT| KD_ENOMEM);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         kdFree(dir);
         return KD_NULL;
     }
@@ -6773,7 +6779,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     kdStrncat_s(newstring, length + 1, string, length);
     if(string[length - 1] != '\n')
     {
-        kdStrncat_s(newstring,  length + 1, "\n",  length + 1);
+        kdStrncat_s(newstring, length + 1, "\n", length + 1);
     }
 #if defined(__ANDROID__)
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
