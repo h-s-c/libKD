@@ -1753,7 +1753,7 @@ static int __kdPreMain(int argc, char **argv)
         kdAssert(0);
     }
     /* ISO C forbids assignment between function pointer and ‘void *’ */
-    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr)); // NOLINT
     result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);
 #endif
@@ -2748,8 +2748,6 @@ typedef union {
         (d) = sf_u.value;           \
     } while(0)
 
-#define STRICT_ASSIGN(type, lval, rval) ((lval) = (rval))
-
 /*
  * A union which permits us to convert between a double and two 32 bit
  * ints.
@@ -3193,7 +3191,6 @@ static KDint __kdRemPio2(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint
     {
         fw += fq[i];
     }
-    STRICT_ASSIGN(KDfloat64KHR, fw, fw);
     y[0] = (ih == 0) ? fw : -fw;
     fw = fq[0] - fw;
     for(i = 1; i <= jz; i++)
@@ -3216,7 +3213,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        STRICT_ASSIGN(KDfloat64KHR, fn, x * KD_2_PI_KHR + 6.7553994410557440e+15);
+        fn = x * KD_2_PI_KHR + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
         r = x - fn * pio2_1;
@@ -3858,7 +3855,7 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
             hi = x - t * ln2HI[0]; /* t*ln2HI is exact here */
             lo = t * ln2LO[0];
         }
-        STRICT_ASSIGN(KDfloat32, x, hi - lo);
+        x = hi - lo;
     }
     else if(hx < 0x39000000)
     { /* when |x|<2**-14 */
@@ -4536,7 +4533,7 @@ KD_API KDfloat32 KD_APIENTRY kdInvsqrtf(KDfloat32 x)
 {
 #ifdef __SSE__
     KDfloat32 result = 0.0f;
-    _mm_store_ss(&result, _mm_rsqrt_ss(_mm_load_ss(&x)));
+    _mm_store_ss(&result, _mm_rsqrt_ss(_mm_load_ss(&x))); //NOLINT
     result = (0.5f * (result + 1.0f / (x * result)));
     return result;
 #else
@@ -4662,7 +4659,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
 {
 #ifdef __SSE2__
     KDfloat64KHR result = 0.0;
-    _mm_store_sd(&result, _mm_sqrt_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
+    _mm_store_sd(&result, _mm_sqrt_sd(_mm_load_sd(&result), _mm_load_sd(&x))); //NOLINT
     return result;
 #else
     KDfloat64KHR z;
@@ -4952,120 +4949,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  ******************************************************************************/
 
-/*
- * Copy a block of memory, handling overlap.
- * This is the routine that actually implements kdMemcpy, and kdMemmove.
- */
-typedef KDint word; /* "word" used for optimal copy speed */
-#define wsize sizeof(word)
-#define wmask (wsize - 1)
-static void *__kdBcopy(void *dst0, const void *src0, size_t length)
-{
-    KDint8 *dst = dst0;
-    const KDint8 *src = src0;
-    KDsize t;
-
-    if(length == 0 || dst == src)
-    { /* nothing to do */
-        return (dst0);
-    }
-    if((KDuintptr)dst < (KDuintptr)src)
-    {
-        /*
-         * Copy forward.
-         */
-        t = (KDuintptr)src; /* only need low bits */
-        if((t | (KDuintptr)dst) & wmask)
-        {
-            /*
-             * Try to align operands.  This cannot be done
-             * unless the low bits match.
-             */
-            if((t ^ (KDuintptr)dst) & wmask || length < wsize)
-            {
-                t = length;
-            }
-            else
-            {
-                t = wsize - (t & wmask);
-            }
-            length -= t;
-            do
-            {
-                *dst++ = *src++;
-            } while(--t);
-        }
-        /*
-         * Copy whole words, then mop up any trailing bytes.
-         */
-        t = length / wsize;
-        if(t)
-        {
-            do
-            {
-                *(word *)dst = *(word *)src;
-                src += wsize;
-                dst += wsize;
-            } while(--t);
-        }
-        t = length & wmask;
-        if(t)
-        {
-            do
-            {
-                *dst++ = *src++;
-            } while(--t);
-        }
-    }
-    else
-    {
-        /*
-         * Copy backwards.  Otherwise essentially the same.
-         * Alignment works as before, except that it takes
-         * (t&wmask) bytes to align, not wsize-(t&wmask).
-         */
-        src += length;
-        dst += length;
-        t = (KDuintptr)src;
-        if((t | (KDuintptr)dst) & wmask)
-        {
-            if((t ^ (KDuintptr)dst) & wmask || length <= wsize)
-            {
-                t = length;
-            }
-            else
-            {
-                t &= wmask;
-            }
-            length -= t;
-            do
-            {
-                *--dst = *--src;
-            } while(--t);
-        }
-        t = length / wsize;
-        if(t)
-        {
-            do
-            {
-                src -= wsize;
-                dst -= wsize;
-                *(word *)dst = *(word *)src;
-            } while(--t);
-        }
-        t = length & wmask;
-        if(t)
-        {
-            do
-            {
-                *--dst = *--src;
-            } while(--t);
-        }
-    }
-    return (dst0);
-}
-#undef wmask
-#undef wsize
 
 /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
@@ -5104,13 +4987,40 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
 /* kdMemcpy: Copy a memory region, no overlapping. */
 KD_API void *KD_APIENTRY kdMemcpy(void *buf, const void *src, KDsize len)
 {
-    return __kdBcopy(buf, src, len);
+    KDint8 *_buf = buf;
+    const KDint8 *_src = src;
+    while (len--)
+    {
+        *_buf++ = *_src++;
+    }
+    return buf;
 }
 
 /* kdMemmove: Copy a memory region, overlapping allowed. */
 KD_API void *KD_APIENTRY kdMemmove(void *buf, const void *src, KDsize len)
 {
-    return __kdBcopy(buf, src, len);
+    KDint8 *_buf = buf;
+    const KDint8 *_src = src;
+
+    if (!len)
+    {
+        return buf;
+    }
+
+    if (buf <= src)
+    {
+        return kdMemcpy(buf, src, len);
+    }
+
+    _src += len;
+    _buf += len;
+
+    while (len--)
+    {
+        *--_buf = *--_src;
+    }
+
+    return buf;
 }
 
 /* kdMemset: Set bytes in memory to a value. */
