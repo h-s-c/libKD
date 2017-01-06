@@ -1753,7 +1753,7 @@ static int __kdPreMain(int argc, char **argv)
         kdAssert(0);
     }
     /* ISO C forbids assignment between function pointer and ‘void *’ */
-    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr)); // NOLINT
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);
 #endif
@@ -4533,7 +4533,7 @@ KD_API KDfloat32 KD_APIENTRY kdInvsqrtf(KDfloat32 x)
 {
 #ifdef __SSE__
     KDfloat32 result = 0.0f;
-    _mm_store_ss(&result, _mm_rsqrt_ss(_mm_load_ss(&x))); //NOLINT
+    _mm_store_ss(&result, _mm_rsqrt_ss(_mm_load_ss(&x)));
     result = (0.5f * (result + 1.0f / (x * result)));
     return result;
 #else
@@ -4659,7 +4659,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
 {
 #ifdef __SSE2__
     KDfloat64KHR result = 0.0;
-    _mm_store_sd(&result, _mm_sqrt_sd(_mm_load_sd(&result), _mm_load_sd(&x))); //NOLINT
+    _mm_store_sd(&result, _mm_sqrt_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
     return result;
 #else
     KDfloat64KHR z;
@@ -4860,7 +4860,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
     }
     else
     {
-        i = ((KDuint32)(KDUINT_MAX)) >> (j0 - 20);
+        i = KDUINT_MAX >> (j0 - 20);
         if((i1 & i) == 0)
         {
             return x;
@@ -5062,115 +5062,25 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
             return 0;
         }
     }
-    return (KDint)(*(KDuint8 *)str1 - *(KDuint8 *)(str2 - 1));
+    return *str1 - *(str2 - 1);
 }
 
 /* kdStrlen: Determine the length of a string. */
-/*
- * Portable strlen() for 32-bit and 64-bit systems.
- *
- * Rationale: it is generally much more efficient to do word length
- * operations and avoid branches on modern computer systems, as
- * compared to byte-length operations with a lot of branches.
- *
- * The expression:
- *
- *  ((x - 0x01....01) & ~x & 0x80....80)
- *
- * would evaluate to a non-zero value if any of the bytes in the
- * original word is zero.
- *
- * On multi-issue processors, we can divide the above expression into:
- *  a)  (x - 0x01....01)
- *  b) (~x & 0x80....80)
- *  c) a & b
- *
- * Where, a) and b) can be partially computed in parallel.
- *
- * The algorithm above is found on "Hacker's Delight" by
- * Henry S. Warren, Jr.
- */
-
-/* Helper function to return string length if we caught the zero byte. */
-#define testbyte(x)                 \
-    do                              \
-    {                               \
-        if(p[x] == '\0')            \
-        {                           \
-            return (p - str + (x)); \
-        }                           \
-    } while(0)
-
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
-/* Magic numbers for the algorithm */
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
-    const KDuint64 mask01 = 0x0101010101010101;
-    const KDuint64 mask80 = 0x8080808080808080;
-#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM) || defined(__EMSCRIPTEN__)
-    const KDuint64 mask01 = 0x01010101;
-    const KDuint64 mask80 = 0x80808080;
-#else
-#error Unsupported arch
-#endif
-    const KDchar *p;
-    const KDuint64 *lp;
-    KDint64 va, vb;
-
-    /*
-     * Before trying the hard (unaligned byte-by-byte access) way
-     * to figure out whether there is a nul character, try to see
-     * if there is a nul character is within this accessible word
-     * first.
-     *
-     * p and (p & ~(sizeof(KDint64) - 1)) must be equally accessible since
-     * they always fall in the same memory page, as long as page
-     * boundaries is integral multiple of word size.
-     */
-    lp = (const KDuint64 *)((KDuintptr)str & ~(sizeof(KDint64) - 1));
-    va = (*lp - mask01);
-    vb = ((~*lp) & mask80);
-    lp++;
-    if(va & vb)
+    const KDchar *s = str;
+    for(; *s; ++s)
     {
-        /* Check if we have \0 in the first part */
-        for(p = str; p < (const KDchar *)lp; p++)
-        {
-            if(*p == '\0')
-            {
-                return (p - str);
-            }
-        }
+        ;
     }
-
-    /* Scan the rest of the string using word sized operation */
-    for(;; lp++)
-    {
-        va = (*lp - mask01);
-        vb = ((~*lp) & mask80);
-        if(va & vb)
-        {
-            p = (const KDchar *)(lp);
-            testbyte(0);
-            testbyte(1);
-            testbyte(2);
-            testbyte(3);
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
-            testbyte(4);
-            testbyte(5);
-            testbyte(6);
-            testbyte(7);
-#endif
-        }
-    }
+    return(s - str);
 }
-#undef testbyte
 
 /* kdStrnlen: Determine the length of a string. */
 KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 {
-    KDsize len;
-    for(len = 0; len < maxlen; len++, str++)
+    KDsize len = 0;
+    for(; len < maxlen; len++, str++)
     {
         if(!*str)
         {
@@ -6189,7 +6099,7 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
     struct statfs buf = {0};
     if(statfs(temp, &buf) == 0)
     {
-        freespace = (buf.f_bsize / 1024L) * buf.f_bavail;
+        freespace = (buf.f_bsize / 1024LL) * buf.f_bavail;
     }
     else
     {
