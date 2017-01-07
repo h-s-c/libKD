@@ -1,27 +1,29 @@
 box: busybox
 
 build-ubuntu:
-  box: ubuntu:devel
+  box: ubuntu:latest
   steps:
     - install-packages:
-        packages: build-essential git python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
+        packages: build-essential git python coreutils valgrind libegl1-mesa-dev libx11-dev 
 
     - script:
         name: build code
         code: |
           git submodule update --init --recursive
+          python ci-tools/install_cmake.py
           python ci-tools/run_ctest.py
 
 build-debian:
-  box: debian:unstable
+  box: debian:latest
   steps:
     - install-packages:
-        packages: build-essential git python coreutils cmake valgrind libegl1-mesa-dev libx11-dev 
+        packages: build-essential git python coreutils valgrind libegl1-mesa-dev libx11-dev 
 
     - script:
         name: build code
         code: |
           git submodule update --init --recursive
+          python ci-tools/install_cmake.py
           python ci-tools/run_ctest.py
 
 build-alpine:
@@ -41,34 +43,36 @@ build-alpine:
           git submodule update --init --recursive
           python ci-tools/run_ctest.py
 
-build-fedora:
-  box: fedora:rawhide
-  steps:
-    - script:
-        name: install packages
-        code: |
-          dnf -y update
-          dnf -y groupinstall "C Development Tools and Libraries"
-          dnf -y install git python coreutils cmake valgrind mesa-libEGL-devel libX11-devel
-
-    - script:
-        name: build code
-        code: |
-          git submodule update --init --recursive
-          python ci-tools/run_ctest.py
-
 build-opensuse:
-  box: opensuse:tumbleweed
+  box: opensuse:latest
   steps:
     - script:
         name: install packages
         code: |
           zypper update --non-interactive
           zypper install --non-interactive -t pattern devel_C_C++
-          zypper install --non-interactive git python coreutils cmake valgrind Mesa-libEGL-devel libX11-devel
+          zypper install --non-interactive git python coreutils valgrind Mesa-libEGL-devel libX11-devel
 
     - script:
         name: build code
         code: |
           git submodule update --init --recursive
+          python ci-tools/install_cmake.py
+          python ci-tools/run_ctest.py
+
+build-fedora:
+  box: fedora:latest
+  steps:
+    - script:
+        name: install packages
+        code: |
+          dnf -y update
+          dnf -y groupinstall "C Development Tools and Libraries"
+          dnf -y install git python coreutils valgrind mesa-libEGL-devel libX11-devel
+
+    - script:
+        name: build code
+        code: |
+          git submodule update --init --recursive
+          python ci-tools/install_cmake.py
           python ci-tools/run_ctest.py

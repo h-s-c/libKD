@@ -94,7 +94,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute);
 #define KD_ATTRIB_PLATFORM 41
 
 /* kdQueryIndexedAttribcv: Obtain the value of an indexed string OpenKODE Core attribute. */
-KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KDint attribute, KDint index);
+KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KDint attribute, KDint __index);
 
 /*******************************************************
  * Threads and synchronization
@@ -288,8 +288,8 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i);
 KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr);
 
 /* kdStrtol, kdStrtoul: Convert a string to an integer. */
-KD_API KDint KD_APIENTRY kdStrtol(const KDchar *s, KDchar **endptr, KDint base);
-KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *s, KDchar **endptr, KDint base);
+KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint base);
+KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint base);
 
 /* kdLtostr, kdUltostr: Convert an integer to a string. */
 #define KD_LTOSTR_MAXLEN ((sizeof(KDint)*8*3+6)/10+2)

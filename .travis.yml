@@ -21,9 +21,9 @@ matrix:
         - COVERITY_SCAN_BUILD_COMMAND="python ci-tools/run_ctest.py"
       before_install:
         - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-      install: python ci-tools/install_cmake.py  
+      install: python ci-tools/install_cmake.py
       script:
-        - if [ "$TRAVIS_BRANCH" = "coverity" ]; then 
+        - if [ "$TRAVIS_BRANCH" = "coverity" ]; then
             curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
           else true; fi;
 
@@ -303,12 +303,9 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode6.4
-      before_install:
-        - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/uninstall)" < /dev/null
-        - ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
       install: 
         - brew update
-        - brew install valgrind wget
+        - brew install valgrind
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h

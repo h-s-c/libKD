@@ -1,1 +1,1 @@
-Checks: '-*,readability-*,clang-analyzer-*,-readability-else-after-return'
+Checks: '*,-readability-else-after-return,-clang-analyzer-alpha.*'

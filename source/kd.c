@@ -232,6 +232,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
     {
         case(EACCES):
         case(EROFS):
+        case(EISDIR):
         {
             kderror = KD_EACCES;
             break;
@@ -239,6 +240,17 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(EBADF):
         {
             kderror = KD_EBADF;
+            break;
+        }
+        case(EBUSY):
+        {
+            kderror = KD_EBUSY;
+            break;
+        }
+        case(EEXIST):
+        case(ENOTEMPTY):
+        {
+            kderror = KD_EEXIST;
             break;
         }
         case(EFBIG):
@@ -254,11 +266,6 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(EIO):
         {
             kderror = KD_EIO;
-            break;
-        }
-        case(EISDIR):
-        {
-            kderror = KD_EISDIR;
             break;
         }
         case(EMFILE):
@@ -800,13 +807,16 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mute
 /* kdThreadMutexFree: Free a mutex. */
 KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
 {
+    if(mutex != KD_NULL)
+    {
+/* No need to free anything on WIN32*/
 #if defined(KD_THREAD_C11)
-    mtx_destroy(&mutex->nativemutex);
+        mtx_destroy(&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
-    pthread_mutex_destroy(&mutex->nativemutex);
-#elif defined(KD_THREAD_WIN32)
-/* No need to free anything */
+        pthread_mutex_destroy(&mutex->nativemutex);
 #endif
+    }
+
     kdFree(mutex);
     return 0;
 }
@@ -894,14 +904,11 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 /* kdThreadCondFree: Free a condition variable. */
 KD_API KDint KD_APIENTRY kdThreadCondFree(KDThreadCond *cond)
 {
+/* No need to free anything on WIN32*/
 #if defined(KD_THREAD_C11)
     cnd_destroy(&cond->nativecond);
 #elif defined(KD_THREAD_POSIX)
     pthread_cond_destroy(&cond->nativecond);
-#elif defined(KD_THREAD_WIN32)
-/* No need to free anything */
-#else
-    kdAssert(0);
 #endif
     kdFree(cond);
     return 0;
@@ -1049,11 +1056,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #if defined(KD_THREAD_C11)
     thrd_sleep(&ts, NULL);
 #elif defined(KD_THREAD_POSIX)
-#ifdef __EMSCRIPTEN__
-    emscripten_sleep_with_yield(timeout / 1000000);
-#else
     nanosleep(&ts, NULL);
-#endif
 #elif defined(KD_THREAD_WIN32)
     HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
     if(!timer)
@@ -1174,10 +1177,6 @@ static KDWindow *__kd_window = KD_NULL;
 #endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
-#ifdef __EMSCRIPTEN__
-    /* Give back control to the browser */
-    emscripten_sleep_with_yield(1);
-#endif
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
     for(KDuint i = 0; i < queuesize; i++)
     {
@@ -1510,7 +1509,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case MappingNotify:
                 {
                     XRefreshKeyboardMapping((XMappingEvent *)&xevent);
-                    break;
+                    /* Dont break here or we leak event */
                 }
                 default:
                 {
@@ -1541,6 +1540,11 @@ KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype
         }
     }
     callbacks[callbackindex] = (__KDCallback *)kdMalloc(sizeof(__KDCallback));
+    if(callbacks[callbackindex] == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return -1;
+    }
     callbacks[callbackindex]->func = func;
     callbacks[callbackindex]->eventtype = eventtype;
     callbacks[callbackindex]->eventuserptr = eventuserptr;
@@ -1742,14 +1746,14 @@ static int __kdPreMain(int argc, char **argv)
     result = kdmain(argc, (const KDchar *const *)argv);
 #else
     void *app = dlopen(NULL, RTLD_NOW);
-    /* ISO C forbids assignment between function pointer and ‘void *’ */
     void *rawptr = dlsym(app, "kdMain");
-    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     if(dlerror() != NULL)
     {
         kdLogMessage("Cant dlopen self. Dont strip symbols from me.\n");
         kdAssert(0);
     }
+    /* ISO C forbids assignment between function pointer and ‘void *’ */
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);
 #endif
@@ -2333,8 +2337,12 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
     return 0;
 #elif defined(__unix__) || defined(__APPLE__)
     FILE *urandom = fopen("/dev/urandom", "r");
-    KDsize result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
-    fclose(urandom);
+    KDsize result = 0;
+    if(urandom != NULL)
+    {
+        result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
+        fclose(urandom);
+    }
     if(result != buflen)
     {
         kdSetError(KD_ENOMEM);
@@ -2740,8 +2748,6 @@ typedef union {
         (d) = sf_u.value;           \
     } while(0)
 
-#define STRICT_ASSIGN(type, lval, rval) ((lval) = (rval))
-
 /*
  * A union which permits us to convert between a double and two 32 bit
  * ints.
@@ -2997,14 +3003,12 @@ static KDint __kdIrint(KDfloat64KHR x)
 #endif
 }
 
-static const KDint init_jk[] = {3, 4, 4, 6}; /* initial value for jk */
-static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, KDint prec)
+static KDint __kdRemPio2(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx)
 {
-    KDint32 jz, jx, jv, jp, jk, carry, n, iq[20], i, j, k, m, q0, ih;
+    KDint32 jz, jx, jv, carry, n, iq[20], i, j, k, m, q0, ih;
     KDfloat64KHR z, fw, f[20], fq[20], q[20];
     /* initialize jk*/
-    jk = init_jk[prec];
-    jp = jk;
+    static const KDint32 jk = 3;
     /* determine jx,jv,q0, note that 3>q0 */
     jx = nx - 1;
     jv = (e0 - 3) / 24;
@@ -3096,6 +3100,10 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
                         iq[jz - 1] &= 0x3fffff;
                         break;
                     }
+                    default:
+                    {
+                        break;
+                    }
                 }
             }
             if(ih == 2)
@@ -3168,78 +3176,28 @@ static KDint __kdRemPio2(KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint nx, K
         q[i] = fw * (KDfloat64KHR)iq[i];
         fw *= twon24;
     }
-    /* compute PIo2[0,...,jp]*q[jz,...,0] */
+    /* compute PIo2[0,...,jk]*q[jz,...,0] */
     for(i = jz; i >= 0; i--)
     {
-        for(fw = 0.0, k = 0; k <= jp && k <= jz - i; k++)
+        for(fw = 0.0, k = 0; k <= jk && k <= jz - i; k++)
         {
             fw += PIo2[k] * q[i + k];
         }
         fq[jz - i] = fw;
     }
     /* compress fq[] into y[] */
-    switch(prec)
+    fw = 0.0;
+    for(i = jz; i >= 0; i--)
     {
-        case 0:
-        {
-            fw = 0.0;
-            for(i = jz; i >= 0; i--)
-            {
-                fw += fq[i];
-            }
-            y[0] = (ih == 0) ? fw : -fw;
-            break;
-        }
-        case 1:
-        case 2:
-        {
-            fw = 0.0;
-            for(i = jz; i >= 0; i--)
-            {
-                fw += fq[i];
-            }
-            STRICT_ASSIGN(KDfloat64KHR, fw, fw);
-            y[0] = (ih == 0) ? fw : -fw;
-            fw = fq[0] - fw;
-            for(i = 1; i <= jz; i++)
-            {
-                fw += fq[i];
-            }
-            y[1] = (ih == 0) ? fw : -fw;
-            break;
-        }
-        case 3: /* painful */
-        {
-            for(i = jz; i > 0; i--)
-            {
-                fw = fq[i - 1] + fq[i];
-                fq[i] += fq[i - 1] - fw;
-                fq[i - 1] = fw;
-            }
-            for(i = jz; i > 1; i--)
-            {
-                fw = fq[i - 1] + fq[i];
-                fq[i] += fq[i - 1] - fw;
-                fq[i - 1] = fw;
-            }
-            for(fw = 0.0, i = jz; i >= 2; i--)
-            {
-                fw += fq[i];
-            }
-            if(ih == 0)
-            {
-                y[0] = fq[0];
-                y[1] = fq[1];
-                y[2] = fw;
-            }
-            else
-            {
-                y[0] = -fq[0];
-                y[1] = -fq[1];
-                y[2] = -fw;
-            }
-        }
+        fw += fq[i];
     }
+    y[0] = (ih == 0) ? fw : -fw;
+    fw = fq[0] - fw;
+    for(i = 1; i <= jz; i++)
+    {
+        fw += fq[i];
+    }
+    y[1] = (ih == 0) ? fw : -fw;
     return n & 7;
 }
 
@@ -3255,7 +3213,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        STRICT_ASSIGN(KDfloat64KHR, fn, x * KD_2_PI_KHR + 6.7553994410557440e+15);
+        fn = x * KD_2_PI_KHR + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
         r = x - fn * pio2_1;
@@ -3275,7 +3233,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     e0 = (ix >> 23) - 150; /* e0 = ilogb(|x|)-23; */
     SET_FLOAT_WORD(z, ix - ((KDint32)(e0 << 23)));
     tx[0] = z;
-    n = __kdRemPio2(tx, ty, e0, 1, 0);
+    n = __kdRemPio2(tx, ty, e0, 1);
     if(hx < 0)
     {
         *y = -ty[0];
@@ -3518,6 +3476,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
             {
                 return -KD_PI_F - tiny; /* atan(-0,-anything) =-pi */
             }
+            default:
+            {
+                break;
+            }
         }
     }
     /* when x = 0 */
@@ -3549,6 +3511,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
                 {
                     return -3.0f * KD_PI_4_F - tiny; /*atan(-INF,-INF)*/
                 }
+                default:
+                {
+                    break;
+                }
             }
         }
         else
@@ -3570,6 +3536,10 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
                 case 3:
                 {
                     return -KD_PI_F - tiny; /* atan(-...,-INF) */
+                }
+                default:
+                {
+                    break;
                 }
             }
         }
@@ -3885,7 +3855,7 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
             hi = x - t * ln2HI[0]; /* t*ln2HI is exact here */
             lo = t * ln2LO[0];
         }
-        STRICT_ASSIGN(KDfloat32, x, hi - lo);
+        x = hi - lo;
     }
     else if(hx < 0x39000000)
     { /* when |x|<2**-14 */
@@ -4890,7 +4860,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
     }
     else
     {
-        i = ((KDuint32)(KDUINT_MAX)) >> (j0 - 20);
+        i = KDUINT_MAX >> (j0 - 20);
         if((i1 & i) == 0)
         {
             return x;
@@ -4979,120 +4949,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  ******************************************************************************/
 
-/*
- * Copy a block of memory, handling overlap.
- * This is the routine that actually implements kdMemcpy, and kdMemmove.
- */
-typedef KDint word; /* "word" used for optimal copy speed */
-#define wsize sizeof(word)
-#define wmask (wsize - 1)
-static void *__kdBcopy(void *dst0, const void *src0, size_t length)
-{
-    KDint8 *dst = dst0;
-    const KDint8 *src = src0;
-    KDsize t;
-
-    if(length == 0 || dst == src)
-    { /* nothing to do */
-        return (dst0);
-    }
-    if((KDuintptr)dst < (KDuintptr)src)
-    {
-        /*
-         * Copy forward.
-         */
-        t = (KDuintptr)src; /* only need low bits */
-        if((t | (KDuintptr)dst) & wmask)
-        {
-            /*
-             * Try to align operands.  This cannot be done
-             * unless the low bits match.
-             */
-            if((t ^ (KDuintptr)dst) & wmask || length < wsize)
-            {
-                t = length;
-            }
-            else
-            {
-                t = wsize - (t & wmask);
-            }
-            length -= t;
-            do
-            {
-                *dst++ = *src++;
-            } while(--t);
-        }
-        /*
-         * Copy whole words, then mop up any trailing bytes.
-         */
-        t = length / wsize;
-        if(t)
-        {
-            do
-            {
-                *(word *)dst = *(word *)src;
-                src += wsize;
-                dst += wsize;
-            } while(--t);
-        }
-        t = length & wmask;
-        if(t)
-        {
-            do
-            {
-                *dst++ = *src++;
-            } while(--t);
-        }
-    }
-    else
-    {
-        /*
-         * Copy backwards.  Otherwise essentially the same.
-         * Alignment works as before, except that it takes
-         * (t&wmask) bytes to align, not wsize-(t&wmask).
-         */
-        src += length;
-        dst += length;
-        t = (KDuintptr)src;
-        if((t | (KDuintptr)dst) & wmask)
-        {
-            if((t ^ (KDuintptr)dst) & wmask || length <= wsize)
-            {
-                t = length;
-            }
-            else
-            {
-                t &= wmask;
-            }
-            length -= t;
-            do
-            {
-                *--dst = *--src;
-            } while(--t);
-        }
-        t = length / wsize;
-        if(t)
-        {
-            do
-            {
-                src -= wsize;
-                dst -= wsize;
-                *(word *)dst = *(word *)src;
-            } while(--t);
-        }
-        t = length & wmask;
-        if(t)
-        {
-            do
-            {
-                *--dst = *--src;
-            } while(--t);
-        }
-    }
-    return (dst0);
-}
-#undef wmask
-#undef wsize
 
 /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
@@ -5131,13 +4987,40 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
 /* kdMemcpy: Copy a memory region, no overlapping. */
 KD_API void *KD_APIENTRY kdMemcpy(void *buf, const void *src, KDsize len)
 {
-    return __kdBcopy(buf, src, len);
+    KDint8 *_buf = buf;
+    const KDint8 *_src = src;
+    while (len--)
+    {
+        *_buf++ = *_src++;
+    }
+    return buf;
 }
 
 /* kdMemmove: Copy a memory region, overlapping allowed. */
 KD_API void *KD_APIENTRY kdMemmove(void *buf, const void *src, KDsize len)
 {
-    return __kdBcopy(buf, src, len);
+    KDint8 *_buf = buf;
+    const KDint8 *_src = src;
+
+    if (!len)
+    {
+        return buf;
+    }
+
+    if (buf <= src)
+    {
+        return kdMemcpy(buf, src, len);
+    }
+
+    _src += len;
+    _buf += len;
+
+    while (len--)
+    {
+        *--_buf = *--_src;
+    }
+
+    return buf;
 }
 
 /* kdMemset: Set bytes in memory to a value. */
@@ -5179,115 +5062,25 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
             return 0;
         }
     }
-    return (KDint)(*(KDuint8 *)str1 - *(KDuint8 *)(str2 - 1));
+    return *str1 - *(str2 - 1);
 }
 
 /* kdStrlen: Determine the length of a string. */
-/*
- * Portable strlen() for 32-bit and 64-bit systems.
- *
- * Rationale: it is generally much more efficient to do word length
- * operations and avoid branches on modern computer systems, as
- * compared to byte-length operations with a lot of branches.
- *
- * The expression:
- *
- *  ((x - 0x01....01) & ~x & 0x80....80)
- *
- * would evaluate to a non-zero value if any of the bytes in the
- * original word is zero.
- *
- * On multi-issue processors, we can divide the above expression into:
- *  a)  (x - 0x01....01)
- *  b) (~x & 0x80....80)
- *  c) a & b
- *
- * Where, a) and b) can be partially computed in parallel.
- *
- * The algorithm above is found on "Hacker's Delight" by
- * Henry S. Warren, Jr.
- */
-
-/* Helper function to return string length if we caught the zero byte. */
-#define testbyte(x)                 \
-    do                              \
-    {                               \
-        if(p[x] == '\0')            \
-        {                           \
-            return (p - str + (x)); \
-        }                           \
-    } while(0)
-
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
-/* Magic numbers for the algorithm */
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
-    const KDuint64 mask01 = 0x0101010101010101;
-    const KDuint64 mask80 = 0x8080808080808080;
-#elif defined(__i386) || defined(_M_IX86) || defined(__arm__) || defined(_M_ARM) || defined(__EMSCRIPTEN__)
-    const KDuint64 mask01 = 0x01010101;
-    const KDuint64 mask80 = 0x80808080;
-#else
-#error Unsupported arch
-#endif
-    const KDchar *p;
-    const KDuint64 *lp;
-    KDint64 va, vb;
-
-    /*
-     * Before trying the hard (unaligned byte-by-byte access) way
-     * to figure out whether there is a nul character, try to see
-     * if there is a nul character is within this accessible word
-     * first.
-     *
-     * p and (p & ~(sizeof(KDint64) - 1)) must be equally accessible since
-     * they always fall in the same memory page, as long as page
-     * boundaries is integral multiple of word size.
-     */
-    lp = (const KDuint64 *)((KDuintptr)str & ~(sizeof(KDint64) - 1));
-    va = (*lp - mask01);
-    vb = ((~*lp) & mask80);
-    lp++;
-    if(va & vb)
+    const KDchar *s = str;
+    for(; *s; ++s)
     {
-        /* Check if we have \0 in the first part */
-        for(p = str; p < (const KDchar *)lp; p++)
-        {
-            if(*p == '\0')
-            {
-                return (p - str);
-            }
-        }
+        ;
     }
-
-    /* Scan the rest of the string using word sized operation */
-    for(;; lp++)
-    {
-        va = (*lp - mask01);
-        vb = ((~*lp) & mask80);
-        if(va & vb)
-        {
-            p = (const KDchar *)(lp);
-            testbyte(0);
-            testbyte(1);
-            testbyte(2);
-            testbyte(3);
-#if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64_)
-            testbyte(4);
-            testbyte(5);
-            testbyte(6);
-            testbyte(7);
-#endif
-        }
-    }
+    return(s - str);
 }
-#undef testbyte
 
 /* kdStrnlen: Determine the length of a string. */
 KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 {
-    KDsize len;
-    for(len = 0; len < maxlen; len++, str++)
+    KDsize len = 0;
+    for(; len < maxlen; len++, str++)
     {
         if(!*str)
         {
@@ -5708,11 +5501,10 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     file->file = fopen(pathname, mode);
     if(file->file == NULL)
     {
-        kdFree(file->file);
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR |
-            KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
+        kdFree(file);
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return KD_NULL;
     }
     file->eof = 0;
@@ -5829,11 +5621,11 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    if(WriteFile(file->file, &retval , 1, (DWORD[]){0}, NULL) == TRUE)
+    if(WriteFile(file->file, &retval, 1, (DWORD[]){0}, NULL) == TRUE)
     {
         error = GetLastError();
 #else
-    retval = fputc(retval , file->file);
+    retval = fputc(retval, file->file);
     if(retval == EOF)
     {
         error = errno;
@@ -5909,7 +5701,7 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 #endif
 }
 
-/* TODO: Cleanup */ 
+/* TODO: Cleanup */
 typedef struct {
 #if defined(_MSC_VER)
     KDint seekorigin_kd;
@@ -5983,37 +5775,63 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 {
     KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     retval = CreateDirectory(pathname, NULL);
+    if(retval == 0)
+    {
+        error = GetLastError();
 #else
     retval = mkdir(pathname, S_IRWXU);
+    if(retval == -1)
+    {
+        error = errno;
 #endif
-    return retval;
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
+        return -1;
+    }
+    return 0;
 }
 
 /* kdRmdir: Delete a directory. */
 KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 {
     KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     retval = RemoveDirectory(pathname);
+    if(retval == 0)
+    {
+        error = GetLastError();
 #else
     retval = rmdir(pathname);
+    if(retval == -1)
+    {
+        error = errno;
 #endif
-    return retval;
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
+        return -1;
+    }
+    return 0;
 }
 
 /* kdRename: Rename a file. */
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    KDint error = MoveFile(src, dest);
-    if(error == 0)
-#else
-    KDint error = rename(src, dest);
-    if(error != 0)
-#endif
+    retval = MoveFile(src, dest);
+    if(retval == 0)
     {
+        error = GetLastError();
+#else
+    retval = rename(src, dest);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6022,14 +5840,20 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 /* kdRemove: Delete a file. */
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    KDint error = DeleteFile(pathname);
-    if(error == 0)
-#else
-    KDint error = remove(pathname);
-    if(error != 0)
-#endif
+    retval = DeleteFile(pathname);
+    if(retval == 0)
     {
+        error = GetLastError();
+#else
+    retval = remove(pathname);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
     return 0;
@@ -6038,79 +5862,95 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 /* kdTruncate: Truncate or extend a file. */
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
+    KDint retval = 0;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     HANDLE file = FindFirstFile(pathname, &data);
-    BOOL error = SetFileValidData(file, (LONGLONG)length);
+    retval = (KDint)SetFileValidData(file, (LONGLONG)length);
     FindClose(file);
-    if(error == 0)
+    if(retval == 0)
     {
+        error = GetLastError();
+#else
+    retval = truncate(pathname, length);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
-    else
-    {
-        return 0;
-    }
-#else
-    return truncate(pathname, length);
-#endif
+    return 0;
 }
 
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
-    KDint retval = -1;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = 0;
     WIN32_FIND_DATA data;
-    FindFirstFile(pathname, &data);
-    if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE)
     {
-        buf->st_mode = 0x4000;
-    }
-    else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
-    {
-        buf->st_mode = 0x8000;
+        if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            buf->st_mode = 0x4000;
+        }
+        else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
+        {
+            buf->st_mode = 0x8000;
+        }
+        else
+        {
+            kdAssert(0);
+        }
+        LARGE_INTEGER size;
+        size.LowPart = data.nFileSizeLow;
+        size.HighPart = data.nFileSizeHigh;
+        buf->st_size = size.QuadPart;
+
+        ULARGE_INTEGER time;
+        time.LowPart = data.ftLastWriteTime.dwLowDateTime;
+        time.HighPart = data.ftLastWriteTime.dwHighDateTime;
+        /* See RtlTimeToSecondsSince1970 */
+        buf->st_mtime = (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
     }
     else
     {
-        kdAssert(0);
-    }
-    LARGE_INTEGER size;
-    size.LowPart = data.nFileSizeLow;
-    size.HighPart = data.nFileSizeHigh;
-    buf->st_size = size.QuadPart;
-
-    ULARGE_INTEGER time;
-    time.LowPart = data.ftLastWriteTime.dwLowDateTime;
-    time.HighPart = data.ftLastWriteTime.dwHighDateTime;
-    /* See RtlTimeToSecondsSince1970 */
-    buf->st_mtime = (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
+        error = GetLastError();
 #else
     struct stat posixstat = {0};
-    retval = stat(pathname, &posixstat);
-    if(posixstat.st_mode & S_IFDIR)
+    if(stat(pathname, &posixstat) == 0)
     {
-        buf->st_mode = 0x4000;
-    }
-    else if(posixstat.st_mode & S_IFREG)
-    {
-        buf->st_mode = 0x8000;
+        if(posixstat.st_mode & S_IFDIR)
+        {
+            buf->st_mode = 0x4000;
+        }
+        else if(posixstat.st_mode & S_IFREG)
+        {
+            buf->st_mode = 0x8000;
+        }
+        else
+        {
+            kdAssert(0);
+        }
+        buf->st_size = posixstat.st_size;
+#if defined(__ANDROID__)
+        buf->st_mtime = posixstat.st_mtime;
+#elif defined(__APPLE__)
+        buf->st_mtime = posixstat.st_mtimespec.tv_sec;
+#else
+        buf->st_mtime = posixstat.st_mtim.tv_sec;
+#endif
     }
     else
     {
-        kdAssert(0);
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_EOVERFLOW);
+        return -1;
     }
-    buf->st_size = posixstat.st_size;
-#if defined(__ANDROID__)
-    buf->st_mtime = posixstat.st_mtime;
-#elif defined(__APPLE__)
-    buf->st_mtime = posixstat.st_mtimespec.tv_sec;
-#else
-    buf->st_mtime = posixstat.st_mtim.tv_sec;
-#endif
-#endif
-    return retval;
+    return 0;
 }
 
 KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
@@ -6121,11 +5961,10 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
-    KDint retval = -1;
+    KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    HANDLE error = FindFirstFile(pathname, &data);
-    if(error != INVALID_HANDLE_VALUE)
+    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
         {
@@ -6139,6 +5978,9 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
             return 0;
         }
     }
+    else
+    {
+        error = GetLastError();
 #else
     typedef struct __KDAccessMode {
         KDint accessmode_kd;
@@ -6153,9 +5995,14 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
             accessmode |= accessmodes[i].accessmode_posix;
         }
     }
-    retval = access(pathname, accessmode);
+    if(access(pathname, accessmode) == -1)
+    {
+        error = errno;
 #endif
-    return retval;
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
+        return -1;
+    }
+    return 0;
 }
 
 /* kdOpenDir: Open a directory ready for listing. */
@@ -6168,28 +6015,61 @@ struct KDDir {
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
+    KDPlatformErrorVEN error = 0;
+    if(kdStrcmp(pathname, "/") == 0)
+    {
+        kdSetError(KD_EACCES);
+        return KD_NULL;
+    }
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    dir->dir = FindFirstFile(pathname, &data);
+    if(FindFirstFile(pathname, &data) == INVALID_HANDLE_VALUE)
+    {
+        error = GetLastError();
 #else
     dir->dir = opendir(pathname);
+    if(dir->dir == NULL)
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
+        kdFree(dir);
+        return KD_NULL;
+    }
     return dir;
 }
 
 /* kdReadDir: Return the next file in a directory. */
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
+    KDPlatformErrorVEN error = 0;
     KDDirent *lastdirent = kdThreadSelf()->lastdirent;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    FindNextFile(dir->dir, &data);
-    lastdirent->d_name = data.cFileName;
+    if(FindNextFile(dir->dir, &data) != 0)
+    {
+        lastdirent->d_name = data.cFileName;
+    }
+    else
+    {
+        error = GetLastError();
 #else
     struct dirent *posixdirent = readdir(dir->dir);
-    lastdirent->d_name = posixdirent->d_name;
+    if(posixdirent)
+    {
+        lastdirent->d_name = posixdirent->d_name;
+    }
+    else
+    {
+        error = errno;
 #endif
+        if(error != 0)
+        {
+            kdSetErrorPlatformVEN(error, KD_EIO | KD_ENOMEM);
+        }
+        return KD_NULL;
+    }
     return lastdirent;
 }
 
@@ -6208,16 +6088,27 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 /* kdGetFree: Get free space on a drive. */
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
+    KDPlatformErrorVEN error = 0;
+    KDoff freespace = 0;
     const KDchar *temp = pathname;
 #if defined(_WIN32)
-    KDuint64 freespace = 0;
-    GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL);
-    return freespace;
+    if(GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL) == 0)
+    {
+        error = GetLastError();
 #else
     struct statfs buf = {0};
-    statfs(temp, &buf);
-    return (buf.f_bsize / 1024L) * buf.f_bavail;
+    if(statfs(temp, &buf) == 0)
+    {
+        freespace = (buf.f_bsize / 1024LL) * buf.f_bavail;
+    }
+    else
+    {
+        error = errno;
 #endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSYS | KD_EOVERFLOW);
+        return (KDoff)-1;
+    }
+    return freespace;
 }
 
 /******************************************************************************
@@ -6643,13 +6534,17 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
 #ifndef KD_NDEBUG
 KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 {
-    KDsize stringsize = kdStrlen(string) + 2;
-    KDchar *newstring = kdMalloc(sizeof(KDchar) * stringsize);
-    kdMemset(newstring, 0, stringsize);
-    kdStrncat_s(newstring, stringsize, string, stringsize);
-    if(newstring[(stringsize - 3)] != '\n')
+    KDsize length = kdStrlen(string);
+    if(!length)
     {
-        kdStrncat_s(newstring, stringsize, "\n", stringsize);
+        return;
+    }
+    KDchar *newstring = kdMalloc(sizeof(KDchar) * (length + 1));
+    kdMemset(newstring, 0, length + 1);
+    kdStrncat_s(newstring, length + 1, string, length);
+    if(string[length - 1] != '\n')
+    {
+        kdStrncat_s(newstring, length + 1, "\n", length + 1);
     }
 #if defined(__ANDROID__)
     __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);

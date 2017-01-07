@@ -30,6 +30,7 @@ endif()
 find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h PATHS $ENV{KHRONOS_HEADERS}
                                                 ${CMAKE_SOURCE_DIR}/thirdparty/gles_amd/include
                                                 ${CMAKE_SOURCE_DIR}/thirdparty/gles_mali/include)
+
 find_library(EGL_LIBRARY NAMES egl EGL libEGL PATHS $ENV{OPENGLES_LIBDIR}
                                                     ${CMAKE_SOURCE_DIR}/thirdparty/gles_amd/x86${ARCH_SUFFIX}
                                                     ${CMAKE_SOURCE_DIR}/thirdparty/gles_mali
