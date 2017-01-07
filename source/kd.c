@@ -2876,20 +2876,16 @@ static inline KDfloat32 __kdTandf(KDfloat64KHR x, KDint iy)
 
 KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
 {
-    KDuint32 hx, hy;
-    GET_HIGH_WORD(hx, x);
-    GET_HIGH_WORD(hy, y);
-    SET_HIGH_WORD(x, (hx & KDINT_MAX) | (hy & 0x80000000));
-    return x;
+    union {KDfloat64KHR f; KDuint64 i;} hx={x}, hy={y};
+    hx.i = (hx.i & KDINT_MAX) | (hy.i & 0x80000000);
+    return hx.f;
 }
 
 KDfloat32 __kdCopysignf(KDfloat32 x, KDfloat32 y)
 {
-    KDuint32 ix, iy;
-    GET_FLOAT_WORD(ix, x);
-    GET_FLOAT_WORD(iy, y);
-    SET_FLOAT_WORD(x, (ix & KDINT_MAX) | (iy & 0x80000000));
-    return x;
+    union {KDfloat32 f; KDuint32 i;} ix={x}, iy={y};
+    ix.i = (ix.i & KDINT_MAX) | (iy.i & 0x80000000);
+    return ix.f;
 }
 
 static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
@@ -3203,12 +3199,12 @@ static KDint __kdRemPio2(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint
 
 static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
 {
-    KDfloat64KHR w, r, fn;
-    KDfloat64KHR tx[1], ty[1];
-    KDfloat32 z;
-    KDint32 e0, n, ix, hx;
-    GET_FLOAT_WORD(hx, x);
-    ix = hx & KDINT_MAX;
+    union {KDfloat32 f; KDuint32 i;} hx = {x};
+    KDfloat64KHR tx[1], ty[1], fn;
+    KDuint32 ix;
+    KDint32 e0, sign, n;
+
+    ix = hx.i & KDINT_MAX;
     /* 33+53 bit pi is good enough for medium size */
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
@@ -3216,9 +3212,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
         fn = x * KD_2_PI_KHR + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
-        r = x - fn * pio2_1;
-        w = fn * pio2_1t;
-        *y = r - w;
+        *y = x - fn*pio2_1 - fn*pio2_1t;
         return n;
     }
     /*
@@ -3230,11 +3224,12 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
         return 0;
     }
     /* set z = scalbn(|x|,ilogb(|x|)-23) */
+    sign = hx.i>>31;
     e0 = (ix >> 23) - 150; /* e0 = ilogb(|x|)-23; */
-    SET_FLOAT_WORD(z, ix - ((KDint32)(e0 << 23)));
-    tx[0] = z;
+    hx.i = ix - (e0<<23);
+    tx[0] = hx.f;
     n = __kdRemPio2(tx, ty, e0, 1);
-    if(hx < 0)
+    if(sign)
     {
         *y = -ty[0];
         return -n;
