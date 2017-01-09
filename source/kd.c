@@ -2463,6 +2463,7 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 
 #if defined(_MSC_VER)
 #pragma warning(push)
+#pragma warning(disable : 4204)
 #pragma warning(disable : 4723)
 #pragma warning(disable : 4756)
 #endif
@@ -2946,8 +2947,8 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
 static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
 {
     union {
-        KDfloat64KHR f;
-        KDuint64 i;
+        KDfloat32 f;
+        KDuint32 i;
     } ix = {x};
     KDint32 k;
     k = (ix.i & KD_INFINITY) >> 23; /* extract exponent */
@@ -2975,7 +2976,7 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
     }
     if(k > 0) /* normal result */
     {
-        ix.f = (ix.i & 0x807fffff) | (k << 23);
+        ix.i = (ix.i & 0x807fffff) | (k << 23);
         return ix.f;
     }
     if(k <= -25)
@@ -2990,7 +2991,7 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
         }
     }
     k += 25; /* subnormal result */
-    ix.f = (ix.i & 0x807fffff) | (k << 23);
+    ix.i = (ix.i & 0x807fffff) | (k << 23);
     return ix.f * twom25;
 }
 
