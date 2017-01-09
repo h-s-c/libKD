@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2016 Kevin Schmidt
+ * Copyright (c) 2014-2017 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -3334,7 +3334,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
         if(ix == 0x3f800000)
         { /* |x| == 1 */
             return hx.f * KD_PI_2_F;
-        }                         /* asin(+-1) = +-pi/2 with inexact */
+        }                                     /* asin(+-1) = +-pi/2 with inexact */
         return (hx.f - hx.f) / (hx.f - hx.f); /* asin(|x|>1) is NaN */
     }
     else if(ix < 0x3f000000)
