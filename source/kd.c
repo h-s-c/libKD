@@ -2728,8 +2728,13 @@ static const KDfloat64KHR PIo2[] = {
  */
 typedef union {
     KDfloat32 value;
-    KDuint word; /* FIXME: Assumes 32 bit int.  */
+    KDuint32 word; /* FIXME: Assumes 32 bit int.  */
 } ieee_float_shape_type;
+
+typedef union {
+    KDfloat32 f;
+    KDuint32 i; /* FIXME: Assumes 32 bit int.  */
+} __KDFloatWord;
 
 /* Get a 32 bit int from a float.  */
 #define GET_FLOAT_WORD(i, d)        \
@@ -2887,10 +2892,7 @@ KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
 
 KDfloat32 __kdCopysignf(KDfloat32 x, KDfloat32 y)
 {
-    union {
-        KDfloat32 f;
-        KDuint32 i;
-    } ix = {x}, iy = {y};
+    __KDFloatWord ix = {x}, iy = {y};
     ix.i = (ix.i & KDINT_MAX) | (iy.i & 0x80000000);
     return ix.f;
 }
@@ -2946,10 +2948,7 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
 
 static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
 {
-    union {
-        KDfloat32 f;
-        KDuint32 i;
-    } ix = {x};
+    __KDFloatWord ix = {x};
     KDint32 k;
     k = (ix.i & KD_INFINITY) >> 23; /* extract exponent */
     if(k == 0)
@@ -3042,7 +3041,6 @@ static KDint __kdRemPio2(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint
     KDboolean recompute = 0;
     do
     {
-        recompute = 0;
         /* distill q[] into iq[] reversingly */
         for(i = 0, j = jz, z = q[jz]; j > 0; i++, j--)
         {
@@ -3197,21 +3195,12 @@ static KDint __kdRemPio2(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0, KDint
         fw += fq[i];
     }
     y[0] = (ih == 0) ? fw : -fw;
-    fw = fq[0] - fw;
-    for(i = 1; i <= jz; i++)
-    {
-        fw += fq[i];
-    }
-    y[1] = (ih == 0) ? fw : -fw;
     return n & 7;
 }
 
 static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
 {
-    union {
-        KDfloat32 f;
-        KDuint32 i;
-    } hx = {x};
+    __KDFloatWord hx = {x};
     KDfloat64KHR tx[1], ty[1], fn;
     KDint32 e0, n;
     KDint32 ix = hx.i & KDINT_MAX;
@@ -3252,10 +3241,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
 /* kdAcosf: Arc cosine function. */
 KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
 {
-    union {
-        KDfloat32 f;
-        KDuint32 i;
-    } hx = {x};
+    __KDFloatWord hx = {x};
     KDfloat32 z, p, q, r, w, s, c;
     KDint32 ix = hx.i & KDINT_MAX;
     KDboolean sign = hx.i >> 31;
@@ -3301,14 +3287,8 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
     { /* x > 0.5 */
         z = (1.0f - hx.f) * 0.5f;
         s = kdSqrtf(z);
-        union {
-            KDfloat32 f;
-            KDuint32 i;
-        } df = {s};
-        union {
-            KDfloat32 f;
-            KDuint32 i;
-        } idf = {df.f};
+        __KDFloatWord df = {s};
+        __KDFloatWord idf = {df.f};
         df.i = idf.i & 0xfffff000;
         c = (z - df.f * df.f) / (s + df.f);
         p = z * (pS0 + z * (pS1 + z * pS2));
@@ -3322,10 +3302,7 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
 /* kdAsinf: Arc sine function. */
 KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
 {
-    union {
-        KDfloat32 f;
-        KDuint32 i;
-    } hx = {x};
+    __KDFloatWord hx = {x};
     KDfloat32 t, w, p, q, s;
     KDint32 ix = hx.i & KDINT_MAX;
     KDboolean sign = hx.i >> 31;
