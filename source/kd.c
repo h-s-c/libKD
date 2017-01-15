@@ -6455,8 +6455,13 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
         param[1] = ANativeWindow_getHeight(window->nativewindow);
         return 0;
 #elif defined(KD_WINDOW_X11)
-        param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
-        param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
+        XWindowAttributes attributes = {0};
+        XGetWindowAttributes( window->nativedisplay, window->nativewindow, &attributes );
+        param[0] = attributes.width;
+        param[1] = attributes.height;
+        return 0;
+#elif defined(__EMSCRIPTEN__)
+        emscripten_get_canvas_size(&param[0], &param[1], (KDint[]){0});
         return 0;
 #endif
     }
