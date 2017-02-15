@@ -40,6 +40,9 @@
 /* clang-format off */
 #ifdef __unix__
 #   ifdef __linux__
+#       if __GLIBC__ == 2 && __GLIBC_MINOR__ < 20
+#           define _BSD_SOURCE
+#       endif
 #       define _GNU_SOURCE
 #   endif
 #   ifdef __EMSCRIPTEN__
@@ -63,15 +66,6 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#ifndef EGL_PLATFORM_X11_KHR
-#define EGL_PLATFORM_X11_KHR EGL_PLATFORM_X11_EXT
-#endif
-#ifndef EGL_PLATFORM_WAYLAND_KHR
-#define EGL_PLATFORM_WAYLAND_KHR EGL_PLATFORM_WAYLAND_EXT
-#endif
-#ifndef EGL_VERSION_1_4
-#error "Atleast EGL 1.4 is required."
-#endif
 
 /******************************************************************************
  * C includes
@@ -117,6 +111,7 @@
 #   include <fcntl.h>
 #   include <dirent.h>
 #   include <dlfcn.h>
+#   include <sys/mman.h>
 #   include <sys/stat.h>
 #   include <sys/syscall.h>
 #   include <sys/utsname.h>
@@ -159,9 +154,10 @@
 #   include <emscripten/emscripten.h>
 #endif
 
-#if defined(KD_THREAD_POSIX)
+#if defined(KD_THREAD_POSIX) || defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 #   include <pthread.h>
-#elif defined(KD_THREAD_C11)
+#endif
+#if defined(KD_THREAD_C11)
 #   include <threads.h>
 #endif
 
@@ -1201,6 +1197,28 @@ static struct wl_compositor *compositor;
 static struct wl_shell *shell;
 #endif
 
+#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+/* Excerpt from Mesa headers */
+typedef struct _egl_display _EGLDisplay;
+enum _egl_platform_type {
+    _EGL_PLATFORM_X11,
+    _EGL_PLATFORM_WAYLAND,
+    _EGL_PLATFORM_DRM,
+    _EGL_PLATFORM_ANDROID,
+    _EGL_PLATFORM_HAIKU,
+    _EGL_PLATFORM_SURFACELESS,
+    _EGL_NUM_PLATFORMS,
+    _EGL_INVALID_PLATFORM = -1
+};
+typedef enum _egl_platform_type _EGLPlatformType;
+struct _egl_display {
+    _EGLDisplay *Next;
+    pthread_mutex_t Mutex;
+    _EGLPlatformType Platform;
+    void *PlatformDisplay;
+};
+#endif
+
 static KDWindow *__kd_window = KD_NULL;
 #endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
@@ -1401,7 +1419,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
 #else
 #if defined(KD_WINDOW_X11)
-    if(window && window->platform == EGL_PLATFORM_X11_KHR)
+    if(window && window->platform == _EGL_PLATFORM_X11)
     {
         XSelectInput(window->nativedisplay, (Window)window->nativewindow, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
         while(XPending(window->nativedisplay) > 0)
@@ -1551,7 +1569,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-    if(window && window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    if(window && window->platform == _EGL_PLATFORM_WAYLAND)
     {
         wl_display_dispatch_pending(window->nativedisplay);
     }
@@ -6396,27 +6414,27 @@ static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
     &shell_surface_popup_done};
 #endif
 
-#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
-/* Excerpt from Mesa headers */
-typedef struct _egl_display _EGLDisplay;
-enum _egl_platform_type {
-    _EGL_PLATFORM_X11,
-    _EGL_PLATFORM_WAYLAND,
-    _EGL_PLATFORM_DRM,
-    _EGL_PLATFORM_ANDROID,
-    _EGL_PLATFORM_HAIKU,
-    _EGL_PLATFORM_SURFACELESS,
-    _EGL_NUM_PLATFORMS,
-    _EGL_INVALID_PLATFORM = -1
-};
-typedef enum _egl_platform_type _EGLPlatformType;
-struct _egl_display {
-    _EGLDisplay *Next;
-    pthread_mutex_t Mutex;
-    _EGLPlatformType Platform;
-    void *PlatformDisplay;
-};
-#endif
+static KDboolean __kdIsPointerDereferencable(void *p)
+{
+    if(p == NULL)
+    {
+        return 0;
+    }
+
+    KDuintptr addr = (KDuintptr)p;
+    KDuint8 valid = 0;
+    const KDint page_size = sysconf(_SC_PAGESIZE);
+
+    /* align addr to page_size */
+    addr &= ~(page_size - 1);
+
+    if (mincore((void *) addr, page_size, &valid) < 0) 
+    {
+      return 0;
+    }
+
+    return (valid & 0x01) == 0x01;
+}
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
@@ -6475,6 +6493,19 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
 #elif defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 
+    /* HACK: Poke into Mesa EGLDisplay */
+    if(!window->nativedisplay && kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
+    {
+        /* EGLDisplay is a pointer underneath */
+        _EGLDisplay *_display = (_EGLDisplay *)display;
+        window->platform = _display->Platform;
+    }
+    else
+    {
+        /* Fallback to X11*/ 
+        window->platform = _EGL_PLATFORM_X11;
+    }
+
 #if defined(EGL_NV_native_query)
     if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_native_query"))
     {
@@ -6482,45 +6513,22 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         if(eglQueryNativeDisplayNV)
         {
             eglQueryNativeDisplayNV(display, &window->nativedisplay);
+#if defined(KD_WINDOW_WAYLAND)
+            if(__kdIsPointerDereferencable(window->nativedisplay))
+            {
+                void *first_pointer = *(void **) window->nativedisplay;
+                if(first_pointer == &wl_display_interface)
+                {
+                    window->platform = _EGL_PLATFORM_WAYLAND;
+                }
+            }
+#endif
         }
     }
 #endif
 
-    /* HACK: Poke into Mesa EGLDisplay */
-    if(!window->nativedisplay && kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
-    {
-        /* EGLDisplay is a pointer underneath */
-        _EGLDisplay *_display = (_EGLDisplay *)display;
-        switch(_display->Platform)
-        {
 #if defined(KD_WINDOW_X11)
-            case _EGL_PLATFORM_X11:
-            {
-                window->platform = EGL_PLATFORM_X11_KHR;
-                kdLogMessage("EGL_PLATFORM_X11_KHR\n");
-                break;
-            }
-#endif
-#if defined(KD_WINDOW_WAYLAND)
-            case _EGL_PLATFORM_WAYLAND:
-            {
-                window->platform = EGL_PLATFORM_WAYLAND_KHR;
-                kdLogMessage("EGL_PLATFORM_WAYLAND_KHR\n");
-                break;
-            }
-#endif
-            default:
-            {
-                kdAssert(0);
-            }
-        }
-    }
-#if defined(KD_WINDOW_X11)
-    if(!window->platform)
-    {
-        window->platform = EGL_PLATFORM_X11_KHR;
-    }
-    if(window->platform == EGL_PLATFORM_X11_KHR)
+    if(window->platform == _EGL_PLATFORM_X11)
     {
         if(!window->nativedisplay)
         {
@@ -6548,11 +6556,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-    if(!window->platform)
-    {
-        window->platform = EGL_PLATFORM_WAYLAND_KHR;
-    }
-    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
         if(!window->nativedisplay)
         {
@@ -6581,13 +6585,13 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
     DestroyWindow(window->nativewindow);
 #else
 #if defined(KD_WINDOW_X11)
-    if(window->platform == EGL_PLATFORM_X11_KHR)
+    if(window->platform == _EGL_PLATFORM_X11)
     {
         XCloseDisplay(window->nativedisplay);
     }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
         wl_egl_window_destroy(window->nativewindow);
         wl_shell_surface_destroy(window->shell_surface);
@@ -6613,7 +6617,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
 #if defined(KD_WINDOW_X11)
-        if(window->platform == EGL_PLATFORM_X11_KHR)
+        if(window->platform == _EGL_PLATFORM_X11)
         {
             XMoveResizeWindow(window->nativedisplay, (Window)window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
             XFlush(window->nativedisplay);
@@ -6632,14 +6636,14 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
 #if defined(KD_WINDOW_X11)
-        if(window->platform == EGL_PLATFORM_X11_KHR)
+        if(window->platform == _EGL_PLATFORM_X11)
         {
             XStoreName(window->nativedisplay, (Window)window->nativewindow, param);
             XFlush(window->nativedisplay);
         }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-        if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        if(window->platform == _EGL_PLATFORM_WAYLAND)
         {
             wl_shell_surface_set_title(window->shell_surface, param);
         }
@@ -6668,7 +6672,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
         param[1] = ANativeWindow_getHeight(window->nativewindow);
         return 0;
 #elif defined(KD_WINDOW_X11)
-        if(window->platform == EGL_PLATFORM_X11_KHR)
+        if(window->platform == _EGL_PLATFORM_X11)
         {
             XWindowAttributes attributes = {0};
             XGetWindowAttributes(window->nativedisplay, (Window)window->nativewindow, &attributes);
@@ -6689,7 +6693,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
 #if defined(KD_WINDOW_X11)
-        if(window->platform == EGL_PLATFORM_X11_KHR)
+        if(window->platform == _EGL_PLATFORM_X11)
         {
             XFetchName(window->nativedisplay, (Window)window->nativewindow, &param);
             return 0;
@@ -6718,14 +6722,14 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     ANativeWindow_setBuffersGeometry(window->nativewindow, 0, 0, window->format);
 #else
 #if defined(KD_WINDOW_X11)
-    if(window->platform == EGL_PLATFORM_X11_KHR)
+    if(window->platform == _EGL_PLATFORM_X11)
     {
         XMapWindow(window->nativedisplay, (Window)window->nativewindow);
         XFlush(window->nativedisplay);
     }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
         window->surface = wl_compositor_create_surface(compositor);
         window->shell_surface = wl_shell_get_shell_surface(shell, window->surface);
