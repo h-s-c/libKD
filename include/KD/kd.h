@@ -601,6 +601,14 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname);
 /*******************************************************
  * Network sockets
  *******************************************************/
+typedef struct KDBdAddrATX {
+    KDuint8 b[6];
+} KDBdAddrATX;
+
+typedef struct KDSockaddrAfBtrcATX {
+    KDBdAddrATX bdaddr;
+    KDuint8 channel;
+} KDSockaddrAfBtrcATX;
 
 /* KDSockaddr: Struct type for socket address. */
 typedef struct KDSockaddr {
@@ -611,6 +619,7 @@ typedef struct KDSockaddr {
             KDuint16 port;
             KDuint32 address;
         } sin;
+        KDSockaddrAfBtrcATX sbtrcATX;
     } data;
 } KDSockaddr;
 
