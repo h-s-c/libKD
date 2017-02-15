@@ -31,6 +31,8 @@ typedef struct
    EGLContext eglContext;
    EGLSurface eglSurface;
 
+   //KD handles
+   KDWindow *window;
 } UserData;
 
 ///
@@ -164,14 +166,9 @@ void Draw ( UserData *userData )
                             0.5f, -0.5f, 0.0f };
 
    // Set the viewport
-   int width = 0; int height = 0;
-   eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_WIDTH, &width);
-   eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_HEIGHT, &height);
-#ifdef __EMSCRIPTEN__
-   int isFullscreen = 0;
-   emscripten_get_canvas_size(&width, &height, &isFullscreen);
-#endif
-   glViewport ( 0, 0, width, height);
+   KDint32 windowsize[2];
+   kdGetWindowPropertyiv(userData->window, KD_WINDOWPROPERTY_SIZE, windowsize);
+   glViewport ( 0, 0, windowsize[0], windowsize[1]);
    
    // Clear the color buffer
    glClear ( GL_COLOR_BUFFER_BIT );
@@ -195,7 +192,6 @@ void Draw ( UserData *userData )
 //    Initialize an EGL rendering context and all associated elements
 //
 EGLBoolean InitEGLContext ( UserData *userData,
-                            KDWindow *window,
                             EGLConfig config )
 {
    EGLContext context;
@@ -204,7 +200,7 @@ EGLBoolean InitEGLContext ( UserData *userData,
 
    // Get native window handle
    EGLNativeWindowType hWnd;
-   if(kdRealizeWindow(window, &hWnd) != 0)
+   if(kdRealizeWindow(userData->window, &hWnd) != 0)
    {
       return EGL_FALSE;
    }
@@ -233,7 +229,7 @@ EGLBoolean InitEGLContext ( UserData *userData,
    return EGL_TRUE;
 }
 
-void Exit ( UserData *userData, KDWindow *window )
+void Exit ( UserData *userData)
 {
    // EGL clean up
    eglMakeCurrent ( 0, 0, 0, 0 );
@@ -241,28 +237,23 @@ void Exit ( UserData *userData, KDWindow *window )
    eglDestroyContext ( userData->eglDisplay, userData->eglContext );
 
    // Destroy the window
-   kdDestroyWindow(window);
+   kdDestroyWindow(userData->window);
 }
 
-typedef struct MainloopArgs MainloopArgs;
-struct MainloopArgs {
-   UserData *userData;
-   KDWindow *window;
-};
 void Mainloop ( void* args )
 {
-   MainloopArgs* loopargs = (MainloopArgs*)args;
+   UserData *userData = (UserData*)args;
 
    // Wait for an event
    const KDEvent *evt = kdWaitEvent(0);
    if (evt) {
    // Exit app
       if (evt->type == KD_EVENT_WINDOW_CLOSE)
-         Exit(loopargs->userData, loopargs->window);
+         Exit(userData);
    }
 
    // Draw frame
-   Draw(loopargs->userData);
+   Draw(userData);
 }
 
 /// 
@@ -287,7 +278,6 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
    UserData userData;
    EGLint numConfigs;
    EGLConfig config;
-   KDWindow *window = KD_NULL;
 
    userData.eglDisplay = eglGetDisplay( EGL_DEFAULT_DISPLAY );
 
@@ -311,28 +301,27 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
 
 
    // Use OpenKODE to create a Window
-   window = kdCreateWindow ( userData.eglDisplay, config, KD_NULL );
-   if( !window )
+   userData.window = kdCreateWindow ( userData.eglDisplay, config, KD_NULL );
+   if( !userData.window )
       kdExit ( 0 );
 
-   if ( !InitEGLContext ( &userData, window, config ) )
+   if ( !InitEGLContext ( &userData, config ) )
       kdExit ( 0 );
 
     if ( !Init ( &userData ) )
       kdExit ( 0 );
 
    // Main Loop
-   MainloopArgs loopargs = {.userData = &userData, .window = window};
 #ifdef __EMSCRIPTEN__
-   emscripten_set_main_loop_arg(Mainloop, (void*)&loopargs, 0, 1);
+   emscripten_set_main_loop_arg(Mainloop, (void*)&userData, 0, 1);
 #else
    while ( 1 )
    {
-      Mainloop((void*)&loopargs);
+      Mainloop((void*)&userData);
    }
 #endif
 
-   Exit( &userData, window);
+   Exit( &userData);
 
    return 0;
 }

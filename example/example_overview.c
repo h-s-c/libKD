@@ -25,9 +25,9 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#include <wayland-client.h>
 
 /* Example with eventloop, timer and callback*/
 static KDboolean quit = 0;
@@ -79,19 +79,22 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         EGL_NONE,
     };
 
-    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLDisplay egl_display = egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+   
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
 
     EGLint egl_num_configs = 0;
     EGLConfig egl_config;
     eglChooseConfig(egl_display, egl_attributes, &egl_config, 1, &egl_num_configs);
-
-    KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
-    EGLNativeWindowType egl_native_window;
-    kdRealizeWindow(kd_window, &egl_native_window);
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+    
+    KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
+    void* egl_native_window = KD_NULL;
+    kdRealizePlatformWindowVEN(kd_window, &egl_native_window);
+
+    EGLSurface egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
+
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
 
 #if defined(GL_KHR_debug)
@@ -184,8 +187,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 {
                     eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
                     eglDestroySurface(egl_display, egl_surface);
-                    kdRealizeWindow(kd_window, &egl_native_window);
-                    egl_surface = eglCreateWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
+                    kdRealizePlatformWindowVEN(kd_window, &egl_native_window);
+                    egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
                     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
                     break;
                 }
@@ -212,6 +215,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         }
     }
+    
     eglDestroyContext(egl_display, egl_context);
     eglDestroySurface(egl_display, egl_surface);
     eglTerminate(egl_display);

@@ -63,6 +63,15 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#ifndef EGL_PLATFORM_X11_KHR
+#define EGL_PLATFORM_X11_KHR EGL_PLATFORM_X11_EXT
+#endif
+#ifndef EGL_PLATFORM_WAYLAND_KHR
+#define EGL_PLATFORM_WAYLAND_KHR EGL_PLATFORM_WAYLAND_EXT
+#endif
+#ifndef EGL_VERSION_1_4
+#error "Atleast EGL 1.4 is required."
+#endif
 
 /******************************************************************************
  * C includes
@@ -129,13 +138,18 @@
 #   if defined(__ANDROID__)
 #       include <android/log.h>
 #       include <android/native_activity.h>
+#   endif
+#   if defined(KD_WINDOW_ANDROID)
 #       include <android/native_window.h>
 #       include <android/window.h>
-#   else
-#       if defined(KD_WINDOW_X11)
-#           include <X11/Xlib.h>
-#           include <X11/Xutil.h>
-#       endif
+#   endif
+#   if defined(KD_WINDOW_X11)
+#       include <X11/Xlib.h>
+#       include <X11/Xutil.h>
+#   endif
+#   if defined(KD_WINDOW_WAYLAND)
+#       include <wayland-client.h>
+#       include <wayland-egl.h>
 #   endif
 /* POSIX reserved but OpenKODE uses this */
 #   undef st_mtime
@@ -1162,17 +1176,31 @@ static KDboolean __kdExecCallback(KDEvent *event)
 }
 
 #if defined(KD_WINDOW_SUPPORTED)
+
 struct KDWindow {
-    EGLNativeWindowType nativewindow;
-    EGLNativeDisplayType nativedisplay;
+    void *nativewindow;
+    void *nativedisplay;
+    EGLenum platform;
     EGLint format;
     void *eventuserptr;
     KDThread *originthr;
+#if defined(KD_WINDOW_WAYLAND)
+    struct wl_registry *registry;
+    struct wl_surface *surface;
+    struct wl_shell_surface *shell_surface;
+#endif
 };
+
 #if defined(KD_WINDOW_ANDROID)
 static AInputQueue *__kd_androidinputqueue = KD_NULL;
 static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 #endif
+
+#if defined(KD_WINDOW_WAYLAND)
+static struct wl_compositor *compositor;
+static struct wl_shell *shell;
+#endif
+
 static KDWindow *__kd_window = KD_NULL;
 #endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
@@ -1191,6 +1219,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         }
     }
 #if defined(KD_WINDOW_SUPPORTED)
+    KDWindow *window = __kd_window;
 #if defined(KD_WINDOW_ANDROID)
     AInputEvent *aevent = NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
@@ -1226,10 +1255,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 #elif defined(KD_WINDOW_WIN32)
-    if(__kd_window)
+    if(window)
     {
         MSG msg = {0};
-        while(PeekMessage(&msg, __kd_window->nativewindow, 0, 0, PM_REMOVE) != 0)
+        while(PeekMessage(&msg, window->nativewindow, 0, 0, PM_REMOVE) != 0)
         {
             KDEvent *event = kdCreateEvent();
             switch(msg.message)
@@ -1238,7 +1267,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case WM_DESTROY:
                 case WM_QUIT:
                 {
-                    ShowWindow(__kd_window->nativewindow, SW_HIDE);
+                    ShowWindow(window->nativewindow, SW_HIDE);
                     event->type = KD_EVENT_QUIT;
                     if(!__kdExecCallback(event))
                     {
@@ -1370,15 +1399,16 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             }
         }
     }
-#elif defined(KD_WINDOW_X11)
-    if(__kd_window)
+#else
+#if defined(KD_WINDOW_X11)
+    if(window && window->platform == EGL_PLATFORM_X11_KHR)
     {
-        XSelectInput(__kd_window->nativedisplay, __kd_window->nativewindow, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
-        while(XPending(__kd_window->nativedisplay) > 0)
+        XSelectInput(window->nativedisplay, (Window)window->nativewindow, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
+        while(XPending(window->nativedisplay) > 0)
         {
             KDEvent *event = kdCreateEvent();
             XEvent xevent = {0};
-            XNextEvent(__kd_window->nativedisplay, &xevent);
+            XNextEvent(window->nativedisplay, &xevent);
             switch(xevent.type)
             {
                 case ButtonPress:
@@ -1496,7 +1526,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 }
                 case ClientMessage:
                 {
-                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(__kd_window->nativedisplay, "WM_DELETE_WINDOW", False))
+                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False))
                     {
                         event->type = KD_EVENT_QUIT;
                         if(!__kdExecCallback(event))
@@ -1519,6 +1549,13 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             }
         }
     }
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+    if(window && window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        wl_display_dispatch_pending(window->nativedisplay);
+    }
+#endif
 #endif
 #endif
     return 0;
@@ -2349,6 +2386,17 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
         return -1;
     }
     return 0;
+#endif
+}
+
+/* kdGetEnvVEN: Get an environment variable. */
+KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KD_UNUSED KDsize buflen)
+{
+#if defined(_WIN32)
+    return GetEnvironmentVariable(env, buf, (DWORD)buflen);
+#else
+    buf = getenv(env);
+    return kdStrlen(buf);
 #endif
 }
 
@@ -5250,6 +5298,17 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return ts.tv_nsec;
 #else
+#if defined(EGL_NV_system_time)
+    if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_system_time"))
+    {
+        PFNEGLGETSYSTEMTIMENVPROC eglGetSystemTimeNV = (PFNEGLGETSYSTEMTIMENVPROC)eglGetProcAddress("eglGetSystemTimeNV");
+        PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
+        if(eglGetSystemTimeNV && eglGetSystemTimeFrequencyNV)
+        {
+            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000;
+        }
+    }
+#endif
     return clock();
 #endif
 }
@@ -6304,7 +6363,61 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
     }
     return 0;
 }
+#elif defined(KD_WINDOW_WAYLAND)
+static void registry_add_object(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
+{
+    if(!kdStrcmp(interface, "wl_compositor"))
+    {
+        compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+    }
+    else if(!kdStrcmp(interface, "wl_shell"))
+    {
+        shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
+    }
+}
+static void registry_remove_object(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
+static const KD_UNUSED struct wl_registry_listener registry_listener = {
+    registry_add_object,
+    registry_remove_object};
+static void shell_surface_ping(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
+{
+    kdLogMessage("wl_shell_surface_pong\n");
+    wl_shell_surface_pong(shell_surface, serial);
+}
+static void shell_surface_configure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
+{
+    struct KDWindow *window = data;
+    wl_egl_window_resize(window->nativewindow, width, height, 0, 0);
+}
+static void shell_surface_popup_done(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
+static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
+    &shell_surface_ping,
+    &shell_surface_configure,
+    &shell_surface_popup_done};
 #endif
+
+#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+/* Excerpt from Mesa headers */
+typedef struct _egl_display _EGLDisplay;
+enum _egl_platform_type {
+    _EGL_PLATFORM_X11,
+    _EGL_PLATFORM_WAYLAND,
+    _EGL_PLATFORM_DRM,
+    _EGL_PLATFORM_ANDROID,
+    _EGL_PLATFORM_HAIKU,
+    _EGL_PLATFORM_SURFACELESS,
+    _EGL_NUM_PLATFORMS,
+    _EGL_INVALID_PLATFORM = -1
+};
+typedef enum _egl_platform_type _EGLPlatformType;
+struct _egl_display {
+    _EGLDisplay *Next;
+    pthread_mutex_t Mutex;
+    _EGLPlatformType Platform;
+    void *PlatformDisplay;
+};
+#endif
+
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
     if(__kd_window != KD_NULL)
@@ -6320,6 +6433,9 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
+    window->nativewindow = KD_NULL;
+    window->nativedisplay = KD_NULL;
+    window->platform = 0;
     if(eventuserptr == KD_NULL)
     {
         window->eventuserptr = window;
@@ -6329,6 +6445,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         window->eventuserptr = eventuserptr;
     }
     window->originthr = kdThreadSelf();
+
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
@@ -6356,28 +6473,97 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     device[1].dwFlags = RIDEV_NOLEGACY;
     device[1].hwndTarget = window->nativewindow;
     RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
-#elif defined(KD_WINDOW_X11)
-    XInitThreads();
-    window->nativedisplay = XOpenDisplay(NULL);
-    window->nativewindow = XCreateSimpleWindow(window->nativedisplay,
-        XRootWindow(window->nativedisplay, XDefaultScreen(window->nativedisplay)), 0, 0,
-        (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)),
-        (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)), 0,
-        XBlackPixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)),
-        XWhitePixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)));
-    XStoreName(window->nativedisplay, window->nativewindow, "OpenKODE");
-    Atom wm_del_win_msg = XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols(window->nativedisplay, window->nativewindow, &wm_del_win_msg, 1);
-    Atom mwm_prop_hints = XInternAtom(window->nativedisplay, "_MOTIF_WM_HINTS", True);
-    const KDuint8 mwm_hints[5] = {2, 0, 0, 0, 0};
-    XChangeProperty(window->nativedisplay, window->nativewindow, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8 *)&mwm_hints, 5);
-    Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
-    Atom netwm_hints[3];
-    netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FULLSCREEN", False);
-    netwm_hints[1] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-    netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-    netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
-    XChangeProperty(window->nativedisplay, window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 3);
+#elif defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+
+#if defined(EGL_NV_native_query)
+    if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_native_query"))
+    {
+        PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
+        if(eglQueryNativeDisplayNV)
+        {
+            eglQueryNativeDisplayNV(display, &window->nativedisplay);
+        }
+    }
+#endif
+
+    /* HACK: Poke into Mesa EGLDisplay */
+    if(!window->nativedisplay && kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
+    {
+        /* EGLDisplay is a pointer underneath */
+        _EGLDisplay *_display = (_EGLDisplay *)display;
+        switch(_display->Platform)
+        {
+#if defined(KD_WINDOW_X11)
+            case _EGL_PLATFORM_X11:
+            {
+                window->platform = EGL_PLATFORM_X11_KHR;
+                kdLogMessage("EGL_PLATFORM_X11_KHR\n");
+                break;
+            }
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+            case _EGL_PLATFORM_WAYLAND:
+            {
+                window->platform = EGL_PLATFORM_WAYLAND_KHR;
+                kdLogMessage("EGL_PLATFORM_WAYLAND_KHR\n");
+                break;
+            }
+#endif
+            default:
+            {
+                kdAssert(0);
+            }
+        }
+    }
+#if defined(KD_WINDOW_X11)
+    if(!window->platform)
+    {
+        window->platform = EGL_PLATFORM_X11_KHR;
+    }
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        if(!window->nativedisplay)
+        {
+            window->nativedisplay = XOpenDisplay(NULL);
+        }
+        window->nativewindow = (void *)XCreateSimpleWindow(window->nativedisplay,
+            XRootWindow(window->nativedisplay, XDefaultScreen(window->nativedisplay)), 0, 0,
+            (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)),
+            (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)), 0,
+            XBlackPixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)),
+            XWhitePixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)));
+        XStoreName(window->nativedisplay, (Window)window->nativewindow, "OpenKODE");
+        Atom wm_del_win_msg = XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False);
+        XSetWMProtocols(window->nativedisplay, (Window)window->nativewindow, &wm_del_win_msg, 1);
+        Atom mwm_prop_hints = XInternAtom(window->nativedisplay, "_MOTIF_WM_HINTS", True);
+        const KDuint8 mwm_hints[5] = {2, 0, 0, 0, 0};
+        XChangeProperty(window->nativedisplay, (Window)window->nativewindow, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8 *)&mwm_hints, 5);
+        Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
+        Atom netwm_hints[3];
+        netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FULLSCREEN", False);
+        netwm_hints[1] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
+        XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 3);
+    }
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+    if(!window->platform)
+    {
+        window->platform = EGL_PLATFORM_WAYLAND_KHR;
+    }
+    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        if(!window->nativedisplay)
+        {
+            kdLogMessage("Wayland support depends on EGL_NV_native_query.\n");
+            kdAssert(0);
+        }
+        window->registry = wl_display_get_registry(window->nativedisplay);
+        wl_registry_add_listener(window->registry, &registry_listener, KD_NULL);
+        wl_display_roundtrip(window->nativedisplay);
+    }
+#endif
 #endif
     __kd_window = window;
     return window;
@@ -6393,8 +6579,23 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
     }
 #if defined(KD_WINDOW_WIN32)
     DestroyWindow(window->nativewindow);
-#elif defined(KD_WINDOW_X11)
-    XCloseDisplay(window->nativedisplay);
+#else
+#if defined(KD_WINDOW_X11)
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        XCloseDisplay(window->nativedisplay);
+    }
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        wl_egl_window_destroy(window->nativewindow);
+        wl_shell_surface_destroy(window->shell_surface);
+        wl_surface_destroy(window->surface);
+        wl_registry_destroy(window->registry);
+        wl_display_disconnect(window->nativedisplay);
+    }
+#endif
 #endif
     kdFree(window);
     __kd_window = KD_NULL;
@@ -6412,12 +6613,15 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
 #if defined(KD_WINDOW_X11)
-        XMoveResizeWindow(window->nativedisplay, window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
-        XFlush(window->nativedisplay);
-        KDEvent *event = kdCreateEvent();
-        event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-        kdPostThreadEvent(event, kdThreadSelf());
-        return 0;
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            XMoveResizeWindow(window->nativedisplay, (Window)window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
+            XFlush(window->nativedisplay);
+            KDEvent *event = kdCreateEvent();
+            event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+            kdPostThreadEvent(event, kdThreadSelf());
+            return 0;
+        }
 #endif
     }
     kdSetError(KD_EOPNOTSUPP);
@@ -6428,13 +6632,22 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
 #if defined(KD_WINDOW_X11)
-        XStoreName(window->nativedisplay, window->nativewindow, param);
-        XFlush(window->nativedisplay);
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            XStoreName(window->nativedisplay, (Window)window->nativewindow, param);
+            XFlush(window->nativedisplay);
+        }
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+        if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            wl_shell_surface_set_title(window->shell_surface, param);
+        }
+#endif
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostThreadEvent(event, kdThreadSelf());
         return 0;
-#endif
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -6455,8 +6668,16 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
         param[1] = ANativeWindow_getHeight(window->nativewindow);
         return 0;
 #elif defined(KD_WINDOW_X11)
-        param[0] = XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
-        param[1] = XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay));
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            XWindowAttributes attributes = {0};
+            XGetWindowAttributes(window->nativedisplay, (Window)window->nativewindow, &attributes);
+            param[0] = attributes.width;
+            param[1] = attributes.height;
+            return 0;
+        }
+#elif defined(__EMSCRIPTEN__)
+        emscripten_get_canvas_size(&param[0], &param[1], (KDint[]){0});
         return 0;
 #endif
     }
@@ -6468,8 +6689,11 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
 #if defined(KD_WINDOW_X11)
-        XFetchName(window->nativedisplay, window->nativewindow, &param);
-        return 0;
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            XFetchName(window->nativedisplay, (Window)window->nativewindow, &param);
+            return 0;
+        }
 #endif
     }
     kdSetError(KD_EOPNOTSUPP);
@@ -6492,11 +6716,35 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
         kdThreadMutexUnlock(__kd_androidwindow_mutex);
     }
     ANativeWindow_setBuffersGeometry(window->nativewindow, 0, 0, window->format);
-#elif defined(KD_WINDOW_X11)
-    XMapWindow(window->nativedisplay, window->nativewindow);
-    XFlush(window->nativedisplay);
+#else
+#if defined(KD_WINDOW_X11)
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        XMapWindow(window->nativedisplay, (Window)window->nativewindow);
+        XFlush(window->nativedisplay);
+    }
 #endif
-    *nativewindow = window->nativewindow;
+#if defined(KD_WINDOW_WAYLAND)
+    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        window->surface = wl_compositor_create_surface(compositor);
+        window->shell_surface = wl_shell_get_shell_surface(shell, window->surface);
+        wl_shell_surface_add_listener(window->shell_surface, &shell_surface_listener, window);
+        wl_shell_surface_set_toplevel(window->shell_surface);
+        window->nativewindow = wl_egl_window_create(window->surface, 0, 0);
+    }
+#endif
+#endif
+    if(nativewindow)
+    {
+        *nativewindow = (EGLNativeWindowType)window->nativewindow;
+    }
+    return 0;
+}
+KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow)
+{
+    kdRealizeWindow(window, KD_NULL);
+    *nativewindow = &window->nativewindow;
     return 0;
 }
 #endif
@@ -6521,6 +6769,7 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
     kdStrncat_s(message, messagelimit, "(", messagelimit);
     kdStrncat_s(message, messagelimit, line, messagelimit);
     kdStrncat_s(message, messagelimit, ")", messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
     kdLogMessage(message);
 #undef messagelimit
     kdExit(EXIT_FAILURE);
