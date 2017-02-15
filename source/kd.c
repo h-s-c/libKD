@@ -63,6 +63,13 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#ifndef EGL_VERSION_1_5
+#define EGL_PLATFORM_X11_KHR EGL_PLATFORM_X11_EXT
+#define EGL_PLATFORM_WAYLAND_KHR EGL_PLATFORM_WAYLAND_EXT
+#endif
+#ifndef EGL_VERSION_1_4
+#error "Atleast EGL 1.4 is required."
+#endif
 
 /******************************************************************************
  * C includes
@@ -6432,17 +6439,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
     window->originthr = kdThreadSelf();
 
-#if defined(EGL_NV_native_query)
-    if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_native_query"))
-    {
-        PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
-        if(eglQueryNativeDisplayNV)
-        {
-            eglQueryNativeDisplayNV(display, (EGLNativeDisplayType*)&window->nativedisplay);
-        }
-    }
-#endif
-
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
@@ -6471,6 +6467,18 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     device[1].hwndTarget = window->nativewindow;
     RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
 #elif defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+
+#if defined(EGL_NV_native_query)
+    if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_native_query"))
+    {
+        PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
+        if(eglQueryNativeDisplayNV)
+        {
+            eglQueryNativeDisplayNV(display, &window->nativedisplay);
+        }
+    }
+#endif
+
     /* HACK: Poke into Mesa EGLDisplay */
     if(!window->nativedisplay && kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
     {
@@ -6541,8 +6549,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     {
         if(!window->nativedisplay)
         {
-            kdLogMessage("Wayland support depends on EGL_NV_native_query.\n")
-                kdAssert(0);
+            kdLogMessage("Wayland support depends on EGL_NV_native_query.\n");
+            kdAssert(0);
         }
         window->registry = wl_display_get_registry(window->nativedisplay);
         wl_registry_add_listener(window->registry, &registry_listener, KD_NULL);
