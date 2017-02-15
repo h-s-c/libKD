@@ -2352,6 +2352,12 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 #endif
 }
 
+/* kdGetEnvVEN: Get an environment variable. */
+KD_API KDchar* KD_APIENTRY kdGetEnvVEN(const KDchar *str)
+{
+    return getenv(str);
+}
+
 /******************************************************************************
  * Locale specific functions
  ******************************************************************************/
