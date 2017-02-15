@@ -56,7 +56,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout);
  *******************************************************/
 
 /* kdGetEnvVEN: Get an environment variable. */
-KD_API KDchar* KD_APIENTRY kdGetEnvVEN(const KDchar *str);
+KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KDsize buflen);
 
 /*******************************************************
  * String and memory functions (extensions)
