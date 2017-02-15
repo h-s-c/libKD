@@ -2393,7 +2393,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KD_UNUSED KDsize buflen)
 {
 #if defined(_WIN32)
-    return GetEnvironmentVariable(env, buf, buflen);
+    return GetEnvironmentVariable(env, buf, (DWORD)buflen);
 #else
     buf = getenv(env);
     return kdStrlen(buf);
