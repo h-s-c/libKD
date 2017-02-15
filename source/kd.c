@@ -6532,6 +6532,7 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
     kdStrncat_s(message, messagelimit, "(", messagelimit);
     kdStrncat_s(message, messagelimit, line, messagelimit);
     kdStrncat_s(message, messagelimit, ")", messagelimit);
+    kdStrncat_s(message, messagelimit, "\n", messagelimit);
     kdLogMessage(message);
 #undef messagelimit
     kdExit(EXIT_FAILURE);
