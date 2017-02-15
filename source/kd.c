@@ -6438,7 +6438,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
         if(eglQueryNativeDisplayNV)
         {
-            eglQueryNativeDisplayNV(display, &window->nativedisplay);
+            eglQueryNativeDisplayNV(display, (EGLNativeDisplayType*)&window->nativedisplay);
         }
     }
 #endif
