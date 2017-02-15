@@ -6391,7 +6391,7 @@ static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
     &shell_surface_popup_done};
 #endif
 
-#if defined(KD_WINDOW_X11) && defined(KD_WINDOW_WAYLAND)
+#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 /* Excerpt from Mesa headers */
 typedef struct _egl_display _EGLDisplay;
 enum _egl_platform_type {
