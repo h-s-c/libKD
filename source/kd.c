@@ -63,8 +63,10 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#ifndef EGL_VERSION_1_5
+#ifndef EGL_PLATFORM_X11_KHR
 #define EGL_PLATFORM_X11_KHR EGL_PLATFORM_X11_EXT
+#endif
+#ifndef EGL_PLATFORM_WAYLAND_KHR
 #define EGL_PLATFORM_WAYLAND_KHR EGL_PLATFORM_WAYLAND_EXT
 #endif
 #ifndef EGL_VERSION_1_4
