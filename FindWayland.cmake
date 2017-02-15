@@ -1,0 +1,5 @@
+find_package(PkgConfig)
+pkg_check_modules(WAYLAND wayland-client wayland-egl)
+
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(WAYLAND DEFAULT_MSG WAYLAND_LIBRARIES)

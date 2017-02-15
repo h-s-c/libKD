@@ -29,9 +29,9 @@
 #include <KD/KHR_perfcounter.h>
 #include <KD/KHR_thread_storage.h>
 
-/******************************************************************************
+/*******************************************************
  * Errors (extensions)
- ******************************************************************************/
+ *******************************************************/
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 typedef KDuint KDPlatformErrorVEN;
@@ -41,9 +41,9 @@ typedef KDint KDPlatformErrorVEN;
 
 KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint allowed);
 
-/******************************************************************************
+/*******************************************************
  * Threads and synchronization (extensions)
- ******************************************************************************/
+ *******************************************************/
 
 /* kdThreadAttrSetDebugNameVEN: Set debugname attribute. */
 KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const char * debugname);
@@ -51,9 +51,16 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 /* kdThreadSleepVEN: Blocks the current thread for nanoseconds. */
 KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout);
 
-/******************************************************************************
+/*******************************************************
+ * Utility library functions (extensions)
+ *******************************************************/
+
+/* kdGetEnvVEN: Get an environment variable. */
+KD_API KDchar* KD_APIENTRY kdGetEnvVEN(const KDchar *str);
+
+/*******************************************************
  * String and memory functions (extensions)
- ******************************************************************************/
+ *******************************************************/
 
 /* kdStrstrVEN: Locate substring. */
 KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
@@ -81,9 +88,14 @@ typedef struct KDEventInputKeyCharVEN {
 #define KD_KEY_LEFT_VEN     0x300003
 #define KD_KEY_RIGHT_VEN    0x300004
 
-/******************************************************************************
+/*******************************************************
+ * Windowing (extensions)
+ *******************************************************/
+KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow);
+
+/*******************************************************
  * Atomics
- ******************************************************************************/
+ *******************************************************/
 
 typedef struct KDAtomicIntVEN KDAtomicIntVEN;
 typedef struct KDAtomicPtrVEN KDAtomicPtrVEN;
@@ -106,9 +118,9 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint va
 KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *object, KDint expected, KDint desired);
 KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void* expected, void* desired);
 
-/******************************************************************************
+/*******************************************************
  * Queue (threadsafe)
- ******************************************************************************/
+ *******************************************************/
 
 typedef struct KDQueueVEN KDQueueVEN;
 
