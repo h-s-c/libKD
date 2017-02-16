@@ -41,4 +41,5 @@ if(EMSCRIPTEN)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_LIBRARY GLES2_INCLUDE_DIR)
+find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_LIBRARY)
+mark_as_advanced(GLES2_INCLUDE_DIR GLES2_LIBRARY)
