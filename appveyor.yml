@@ -10,7 +10,8 @@ environment:
     - CTEST_CMAKE_GENERATOR: Visual Studio 12 2013 ARM
 
 before_build:
-  - cinst install wget opencppcoverage
+  - cinst wget opencppcoverage
+  - refreshenv
   - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
   - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
   - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
