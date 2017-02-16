@@ -41,4 +41,4 @@ if(EMSCRIPTEN)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(EGL DEFAULT_MSG EGL_INCLUDE_DIR)
+find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY EGL_INCLUDE_DIR)

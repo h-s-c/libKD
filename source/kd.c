@@ -154,6 +154,10 @@
 #   include <emscripten/emscripten.h>
 #endif
 
+#if defined(__APPLE__)
+#   include "TargetConditionals.h"
+#endif
+
 #if defined(KD_THREAD_POSIX) || defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 #   include <pthread.h>
 #endif
@@ -1237,7 +1241,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         }
     }
 #if defined(KD_WINDOW_SUPPORTED)
-    KDWindow *window = __kd_window;
+    KD_UNUSED KDWindow *window = __kd_window;
 #if defined(KD_WINDOW_ANDROID)
     AInputEvent *aevent = NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
@@ -2294,14 +2298,14 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     }
     /* Calculate magnitude */
     KDint m = (KDint)(kdLogf(number) / kdLogf(10.0f));
-    KDboolean exp = (m >= 14 || (sign && m >= 9) || m <= -9);
+    KDboolean _exp = (m >= 14 || (sign && m >= 9) || m <= -9);
     if(sign)
     {
         *(buffer++) = '-';
     }
     /* Set up for scientific notation */
     KDint m1 = 0;
-    if(exp)
+    if(_exp)
     {
         if(m < 0)
         {
@@ -2332,7 +2336,7 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
         }
         m--;
     }
-    if(exp)
+    if(_exp)
     {
         /* Convert the exponent */
         *(buffer++) = 'e';
@@ -4068,7 +4072,7 @@ KD_API KDfloat32 KD_APIENTRY kdFabsf(KDfloat32 x)
 KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
 {
     KDfloat32 z, ax, z_h, z_l, p_h, p_l;
-    KDfloat32 y1, t1, t2, r, s, sn, t, u, v, w;
+    KDfloat32 _y1, t1, t2, r, s, sn, t, u, v, w;
     KDint32 i, j, k, yisint, n;
     KDint32 hx, hy, ix, iy, is;
     GET_FLOAT_WORD(hx, x);
@@ -4274,11 +4278,11 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         SET_FLOAT_WORD(t1, is & 0xfffff000);
         t2 = z_l - (((t1 - t) - dp_h[k]) - z_h);
     }
-    /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */
+    /* split up y into _y1+y2 and compute (_y1+y2)*(t1+t2) */
     GET_FLOAT_WORD(is, y);
-    SET_FLOAT_WORD(y1, is & 0xfffff000);
-    p_l = (y - y1) * t1 + y * t2;
-    p_h = y1 * t1;
+    SET_FLOAT_WORD(_y1, is & 0xfffff000);
+    p_l = (y - _y1) * t1 + y * t2;
+    p_h = _y1 * t1;
     z = p_l + p_h;
     GET_FLOAT_WORD(j, z);
     if(j > 0x43000000) /* if z > 128 */
@@ -4440,13 +4444,13 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
     _mm_store_ss(&result, _mm_ceil_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
     return result;
 #else
-    KDint32 i0, j0;
+    KDint32 i0, _j0;
     KDuint32 i;
     GET_FLOAT_WORD(i0, x);
-    j0 = ((i0 >> 23) & 0xff) - 0x7f;
-    if(j0 < 23)
+    _j0 = ((i0 >> 23) & 0xff) - 0x7f;
+    if(_j0 < 23)
     {
-        if(j0 < 0)
+        if(_j0 < 0)
         { /* raise inexact if x != 0 */
             if(huge + x > 0.0f)
             { /* return 0*sign(x) if |x|<1 */
@@ -4462,7 +4466,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
         }
         else
         {
-            i = (0x007fffff) >> j0;
+            i = (0x007fffff) >> _j0;
             if((i0 & i) == 0)
             {
                 return x;
@@ -4471,7 +4475,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
             { /* raise inexact flag */
                 if(i0 > 0)
                 {
-                    i0 += (0x00800000) >> j0;
+                    i0 += (0x00800000) >> _j0;
                 }
                 i0 &= (~i);
             }
@@ -4479,7 +4483,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
     }
     else
     {
-        if(j0 == 0x80)
+        if(_j0 == 0x80)
         {
             return x + x; /* inf or NaN */
         }
@@ -4501,13 +4505,13 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
     _mm_store_ss(&result, _mm_floor_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
     return result;
 #else
-    KDint32 i0, j0;
+    KDint32 i0, _j0;
     KDuint32 i;
     GET_FLOAT_WORD(i0, x);
-    j0 = ((i0 >> 23) & 0xff) - 0x7f;
-    if(j0 < 23)
+    _j0 = ((i0 >> 23) & 0xff) - 0x7f;
+    if(_j0 < 23)
     {
-        if(j0 < 0)
+        if(_j0 < 0)
         { /* raise inexact if x != 0 */
             if(huge + x > 0.0f)
             { /* return 0*sign(x) if |x|<1 */
@@ -4523,7 +4527,7 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
         }
         else
         {
-            i = (0x007fffff) >> j0;
+            i = (0x007fffff) >> _j0;
             if((i0 & i) == 0)
             {
                 return x;
@@ -4532,7 +4536,7 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
             { /* raise inexact flag */
                 if(i0 < 0)
                 {
-                    i0 += (0x00800000) >> j0;
+                    i0 += (0x00800000) >> _j0;
                 }
                 i0 &= (~i);
             }
@@ -4540,7 +4544,7 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
     }
     else
     {
-        if(j0 == 0x80)
+        if(_j0 == 0x80)
         {
             return x + x; /* inf or NaN */
         }
@@ -4870,13 +4874,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
     _mm_store_sd(&result, _mm_floor_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
     return result;
 #else
-    KDint32 i0, i1, j0;
+    KDint32 i0, i1, _j0;
     KDuint32 i, j;
     EXTRACT_WORDS(i0, i1, x);
-    j0 = ((i0 >> 20) & 0x7ff) - 0x3ff;
-    if(j0 < 20)
+    _j0 = ((i0 >> 20) & 0x7ff) - 0x3ff;
+    if(_j0 < 20)
     {
-        if(j0 < 0)
+        if(_j0 < 0)
         { /* raise inexact if x != 0 */
             if(huge + x > 0.0)
             { /* return 0*sign(x) if |x|<1 */
@@ -4893,7 +4897,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
         }
         else
         {
-            i = (0x000fffff) >> j0;
+            i = (0x000fffff) >> _j0;
             if(((i0 & i) | i1) == 0)
             {
                 return x;
@@ -4902,16 +4906,16 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
             { /* raise inexact flag */
                 if(i0 < 0)
                 {
-                    i0 += (0x00100000) >> j0;
+                    i0 += (0x00100000) >> _j0;
                 }
                 i0 &= (~i);
                 i1 = 0;
             }
         }
     }
-    else if(j0 > 51)
+    else if(_j0 > 51)
     {
-        if(j0 == 0x400)
+        if(_j0 == 0x400)
         {
             return x + x; /* inf or NaN */
         }
@@ -4922,7 +4926,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
     }
     else
     {
-        i = KDUINT_MAX >> (j0 - 20);
+        i = KDUINT_MAX >> (_j0 - 20);
         if((i1 & i) == 0)
         {
             return x;
@@ -4931,13 +4935,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
         { /* raise inexact flag */
             if(i0 < 0)
             {
-                if(j0 == 20)
+                if(_j0 == 20)
                 {
                     i0 += 1;
                 }
                 else
                 {
-                    j = i1 + (1 << (52 - j0));
+                    j = i1 + (1 << (52 - _j0));
                     if((KDint32)j < i1)
                     {
                         i0 += 1; /* got a carry */
@@ -5315,9 +5319,13 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return ts.tv_nsec;
-#else
-#if defined(EGL_NV_system_time)
-    if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_system_time"))
+#elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038
+    /* Supported as of XCode 8 / macOS Sierra 10.12 */ 
+    struct timespec ts = {0};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_nsec;
+#elif defined(EGL_NV_system_time) && !defined(__APPLE__)
+    if(kdStrstrVEN(eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS), "EGL_NV_system_time"))
     {
         PFNEGLGETSYSTEMTIMENVPROC eglGetSystemTimeNV = (PFNEGLGETSYSTEMTIMENVPROC)eglGetProcAddress("eglGetSystemTimeNV");
         PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
@@ -5326,7 +5334,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
             return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000;
         }
     }
-#endif
+#else
     return clock();
 #endif
 }
@@ -6412,7 +6420,6 @@ static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
     &shell_surface_ping,
     &shell_surface_configure,
     &shell_surface_popup_done};
-#endif
 
 static KDboolean __kdIsPointerDereferencable(void *p)
 {
@@ -6421,6 +6428,7 @@ static KDboolean __kdIsPointerDereferencable(void *p)
         return 0;
     }
 
+    /* TODO: Implement for other platforms if necessary */
     KDuintptr addr = (KDuintptr)p;
     KDuint8 valid = 0;
     const KDint page_size = sysconf(_SC_PAGESIZE);
@@ -6434,7 +6442,8 @@ static KDboolean __kdIsPointerDereferencable(void *p)
     }
 
     return (valid & 0x01) == 0x01;
-}
+}    
+#endif
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
