@@ -293,7 +293,7 @@ matrix:
       osx_image: xcode8.2
       install: 
         - brew update
-        - brew install valgrind
+#        - brew install valgrind
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -306,7 +306,7 @@ matrix:
       osx_image: xcode8.1
       install: 
         - brew update
-        - brew install valgrind
+#        - brew install valgrind
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
