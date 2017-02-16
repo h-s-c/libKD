@@ -91,7 +91,9 @@ typedef struct KDEventInputKeyCharVEN {
 /*******************************************************
  * Windowing (extensions)
  *******************************************************/
+#ifdef KD_WINDOW_SUPPORTED
 KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow);
+#endif
 
 /*******************************************************
  * Atomics

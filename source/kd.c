@@ -1175,8 +1175,7 @@ static KDboolean __kdExecCallback(KDEvent *event)
     return 0;
 }
 
-#if defined(KD_WINDOW_SUPPORTED)
-
+#ifdef KD_WINDOW_SUPPORTED
 struct KDWindow {
     void *nativewindow;
     void *nativedisplay;
@@ -1240,7 +1239,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             }
         }
     }
-#if defined(KD_WINDOW_SUPPORTED)
+    
+#ifdef KD_WINDOW_SUPPORTED
     KD_UNUSED KDWindow *window = __kd_window;
 #if defined(KD_WINDOW_ANDROID)
     AInputEvent *aevent = NULL;
