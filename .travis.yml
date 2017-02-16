@@ -140,7 +140,7 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: clang-4.0
+      compiler: clang-5.0
       dist: trusty
       sudo: required
       addons:
@@ -148,6 +148,20 @@ matrix:
           sources: 
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
+              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
+          packages: ['clang-5.0', 'llvm-5.0', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+      install: python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: linux
+      compiler: clang-4.0
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: 
+            - ubuntu-toolchain-r-test
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-4.0', 'llvm-4.0', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
       install: python ci-tools/install_cmake.py   
@@ -276,6 +290,32 @@ matrix:
 
     - os: osx
       compiler: clang
+      osx_image: xcode8.2
+      install: 
+        - brew update
+        - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: osx
+      compiler: clang
+      osx_image: xcode8.1
+      install: 
+        - brew update
+        - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: osx
+      compiler: clang
       osx_image: xcode8
       install: 
         - brew update
@@ -315,4 +355,4 @@ matrix:
 
   allow_failures:
     - compiler: icc # Unstable
-    - compiler: clang-4.0 # Unstable
+    - compiler: clang-5.0 # Unstable
