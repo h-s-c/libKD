@@ -10,13 +10,11 @@ environment:
     - CTEST_CMAKE_GENERATOR: Visual Studio 12 2013 ARM
 
 before_build:
-  - appveyor DownloadFile http://github.com/h-s-c/ci-tools/releases/download/0.1/OpenCppCoverage.7z
-  - 7z x OpenCppCoverage.7z > nul
-  - set PATH=%cd%\OpenCppCoverage;%PATH%
-  - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-  - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-  - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-  - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+  - cinst install wget opencppcoverage
+  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+  - wget --no-check-certificate -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
 
 build_script:
   - git submodule update --init --recursive
