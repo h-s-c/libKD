@@ -155,7 +155,7 @@
 #endif
 
 #if defined(__APPLE__)
-#   include "TargetConditionals.h"
+#   include <TargetConditionals.h>
 #endif
 
 #if defined(KD_THREAD_POSIX) || defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
@@ -167,6 +167,21 @@
 
 #if defined(KD_ATOMIC_C11)
 #   include <stdatomic.h>
+#endif
+
+/******************************************************************************
+ * Thirdparty includes
+ ******************************************************************************/
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
+#define STB_SPRINTF_IMPLEMENTATION
+#include "stb_sprintf.h"
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 /* clang-format on */
 
@@ -1903,8 +1918,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
  *
  * Notes:
  * - Based on the BSD libc developed at the University of California, Berkeley
- * - kdStrtof and __kdItoa based on K&R Second Edition
- * - kdFtostr based on http://stackoverflow.com/a/7097567
+ * - kdStrtof  based on K&R Second Edition
  ******************************************************************************/
 /******************************************************************************
  * Copyright (c) 1990, 1993
@@ -2233,50 +2247,49 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
 }
 
 /* kdLtostr, kdUltostr: Convert an integer to a string. */
-static KDssize __kdItoa(KDchar *buffer, KDsize buflen, KDint number, KDint base)
+KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
 {
     if(buflen == 0)
     {
         return -1;
     }
-
-    KDint sign = number;
-    if(sign < 0)
+    KDsize retval = stbsp_snprintf(buffer, buflen, "%d", number);
+    if(retval > buflen)
     {
-        number = -number;
+        return -1;
     }
-
-    KDssize size = 0;
-    do
-    {
-        buffer[size++] = (KDchar)(number % base + '0');
-    } while((number /= base) > 0);
-
-    if(sign < 0)
-    {
-        buffer[size++] = '-';
-    }
-
-    buffer[size] = '\0';
-
-    KDchar temp;
-    for(KDsize i = 0, j = kdStrlen(buffer) - 1; i < j; i++, j--)
-    {
-        temp = buffer[i];
-        buffer[i] = buffer[j];
-        buffer[j] = temp;
-    }
-    return size;
-}
-
-KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
-{
-    return __kdItoa(buffer, buflen, number, 10);
+    return retval;
 }
 
 KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint number, KDint base)
 {
-    return __kdItoa(buffer, buflen, (KDint)number, base);
+    if(buflen == 0)
+    {
+        return -1;
+    }
+    char *fmt = "";
+    if(base == 8)
+    {
+        fmt = "%o";
+    }
+    else if(base == 10)
+    {
+        fmt = "%u";
+    }
+    else if(base == 16)
+    {
+        fmt = "%x";
+    }
+    else
+    {
+        kdAssert(0);
+    }
+    KDsize retval = stbsp_snprintf(buffer, buflen, (const KDchar*)fmt, number);
+    if(retval > buflen)
+    {
+        return -1;
+    }
+    return retval;
 }
 
 /* kdFtostr: Convert a float to a string. */
@@ -2286,88 +2299,12 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     {
         return -1;
     }
-    if(number == 0.0f)
+    KDsize retval = stbsp_snprintf(buffer, buflen, "%f", number);
+    if(retval > buflen)
     {
-        return (KDssize)kdStrcpy_s(buffer, buflen, "0");
+        return -1;
     }
-
-    KDboolean sign = (number < 0.0f);
-    if(sign)
-    {
-        number = -number;
-    }
-    /* Calculate magnitude */
-    KDint m = (KDint)(kdLogf(number) / kdLogf(10.0f));
-    KDboolean _exp = (m >= 14 || (sign && m >= 9) || m <= -9);
-    if(sign)
-    {
-        *(buffer++) = '-';
-    }
-    /* Set up for scientific notation */
-    KDint m1 = 0;
-    if(_exp)
-    {
-        if(m < 0)
-        {
-            m -= 1;
-        }
-        number = number / kdPowf(10.0f, (KDfloat32)m);
-        m1 = m;
-        m = 0;
-    }
-    if(m < 1)
-    {
-        m = 0;
-    }
-    /* Convert the number */
-    KDfloat32 precision = 0.000001f;
-    while(number > precision || m >= 0)
-    {
-        KDfloat32 weight = kdPowf(10.0f, (KDfloat32)m);
-        if(weight > 0.0f && weight < KD_INFINITY)
-        {
-            KDint digit = (KDint)kdFloorf(number / weight);
-            number -= (digit * weight);
-            *(buffer++) = (KDchar)('0' + digit);
-        }
-        if(m == 0 && number > 0.0f)
-        {
-            *(buffer++) = '.';
-        }
-        m--;
-    }
-    if(_exp)
-    {
-        /* Convert the exponent */
-        *(buffer++) = 'e';
-        if(m1 > 0)
-        {
-            *(buffer++) = '+';
-        }
-        else
-        {
-            *(buffer++) = '-';
-            m1 = -m1;
-        }
-        m = 0;
-        while(m1 > 0)
-        {
-            *(buffer++) = '0' + m1 % 10;
-            m1 /= 10;
-            m++;
-        }
-        buffer -= m;
-        for(KDint i = 0, j = m - 1; i < j; i++, j--)
-        {
-            /* Swap without temporary */
-            buffer[i] ^= buffer[j];
-            buffer[j] ^= buffer[i];
-            buffer[i] ^= buffer[j];
-        }
-        buffer += m;
-    }
-    *(buffer) = '\0';
-    return m;
+    return retval;
 }
 
 /* kdCryptoRandom: Return random data. */

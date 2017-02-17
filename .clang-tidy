@@ -1,1 +1,1 @@
-Checks: '*,-readability-else-after-return,-clang-analyzer-alpha.*'
+Checks: '*,-readability-else-after-return,-clang-analyzer-alpha.*,-clang-diagnostic-unknown-pragmas'
