@@ -2295,6 +2295,12 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
 /* kdFtostr: Convert a float to a string. */
 KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 number)
 {
+    return kdDtostrKHR(buffer, buflen, (KDfloat64KHR)number);
+}
+
+/* kdDtostrKHR: Convert a 64-bit float to a string. */
+KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64KHR number)
+{
     if(buflen == 0)
     {
         return -1;
