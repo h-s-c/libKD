@@ -112,6 +112,9 @@
 #   include <dirent.h>
 #   include <dlfcn.h>
 #   include <sys/mman.h>
+#   if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25
+#       include <sys/random.h>
+#   endif
 #   include <sys/stat.h>
 #   include <sys/syscall.h>
 #   include <sys/utsname.h>
@@ -2316,42 +2319,46 @@ KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64K
 /* kdCryptoRandom: Return random data. */
 KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize buflen)
 {
-#if defined(_MSC_VER) && defined(_M_ARM)
-    /* TODO: Implement for this platform */
-    kdAssert(0);
-    return -1;
-#elif defined(_WIN32)
+    KDint retval = 0;
+#if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25
+    retval = getrandom(buf, buflen, GRND_NONBLOCK);
+#elif defined(__OpenBSD__) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
+    /* Non-conforming to OpenKODE spec (blocking). */
+    retval = getentropy(buf, buflen);
+#elif defined(_WIN32) && !defined(_M_ARM)
+    /* Non-conforming to OpenKODE spec (blocking). */
     HCRYPTPROV provider = 0;
-    KDboolean error = !CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
-    if(error == 0)
+    retval = CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT) - 1;
+    if(retval == 0)
     {
-        error = !CryptGenRandom(provider, (KDuint32)buflen, buf);
+        retval = CryptGenRandom(provider, (KDuint32)buflen, buf) - 1;
     }
     CryptReleaseContext(provider, 0);
-    return error ? -1 : 0;
-#elif defined(__OpenBSD__)
-    return getentropy(buf, buflen);
 #elif defined(__EMSCRIPTEN__)
+    /* TODO: Use window.crypto.getRandomValues() instead */
     for(KDsize i = 0; i < buflen; i++)
     {
         buf[i] = (KDuint8)(emscripten_random() * 255) % 256;
     }
-    return 0;
 #elif defined(__unix__) || defined(__APPLE__)
     FILE *urandom = fopen("/dev/urandom", "r");
-    KDsize result = 0;
     if(urandom != NULL)
     {
-        result = fread((void *)buf, sizeof(KDuint8), buflen, urandom);
+        if(fread((void *)buf, sizeof(KDuint8), buflen, urandom) != buflen)
+        {
+            retval = -1;
+        }
         fclose(urandom);
     }
-    if(result != buflen)
+#else
+    kdLogMessage("No cryptographic RNG available.");
+    kdAssert(0);
+#endif
+    if(retval == -1)
     {
         kdSetError(KD_ENOMEM);
-        return -1;
     }
-    return 0;
-#endif
+    return retval;
 }
 
 /* kdGetEnvVEN: Get an environment variable. */
