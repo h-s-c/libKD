@@ -2259,7 +2259,7 @@ KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
     {
         return -1;
     }
-    KDssize retval = (KDssize)stbsp_snprintf(buffer, buflen, "%d", number);
+    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, "%d", number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -2290,7 +2290,7 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         kdAssert(0);
     }
-    KDssize retval = (KDssize)stbsp_snprintf(buffer, buflen, (const KDchar*)fmt, number);
+    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, (const KDchar*)fmt, number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -2311,7 +2311,7 @@ KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64K
     {
         return -1;
     }
-    KDssize retval = (KDssize)stbsp_snprintf(buffer, buflen, "%f", number);
+    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, "%f", number);
     if(retval > (KDssize)buflen)
     {
         return -1;
