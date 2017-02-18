@@ -100,7 +100,7 @@
 #   include <direct.h>
 /* _mm_* */
 #   include <intrin.h>
-/* MSVC redefinition fix*/
+/* MSVC redefinition fix */
 #   ifndef inline
 #       define inline __inline
 #   endif
@@ -112,7 +112,8 @@
 #   include <dirent.h>
 #   include <dlfcn.h>
 #   include <sys/mman.h>
-#   if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25
+#   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
+/* getentropy/getrandom */
 #       include <sys/random.h>
 #   endif
 #   include <sys/stat.h>
@@ -177,14 +178,16 @@
  ******************************************************************************/
 
 #if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmisleading-indentation"
-#pragma GCC diagnostic ignored "-Wsign-compare"
+#   pragma GCC diagnostic push
+#   if __GNUC__ >= 3
+#       pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#   endif
+#   pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 #if defined(__GNUC__)
-#pragma GCC diagnostic pop
+#   pragma GCC diagnostic pop
 #endif
 /* clang-format on */
 
@@ -2256,7 +2259,7 @@ KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
     {
         return -1;
     }
-    KDsize retval = stbsp_snprintf(buffer, buflen, "%d", number);
+    KDsize retval = (KDsize)stbsp_snprintf(buffer, buflen, "%d", number);
     if(retval > buflen)
     {
         return -1;
@@ -2287,7 +2290,7 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         kdAssert(0);
     }
-    KDsize retval = stbsp_snprintf(buffer, buflen, (const KDchar*)fmt, number);
+    KDsize retval = (KDsize)stbsp_snprintf(buffer, buflen, (const KDchar*)fmt, number);
     if(retval > buflen)
     {
         return -1;
@@ -2308,7 +2311,7 @@ KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64K
     {
         return -1;
     }
-    KDsize retval = stbsp_snprintf(buffer, buflen, "%f", number);
+    KDsize retval = (KDsize)stbsp_snprintf(buffer, buflen, "%f", number);
     if(retval > buflen)
     {
         return -1;
