@@ -179,7 +179,7 @@
 
 #if defined(__GNUC__)
 #   pragma GCC diagnostic push
-#   if __GNUC__ >= 3
+#   if __GNUC__ >= 6
 #       pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
@@ -2259,8 +2259,8 @@ KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
     {
         return -1;
     }
-    KDsize retval = (KDsize)stbsp_snprintf(buffer, buflen, "%d", number);
-    if(retval > buflen)
+    KDssize retval = (KDssize)stbsp_snprintf(buffer, buflen, "%d", number);
+    if(retval > (KDssize)buflen)
     {
         return -1;
     }
@@ -2290,8 +2290,8 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         kdAssert(0);
     }
-    KDsize retval = (KDsize)stbsp_snprintf(buffer, buflen, (const KDchar*)fmt, number);
-    if(retval > buflen)
+    KDssize retval = (KDssize)stbsp_snprintf(buffer, buflen, (const KDchar*)fmt, number);
+    if(retval > (KDssize)buflen)
     {
         return -1;
     }
@@ -2311,8 +2311,8 @@ KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64K
     {
         return -1;
     }
-    KDsize retval = (KDsize)stbsp_snprintf(buffer, buflen, "%f", number);
-    if(retval > buflen)
+    KDssize retval = (KDssize)stbsp_snprintf(buffer, buflen, "%f", number);
+    if(retval > (KDssize)buflen)
     {
         return -1;
     }
