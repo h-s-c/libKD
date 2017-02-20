@@ -24,10 +24,28 @@
 #ifndef __kdext_h_
 #define __kdext_h_
 
+#include <KD/ACR_system_font.h>
+#include <KD/ATX_dxtcomp.h>
+#include <KD/ATX_imgdec.h>
+#include <KD/ATX_imgdec_jpeg.h>
+#include <KD/ATX_imgdec_png.h>
+#include <KD/ATX_imgdec_pvr.h>
 #include <KD/KHR_float64.h>
 #include <KD/KHR_formatted.h>
 #include <KD/KHR_perfcounter.h>
 #include <KD/KHR_thread_storage.h>
+
+#define KD_ACR_system_font
+#define KD_ATX_dxtcomp
+#define KD_ATX_imgdec
+#define KD_ATX_imgdec_jpeg
+#define KD_ATX_imgdec_png
+#define KD_ATX_imgdec_pvr
+#define KD_KHR_float64
+#define KD_KHR_formatted
+#define KD_KHR_perfcounter
+#define KD_KHR_staticdata
+#define KD_KHR_thread_storage
 
 /*******************************************************
  * Errors (extensions)
