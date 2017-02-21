@@ -27,7 +27,6 @@
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-#include <wayland-client.h>
 
 /* Example with eventloop, timer and callback*/
 static KDboolean quit = 0;
@@ -90,12 +89,17 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
     
     KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
-    void* egl_native_window = KD_NULL;
-    kdRealizePlatformWindowVEN(kd_window, &egl_native_window);
+    void* native_window = KD_NULL;
+    kdRealizePlatformWindowVEN(kd_window, &native_window);
 
-    EGLSurface egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
+    EGLSurface egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, native_window, KD_NULL);
 
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+
+    if(eglGetError() != EGL_SUCCESS)
+    {
+        kdAssert(0);
+    }
 
 #if defined(GL_KHR_debug)
     if(kdStrstrVEN((const KDchar*)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
@@ -187,8 +191,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 {
                     eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
                     eglDestroySurface(egl_display, egl_surface);
-                    kdRealizePlatformWindowVEN(kd_window, &egl_native_window);
-                    egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, egl_native_window, KD_NULL);
+                    kdRealizePlatformWindowVEN(kd_window, &native_window);
+                    egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, native_window, KD_NULL);
                     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
                     break;
                 }
@@ -200,6 +204,13 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                     eglDestroyContext(egl_display, egl_context);
                     egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
                     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+                    break;
+                }
+                case(EGL_BAD_DISPLAY):
+                case(EGL_NOT_INITIALIZED):
+                case(EGL_BAD_ALLOC):
+                {
+                    kdAssert(0);
                     break;
                 }
                 default:

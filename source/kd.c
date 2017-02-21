@@ -111,6 +111,7 @@
 #   include <fcntl.h>
 #   include <dirent.h>
 #   include <dlfcn.h>
+/* mincore */
 #   include <sys/mman.h>
 #   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
 /* getentropy/getrandom */
@@ -1205,7 +1206,6 @@ struct KDWindow {
     void *eventuserptr;
     KDThread *originthr;
 #if defined(KD_WINDOW_WAYLAND)
-    struct wl_registry *registry;
     struct wl_surface *surface;
     struct wl_shell_surface *shell_surface;
 #endif
@@ -1217,8 +1217,9 @@ static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 #endif
 
 #if defined(KD_WINDOW_WAYLAND)
-static struct wl_compositor *compositor;
-static struct wl_shell *shell;
+static struct wl_compositor *__kd_wl_compositor;
+static struct wl_shell *__kd_wl_shell;
+static struct wl_registry *__kd_wl_registry;
 #endif
 
 #if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
@@ -6362,6 +6363,31 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
  *
  ******************************************************************************/
 
+#if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 2)
+/* TODO: Implement for other platforms if necessary */
+static KDboolean __kdIsPointerDereferencable(void *p)
+{
+    if(p == NULL)
+    {
+        return 0;
+    }
+
+    KDuintptr addr = (KDuintptr)p;
+    KDuint8 valid = 0;
+    const KDint page_size = sysconf(_SC_PAGESIZE);
+
+    /* align addr to page_size */
+    addr &= ~(page_size - 1);
+
+    if (mincore((void *) addr, page_size, &valid) < 0) 
+    {
+      return 0;
+    }
+
+    return (valid & 0x01) == 0x01;
+}    
+#endif
+
 #ifdef KD_WINDOW_SUPPORTED
 /* kdCreateWindow: Create a window. */
 #if defined(KD_WINDOW_WIN32)
@@ -6388,11 +6414,11 @@ static void registry_add_object(KD_UNUSED void *data, struct wl_registry *regist
 {
     if(!kdStrcmp(interface, "wl_compositor"))
     {
-        compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+        __kd_wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
     }
     else if(!kdStrcmp(interface, "wl_shell"))
     {
-        shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
+        __kd_wl_shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
     }
 }
 static void registry_remove_object(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
@@ -6414,29 +6440,6 @@ static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
     &shell_surface_ping,
     &shell_surface_configure,
     &shell_surface_popup_done};
-
-static KDboolean __kdIsPointerDereferencable(void *p)
-{
-    if(p == NULL)
-    {
-        return 0;
-    }
-
-    /* TODO: Implement for other platforms if necessary */
-    KDuintptr addr = (KDuintptr)p;
-    KDuint8 valid = 0;
-    const KDint page_size = sysconf(_SC_PAGESIZE);
-
-    /* align addr to page_size */
-    addr &= ~(page_size - 1);
-
-    if (mincore((void *) addr, page_size, &valid) < 0) 
-    {
-      return 0;
-    }
-
-    return (valid & 0x01) == 0x01;
-}    
 #endif
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
@@ -6497,16 +6500,11 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #elif defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 
     /* HACK: Poke into Mesa EGLDisplay */
-    if(!window->nativedisplay && kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
+    if(kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
     {
         /* EGLDisplay is a pointer underneath */
         _EGLDisplay *_display = (_EGLDisplay *)display;
         window->platform = _display->Platform;
-    }
-    else
-    {
-        /* Fallback to X11*/ 
-        window->platform = _EGL_PLATFORM_X11;
     }
 
 #if defined(EGL_NV_native_query)
@@ -6531,6 +6529,11 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #endif
 
 #if defined(KD_WINDOW_X11)
+    if(!window->platform)
+    {
+        /* Fallback to X11*/ 
+        window->platform = _EGL_PLATFORM_X11;
+    }
     if(window->platform == _EGL_PLATFORM_X11)
     {
         if(!window->nativedisplay)
@@ -6599,7 +6602,7 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
         wl_egl_window_destroy(window->nativewindow);
         wl_shell_surface_destroy(window->shell_surface);
         wl_surface_destroy(window->surface);
-        wl_registry_destroy(window->registry);
+        wl_registry_destroy(__kd_wl_registry);
         wl_display_disconnect(window->nativedisplay);
     }
 #endif
@@ -6734,8 +6737,8 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
-        window->surface = wl_compositor_create_surface(compositor);
-        window->shell_surface = wl_shell_get_shell_surface(shell, window->surface);
+        window->surface = wl_compositor_create_surface(__kd_wl_compositor);
+        window->shell_surface = wl_shell_get_shell_surface(__kd_wl_shell, window->surface);
         wl_shell_surface_add_listener(window->shell_surface, &shell_surface_listener, window);
         wl_shell_surface_set_toplevel(window->shell_surface);
         window->nativewindow = wl_egl_window_create(window->surface, 0, 0);
@@ -6748,6 +6751,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
     return 0;
 }
+
 KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow)
 {
     kdRealizeWindow(window, KD_NULL);
