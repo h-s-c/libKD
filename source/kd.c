@@ -6569,8 +6569,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
             kdLogMessage("Wayland support depends on EGL_NV_native_query.\n");
             kdAssert(0);
         }
-        window->registry = wl_display_get_registry(window->nativedisplay);
-        wl_registry_add_listener(window->registry, &registry_listener, KD_NULL);
+        __kd_wl_registry = wl_display_get_registry(window->nativedisplay);
+        wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
         wl_display_roundtrip(window->nativedisplay);
     }
 #endif
