@@ -1377,8 +1377,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     }
                     else if(raw->header.dwType == RIM_TYPEKEYBOARD)
                     {
-                        event->type = KD_EVENT_INPUT_KEY_VEN;
-                        KDEventInputKeyVEN *keyevent = (KDEventInputKeyVEN *)(&event->data);
+                        event->type = KD_EVENT_INPUT_KEY_ATX;
+                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
 
 /* Press or release */
 #if defined(_MSC_VER)
@@ -1390,7 +1390,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 #pragma warning(pop)
 #endif
                         {
-                            keyevent->flags = KD_KEY_PRESS_VEN;
+                            keyevent->flags = KD_KEY_PRESS_ATX;
                         }
                         else
                         {
@@ -1401,28 +1401,28 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         {
                             case(VK_UP):
                             {
-                                keyevent->keycode = KD_KEY_UP_VEN;
+                                keyevent->keycode = KD_KEY_UP_ATX;
                                 break;
                             }
                             case(VK_DOWN):
                             {
-                                keyevent->keycode = KD_KEY_DOWN_VEN;
+                                keyevent->keycode = KD_KEY_DOWN_ATX;
                                 break;
                             }
                             case(VK_LEFT):
                             {
-                                keyevent->keycode = KD_KEY_LEFT_VEN;
+                                keyevent->keycode = KD_KEY_LEFT_ATX;
                                 break;
                             }
                             case(VK_RIGHT):
                             {
-                                keyevent->keycode = KD_KEY_RIGHT_VEN;
+                                keyevent->keycode = KD_KEY_RIGHT_ATX;
                                 break;
                             }
                             default:
                             {
-                                event->type = KD_EVENT_INPUT_KEYCHAR_VEN;
-                                KDEventInputKeyCharVEN *keycharevent = (KDEventInputKeyCharVEN *)(&event->data);
+                                event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                                KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
                                 GetKeyNameText((KDint64)MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (KDchar *)&keycharevent->character, sizeof(KDint32));
                                 break;
                             }
@@ -1486,13 +1486,13 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 {
                     KeySym keysym;
                     XLookupString(&xevent.xkey, NULL, 25, &keysym, NULL);
-                    event->type = KD_EVENT_INPUT_KEY_VEN;
-                    KDEventInputKeyVEN *keyevent = (KDEventInputKeyVEN *)(&event->data);
+                    event->type = KD_EVENT_INPUT_KEY_ATX;
+                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
 
                     /* Press or release */
                     if(xevent.type == KeyPress)
                     {
-                        keyevent->flags = KD_KEY_PRESS_VEN;
+                        keyevent->flags = KD_KEY_PRESS_ATX;
                     }
                     else
                     {
@@ -1504,31 +1504,31 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         case(XK_Up):
                         {
 
-                            keyevent->keycode = KD_KEY_UP_VEN;
+                            keyevent->keycode = KD_KEY_UP_ATX;
                             break;
                         }
                         case(XK_Down):
                         {
 
-                            keyevent->keycode = KD_KEY_DOWN_VEN;
+                            keyevent->keycode = KD_KEY_DOWN_ATX;
                             break;
                         }
                         case(XK_Left):
                         {
 
-                            keyevent->keycode = KD_KEY_LEFT_VEN;
+                            keyevent->keycode = KD_KEY_LEFT_ATX;
                             break;
                         }
                         case(XK_Right):
                         {
 
-                            keyevent->keycode = KD_KEY_RIGHT_VEN;
+                            keyevent->keycode = KD_KEY_RIGHT_ATX;
                             break;
                         }
                         default:
                         {
-                            event->type = KD_EVENT_INPUT_KEYCHAR_VEN;
-                            KDEventInputKeyCharVEN *keycharevent = (KDEventInputKeyCharVEN *)(&event->data);
+                            event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
                             keycharevent->character = (KDint32)keysym;
                             break;
                         }

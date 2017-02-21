@@ -30,6 +30,7 @@
 #include <KD/ATX_imgdec_jpeg.h>
 #include <KD/ATX_imgdec_png.h>
 #include <KD/ATX_imgdec_pvr.h>
+#include <KD/ATX_keyboard.h>
 #include <KD/KHR_float64.h>
 #include <KD/KHR_formatted.h>
 #include <KD/KHR_perfcounter.h>
@@ -41,6 +42,7 @@
 #define KD_ATX_imgdec_jpeg
 #define KD_ATX_imgdec_png
 #define KD_ATX_imgdec_pvr
+#define KD_ATX_keyboard
 #define KD_KHR_float64
 #define KD_KHR_formatted
 #define KD_KHR_perfcounter
@@ -82,29 +84,6 @@ KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KDsize buf
 
 /* kdStrstrVEN: Locate substring. */
 KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
-
-/*******************************************************
- * Input/output (extensions)
- *******************************************************/
-
-typedef struct KDEventInputKeyVEN {
-    KDuint32 flags;
-    KDint32 keycode;
-} KDEventInputKeyVEN;
-
-typedef struct KDEventInputKeyCharVEN {
-    KDuint32 flags;
-    KDint32 character;
-} KDEventInputKeyCharVEN;
-
-#define KD_EVENT_INPUT_KEY_VEN      101
-#define KD_EVENT_INPUT_KEYCHAR_VEN  102
-
-#define KD_KEY_PRESS_VEN    0x300000
-#define KD_KEY_UP_VEN       0x300001
-#define KD_KEY_DOWN_VEN     0x300002
-#define KD_KEY_LEFT_VEN     0x300003
-#define KD_KEY_RIGHT_VEN    0x300004
 
 /*******************************************************
  * Windowing (extensions)

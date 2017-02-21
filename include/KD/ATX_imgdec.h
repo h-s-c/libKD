@@ -16,12 +16,12 @@ typedef void *KDImageATX;
 
 
 /* kdGetImageInfoATX, kdGetImageInfoFromStreamATX: Construct an informational image object based on an image in a file or stream. */
-KD_API KDimageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname);
-KD_API KDimageATX KD_APIENTRY kdGetImageInfoFromStreamATX(KDFile *file);
+KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname);
+KD_API KDImageATX KD_APIENTRY kdGetImageInfoFromStreamATX(KDFile *file);
 
 /* kdGetImageATX, kdGetImageFromStreamATX: Read and decode an image from a file or stream, returning a decoded image object. */
-KD_API KDimageATX KD_APIENTRY kdGetImageATX(const KDchar *pathname, KDint format, KDint flags);
-KD_API KDimageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format, KDint flags);
+KD_API KDImageATX KD_APIENTRY kdGetImageATX(const KDchar *pathname, KDint format, KDint flags);
+KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format, KDint flags);
 #define KD_IMAGE_FORMAT_RGBA8888_ATX 121
 #define KD_IMAGE_FORMAT_RGB888_ATX 128
 #define KD_IMAGE_FORMAT_RGB565_ATX 129
