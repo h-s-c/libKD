@@ -201,7 +201,6 @@
 #elif defined(__TINYC__)  
 #   define STBI_NO_SIMD
 #endif
-#endif
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
 #define STB_IMAGE_IMPLEMENTATION
