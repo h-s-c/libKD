@@ -182,8 +182,8 @@
 #   pragma GCC diagnostic push
 #   if __GNUC__ >= 6
 #       pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
-#   pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   pragma GCC diagnostic ignored "-Wsign-compare"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
@@ -191,6 +191,9 @@
 #endif
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
+#if defined(__TINYC__)  
+#   define STBI_NO_SIMD
+#endif
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_SPRINTF_IMPLEMENTATION
