@@ -48,8 +48,6 @@
 #define KD_KHR_perfcounter
 #define KD_KHR_thread_storage
 
-#define KD_KHR_staticdata
-
 /*******************************************************
  * Errors (extensions)
  *******************************************************/
