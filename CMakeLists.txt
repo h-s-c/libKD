@@ -118,15 +118,14 @@ project (KD C)
         if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
             list(APPEND KD_LIBRARIES stdthreads)
         endif()
+        if(NOT MSVC)
+                list(APPEND KD_LIBRARIES m)
+        endif()
     endif()
 
     if(ANDROID)
         list(APPEND KD_LIBRARIES android)
         list(APPEND KD_LIBRARIES log)
-    endif()
-
-    if(NOT MSVC AND NOT KD_FREESTANDING)
-            list(APPEND KD_LIBRARIES m)
     endif()
 
     list(APPEND KD_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
