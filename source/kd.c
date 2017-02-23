@@ -185,6 +185,9 @@
 #   endif
 #   pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   pragma GCC diagnostic ignored "-Wsign-compare"
+#elif defined(_MSC_VER)
+#   pragma warning(push)
+#   pragma warning(disable : 4244)
 #endif
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
@@ -196,8 +199,9 @@
 #include "stb_truetype.h"
 #if defined(__GNUC__)
 #   pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#   pragma warning(pop)
 #endif
-
 /* clang-format on */
 
 /******************************************************************************
