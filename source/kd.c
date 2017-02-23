@@ -1765,25 +1765,7 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
-typedef struct __KDThreadStorage __KDThreadStorage;
-struct __KDThreadStorage
-{
-    KDThreadStorageKeyKHR key;
-#if defined(KD_THREAD_C11)
-    tss_t nativekey;
-#elif defined(KD_THREAD_POSIX)
-    pthread_key_t nativekey;
-#elif defined(KD_THREAD_WIN32)
-    DWORD nativekey;
-#else
-    void *nativekey;
-#endif
-    void *id;
-};
-
-static __KDThreadStorage __kd_tls[999];
-static KDuint __kd_tls_index = 0;
-static KDThreadMutex *__kd_tls_mutex = KD_NULL;
+static void __kdCleanupThreadStorageKHR(void);
 static int __kdPreMain(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
@@ -1824,19 +1806,7 @@ static int __kdPreMain(int argc, char **argv)
     dlclose(app);
 #endif
 
-    kdThreadMutexLock(__kd_tls_mutex);
-    for(KDuint i = 0; i <= __kd_tls_index; i++)
-    {
-#if defined(KD_THREAD_C11) 
-        tss_delete(__kd_tls[i].nativekey); 
-#elif defined(KD_THREAD_POSIX) 
-        pthread_key_delete(__kd_tls[i].nativekey); 
-#elif defined(KD_THREAD_WIN32) 
-        FlsFree(__kd_tls[i].nativekey); 
-#endif
-    }
-    kdThreadMutexUnlock(__kd_tls_mutex);
-
+    __kdCleanupThreadStorageKHR();
 #if !defined(__ANDROID__)
     __kdThreadFree(thread);
 #endif
@@ -2470,6 +2440,25 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 }
 
 /* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
+typedef struct __KDThreadStorage __KDThreadStorage;
+struct __KDThreadStorage
+{
+    KDThreadStorageKeyKHR key;
+#if defined(KD_THREAD_C11)
+    tss_t nativekey;
+#elif defined(KD_THREAD_POSIX)
+    pthread_key_t nativekey;
+#elif defined(KD_THREAD_WIN32)
+    DWORD nativekey;
+#else
+    void *nativekey;
+#endif
+    void *id;
+};
+
+static __KDThreadStorage __kd_tls[999];
+static KDuint __kd_tls_index = 0;
+static KDThreadMutex *__kd_tls_mutex = KD_NULL;
 KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void * id)
 {
     KDThreadStorageKeyKHR retval = 0;
@@ -2560,6 +2549,11 @@ KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKH
     }
     kdThreadMutexUnlock(__kd_tls_mutex);
     return retval;
+}
+
+static void __kdCleanupThreadStorageKHR(void)
+{
+
 }
 
 /******************************************************************************
