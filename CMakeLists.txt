@@ -125,6 +125,10 @@ project (KD C)
         list(APPEND KD_LIBRARIES log)
     endif()
 
+    if(NOT MSVC AND NOT KD_FREESTANDING)
+            list(APPEND KD_LIBRARIES m)
+    endif()
+
     list(APPEND KD_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
     configure_file(${CMAKE_SOURCE_DIR}/include/KD/kdplatform.h.in ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h)
     include_directories(${KD_INCLUDE_DIRS})
