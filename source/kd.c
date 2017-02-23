@@ -1765,6 +1765,7 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
+static KDThreadMutex *__kd_tls_mutex = KD_NULL;
 static void __kdCleanupThreadStorageKHR(void);
 static int __kdPreMain(int argc, char **argv)
 {
@@ -2458,7 +2459,6 @@ struct __KDThreadStorage
 
 static __KDThreadStorage __kd_tls[999];
 static KDuint __kd_tls_index = 0;
-static KDThreadMutex *__kd_tls_mutex = KD_NULL;
 KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void * id)
 {
     KDThreadStorageKeyKHR retval = 0;
