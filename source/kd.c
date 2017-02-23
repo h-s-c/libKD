@@ -183,13 +183,21 @@
 #   if __GNUC__ >= 6
 #       pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #   endif
+#   pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
+#define STB_DXT_IMPLEMENTATION
+#include "stb_dxt.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
 #if defined(__GNUC__)
 #   pragma GCC diagnostic pop
 #endif
+
 /* clang-format on */
 
 /******************************************************************************
