@@ -503,7 +503,7 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
-static KDThreadStorageKeyKHR __kd_threadlocal;
+static KDThreadStorageKeyKHR __kd_threadlocal = 0;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
 static void *__kdThreadStart(void *init)
 {
@@ -2467,12 +2467,12 @@ KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const
 {
     KDThreadStorageKeyKHR retval = 0;
     kdThreadMutexLock(__kd_tls_mutex);
-    for(KDuint i = 0; i <= __kd_tls_index; i++)
+    for(KDuint i = 0; i < __kd_tls_index; i++)
     {
         if(__kd_tls[i].id == id)
         {
             kdThreadMutexUnlock(__kd_tls_mutex);
-            return __kd_tls[__kd_tls_index].key;
+            return __kd_tls[i].key;
         }
     }
 
@@ -2494,8 +2494,8 @@ KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const
     }
     else
     {
-        __kd_tls_index++;
         retval = __kd_tls[__kd_tls_index].key;
+        __kd_tls_index++;
     }
     kdThreadMutexUnlock(__kd_tls_mutex);
     return retval;
@@ -2506,7 +2506,7 @@ KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR
 {
     KDint retval = -1;
     kdThreadMutexLock(__kd_tls_mutex);
-    for(KDuint i = 0; i <= __kd_tls_index; i++)
+    for(KDuint i = 0; i < __kd_tls_index; i++)
     {
         if(__kd_tls[i].key == key)
         {
@@ -2535,9 +2535,9 @@ KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKH
 {
     void *retval = KD_NULL;
     kdThreadMutexLock(__kd_tls_mutex);
-    for(KDuint i = 0; i <= __kd_tls_index; i++)
+    for(KDuint i = 0; i < __kd_tls_index; i++)
     {
-        if(__kd_tls[__kd_tls_index].key == key)
+        if(__kd_tls[i].key == key)
         {
 
 #if defined(KD_THREAD_C11)
@@ -2557,7 +2557,18 @@ KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKH
 
 static void __kdCleanupThreadStorageKHR(void)
 {
-
+    kdThreadMutexLock(__kd_tls_mutex); 
+    for(KDuint i = 0; i < __kd_tls_index; i++) 
+    { 
+#if defined(KD_THREAD_C11)  
+        tss_delete(__kd_tls[i].nativekey);  
+#elif defined(KD_THREAD_POSIX)  
+        pthread_key_delete(__kd_tls[i].nativekey);  
+#elif defined(KD_THREAD_WIN32)  
+        FlsFree(__kd_tls[i].nativekey);  
+#endif 
+    } 
+    kdThreadMutexUnlock(__kd_tls_mutex); 
 }
 
 /******************************************************************************
