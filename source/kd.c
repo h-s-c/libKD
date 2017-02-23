@@ -499,33 +499,12 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
-#if defined(KD_THREAD_C11)
-static tss_t __kd_threadlocal;
-#elif defined(KD_THREAD_POSIX)
-static pthread_key_t __kd_threadlocal;
-#elif defined(KD_THREAD_WIN32)
-static DWORD __kd_threadlocal;
-#else
-static KDThread *__kd_threadlocal;
-#endif
-
+static KDThreadStorageKeyKHR __kd_threadlocal;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
-static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;
-static void __kdThreadInitOnce(void)
-{
-#if defined(KD_THREAD_C11)
-    tss_create(&__kd_threadlocal, KD_NULL);
-#elif defined(KD_THREAD_POSIX)
-    pthread_key_create(&__kd_threadlocal, KD_NULL);
-#elif defined(KD_THREAD_WIN32)
-    __kd_threadlocal = FlsAlloc(KD_NULL);
-#endif
-}
-
 static void *__kdThreadStart(void *init)
 {
     KDThread *thread = (KDThread *)init;
-    kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
+    __kd_threadlocal = kdMapThreadStorageKHR(&__kd_threadlocal);
     /* Set the thread name */
     KD_UNUSED const char *threadname = thread->attr ? thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
@@ -560,17 +539,11 @@ static void *__kdThreadStart(void *init)
     prctl(PR_SET_NAME, (long)threadname, 0UL, 0UL, 0UL);
 #endif
 
-#if defined(KD_THREAD_C11)
-    tss_set(__kd_threadlocal, thread);
-#elif defined(KD_THREAD_POSIX)
-    pthread_setspecific(__kd_threadlocal, thread);
-#if defined(__APPLE__)
+#if defined(KD_THREAD_POSIX) && defined(__APPLE__)
     pthread_setname_np(threadname);
 #endif
-#elif defined(KD_THREAD_WIN32)
-    FlsSetValue(__kd_threadlocal, thread);
-#endif
 
+    kdSetThreadStorageKHR(__kd_threadlocal, thread);
     void *result = thread->start_routine(thread->arg);
     return result;
 }
@@ -759,15 +732,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 /* kdThreadSelf: Return calling thread's ID. */
 KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 {
-#if defined(KD_THREAD_C11)
-    return tss_get(__kd_threadlocal);
-#elif defined(KD_THREAD_POSIX)
-    return pthread_getspecific(__kd_threadlocal);
-#elif defined(KD_THREAD_WIN32)
-    return FlsGetValue(__kd_threadlocal);
-#else
-    return __kd_threadlocal;
-#endif
+    return kdGetThreadStorageKHR(__kd_threadlocal);
 }
 
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
@@ -1800,21 +1765,33 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
+typedef struct __KDThreadStorage __KDThreadStorage;
+struct __KDThreadStorage
+{
+    KDThreadStorageKeyKHR key;
+#if defined(KD_THREAD_C11)
+    tss_t nativekey;
+#elif defined(KD_THREAD_POSIX)
+    pthread_key_t nativekey;
+#elif defined(KD_THREAD_WIN32)
+    DWORD nativekey;
+#else
+    void *nativekey;
+#endif
+    void *id;
+};
+
+static __KDThreadStorage __kd_tls[999];
+static KDuint __kd_tls_index = 0;
+static KDThreadMutex *__kd_tls_mutex = KD_NULL;
 static int __kdPreMain(int argc, char **argv)
 {
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
+    __kd_tls_mutex = kdThreadMutexCreate(KD_NULL);
 #if !defined(__ANDROID__)
     KDThread *thread = __kdThreadInit();
-    kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
-#if defined(KD_THREAD_C11)
-    tss_set(__kd_threadlocal, thread);
-#elif defined(KD_THREAD_POSIX)
-    pthread_setspecific(__kd_threadlocal, thread);
-#elif defined(KD_THREAD_WIN32)
-    FlsSetValue(__kd_threadlocal, thread);
-#else
-    __kd_threadlocal = thread;
-#endif
+    __kd_threadlocal = kdMapThreadStorageKHR(&__kd_threadlocal);
+    kdSetThreadStorageKHR(__kd_threadlocal, thread);
 #endif
 
     KDint result = 0;
@@ -1847,16 +1824,23 @@ static int __kdPreMain(int argc, char **argv)
     dlclose(app);
 #endif
 
-#if !defined(__ANDROID__)
-#if defined(KD_THREAD_C11)
-    tss_delete(__kd_threadlocal);
-#elif defined(KD_THREAD_POSIX)
-    pthread_key_delete(__kd_threadlocal);
-#elif defined(KD_THREAD_WIN32)
-    FlsFree(__kd_threadlocal);
+    kdThreadMutexLock(__kd_tls_mutex);
+    for(KDuint i = 0; i <= __kd_tls_index; i++)
+    {
+#if defined(KD_THREAD_C11) 
+        tss_delete(__kd_tls[i].nativekey); 
+#elif defined(KD_THREAD_POSIX) 
+        pthread_key_delete(__kd_tls[i].nativekey); 
+#elif defined(KD_THREAD_WIN32) 
+        FlsFree(__kd_tls[i].nativekey); 
 #endif
+    }
+    kdThreadMutexUnlock(__kd_tls_mutex);
+
+#if !defined(__ANDROID__)
     __kdThreadFree(thread);
 #endif
+    kdThreadMutexFree(__kd_tls_mutex);
     kdThreadMutexFree(__kd_userptrmtx);
     return result;
 }
@@ -2483,6 +2467,99 @@ KD_API void *KD_APIENTRY kdGetTLS(void)
 KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 {
     kdThreadSelf()->tlsptr = ptr;
+}
+
+/* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
+KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void * id)
+{
+    KDThreadStorageKeyKHR retval = 0;
+    kdThreadMutexLock(__kd_tls_mutex);
+    for(KDuint i = 0; i <= __kd_tls_index; i++)
+    {
+        if(__kd_tls[i].id == id)
+        {
+            kdThreadMutexUnlock(__kd_tls_mutex);
+            return __kd_tls[__kd_tls_index].key;
+        }
+    }
+
+    /* Key is only 0 when an error occurs. */
+    __kd_tls[__kd_tls_index].key =  __kd_tls_index + 1;
+    __kd_tls[__kd_tls_index].id = (void*)id;
+#if defined(KD_THREAD_C11)
+    if(tss_create(&__kd_tls[__kd_tls_index].nativekey, KD_NULL) != 0)
+#elif defined(KD_THREAD_POSIX)
+    if(pthread_key_create(&__kd_tls[__kd_tls_index].nativekey, KD_NULL) != 0)
+#elif defined(KD_THREAD_WIN32)
+    __kd_tls[__kd_tls_index].nativekey = FlsAlloc(NULL);
+    if(__kd_tls[__kd_tls_index].nativekey == TLS_OUT_OF_INDEXES)
+#else
+    if(0)
+#endif
+    {
+        kdSetError(KD_ENOMEM);
+    }
+    else
+    {
+        __kd_tls_index++;
+        retval = __kd_tls[__kd_tls_index].key;
+    }
+    kdThreadMutexUnlock(__kd_tls_mutex);
+    return retval;
+}
+
+/* kdSetThreadStorageKHR: Stores thread-local data. */
+KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR key, void * data)
+{
+    KDint retval = -1;
+    kdThreadMutexLock(__kd_tls_mutex);
+    for(KDuint i = 0; i <= __kd_tls_index; i++)
+    {
+        if(__kd_tls[i].key == key)
+        {
+#if defined(KD_THREAD_C11)
+            retval = (tss_set(__kd_tls[i].nativekey, data) == thrd_error) ? -1 : 0;
+#elif defined(KD_THREAD_POSIX)
+            retval = (pthread_setspecific(__kd_tls[i].nativekey, data) == 0) ? 0 : -1;
+#elif defined(KD_THREAD_WIN32)
+            retval = (FlsSetValue(__kd_tls[i].nativekey, data) == 0) ? -1 : 0;
+#else
+            retval = 0;
+            __kd_tls[i].nativekey = data;
+#endif
+        }
+    }
+    if(retval == -1)
+    {
+        kdSetError(KD_ENOMEM);
+    }
+    kdThreadMutexUnlock(__kd_tls_mutex);
+    return retval;
+}
+
+/* kdGetThreadStorageKHR: Retrieves previously stored thread-local data. */
+KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKHR key)
+{
+    void *retval = KD_NULL;
+    kdThreadMutexLock(__kd_tls_mutex);
+    for(KDuint i = 0; i <= __kd_tls_index; i++)
+    {
+        if(__kd_tls[__kd_tls_index].key == key)
+        {
+
+#if defined(KD_THREAD_C11)
+            retval = tss_get(__kd_tls[i].nativekey);
+#elif defined(KD_THREAD_POSIX)
+            retval = pthread_getspecific(__kd_tls[i].nativekey);
+#elif defined(KD_THREAD_WIN32)
+            retval = FlsGetValue(__kd_tls[i].nativekey);
+#else
+            retval = __kd_tls[i].nativekey;
+#endif
+        }
+    }
+    kdThreadMutexUnlock(__kd_tls_mutex);
+    return retval;
 }
 
 /******************************************************************************
