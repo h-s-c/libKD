@@ -40,9 +40,6 @@
 /* clang-format off */
 #ifdef __unix__
 #   ifdef __linux__
-#       if __GLIBC__ == 2 && __GLIBC_MINOR__ < 20
-#           define _BSD_SOURCE
-#       endif
 #       define _GNU_SOURCE
 #   endif
 #   ifdef __EMSCRIPTEN__
@@ -178,24 +175,35 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || (__clang__)
 #   pragma GCC diagnostic push
 #   if __GNUC__ >= 6
 #       pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
+#   if __clang__
+#       if __has_attribute(__no_sanitize__)
+#           define STBI__ASAN __attribute__((__no_sanitize__("address")))
+#       elif __has_attribute(__no_sanitize_address__)
+#           define STBI__ASAN __attribute__((__no_sanitize_address__))
+#       elif __has_attribute(__no_address_safety_analysis__)
+#           define STBI__ASAN __attribute__((__no_address_safety_analysis__))
+#       endif
+#   elif __GNUC__ >= 5 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
+#       define STBI__ASAN __attribute__((__no_sanitize_address__))
+#   endif
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
 #   pragma warning(disable : 4701)
 #   pragma warning(disable : 4703)
+#elif defined(__TINYC__)  
+#   define STBI_NO_SIMD
+#endif
 #endif
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
-#if defined(__TINYC__)  
-#   define STBI_NO_SIMD
-#endif
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_SPRINTF_IMPLEMENTATION
@@ -4134,7 +4142,7 @@ KD_API KDfloat32 KD_APIENTRY kdFabsf(KDfloat32 x)
 KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
 {
     KDfloat32 z, ax, z_h, z_l, p_h, p_l;
-    KDfloat32 _y1, t1, t2, r, s, sn, t, u, v, w;
+    KDfloat32 y1, t1, t2, r, s, sn, t, u, v, w;
     KDint32 i, j, k, yisint, n;
     KDint32 hx, hy, ix, iy, is;
     GET_FLOAT_WORD(hx, x);
@@ -4340,11 +4348,11 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         SET_FLOAT_WORD(t1, is & 0xfffff000);
         t2 = z_l - (((t1 - t) - dp_h[k]) - z_h);
     }
-    /* split up y into _y1+y2 and compute (_y1+y2)*(t1+t2) */
+    /* split up y into y1+y2 and compute (y1+y2)*(t1+t2) */
     GET_FLOAT_WORD(is, y);
-    SET_FLOAT_WORD(_y1, is & 0xfffff000);
-    p_l = (y - _y1) * t1 + y * t2;
-    p_h = _y1 * t1;
+    SET_FLOAT_WORD(y1, is & 0xfffff000);
+    p_l = (y - y1) * t1 + y * t2;
+    p_h = y1 * t1;
     z = p_l + p_h;
     GET_FLOAT_WORD(j, z);
     if(j > 0x43000000) /* if z > 128 */
@@ -4506,13 +4514,13 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
     _mm_store_ss(&result, _mm_ceil_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
     return result;
 #else
-    KDint32 i0, _j0;
+    KDint32 i0, j0;
     KDuint32 i;
     GET_FLOAT_WORD(i0, x);
-    _j0 = ((i0 >> 23) & 0xff) - 0x7f;
-    if(_j0 < 23)
+    j0 = ((i0 >> 23) & 0xff) - 0x7f;
+    if(j0 < 23)
     {
-        if(_j0 < 0)
+        if(j0 < 0)
         { /* raise inexact if x != 0 */
             if(huge + x > 0.0f)
             { /* return 0*sign(x) if |x|<1 */
@@ -4528,7 +4536,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
         }
         else
         {
-            i = (0x007fffff) >> _j0;
+            i = (0x007fffff) >> j0;
             if((i0 & i) == 0)
             {
                 return x;
@@ -4537,7 +4545,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
             { /* raise inexact flag */
                 if(i0 > 0)
                 {
-                    i0 += (0x00800000) >> _j0;
+                    i0 += (0x00800000) >> j0;
                 }
                 i0 &= (~i);
             }
@@ -4545,7 +4553,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
     }
     else
     {
-        if(_j0 == 0x80)
+        if(j0 == 0x80)
         {
             return x + x; /* inf or NaN */
         }
@@ -4567,13 +4575,13 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
     _mm_store_ss(&result, _mm_floor_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
     return result;
 #else
-    KDint32 i0, _j0;
+    KDint32 i0, j0;
     KDuint32 i;
     GET_FLOAT_WORD(i0, x);
-    _j0 = ((i0 >> 23) & 0xff) - 0x7f;
-    if(_j0 < 23)
+    j0 = ((i0 >> 23) & 0xff) - 0x7f;
+    if(j0 < 23)
     {
-        if(_j0 < 0)
+        if(j0 < 0)
         { /* raise inexact if x != 0 */
             if(huge + x > 0.0f)
             { /* return 0*sign(x) if |x|<1 */
@@ -4589,7 +4597,7 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
         }
         else
         {
-            i = (0x007fffff) >> _j0;
+            i = (0x007fffff) >> j0;
             if((i0 & i) == 0)
             {
                 return x;
@@ -4598,7 +4606,7 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
             { /* raise inexact flag */
                 if(i0 < 0)
                 {
-                    i0 += (0x00800000) >> _j0;
+                    i0 += (0x00800000) >> j0;
                 }
                 i0 &= (~i);
             }
@@ -4606,7 +4614,7 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
     }
     else
     {
-        if(_j0 == 0x80)
+        if(j0 == 0x80)
         {
             return x + x; /* inf or NaN */
         }
@@ -4936,13 +4944,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
     _mm_store_sd(&result, _mm_floor_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
     return result;
 #else
-    KDint32 i0, i1, _j0;
+    KDint32 i0, i1, j0;
     KDuint32 i, j;
     EXTRACT_WORDS(i0, i1, x);
-    _j0 = ((i0 >> 20) & 0x7ff) - 0x3ff;
-    if(_j0 < 20)
+    j0 = ((i0 >> 20) & 0x7ff) - 0x3ff;
+    if(j0 < 20)
     {
-        if(_j0 < 0)
+        if(j0 < 0)
         { /* raise inexact if x != 0 */
             if(huge + x > 0.0)
             { /* return 0*sign(x) if |x|<1 */
@@ -4959,7 +4967,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
         }
         else
         {
-            i = (0x000fffff) >> _j0;
+            i = (0x000fffff) >> j0;
             if(((i0 & i) | i1) == 0)
             {
                 return x;
@@ -4968,16 +4976,16 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
             { /* raise inexact flag */
                 if(i0 < 0)
                 {
-                    i0 += (0x00100000) >> _j0;
+                    i0 += (0x00100000) >> j0;
                 }
                 i0 &= (~i);
                 i1 = 0;
             }
         }
     }
-    else if(_j0 > 51)
+    else if(j0 > 51)
     {
-        if(_j0 == 0x400)
+        if(j0 == 0x400)
         {
             return x + x; /* inf or NaN */
         }
@@ -4988,7 +4996,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
     }
     else
     {
-        i = KDUINT_MAX >> (_j0 - 20);
+        i = KDUINT_MAX >> (j0 - 20);
         if((i1 & i) == 0)
         {
             return x;
@@ -4997,13 +5005,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
         { /* raise inexact flag */
             if(i0 < 0)
             {
-                if(_j0 == 20)
+                if(j0 == 20)
                 {
                     i0 += 1;
                 }
                 else
                 {
-                    j = i1 + (1 << (52 - _j0));
+                    j = i1 + (1 << (52 - j0));
                     if((KDint32)j < i1)
                     {
                         i0 += 1; /* got a carry */
@@ -6462,7 +6470,7 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
  *
  ******************************************************************************/
 
-#if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 2)
+#if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 19)
 /* TODO: Implement for other platforms if necessary */
 static KDboolean __kdIsPointerDereferencable(void *p)
 {
