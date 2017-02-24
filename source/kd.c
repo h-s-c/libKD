@@ -6469,18 +6469,18 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
  *
  ******************************************************************************/
 
-#if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 19)
 /* TODO: Implement for other platforms if necessary */
-static KDboolean __kdIsPointerDereferencable(void *p)
+static KD_UNUSED KDboolean __kdIsPointerDereferencable(void *p)
 {
+#if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 19)
+    KDuintptr addr = (KDuintptr)p;
+    KDuint8 valid = 0;
+    const KDint page_size = sysconf(_SC_PAGESIZE);
+
     if(p == NULL)
     {
         return 0;
     }
-
-    KDuintptr addr = (KDuintptr)p;
-    KDuint8 valid = 0;
-    const KDint page_size = sysconf(_SC_PAGESIZE);
 
     /* align addr to page_size */
     addr &= ~(page_size - 1);
@@ -6491,8 +6491,11 @@ static KDboolean __kdIsPointerDereferencable(void *p)
     }
 
     return (valid & 0x01) == 0x01;
-}    
+#else
+   return p != NULL;
 #endif
+}    
+
 
 #ifdef KD_WINDOW_SUPPORTED
 /* kdCreateWindow: Create a window. */
