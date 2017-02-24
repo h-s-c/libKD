@@ -185,8 +185,8 @@
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
-#   pragma GCC diagnostic ignored "-Wmacro-redefined"
 #   if __clang__
+#       pragma GCC diagnostic ignored "-Wmacro-redefined"
 #       if __has_attribute(__no_sanitize__)
 #           define STBI__ASAN __attribute__((__no_sanitize__("address")))
 #       elif __has_attribute(__no_sanitize_address__)
