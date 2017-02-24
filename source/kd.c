@@ -2534,54 +2534,35 @@ KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const
 KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR key, void * data)
 {
     KDint retval = -1;
-    kdThreadMutexLock(__kd_tls_mutex);
-    for(KDuint i = 0; i < __kd_tls_index; i++)
-    {
-        if(__kd_tls[i].key == key)
-        {
 #if defined(KD_THREAD_C11)
-            retval = (tss_set(__kd_tls[i].nativekey, data) == thrd_error) ? -1 : 0;
+    retval = (tss_set(__kd_tls[key - 1].nativekey, data) == thrd_error) ? -1 : 0;
 #elif defined(KD_THREAD_POSIX)
-            retval = (pthread_setspecific(__kd_tls[i].nativekey, data) == 0) ? 0 : -1;
+    retval = (pthread_setspecific(__kd_tls[key - 1].nativekey, data) == 0) ? 0 : -1;
 #elif defined(KD_THREAD_WIN32)
-            retval = (FlsSetValue(__kd_tls[i].nativekey, data) == 0) ? -1 : 0;
+    retval = (FlsSetValue(__kd_tls[key - 1].nativekey, data) == 0) ? -1 : 0;
 #else
-            retval = 0;
-            __kd_tls[i].nativekey = data;
+    retval = 0;
+    __kd_tls[key - 1].nativekey = data;
 #endif
-        }
-    }
     if(retval == -1)
     {
         kdSetError(KD_ENOMEM);
     }
-    kdThreadMutexUnlock(__kd_tls_mutex);
     return retval;
 }
 
 /* kdGetThreadStorageKHR: Retrieves previously stored thread-local data. */
 KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKHR key)
 {
-    void *retval = KD_NULL;
-    kdThreadMutexLock(__kd_tls_mutex);
-    for(KDuint i = 0; i < __kd_tls_index; i++)
-    {
-        if(__kd_tls[i].key == key)
-        {
-
 #if defined(KD_THREAD_C11)
-            retval = tss_get(__kd_tls[i].nativekey);
+    return tss_get(__kd_tls[key - 1].nativekey);
 #elif defined(KD_THREAD_POSIX)
-            retval = pthread_getspecific(__kd_tls[i].nativekey);
+    return pthread_getspecific(__kd_tls[key - 1].nativekey);
 #elif defined(KD_THREAD_WIN32)
-            retval = FlsGetValue(__kd_tls[i].nativekey);
+    return FlsGetValue(__kd_tls[key - 1].nativekey);
 #else
-            retval = __kd_tls[i].nativekey;
+    return __kd_tls[key - 1].nativekey;
 #endif
-        }
-    }
-    kdThreadMutexUnlock(__kd_tls_mutex);
-    return retval;
 }
 
 static void __kdCleanupThreadStorageKHR(void)
