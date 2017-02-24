@@ -129,17 +129,6 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: gcc-4.6
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: linux
       compiler: clang-5.0
       dist: trusty
       sudo: required

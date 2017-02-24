@@ -175,13 +175,17 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#if defined(__GNUC__) || (__clang__)
+#if defined(__INTEL_COMPILER)
+#    pragma warning(push)
+#    pragma warning(disable: 3656)
+#elif defined(__GNUC__) || (__clang__)
 #   pragma GCC diagnostic push
 #   if __GNUC__ >= 6
 #       pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
+#   pragma GCC diagnostic ignored "-Wmacro-redefined"
 #   if __clang__
 #       if __has_attribute(__no_sanitize__)
 #           define STBI__ASAN __attribute__((__no_sanitize__("address")))
@@ -209,10 +213,10 @@
 #include "stb_sprintf.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
-#if defined(__GNUC__)
-#   pragma GCC diagnostic pop
-#elif defined(_MSC_VER)
+#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
 #   pragma warning(pop)
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic pop
 #endif
 /* clang-format on */
 
@@ -6467,8 +6471,29 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
  *
  ******************************************************************************/
 
-/* TODO: Implement for other platforms if necessary */
-static KD_UNUSED KDboolean __kdIsPointerDereferencable(void *p)
+#ifdef KD_WINDOW_SUPPORTED
+/* kdCreateWindow: Create a window. */
+#if defined(KD_WINDOW_WIN32)
+LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+    switch(msg)
+    {
+        case WM_CLOSE:
+        case WM_DESTROY:
+        case WM_QUIT:
+        {
+            PostQuitMessage(0);
+            break;
+        }
+        default:
+        {
+            return DefWindowProc(hwnd, msg, wparam, lparam);
+        }
+    }
+    return 0;
+}
+#elif defined(KD_WINDOW_WAYLAND)
+static KDboolean __kdIsPointerDereferencable(void *p)
 {
 #if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 19)
     KDuintptr addr = (KDuintptr)p;
@@ -6492,31 +6517,7 @@ static KD_UNUSED KDboolean __kdIsPointerDereferencable(void *p)
 #else
    return p != NULL;
 #endif
-}    
-
-
-#ifdef KD_WINDOW_SUPPORTED
-/* kdCreateWindow: Create a window. */
-#if defined(KD_WINDOW_WIN32)
-LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    switch(msg)
-    {
-        case WM_CLOSE:
-        case WM_DESTROY:
-        case WM_QUIT:
-        {
-            PostQuitMessage(0);
-            break;
-        }
-        default:
-        {
-            return DefWindowProc(hwnd, msg, wparam, lparam);
-        }
-    }
-    return 0;
 }
-#elif defined(KD_WINDOW_WAYLAND)
 static void registry_add_object(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
 {
     if(!kdStrcmp(interface, "wl_compositor"))

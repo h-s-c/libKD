@@ -21,7 +21,9 @@
 -   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
 
 ###Compilers
--   Visual C++ 2013/2015, GCC/MinGW, Clang/Xcode, Intel C++, Tiny C, Emscripten
+-   Visual C++ (2013 and up)
+-   GCC (4.7 and up)
+-   Clang/Xcode, Intel C++, Mingw-w64, Tiny C, Emscripten
 
 ###Dependencies
 -   EGL, OpenGL ES (samples)
