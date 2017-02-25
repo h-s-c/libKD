@@ -803,7 +803,7 @@ static int stbi__stdio_read(void *user, char *data, int size)
 
 static void stbi__stdio_skip(void *user, int n)
 {
-   fseek((FILE*) user, n, SEEK_CUR);
+   STBI_ASSERT(fseek((FILE*) user, n, SEEK_CUR) == 0);
 }
 
 static int stbi__stdio_eof(void *user)
@@ -1236,7 +1236,7 @@ STBIDEF stbi_uc *stbi_load_from_file(FILE *f, int *x, int *y, int *comp, int req
    result = stbi__load_and_postprocess_8bit(&s,x,y,comp,req_comp);
    if (result) {
       // need to 'unget' all the characters in the IO buffer
-      fseek(f, - (int) (s.img_buffer_end - s.img_buffer), SEEK_CUR);
+      STBI_ASSERT(fseek(f, - (int) (s.img_buffer_end - s.img_buffer), SEEK_CUR) == 0);
    }
    return result;
 }
@@ -1249,7 +1249,7 @@ STBIDEF stbi__uint16 *stbi_load_from_file_16(FILE *f, int *x, int *y, int *comp,
    result = stbi__load_and_postprocess_16bit(&s,x,y,comp,req_comp);
    if (result) {
       // need to 'unget' all the characters in the IO buffer
-      fseek(f, - (int) (s.img_buffer_end - s.img_buffer), SEEK_CUR);
+      STBI_ASSERT(fseek(f, - (int) (s.img_buffer_end - s.img_buffer), SEEK_CUR) == 0);
    }
    return result;
 }
@@ -2178,6 +2178,7 @@ stbi_inline static stbi_uc stbi__clamp(int x)
 {
    // trick to use a single test to catch both cases
    if ((unsigned int) x > 255) {
+      /* coverity[DEADCODE] */ 
       if (x < 0) return 0;
       if (x > 255) return 255;
    }
@@ -3393,8 +3394,11 @@ static void stbi__YCbCr_to_RGB_row(stbi_uc *out, const stbi_uc *y, const stbi_uc
       r >>= 20;
       g >>= 20;
       b >>= 20;
+      /* coverity[DEADCODE] */
       if ((unsigned) r > 255) { if (r < 0) r = 0; else r = 255; }
+      /* coverity[DEADCODE] */
       if ((unsigned) g > 255) { if (g < 0) g = 0; else g = 255; }
+      /* coverity[DEADCODE] */
       if ((unsigned) b > 255) { if (b < 0) b = 0; else b = 255; }
       out[0] = (stbi_uc)r;
       out[1] = (stbi_uc)g;
@@ -3528,8 +3532,11 @@ static void stbi__YCbCr_to_RGB_simd(stbi_uc *out, stbi_uc const *y, stbi_uc cons
       r >>= 20;
       g >>= 20;
       b >>= 20;
+      /* coverity[DEADCODE] */
       if ((unsigned) r > 255) { if (r < 0) r = 0; else r = 255; }
+      /* coverity[DEADCODE] */
       if ((unsigned) g > 255) { if (g < 0) g = 0; else g = 255; }
+      /* coverity[DEADCODE] */
       if ((unsigned) b > 255) { if (b < 0) b = 0; else b = 255; }
       out[0] = (stbi_uc)r;
       out[1] = (stbi_uc)g;
@@ -3813,6 +3820,7 @@ static int stbi__zbuild_huffman(stbi__zhuffman *z, stbi_uc *sizelist, int num)
          if (s <= STBI__ZFAST_BITS) {
             int j = stbi__bit_reverse(next_code[s],s);
             while (j < (1 << STBI__ZFAST_BITS)) {
+               /* coverity[TAINTED_SCLAR] */
                z->fast[j] = fastv;
                j += (1 << s);
             }
@@ -3880,6 +3888,7 @@ static int stbi__zhuffman_decode_slowpath(stbi__zbuf *a, stbi__zhuffman *z)
    if (s == 16) return -1; // invalid code!
    // code size is s, so:
    b = (k >> (16-s)) - z->firstcode[s] + z->firstsymbol[s];
+   /* coverity[TAINTED_SCALAR] */
    STBI_ASSERT(z->size[b] == s);
    a->code_buffer >>= s;
    a->num_bits -= s;
@@ -6201,12 +6210,16 @@ static stbi_uc *stbi__process_gif_raster(stbi__context *s, stbi__gif *g)
             if (oldcode >= 0) {
                p = &g->codes[avail++];
                if (avail > 4096)        return stbi__errpuc("too many codes", "Corrupt GIF");
+               /* coverity[OVERRUN] */ 
                p->prefix = (stbi__int16) oldcode;
+               /* coverity[OVERRUN] */ 
                p->first = g->codes[oldcode].first;
+               /* coverity[OVERRUN] */ 
                p->suffix = (code == avail) ? p->first : g->codes[code].first;
             } else if (code == avail)
                return stbi__errpuc("illegal code in raster", "Corrupt GIF");
-
+               
+            /* coverity[OVERRUN] */ 
             stbi__out_gif_code(g, (stbi__uint16) code);
 
             if ((avail & codemask) == 0 && avail <= 0x0FFF) {
@@ -6913,10 +6926,10 @@ STBIDEF int stbi_info_from_file(FILE *f, int *x, int *y, int *comp)
 {
    int r;
    stbi__context s;
-   long pos = ftell(f);
+   long pos = ftell(f); STBI_ASSERT(pos != -1);
    stbi__start_file(&s, f);
    r = stbi__info_main(&s,x,y,comp);
-   fseek(f,pos,SEEK_SET);
+   STBI_ASSERT(fseek(f,pos,SEEK_SET) == 0);
    return r;
 }
 #endif // !STBI_NO_STDIO
