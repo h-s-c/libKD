@@ -185,18 +185,6 @@
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
-#   if __clang__
-#       pragma GCC diagnostic ignored "-Wmacro-redefined"
-#       if __has_attribute(__no_sanitize__)
-#           define STBI__ASAN __attribute__((__no_sanitize__("address")))
-#       elif __has_attribute(__no_sanitize_address__)
-#           define STBI__ASAN __attribute__((__no_sanitize_address__))
-#       elif __has_attribute(__no_address_safety_analysis__)
-#           define STBI__ASAN __attribute__((__no_address_safety_analysis__))
-#       endif
-#   elif __GNUC__ >= 5 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
-#       define STBI__ASAN __attribute__((__no_sanitize_address__))
-#   endif
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
