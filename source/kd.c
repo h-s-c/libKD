@@ -6917,7 +6917,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
  ******************************************************************************/
 
 /******************************************************************************
- * Atomics
+ * OpenKODE Core extension: KD_VEN_atomic_ops
  ******************************************************************************/
 
 #if defined(KD_ATOMIC_C11)
@@ -7144,7 +7144,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
 }
 
 /******************************************************************************
- * Queue (threadsafe)
+ * OpenKODE Core extension: KD_VEN_concurrent_queue
  ******************************************************************************/
 
 typedef struct __KDQueueNode __KDQueueNode;

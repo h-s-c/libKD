@@ -35,6 +35,8 @@
 #include <KD/KHR_formatted.h>
 #include <KD/KHR_perfcounter.h>
 #include <KD/KHR_thread_storage.h>
+#include <KD/VEN_atomic_ops.h>
+#include <KD/VEN_concurrent_queue.h>
 
 #define KD_ACR_system_font
 #define KD_ATX_dxtcomp
@@ -47,6 +49,8 @@
 #define KD_KHR_formatted
 #define KD_KHR_perfcounter
 #define KD_KHR_thread_storage
+#define KD_VEN_atomic_ops
+#define KD_VEN_concurrent_queue
 
 /*******************************************************
  * Errors (extensions)
@@ -90,47 +94,5 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
 #ifdef KD_WINDOW_SUPPORTED
 KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow);
 #endif
-
-/*******************************************************
- * Atomics
- *******************************************************/
-
-typedef struct KDAtomicIntVEN KDAtomicIntVEN;
-typedef struct KDAtomicPtrVEN KDAtomicPtrVEN;
-
-KD_API KDAtomicIntVEN* KD_APIENTRY kdAtomicIntCreateVEN(KDint value);
-KD_API KDAtomicPtrVEN* KD_APIENTRY kdAtomicPtrCreateVEN(void* value);
-
-KD_API KDint KD_APIENTRY kdAtomicIntFreeVEN(KDAtomicIntVEN *object);
-KD_API KDint KD_APIENTRY kdAtomicPtrFreeVEN(KDAtomicPtrVEN *object);
-
-KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object);
-KD_API void* KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object);
-
-KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value);
-KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void* value);
-
-KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint value);
-KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint value);
-
-KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *object, KDint expected, KDint desired);
-KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void* expected, void* desired);
-
-/*******************************************************
- * Queue (threadsafe)
- *******************************************************/
-
-typedef struct KDQueueVEN KDQueueVEN;
-
-KD_API KDQueueVEN* KD_APIENTRY kdQueueCreateVEN(KDsize maxsize);
-KD_API KDint KD_APIENTRY kdQueueFreeVEN(KDQueueVEN* queue);
-
-KD_API KDsize KD_APIENTRY kdQueueSizeVEN(KDQueueVEN *queue);
-
-KD_API void KD_APIENTRY kdQueuePushHeadVEN(KDQueueVEN *queue, void *value);
-KD_API void KD_APIENTRY kdQueuePushTailVEN(KDQueueVEN *queue, void *value);
-
-KD_API void* KD_APIENTRY kdQueuePopHeadVEN(KDQueueVEN *queue);
-KD_API void* KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue);
 
 #endif /* __kdext_h_ */
