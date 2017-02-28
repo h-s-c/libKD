@@ -194,7 +194,6 @@
 #endif
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
-#define STB_IMAGE_STATIC
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 #define STBI_NO_LINEAR
@@ -209,19 +208,6 @@
 #include "stb_image.h"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
-#define STBTT_STATIC
-#define STBTT_assert(x)     kdAssert(x)
-#define STBTT_malloc(x,u)   ((void)(u),kdMalloc(x))
-#define STBTT_free(x,u)     ((void)(u),kdFree(x))
-#define STBTT_strlen(x)     kdStrlen(x)
-#define STBTT_memcpy        kdMemcpy
-#define STBTT_memset        kdMemset
-#define STBTT_ifloor(x)     ((KDint) kdFloorf(x))
-#define STBTT_iceil(x)      ((KDint) kdCeilf(x))
-#define STBTT_sqrt(x)       kdSqrtf(x)
-#define STBTT_fabs(x)       kdFabsf(x)
-#define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
 #if defined(__INTEL_COMPILER) || defined(_MSC_VER)
 #   pragma warning(pop)
 #elif defined(__GNUC__)
@@ -7113,7 +7099,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
         kdSetError(KD_EIO);
         return KD_NULL;
     }
-    image->size = st.st_size;
+    image->size = (KDsize)st.st_size;
 
 #if defined(__unix__) || defined(__APPLE__)
     KDint fd = open(pathname, O_RDONLY, 0);
@@ -7130,11 +7116,11 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 
     void *filedata = KD_NULL;
 #if defined(__unix__) || defined(__APPLE__)
-    filedata = mmap(KD_NULL, st.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
+    filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, fd, 0);
     if(filedata == MAP_FAILED)
 #elif(_WIN32)
-    HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL)
-    filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, st.st_size);
+    HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
+    filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, image->size);
     if(fm == INVALID_HANDLE_VALUE || filedata == KD_NULL)
 #endif
     {
@@ -7144,7 +7130,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
 
     KDint channels = 0;
-    error = stbi_info_from_memory(filedata, st.st_size, &image->width, &image->height, &channels);
+    error = stbi_info_from_memory(filedata, image->size, &image->width, &image->height, &channels);
     if(error == 0)
     {
         kdFree(image);
@@ -7186,7 +7172,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
     
 #if defined(__unix__) || defined(__APPLE__)
-    error = munmap(filedata, st.st_size);
+    error = munmap(filedata, image->size);
     kdAssert(error == 0);
     close(fd);
 #elif(_WIN32)
