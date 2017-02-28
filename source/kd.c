@@ -6887,22 +6887,7 @@ KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nat
 /* kdHandleAssertion: Handle assertion failure. */
 KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
 {
-#define messagelimit 4096
-    KDchar message[messagelimit] = "";
-    KDchar line[128] = "";
-    kdLtostr(line, 128, linenumber);
-    kdStrncat_s(message, messagelimit, "---Assertion---\n", messagelimit);
-    kdStrncat_s(message, messagelimit, "Condition: ", messagelimit);
-    kdStrncat_s(message, messagelimit, condition, messagelimit);
-    kdStrncat_s(message, messagelimit, "\n", messagelimit);
-    kdStrncat_s(message, messagelimit, "File: ", messagelimit);
-    kdStrncat_s(message, messagelimit, filename, messagelimit);
-    kdStrncat_s(message, messagelimit, "(", messagelimit);
-    kdStrncat_s(message, messagelimit, line, messagelimit);
-    kdStrncat_s(message, messagelimit, ")", messagelimit);
-    kdStrncat_s(message, messagelimit, "\n", messagelimit);
-    kdLogMessage(message);
-#undef messagelimit
+    kdLogMessagefKHR("---Assertion---\nCondition: %s\nFile: %s(%i)\n", condition, filename, linenumber);
     kdExit(EXIT_FAILURE);
 }
 
@@ -6915,24 +6900,14 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     {
         return;
     }
-    KDchar *newstring = kdMalloc(sizeof(KDchar) * (length + 1));
-    kdMemset(newstring, 0, length + 1);
-    kdStrncat_s(newstring, length + 1, string, length);
-    if(string[length - 1] != '\n')
-    {
-        kdStrncat_s(newstring, length + 1, "\n", length + 1);
-    }
 #if defined(__ANDROID__)
-    __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), newstring);
-#elif defined(__linux__) && !defined(__TINYC__)
-    syscall(SYS_write, 1, newstring, kdStrlen(newstring));
+    __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), string);
 #elif defined(_WIN32)
-    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), newstring, (DWORD)kdStrlen(newstring), (DWORD[]){0}, NULL);
+    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), string, (DWORD)length, (DWORD[]){0}, NULL);
 #else
-    printf("%s", newstring);
+    printf("%s", string);
     fflush(stdout);
 #endif
-    kdFree(newstring);
 }
 #endif
 
@@ -7384,6 +7359,102 @@ KD_API KDint KD_APIENTRY kdGetImageLevelIntATX(KDImageATX image, KDint attr, KDi
         return 0;
     }
     return kdGetImageIntATX(image, attr);
+}
+
+/******************************************************************************
+ * OpenKODE Core extension: KD_KHR_formatted
+ ******************************************************************************/
+
+/* kdSnprintfKHR, kdVsnprintfKHR, kdSprintfKHR, kdVsprintfKHR: Formatted output to a buffer. */
+KD_API KDint KD_APIENTRY kdSnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar *format, ...)
+{
+    KDint result = 0;
+    KDVaListKHR ap= { 0 };
+    KD_VA_START_KHR(ap, format);
+    result = kdVsnprintfKHR(buf, bufsize, format, ap);
+    KD_VA_END_KHR(ap);
+    return result;
+}
+
+KD_API KDint KD_APIENTRY kdVsnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar *format, KDVaListKHR ap)
+{
+    return stbsp_vsnprintf(buf, bufsize, format, ap);
+}
+
+KD_API KDint KD_APIENTRY kdSprintfKHR(KDchar *buf, const KDchar *format, ...)
+{
+    KDint result = 0;
+    KDVaListKHR ap = { 0 };
+    KD_VA_START_KHR(ap, format);
+    result = kdVsprintfKHR(buf, format, ap);
+    KD_VA_END_KHR(ap);
+    return result;
+}
+
+KD_API KDint KD_APIENTRY kdVsprintfKHR(KDchar *buf, const KDchar *format, KDVaListKHR ap)
+{
+    return stbsp_vsprintf(buf, format, ap);
+}
+
+/* kdFprintfKHR, kdVfprintfKHR: Formatted output to an open file. */
+KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...)
+{
+    KDint result = 0;
+    KDVaListKHR ap = { 0 };
+    KD_VA_START_KHR(ap, format);
+    result = kdVfprintfKHR(file, format, ap);
+    KD_VA_END_KHR(ap);
+    return result;
+}
+
+static KDchar * __kdVfprintfCallback(KDchar *buf, void *user, KDint len)
+{
+    KDFile *file = (KDFile *)user;
+    for(KDint i = 0; i < len; i++)
+    {
+        kdPutc(buf[i], file);
+    }
+    if(len < STB_SPRINTF_MIN)
+    {
+        return KD_NULL;
+    }
+    /* Reuse buffer */
+    return buf;
+}
+
+KD_API KDint KD_APIENTRY kdVfprintfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap)
+{
+    KDchar buf[STB_SPRINTF_MIN];
+    return stbsp_vsprintfcb( &__kdVfprintfCallback, &file, buf, format, ap);
+}
+
+/* kdLogMessagefKHR: Formatted output to the platform's debug logging facility. */
+static KDchar * __kdLogMessagefCallback(KDchar *buf, void *user, KDint len)
+{
+    for(KDint i = 0; i < len; i++)
+    {
+        printf("%c", buf[i]);
+    }
+    if(len < STB_SPRINTF_MIN)
+    {
+        fflush(stdout);
+        return KD_NULL;
+    }
+    /* Reuse buffer */
+    return buf;
+}
+
+KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
+{
+    KDint result = 0;
+    va_list ap = { 0 };
+    KD_VA_START_KHR(ap, format);
+
+    KDchar buf[STB_SPRINTF_MIN];
+    result = stbsp_vsprintfcb( &__kdLogMessagefCallback, KD_NULL, buf, format, ap);
+
+    KD_VA_END_KHR(ap);
+    return result;
 }
 
 /******************************************************************************

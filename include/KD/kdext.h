@@ -24,7 +24,6 @@
 #ifndef __kdext_h_
 #define __kdext_h_
 
-#include <KD/ACR_system_font.h>
 #include <KD/ATX_dxtcomp.h>
 #include <KD/ATX_imgdec.h>
 #include <KD/ATX_imgdec_jpeg.h>
@@ -38,7 +37,6 @@
 #include <KD/VEN_atomic_ops.h>
 #include <KD/VEN_concurrent_queue.h>
 
-#define KD_ACR_system_font
 #define KD_ATX_dxtcomp
 #define KD_ATX_imgdec
 #define KD_ATX_imgdec_jpeg
@@ -55,12 +53,6 @@
 /*******************************************************
  * Errors (extensions)
  *******************************************************/
-
-#if defined(_MSC_VER) || defined(__MINGW32__)
-typedef KDuint KDPlatformErrorVEN;
-#else
-typedef KDint KDPlatformErrorVEN;
-#endif
 
 KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint allowed);
 

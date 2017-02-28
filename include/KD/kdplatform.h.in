@@ -203,5 +203,38 @@
 #define KDUINTPTR_MAX   KDUINT_MAX
 #define KD_INFINITY     0x7f800000
 
+
+/******************************************************************************
+ * Extensions
+ ******************************************************************************/
+#if defined(_MSC_VER) || defined(__MINGW32__)
+typedef DWORD KDPlatformErrorVEN;
+#else
+typedef int KDPlatformErrorVEN;
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#   define KD_VA_START_KHR(ap, arg)    __builtin_va_start(ap, arg)
+#   define KD_VA_END_KHR(ap)           __builtin_va_end(ap)
+#   define KD_VA_ARG_INT32_KHR(ap)     __builtin_va_arg(ap, KDint32)
+#   define KD_VA_ARG_INT_KHR(ap)       __builtin_va_arg(ap, KDint)
+#   define KD_VA_ARG_INT64_KHR(ap)     __builtin_va_arg(ap, KDint64)
+#   define KD_VA_ARG_FLOAT32_KHR(ap)   __builtin_va_arg(ap, KDfloat32)
+#   define KD_VA_ARG_FLOAT64_KHR(ap)   __builtin_va_arg(ap, KDfloat64)
+#   define KD_VA_ARG_PTR_KHR(ap)       __builtin_va_arg(ap, KDuintptr)
+#   define KD_VA_COPY_VEN(d, s)        __builtin_va_copy(d, s)
+#else
+#   include <stdarg.h>
+#   define KD_VA_START_KHR(ap, arg)    va_start(ap, arg)
+#   define KD_VA_END_KHR(ap)           va_end(ap)
+#   define KD_VA_ARG_INT32_KHR(ap)     va_arg(ap, KDint32)
+#   define KD_VA_ARG_INT_KHR(ap)       va_arg(ap, KDint)
+#   define KD_VA_ARG_INT64_KHR(ap)     va_arg(ap, KDint64)
+#   define KD_VA_ARG_FLOAT32_KHR(ap)   va_arg(ap, KDfloat32)
+#   define KD_VA_ARG_FLOAT64_KHR(ap)   va_arg(ap, KDfloat64)
+#   define KD_VA_ARG_PTR_KHR(ap)       va_arg(ap, KDuintptr)
+#   define KD_VA_COPY_VEN(d, s)        va_copy(d, s)
+#endif
+
 #endif /* __kdplatform_h_ */
 
