@@ -91,34 +91,33 @@
 #       define WIN32_LEAN_AND_MEAN
 #   endif
 #   include <windows.h>
-/* CryptGenRandom etc. */
-#   include <wincrypt.h>
-/* R_OK/W_OK/X_OK */
-#   include <direct.h>
-/* _mm_* */
-#   include <intrin.h>
-/* MSVC redefinition fix */
+#   include <wincrypt.h> /* CryptGenRandom etc. */
+#   include <direct.h> /* R_OK/W_OK/X_OK */
+#   include <malloc.h> /* _msize */
+#   include <intrin.h> /* _mm_* */
 #   ifndef inline
-#       define inline __inline
+#       define inline __inline /* MSVC redefinition fix */
 #   endif
 #endif
 
-#if  defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__)
 #   include <unistd.h>
 #   include <fcntl.h>
 #   include <dirent.h>
 #   include <dlfcn.h>
-/* mincore */
-#   include <sys/mman.h>
+#   if defined(__GLIBC__)
+#       include <malloc.h> /* malloc_usable_size */
+#   endif
+#   include <sys/mman.h> /* mincore, mmap */
 #   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
-/* getentropy/getrandom */
-#       include <sys/random.h>
+#       include <sys/random.h> /* getentropy/getrandom */
 #   endif
 #   include <sys/stat.h>
 #   include <sys/syscall.h>
 #   include <sys/utsname.h>
 #   if defined(__APPLE__) || defined(BSD)
 #       include <sys/mount.h>
+#       include <malloc/malloc.h> /* malloc_size */
 #   else
 #       include <sys/vfs.h>
 #   endif
@@ -148,8 +147,7 @@
 #       include <wayland-client.h>
 #       include <wayland-egl.h>
 #   endif
-/* POSIX reserved but OpenKODE uses this */
-#   undef st_mtime
+#   undef st_mtime /* POSIX reserved but OpenKODE uses this */
 #endif
 
 #if defined(__EMSCRIPTEN__)
@@ -185,6 +183,7 @@
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
+#   pragma GCC diagnostic ignored "-Wunused-function"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
@@ -195,10 +194,32 @@
 #endif
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
+#define STB_IMAGE_STATIC
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
+#define STBI_NO_LINEAR
+#define STBI_NO_HDR
+#define STBI_NO_STDIO
+#define STBI_NO_FAILURE_STRINGS
+#define STBI_ASSERT(x)      kdAssert(x)
+#define STBI_MALLOC(x)      kdMalloc(x)
+#define STBI_REALLOC(x,u)   kdRealloc(x,u)
+#define STBI_FREE(x)        kdFree(x)
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
+#define STBTT_STATIC
+#define STBTT_assert(x)     kdAssert(x)
+#define STBTT_malloc(x,u)   ((void)(u),kdMalloc(x))
+#define STBTT_free(x,u)     ((void)(u),kdFree(x))
+#define STBTT_strlen(x)     kdStrlen(x)
+#define STBTT_memcpy        kdMemcpy
+#define STBTT_memset        kdMemset
+#define STBTT_ifloor(x)     ((KDint) kdFloorf(x))
+#define STBTT_iceil(x)      ((KDint) kdCeilf(x))
+#define STBTT_sqrt(x)       kdSqrtf(x)
+#define STBTT_fabs(x)       kdFabsf(x)
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 #if defined(__INTEL_COMPILER) || defined(_MSC_VER)
@@ -1970,7 +1991,13 @@ static KDint __kdIsupper(KDint c)
 /* kdAbs: Compute the absolute value of an integer. */
 KD_API KDint KD_APIENTRY kdAbs(KDint i)
 {
-    return (i < 0 ? -i : i);
+    return (i < 0) ? -i : i;
+}
+
+/* kdMinVEN: Returns the smaller of the given values. */
+KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b)
+{
+    return (b < a) ? b : a;
 }
 
 /* kdStrtof: Convert a string to a floating point number. */
@@ -2432,8 +2459,7 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((__malloc__))
 #endif
-KD_API void *KD_APIENTRY
-kdRealloc(void *ptr, KDsize size)
+KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
 {
     void *result = KD_NULL;
 #if defined(_WIN32)
@@ -2447,6 +2473,17 @@ kdRealloc(void *ptr, KDsize size)
         return KD_NULL;
     }
     return result;
+}
+
+KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
+{
+#if defined(__unix__)
+    return malloc_usable_size(ptr);
+#elif defined(__APPLE__)
+    return malloc_size(ptr);
+#elif defined(_WIN32)
+    return _msize(ptr);
+#endif
 }
 
 /******************************************************************************
@@ -5668,6 +5705,7 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
+        kdFree(file);
         return KD_EOF;
     }
     kdFree(file);
@@ -6915,6 +6953,452 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
 /******************************************************************************
  * Extensions
  ******************************************************************************/
+
+/******************************************************************************
+ * OpenKODE Core extension: KD_ATX_dxtcomp
+ ******************************************************************************/
+/******************************************************************************
+ * OpenKODE Core extension: KD_ATX_imgdec
+ ******************************************************************************/
+/******************************************************************************
+ * OpenKODE Core extension: KD_ATX_imgdec_jpeg
+ ******************************************************************************/
+/******************************************************************************
+ * OpenKODE Core extension: KD_ATX_imgdec_png
+ ******************************************************************************/
+
+typedef struct _KDImageATX {
+    KDuint8 *buffer;
+    KDsize size;
+    KDint width;
+    KDint height;
+    KDint levels;
+    KDint format;
+    KDboolean alpha;
+} _KDImageATX;
+
+/* kdDXTCompressImageATX, kdDXTCompressBufferATX: Compresses an image into a DXT format. */
+KD_API KDImageATX KD_APIENTRY kdDXTCompressImageATX(KDImageATX image, KDint32 comptype)
+{
+    _KDImageATX *_image = image;
+    if(_image->format != KD_IMAGE_FORMAT_RGBA8888_ATX)
+    {
+        kdSetError(KD_EINVAL);
+        return KD_NULL;
+    }
+    return kdDXTCompressBufferATX(_image->buffer, _image->width, _image->height, comptype, _image->levels);
+}
+
+static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w, KDint32 h, KDuint8 *block)
+{
+    if ((w-x >=4) && (h-y >=4))
+    {
+        /* Full Square shortcut */
+        src += x*4;
+        src += y*w*4;
+        for (KDint i=0; i < 4; ++i)
+        {
+            *(KDuint32*)block = *(KDuint32*) src; block += 4; src += 4;
+            *(KDuint32*)block = *(KDuint32*) src; block += 4; src += 4;
+            *(KDuint32*)block = *(KDuint32*) src; block += 4; src += 4;
+            *(KDuint32*)block = *(KDuint32*) src; block += 4; 
+            src += (w*4) - 12;
+        }
+        return;
+    }
+
+    KDint32 bw = kdMinVEN(w - x, 4);
+    KDint32 bh = kdMinVEN(h - y, 4);
+    KDint32 bx, by;
+   
+    const KDint32 rem[] =
+    {
+        0, 0, 0, 0,
+        0, 1, 0, 1,
+        0, 1, 2, 0,
+        0, 1, 2, 3
+    };
+     
+    for(KDint i = 0; i < 4; ++i)
+    {
+        by = rem[(bh - 1) * 4 + i] + y;
+        for(KDint j = 0; j < 4; ++j)
+        {
+            bx = rem[(bw - 1) * 4 + j] + x;
+            block[(i * 4 * 4) + (j * 4) + 0] = src[(by * (w * 4)) + (bx * 4) + 0];
+            block[(i * 4 * 4) + (j * 4) + 1] = src[(by * (w * 4)) + (bx * 4) + 1];
+            block[(i * 4 * 4) + (j * 4) + 2] = src[(by * (w * 4)) + (bx * 4) + 2];
+            block[(i * 4 * 4) + (j * 4) + 3] = src[(by * (w * 4)) + (bx * 4) + 3];
+        }
+    }
+}
+
+KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32 width, KDint32 height, KDint32 comptype, KD_UNUSED KDint32 levels)
+{
+    _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
+    if(image == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    image->levels = 0;
+    image->width = width;
+    image->height = height;
+    image->buffer = kdMalloc(width * height * sizeof(KDuint8));
+
+    switch(comptype)
+    {
+        case(KD_DXTCOMP_TYPE_DXT1_ATX):
+        {
+            image->format = KD_IMAGE_FORMAT_DXT1_ATX;
+            image->alpha = 0;
+            break;
+        }
+        case(KD_DXTCOMP_TYPE_DXT1A_ATX):
+        {
+            kdFree(image);
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
+        }
+        case(KD_DXTCOMP_TYPE_DXT3_ATX):
+        {
+            kdFree(image);
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
+        }
+        case(KD_DXTCOMP_TYPE_DXT5_ATX):
+        {
+            image->format = KD_IMAGE_FORMAT_DXT5_ATX;
+            image->alpha = 1;
+            break;
+        }
+        default:
+        {
+            kdAssert(0);
+            break;
+        }
+    }
+
+    KDuint8 block[64];
+    for(KDint y = 0; y < image->height; y += 4)
+    {
+        for(KDint x = 0; x < image->width; x += 4)
+        { 
+            __kdExtractBlock(buffer, x, y, image->width, image->height, block);
+            stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
+            image->buffer += image->alpha ? 16 : 8;
+        }
+    }
+
+    image->size = kdMallocSizeVEN(image->buffer);
+    return image;
+}
+
+/* kdGetImageInfoATX, kdGetImageInfoFromStreamATX: Construct an informational image object based on an image in a file or stream. */
+KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
+{
+    _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
+    if(image == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    image->levels = 0;
+
+    KDStat st;
+    KDint error = kdStat(pathname, &st);
+    if(error == -1)
+    {
+        kdFree(image);
+        kdSetError(KD_EIO);
+        return KD_NULL;
+    }
+    image->size = st.st_size;
+
+#if defined(__unix__) || defined(__APPLE__)
+    KDint fd = open(pathname, O_RDONLY, 0);
+    if(fd == -1)
+#elif(_WIN32)
+    HANDLE fd = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
+    if(fd == INVALID_HANDLE_VALUE)
+#endif
+    {
+        kdFree(image);
+        kdSetError(KD_EIO);
+        return KD_NULL;
+    }
+
+    void *filedata = KD_NULL;
+#if defined(__unix__) || defined(__APPLE__)
+    filedata = mmap(KD_NULL, st.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
+    if(filedata == MAP_FAILED)
+#elif(_WIN32)
+    HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL)
+    filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, st.st_size);
+    if(fm == INVALID_HANDLE_VALUE || filedata == KD_NULL)
+#endif
+    {
+        kdFree(image);
+        kdSetError(KD_EIO);
+        return KD_NULL;
+    }
+
+    KDint channels = 0;
+    error = stbi_info_from_memory(filedata, st.st_size, &image->width, &image->height, &channels);
+    if(error == 0)
+    {
+        kdFree(image);
+        kdSetError(KD_EILSEQ);
+        return KD_NULL;
+    }
+
+    switch(channels)
+    {
+        case(4):
+        {
+            image->format = KD_IMAGE_FORMAT_RGBA8888_ATX;
+            image->alpha = 1;
+            break;
+        }
+        case(3):
+        {
+            image->format = KD_IMAGE_FORMAT_RGB888_ATX;
+            image->alpha = 0;
+            break;
+        }
+        case(2):
+        {
+            image->format = KD_IMAGE_FORMAT_LUMALPHA88_ATX;
+            image->alpha = 1;
+            break;
+        }
+        case(1):
+        {
+            image->format = KD_IMAGE_FORMAT_ALPHA8_ATX;
+            image->alpha = 1;
+            break;
+        }
+        default:
+        {
+            kdAssert(0);
+            break;
+        }
+    }
+    
+#if defined(__unix__) || defined(__APPLE__)
+    error = munmap(filedata, st.st_size);
+    kdAssert(error == 0);
+    close(fd);
+#elif(_WIN32)
+    UnmapViewOfFile(filedata);
+    CloseHandle(fd);
+#endif
+
+    return image;
+}
+
+KD_API KDImageATX KD_APIENTRY kdGetImageInfoFromStreamATX(KDFile *file)
+{
+    KDImageATX image = kdGetImageInfoATX(file->pathname);
+    return image;
+}
+
+/* kdGetImageATX, kdGetImageFromStreamATX: Read and decode an image from a file or stream, returning a decoded image object. */
+KD_API KDImageATX KD_APIENTRY kdGetImageATX(const KDchar *pathname, KDint format, KDint flags)
+{
+    KDFile *file = kdFopen(pathname, "rb");
+    KDImageATX image = kdGetImageFromStreamATX(file, format, flags);
+    kdFclose(file);
+    return image;
+}
+
+KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format, KDint flags)
+{
+    _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
+    if(image == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    image->levels = 0;
+
+    KDStat st;
+    KDint error = kdFstat(file, &st);
+    if(error == -1)
+    {
+        kdFree(image);
+        kdSetError(KD_EIO);
+        return KD_NULL;
+    }
+
+    void *filedata = kdMalloc(st.st_size);
+    error = kdFread(filedata, st.st_size, 1, file);
+    if(error == -1)
+    {
+        kdFree(image);
+        kdSetError(KD_EIO);
+        return KD_NULL;
+    }
+
+    error = kdFseek(file, 0, KD_SEEK_SET);
+    if(error == -1)
+    {
+        kdFree(image);
+        kdSetError(KD_EIO);
+        return KD_NULL;
+    }
+
+    KDint channels = 0;
+    image->format = format;
+    switch(image->format)
+    {
+        case(KD_IMAGE_FORMAT_RGBA8888_ATX):
+        {
+            channels = 4;
+            image->alpha = 1;
+            break;
+        }
+        case(KD_IMAGE_FORMAT_RGB888_ATX):
+        {
+            channels = 3;
+            image->alpha = 0;
+            break;
+        }
+        case(KD_IMAGE_FORMAT_LUMALPHA88_ATX):
+        {
+            channels = 2;
+            image->alpha = 1;
+            break;
+        }
+        case(KD_IMAGE_FORMAT_ALPHA8_ATX):
+        {
+            channels = 1;
+            image->alpha = 1;
+            break;
+        }
+        default:
+        {
+            kdFree(image);
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
+            break;
+        }
+    }
+
+    if(flags != 0)
+    {
+        kdFree(image);
+        kdSetError(KD_EINVAL);
+        return KD_NULL;
+    } 
+
+    image->buffer = stbi_load_from_memory(filedata, st.st_size, &image->width, &image->height, (int[]){0}, channels);
+    if(image->buffer == KD_NULL)
+    {
+        kdFree(image);
+        kdSetError(KD_EILSEQ);
+        return KD_NULL;
+    }
+    kdFree(filedata);
+
+    image->size = kdMallocSizeVEN(image->buffer);
+    return image;
+}
+
+/* kdFreeImageATX: Free image object. */
+KD_API void KD_APIENTRY kdFreeImageATX(KDImageATX image)
+{
+    _KDImageATX *_image = image;
+    if(_image->buffer != KD_NULL)
+    {
+       kdFree(_image->buffer);
+    }
+    kdFree(_image);
+}
+
+KD_API void *KD_APIENTRY kdGetImagePointerATX(KDImageATX image, KDint attr)
+{
+    if(attr == KD_IMAGE_POINTER_BUFFER_ATX)
+    {
+        _KDImageATX *_image = image;
+        return _image->buffer;
+    }
+    else
+    {
+        kdSetError(KD_EINVAL);
+        return KD_NULL;
+    }
+}
+
+/* kdGetImageIntATX, kdGetImageLevelIntATX: Get the value of an image integer attribute. */
+KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
+{
+    _KDImageATX *_image = image;
+    switch(attr)
+    {
+        case(KD_IMAGE_WIDTH_ATX):
+        {
+            return _image->width;
+            break;
+        }
+        case(KD_IMAGE_HEIGHT_ATX):
+        {
+            return _image->height;
+            break;
+        }
+        case(KD_IMAGE_FORMAT_ATX):
+        {
+            return _image->format;
+            break;
+        }
+        case(KD_IMAGE_STRIDE_ATX):
+        {
+            return 0;
+            break;
+        }
+        case(KD_IMAGE_BITSPERPIXEL_ATX):
+        {
+            return 8;
+            break;
+        }
+        case(KD_IMAGE_LEVELS_ATX):
+        {
+            return _image->levels;
+            break;
+        }
+        case(KD_IMAGE_DATASIZE_ATX):
+        {
+            return _image->size;
+            break;
+        }
+        case(KD_IMAGE_BUFFEROFFSET_ATX):
+        {
+            return 0;
+            break;
+        }
+        case(KD_IMAGE_ALPHA_ATX):
+        {
+            return _image->alpha;
+            break;
+        }
+        default:
+        {
+            kdSetError(KD_EINVAL);
+            return 0;
+            break;
+        }
+    }
+}
+
+KD_API KDint KD_APIENTRY kdGetImageLevelIntATX(KDImageATX image, KDint attr, KDint level)
+{
+    if(level != 0)
+    {
+        kdSetError(KD_EINVAL);
+        return 0;
+    }
+    return kdGetImageIntATX(image, attr);
+}
 
 /******************************************************************************
  * OpenKODE Core extension: KD_VEN_atomic_ops
