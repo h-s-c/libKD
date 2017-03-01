@@ -183,7 +183,6 @@
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
-#   pragma GCC diagnostic ignored "-Wunused-function"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
@@ -194,6 +193,7 @@
 #endif
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
+#define STB_IMAGE_STATIC
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 #define STBI_NO_LINEAR
@@ -206,6 +206,7 @@
 #define STBI_FREE(x)        kdFree(x)
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STB_SPRINTF_STATIC
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 #if defined(__INTEL_COMPILER) || defined(_MSC_VER)
@@ -7105,7 +7106,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
 
     KDint channels = 0;
-    error = stbi_info_from_memory(filedata, image->size, &image->width, &image->height, &channels);
+    error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
     if(error == 0)
     {
         kdFree(image);
@@ -7194,7 +7195,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     image->size = (KDsize)st.st_size;
 
     void *filedata = kdMalloc(image->size);
-    error = kdFread(filedata, image->size, 1, file);
+    error = kdFread(filedata, (KDint)image->size, 1, file);
     if(error == -1)
     {
         kdFree(image);
@@ -7254,7 +7255,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     } 
 
-    image->buffer = stbi_load_from_memory(filedata, image->size, &image->width, &image->height, (int[]){0}, channels);
+    image->buffer = stbi_load_from_memory(filedata, (KDint)image->size, &image->width, &image->height, (int[]){0}, channels);
     if(image->buffer == KD_NULL)
     {
         kdFree(image);
@@ -7330,7 +7331,7 @@ KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
         }
         case(KD_IMAGE_DATASIZE_ATX):
         {
-            return _image->size;
+            return (KDint)_image->size;
             break;
         }
         case(KD_IMAGE_BUFFEROFFSET_ATX):
@@ -7370,7 +7371,7 @@ KD_API KDint KD_APIENTRY kdGetImageLevelIntATX(KDImageATX image, KDint attr, KDi
 KD_API KDint KD_APIENTRY kdSnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar *format, ...)
 {
     KDint result = 0;
-    KDVaListKHR ap= { 0 };
+    va_list ap= { 0 };
     KD_VA_START_KHR(ap, format);
     result = kdVsnprintfKHR(buf, bufsize, format, ap);
     KD_VA_END_KHR(ap);
@@ -7379,13 +7380,13 @@ KD_API KDint KD_APIENTRY kdSnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar
 
 KD_API KDint KD_APIENTRY kdVsnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar *format, KDVaListKHR ap)
 {
-    return stbsp_vsnprintf(buf, bufsize, format, ap);
+    return stbsp_vsnprintf(buf, (KDint)bufsize, format, ap);
 }
 
 KD_API KDint KD_APIENTRY kdSprintfKHR(KDchar *buf, const KDchar *format, ...)
 {
     KDint result = 0;
-    KDVaListKHR ap = { 0 };
+    va_list ap = { 0 };
     KD_VA_START_KHR(ap, format);
     result = kdVsprintfKHR(buf, format, ap);
     KD_VA_END_KHR(ap);
@@ -7401,7 +7402,7 @@ KD_API KDint KD_APIENTRY kdVsprintfKHR(KDchar *buf, const KDchar *format, KDVaLi
 KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...)
 {
     KDint result = 0;
-    KDVaListKHR ap = { 0 };
+    va_list ap = { 0 };
     KD_VA_START_KHR(ap, format);
     result = kdVfprintfKHR(file, format, ap);
     KD_VA_END_KHR(ap);
