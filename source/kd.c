@@ -7371,7 +7371,7 @@ KD_API KDint KD_APIENTRY kdGetImageLevelIntATX(KDImageATX image, KDint attr, KDi
 KD_API KDint KD_APIENTRY kdSnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar *format, ...)
 {
     KDint result = 0;
-    va_list ap= {{0}}
+    va_list ap;
     KD_VA_START_KHR(ap, format);
     result = kdVsnprintfKHR(buf, bufsize, format, ap);
     KD_VA_END_KHR(ap);
@@ -7386,7 +7386,7 @@ KD_API KDint KD_APIENTRY kdVsnprintfKHR(KDchar *buf, KDsize bufsize, const KDcha
 KD_API KDint KD_APIENTRY kdSprintfKHR(KDchar *buf, const KDchar *format, ...)
 {
     KDint result = 0;
-    va_list ap = {{0}};
+    va_list ap;
     KD_VA_START_KHR(ap, format);
     result = kdVsprintfKHR(buf, format, ap);
     KD_VA_END_KHR(ap);
@@ -7402,7 +7402,7 @@ KD_API KDint KD_APIENTRY kdVsprintfKHR(KDchar *buf, const KDchar *format, KDVaLi
 KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...)
 {
     KDint result = 0;
-    va_list ap = {{0}};
+    va_list ap;
     KD_VA_START_KHR(ap, format);
     result = kdVfprintfKHR(file, format, ap);
     KD_VA_END_KHR(ap);
@@ -7449,7 +7449,7 @@ static KDchar * __kdLogMessagefCallback(KDchar *buf, void *user, KDint len)
 KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
 {
     KDint result = 0;
-    va_list ap = {{0}};
+    va_list ap;
     KD_VA_START_KHR(ap, format);
 
     KDchar buf[STB_SPRINTF_MIN];
