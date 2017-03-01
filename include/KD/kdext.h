@@ -24,8 +24,6 @@
 #ifndef __kdext_h_
 #define __kdext_h_
 
-#include 
-
 #include <KD/ATX_dxtcomp.h>
 #include <KD/ATX_imgdec.h>
 #include <KD/ATX_imgdec_jpeg.h>
