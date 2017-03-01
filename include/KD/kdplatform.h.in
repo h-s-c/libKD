@@ -209,6 +209,7 @@
  ******************************************************************************/
 
 #if defined(__GNUC__) || defined(__clang__)
+    typedef __builtin_va_list KDVaListKHR;
 #   define KD_VA_START_KHR(ap, arg)    __builtin_va_start(ap, arg)
 #   define KD_VA_END_KHR(ap)           __builtin_va_end(ap)
 #   define KD_VA_ARG_INT32_KHR(ap)     __builtin_va_arg(ap, KDint32)
@@ -220,6 +221,7 @@
 #   define KD_VA_COPY_VEN(d, s)        __builtin_va_copy(d, s)
 #else
 #   include <stdarg.h>
+    typedef va_list KDVaListKHR;
 #   define KD_VA_START_KHR(ap, arg)    va_start(ap, arg)
 #   define KD_VA_END_KHR(ap)           va_end(ap)
 #   define KD_VA_ARG_INT32_KHR(ap)     va_arg(ap, KDint32)
