@@ -2,7 +2,7 @@
 /*******************************************************
  * OpenKODE Core extension: KD_KHR_float64
  *******************************************************/
-/* Sample KD/KHR_float64.h for OpenKODE Core */
+
 #ifndef __kd_KHR_float64_h_
 #define __kd_KHR_float64_h_
 #include <KD/kd.h>

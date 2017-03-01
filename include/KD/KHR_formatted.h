@@ -2,7 +2,7 @@
 /*******************************************************
  * OpenKODE Core extension: KD_KHR_formatted
  *******************************************************/
-/* Sample KD/KHR_formatted.h for OpenKODE Core */
+
 #ifndef __kd_KHR_formatted_h_
 #define __kd_KHR_formatted_h_
 #include <KD/kd.h>

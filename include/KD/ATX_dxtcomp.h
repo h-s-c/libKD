@@ -2,7 +2,7 @@
 /*******************************************************
  * OpenKODE Core extension: KD_ATX_dxtcomp
  *******************************************************/
-/* Sample KD/ATX_dxtcomp.h for OpenKODE Core */
+
 #ifndef __kd_ATX_dxtcomp_h_
 #define __kd_ATX_dxtcomp_h_
 #include <KD/ATX_imgdec_pvr.h>

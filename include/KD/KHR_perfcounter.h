@@ -2,7 +2,7 @@
 /*******************************************************
  * OpenKODE Core extension: KD_KHR_perfcounter
  *******************************************************/
-/* Sample KD/KHR_perfcounter.h for OpenKODE Core */
+
 #ifndef __kd_KHR_perfcounter_h_
 #define __kd_KHR_perfcounter_h_
 #include <KD/kd.h>

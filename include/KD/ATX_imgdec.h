@@ -2,7 +2,7 @@
 /*******************************************************
  * OpenKODE Core extension: KD_ATX_imgdec
  *******************************************************/
-/* Sample KD/ATX_imgdec.h for OpenKODE Core */
+
 #ifndef __kd_ATX_imgdec_h_
 #define __kd_ATX_imgdec_h_
 #include <KD/kd.h>

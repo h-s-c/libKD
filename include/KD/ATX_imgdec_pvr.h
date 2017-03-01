@@ -2,7 +2,7 @@
 /*******************************************************
  * OpenKODE Core extension: KD_ATX_imgdec_pvr
  *******************************************************/
-/* Sample KD/ATX_imgdec_pvr.h for OpenKODE Core */
+
 #ifndef __kd_ATX_imgdec_pvr_h_
 #define __kd_ATX_imgdec_pvr_h_
 #include <KD/ATX_imgdec.h>

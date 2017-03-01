@@ -2,7 +2,7 @@
 /*******************************************************
  * OpenKODE Core extension: KD_KHR_thread_storage
  *******************************************************/
-/* Sample KD/KHR_thread_storage.h for OpenKODE Core */
+
 #ifndef __kd_KHR_thread_storage_h_
 #define __kd_KHR_thread_storage_h_
 #include <KD/kd.h>
