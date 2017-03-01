@@ -7195,8 +7195,8 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     image->size = (KDsize)st.st_size;
 
     void *filedata = kdMalloc(image->size);
-    error = kdFread(filedata, image->size, (KDsize)1, file);
-    if(error == -1)
+    error = (KDint)kdFread(filedata, image->size, 1, file);
+    if(error != 1)
     {
         kdFree(image);
         kdSetError(KD_EIO);
