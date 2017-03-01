@@ -516,12 +516,12 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 
 /* kdThreadCreate: Create a new thread. */
 static KDThreadStorageKeyKHR __kd_threadlocal = 0;
-static void __kdThreadInitOnce(void)      
-{     
-     __kd_threadlocal = kdMapThreadStorageKHR(&__kd_threadlocal);
+static void __kdThreadInitOnce(void)
+{
+    __kd_threadlocal = kdMapThreadStorageKHR(&__kd_threadlocal);
 }
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
-static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;       
+static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;
 
 static void *__kdThreadStart(void *init)
 {
@@ -1256,7 +1256,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             }
         }
     }
-    
+
 #ifdef KD_WINDOW_SUPPORTED
     KD_UNUSED KDWindow *window = __kd_window;
 #if defined(KD_WINDOW_ANDROID)
@@ -2293,7 +2293,7 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         kdAssert(0);
     }
-    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, (const KDchar*)fmt, number);
+    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, (const KDchar *)fmt, number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -2446,7 +2446,8 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((__malloc__))
 #endif
-KD_API void *KD_APIENTRY kdRealloc(void *ptr, KDsize size)
+KD_API void *KD_APIENTRY
+kdRealloc(void *ptr, KDsize size)
 {
     void *result = KD_NULL;
 #if defined(_WIN32)
@@ -2491,8 +2492,7 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 
 /* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
 typedef struct __KDThreadStorage __KDThreadStorage;
-struct __KDThreadStorage
-{
+struct __KDThreadStorage {
     KDThreadStorageKeyKHR key;
 #if defined(KD_THREAD_C11)
     tss_t nativekey;
@@ -2508,7 +2508,7 @@ struct __KDThreadStorage
 
 static __KDThreadStorage __kd_tls[999];
 static KDuint __kd_tls_index = 0;
-KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void * id)
+KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void *id)
 {
     KDThreadStorageKeyKHR retval = 0;
     kdThreadMutexLock(__kd_tls_mutex);
@@ -2522,8 +2522,8 @@ KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const
     }
 
     /* Key is only 0 when an error occurs. */
-    __kd_tls[__kd_tls_index].key =  __kd_tls_index + 1;
-    __kd_tls[__kd_tls_index].id = (void*)id;
+    __kd_tls[__kd_tls_index].key = __kd_tls_index + 1;
+    __kd_tls[__kd_tls_index].id = (void *)id;
 #if defined(KD_THREAD_C11)
     if(tss_create(&__kd_tls[__kd_tls_index].nativekey, KD_NULL) != 0)
 #elif defined(KD_THREAD_POSIX)
@@ -2547,7 +2547,7 @@ KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const
 }
 
 /* kdSetThreadStorageKHR: Stores thread-local data. */
-KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR key, void * data)
+KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR key, void *data)
 {
     KDint retval = -1;
 #if defined(KD_THREAD_C11)
@@ -2568,7 +2568,7 @@ KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR
 }
 
 /* kdGetThreadStorageKHR: Retrieves previously stored thread-local data. */
-KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKHR key)
+KD_API void *KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKHR key)
 {
 #if defined(KD_THREAD_C11)
     return tss_get(__kd_tls[key - 1].nativekey);
@@ -2583,18 +2583,18 @@ KD_API void * KD_APIENTRY KD_APIENTRY kdGetThreadStorageKHR(KDThreadStorageKeyKH
 
 static void __kdCleanupThreadStorageKHR(void)
 {
-    kdThreadMutexLock(__kd_tls_mutex); 
-    for(KDuint i = 0; i < __kd_tls_index; i++) 
-    { 
-#if defined(KD_THREAD_C11)  
-        tss_delete(__kd_tls[i].nativekey);  
-#elif defined(KD_THREAD_POSIX)  
-        pthread_key_delete(__kd_tls[i].nativekey);  
-#elif defined(KD_THREAD_WIN32)  
-        FlsFree(__kd_tls[i].nativekey);  
-#endif 
-    } 
-    kdThreadMutexUnlock(__kd_tls_mutex); 
+    kdThreadMutexLock(__kd_tls_mutex);
+    for(KDuint i = 0; i < __kd_tls_index; i++)
+    {
+#if defined(KD_THREAD_C11)
+        tss_delete(__kd_tls[i].nativekey);
+#elif defined(KD_THREAD_POSIX)
+        pthread_key_delete(__kd_tls[i].nativekey);
+#elif defined(KD_THREAD_WIN32)
+        FlsFree(__kd_tls[i].nativekey);
+#endif
+    }
+    kdThreadMutexUnlock(__kd_tls_mutex);
 }
 
 /******************************************************************************
@@ -5403,7 +5403,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return ts.tv_nsec;
 #elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038
-    /* Supported as of XCode 8 / macOS Sierra 10.12 */ 
+    /* Supported as of XCode 8 / macOS Sierra 10.12 */
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_nsec;
@@ -6521,14 +6521,14 @@ static KDboolean __kdIsPointerDereferencable(void *p)
     /* align addr to page_size */
     addr &= ~(page_size - 1);
 
-    if (mincore((void *) addr, page_size, &valid) < 0) 
+    if(mincore((void *)addr, page_size, &valid) < 0)
     {
-      return 0;
+        return 0;
     }
 
     return (valid & 0x01) == 0x01;
 #else
-   return p != NULL;
+    return p != NULL;
 #endif
 }
 static void registry_add_object(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
@@ -6638,7 +6638,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #if defined(KD_WINDOW_WAYLAND)
             if(__kdIsPointerDereferencable(window->nativedisplay))
             {
-                void *first_pointer = *(void **) window->nativedisplay;
+                void *first_pointer = *(void **)window->nativedisplay;
                 if(first_pointer == &wl_display_interface)
                 {
                     window->platform = _EGL_PLATFORM_WAYLAND;
@@ -6652,7 +6652,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #if defined(KD_WINDOW_X11)
     if(!window->platform)
     {
-        /* Fallback to X11*/ 
+        /* Fallback to X11*/
         window->platform = _EGL_PLATFORM_X11;
     }
     if(window->platform == _EGL_PLATFORM_X11)
@@ -6953,18 +6953,25 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressImageATX(KDImageATX image, KDint32 co
 
 static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w, KDint32 h, KDuint8 *block)
 {
-    if ((w-x >=4) && (h-y >=4))
+    if((w - x >= 4) && (h - y >= 4))
     {
         /* Full Square shortcut */
-        src += x*4;
-        src += y*w*4;
-        for (KDint i=0; i < 4; ++i)
+        src += x * 4;
+        src += y * w * 4;
+        for(KDint i = 0; i < 4; ++i)
         {
-            *(KDuint32*)block = *(KDuint32*) src; block += 4; src += 4;
-            *(KDuint32*)block = *(KDuint32*) src; block += 4; src += 4;
-            *(KDuint32*)block = *(KDuint32*) src; block += 4; src += 4;
-            *(KDuint32*)block = *(KDuint32*) src; block += 4; 
-            src += (w*4) - 12;
+            *(KDuint32 *)block = *(KDuint32 *)src;
+            block += 4;
+            src += 4;
+            *(KDuint32 *)block = *(KDuint32 *)src;
+            block += 4;
+            src += 4;
+            *(KDuint32 *)block = *(KDuint32 *)src;
+            block += 4;
+            src += 4;
+            *(KDuint32 *)block = *(KDuint32 *)src;
+            block += 4;
+            src += (w * 4) - 12;
         }
         return;
     }
@@ -6972,15 +6979,14 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
     KDint32 bw = kdMinVEN(w - x, 4);
     KDint32 bh = kdMinVEN(h - y, 4);
     KDint32 bx, by;
-   
+
     const KDint32 rem[] =
-    {
-        0, 0, 0, 0,
-        0, 1, 0, 1,
-        0, 1, 2, 0,
-        0, 1, 2, 3
-    };
-     
+        {
+            0, 0, 0, 0,
+            0, 1, 0, 1,
+            0, 1, 2, 0,
+            0, 1, 2, 3};
+
     for(KDint i = 0; i < 4; ++i)
     {
         by = rem[(bh - 1) * 4 + i] + y;
@@ -7045,7 +7051,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
     for(KDint y = 0; y < image->height; y += 4)
     {
         for(KDint x = 0; x < image->width; x += 4)
-        { 
+        {
             __kdExtractBlock(buffer, x, y, image->width, image->height, block);
             stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
             image->buffer += image->alpha ? 16 : 8;
@@ -7146,7 +7152,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
             break;
         }
     }
-    
+
 #if defined(__unix__) || defined(__APPLE__)
     error = munmap(filedata, image->size);
     kdAssert(error == 0);
@@ -7253,7 +7259,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         kdFree(image);
         kdSetError(KD_EINVAL);
         return KD_NULL;
-    } 
+    }
 
     image->buffer = stbi_load_from_memory(filedata, (KDint)image->size, &image->width, &image->height, (int[]){0}, channels);
     if(image->buffer == KD_NULL)
@@ -7274,7 +7280,7 @@ KD_API void KD_APIENTRY kdFreeImageATX(KDImageATX image)
     _KDImageATX *_image = image;
     if(_image->buffer != KD_NULL)
     {
-       kdFree(_image->buffer);
+        kdFree(_image->buffer);
     }
     kdFree(_image);
 }
@@ -7409,7 +7415,7 @@ KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...)
     return result;
 }
 
-static KDchar * __kdVfprintfCallback(KDchar *buf, void *user, KDint len)
+static KDchar *__kdVfprintfCallback(KDchar *buf, void *user, KDint len)
 {
     KDFile *file = (KDFile *)user;
     for(KDint i = 0; i < len; i++)
@@ -7427,11 +7433,11 @@ static KDchar * __kdVfprintfCallback(KDchar *buf, void *user, KDint len)
 KD_API KDint KD_APIENTRY kdVfprintfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap)
 {
     KDchar buf[STB_SPRINTF_MIN];
-    return stbsp_vsprintfcb( &__kdVfprintfCallback, &file, buf, format, ap);
+    return stbsp_vsprintfcb(&__kdVfprintfCallback, &file, buf, format, ap);
 }
 
 /* kdLogMessagefKHR: Formatted output to the platform's debug logging facility. */
-static KDchar * __kdLogMessagefCallback(KDchar *buf, void *user, KDint len)
+static KDchar *__kdLogMessagefCallback(KDchar *buf, void *user, KDint len)
 {
     for(KDint i = 0; i < len; i++)
     {
@@ -7453,7 +7459,7 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
     KD_VA_START_KHR(ap, format);
 
     KDchar buf[STB_SPRINTF_MIN];
-    result = stbsp_vsprintfcb( &__kdLogMessagefCallback, KD_NULL, buf, format, ap);
+    result = stbsp_vsprintfcb(&__kdLogMessagefCallback, KD_NULL, buf, format, ap);
 
     KD_VA_END_KHR(ap);
     return result;
