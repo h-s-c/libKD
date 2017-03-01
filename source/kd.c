@@ -7191,9 +7191,10 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         kdSetError(KD_EIO);
         return KD_NULL;
     }
+    image->size = (KDsize)st.st_size;
 
-    void *filedata = kdMalloc(st.st_size);
-    error = kdFread(filedata, st.st_size, 1, file);
+    void *filedata = kdMalloc(image->size);
+    error = kdFread(filedata, image->size, 1, file);
     if(error == -1)
     {
         kdFree(image);
@@ -7253,7 +7254,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     } 
 
-    image->buffer = stbi_load_from_memory(filedata, st.st_size, &image->width, &image->height, (int[]){0}, channels);
+    image->buffer = stbi_load_from_memory(filedata, image->size, &image->width, &image->height, (int[]){0}, channels);
     if(image->buffer == KD_NULL)
     {
         kdFree(image);
