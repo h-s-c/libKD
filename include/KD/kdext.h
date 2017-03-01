@@ -24,6 +24,8 @@
 #ifndef __kdext_h_
 #define __kdext_h_
 
+#include 
+
 #include <KD/ATX_dxtcomp.h>
 #include <KD/ATX_imgdec.h>
 #include <KD/ATX_imgdec_jpeg.h>
@@ -53,6 +55,12 @@
 /*******************************************************
  * Errors (extensions)
  *******************************************************/
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+typedef KDuint KDPlatformErrorVEN;
+#else
+typedef KDint KDPlatformErrorVEN;
+#endif
 
 KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint allowed);
 

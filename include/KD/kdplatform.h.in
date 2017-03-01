@@ -207,11 +207,6 @@
 /******************************************************************************
  * Extensions
  ******************************************************************************/
-#if defined(_MSC_VER) || defined(__MINGW32__)
-typedef DWORD KDPlatformErrorVEN;
-#else
-typedef int KDPlatformErrorVEN;
-#endif
 
 #if defined(__GNUC__) || defined(__clang__)
 #   define KD_VA_START_KHR(ap, arg)    __builtin_va_start(ap, arg)
