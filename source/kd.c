@@ -7463,8 +7463,12 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
     KDVaListKHR ap;
     KD_VA_START_KHR(ap, format);
 
+#if defined(__ANDROID__)
+    result = __android_log_vprint(ANDROID_LOG_INFO, __kdAppName(KD_NULL), format, ap);
+#else
     KDchar buf[STB_SPRINTF_MIN];
     result = stbsp_vsprintfcb(&__kdLogMessagefCallback, KD_NULL, buf, format, ap);
+#endif
 
     KD_VA_END_KHR(ap);
     return result;
