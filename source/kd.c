@@ -7474,6 +7474,32 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
     return result;
 }
 
+/* kdSscanfKHR, kdVsscanfKHR: Read formatted input from a buffer. */
+KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ...)
+{
+    /* TODO: Implement */
+    return KD_EOF;
+}
+
+KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, KDVaListKHR ap)
+{
+    /* TODO: Implement */
+    return KD_EOF;
+}
+
+/* kdFscanfKHR, kdVfscanfKHR: Read formatted input from a file. */
+KD_API KDint KD_APIENTRY kdFscanfKHR(KDFile *file, const KDchar *format, ...)
+{
+    /* TODO: Implement */
+    return KD_EOF;
+}
+
+KD_API KDint KD_APIENTRY kdVfscanfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap)
+{
+    /* TODO: Implement */
+    return KD_EOF;
+}
+
 /******************************************************************************
  * OpenKODE Core extension: KD_VEN_atomic_ops
  ******************************************************************************/
