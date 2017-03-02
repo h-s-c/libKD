@@ -6399,7 +6399,7 @@ KD_API KDuint16 KD_APIENTRY kdNtohs(KD_UNUSED KDuint16 netshort)
     return (KDuint16)0;
 }
 
-/* kdInetAton: Convert a &#8220;dotted quad&#8221; format address to an integer. */
+/* kdInetAton: Convert a "dotted quad" format address to an integer. */
 KD_API KDint KD_APIENTRY kdInetAton(KD_UNUSED const KDchar *cp, KD_UNUSED KDuint32 *inp)
 {
     kdSetError(KD_EOPNOTSUPP);

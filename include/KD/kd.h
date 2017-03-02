@@ -674,7 +674,7 @@ KD_API KDuint32 KD_APIENTRY kdNtohl(KDuint32 netlong);
 /* kdNtohs: Convert a 16-bit integer from network to host byte order. */
 KD_API KDuint16 KD_APIENTRY kdNtohs(KDuint16 netshort);
 
-/* kdInetAton: Convert a &#8220;dotted quad&#8221; format address to an integer. */
+/* kdInetAton: Convert a "dotted quad" format address to an integer. */
 KD_API KDint KD_APIENTRY kdInetAton(const KDchar *cp, KDuint32 *inp);
 
 /* kdInetNtop: Convert a network address to textual form. */
