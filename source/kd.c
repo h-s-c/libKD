@@ -7087,7 +7087,8 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     KDint fd = open(pathname, O_RDONLY, 0);
     if(fd == -1)
 #elif(_WIN32)
-    HANDLE fd = FindFirstFile(pathname, (WIN32_FIND_DATA[]){0});
+    WIN32_FIND_DATA data;
+    HANDLE fd = FindFirstFile(pathname, &data);
     if(fd == INVALID_HANDLE_VALUE)
 #endif
     {
