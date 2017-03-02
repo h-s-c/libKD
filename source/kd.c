@@ -6901,14 +6901,7 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     {
         return;
     }
-#if defined(__ANDROID__)
-    __android_log_write(ANDROID_LOG_INFO, __kdAppName(KD_NULL), string);
-#elif defined(_WIN32)
-    WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), string, (DWORD)length, (DWORD[]){0}, NULL);
-#else
-    printf("%s", string);
-    fflush(stdout);
-#endif
+    kdLogMessagefKHR("%s", string);
 }
 #endif
 
@@ -7440,13 +7433,24 @@ KD_API KDint KD_APIENTRY kdVfprintfKHR(KDFile *file, const KDchar *format, KDVaL
 /* kdLogMessagefKHR: Formatted output to the platform's debug logging facility. */
 static KDchar *__kdLogMessagefCallback(KDchar *buf, void *user, KDint len)
 {
+#if defined(_WIN32)
+    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+#endif
     for(KDint i = 0; i < len; i++)
     {
+#if defined(_WIN32)
+        WriteFile(out, &buf[i], 1, (DWORD[]){0}, NULL);
+#else
         printf("%c", buf[i]);
+#endif
     }
     if(len < STB_SPRINTF_MIN)
     {
+#if defined(_WIN32)
+        FlushFileBuffers(out);
+#else
         fflush(stdout);
+#endif
         return KD_NULL;
     }
     /* Reuse buffer */
