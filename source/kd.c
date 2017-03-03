@@ -8403,7 +8403,7 @@ KD_API KDint KD_APIENTRY kdVfprintfKHR(KDFile *file, const KDchar *format, KDVaL
 }
 
 /* kdLogMessagefKHR: Formatted output to the platform's debug logging facility. */
-static KDchar *__kdLogMessagefCallback(KDchar *buf, void *user, KDint len)
+static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint len)
 {
 #if defined(_WIN32)
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -8447,26 +8447,26 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
 }
 
 /* kdSscanfKHR, kdVsscanfKHR: Read formatted input from a buffer. */
-KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ...)
+KD_API KDint KD_APIENTRY kdSscanfKHR(KD_UNUSED const KDchar *str, KD_UNUSED const KDchar *format, ...)
 {
     /* TODO: Implement */
     return KD_EOF;
 }
 
-KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, KDVaListKHR ap)
+KD_API KDint KD_APIENTRY kdVsscanfKHR(KD_UNUSED const KDchar *str, KD_UNUSED const KDchar *format, KD_UNUSED KDVaListKHR ap)
 {
     /* TODO: Implement */
     return KD_EOF;
 }
 
 /* kdFscanfKHR, kdVfscanfKHR: Read formatted input from a file. */
-KD_API KDint KD_APIENTRY kdFscanfKHR(KDFile *file, const KDchar *format, ...)
+KD_API KDint KD_APIENTRY kdFscanfKHR(KD_UNUSED KDFile *file, KD_UNUSED const KDchar *format, ...)
 {
     /* TODO: Implement */
     return KD_EOF;
 }
 
-KD_API KDint KD_APIENTRY kdVfscanfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap)
+KD_API KDint KD_APIENTRY kdVfscanfKHR(KD_UNUSED KDFile *file, KD_UNUSED const KDchar *format, KD_UNUSED KDVaListKHR ap)
 {
     /* TODO: Implement */
     return KD_EOF;
