@@ -191,19 +191,22 @@
 #elif defined(__TINYC__)  
 #   define STBI_NO_SIMD
 #endif
+#define STBD_ABS            kdAbs
+#define STBD_FABS           kdFabsKHR
+#define STBD_MEMSET         kdMemset
+#define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
-#define STB_IMAGE_STATIC
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 #define STBI_NO_LINEAR
 #define STBI_NO_HDR
 #define STBI_NO_STDIO
-#define STBI_NO_FAILURE_STRINGS
-#define STBI_ASSERT(x)      kdAssert(x)
-#define STBI_MALLOC(x)      kdMalloc(x)
-#define STBI_REALLOC(x,u)   kdRealloc(x,u)
-#define STBI_FREE(x)        kdFree(x)
+#define STBI_ASSERT         kdAssert
+#define STBI_MALLOC         kdMalloc
+#define STBI_REALLOC        kdRealloc
+#define STBI_FREE           kdFree
+#define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_SPRINTF_STATIC
