@@ -2656,7 +2656,10 @@ static void __kdCleanupThreadStorageKHR(void)
 #pragma warning(disable : 4756)
 #endif
 
-/* TODO: Cleanup */
+/* TODO: 
+   - Replace macros (see uses of __KDFloatShape)
+   - Move constants to function bodies
+*/
 static volatile KDfloat32
     twom100 = 7.8886090522e-31f, /* 2**-100=0x0d800000 */
     _tiny = 1.0e-30f,
@@ -2971,7 +2974,6 @@ typedef union {
     KDuint32 word;
 } ieee_float_shape_type;
 
-/* TODO: Replace macros (see uses of __KDFloatShape)*/
 typedef union {
     KDfloat32 f;
     KDuint32 i;
