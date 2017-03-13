@@ -93,7 +93,6 @@
 #   include <windows.h>
 #   include <wincrypt.h> /* CryptGenRandom etc. */
 #   include <direct.h> /* R_OK/W_OK/X_OK */
-#   include <malloc.h> /* _msize */
 #   include <intrin.h> /* _mm_* */
 #   ifndef inline
 #       define inline __inline /* MSVC redefinition fix */
@@ -2479,7 +2478,7 @@ KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
 #elif defined(__APPLE__)
     return malloc_size(ptr);
 #elif defined(_WIN32)
-    return _msize(ptr);
+    return HeapSize(GetProcessHeap(), 0, ptr);
 #endif
 }
 
