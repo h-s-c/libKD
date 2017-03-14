@@ -612,33 +612,43 @@ static void *__kdThreadStart(void *init)
     /* Set the thread name */
     KD_UNUSED const char *threadname = thread->attr ? thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
+    typedef HRESULT(WINAPI* SETTHREADDESCRIPTION)(HANDLE hThread, PCWSTR lpThreadDescription);
+    HMODULE kernel32 = GetModuleHandle("Kernel32.dll");
+    SETTHREADDESCRIPTION __SetThreadDescription = (SETTHREADDESCRIPTION)GetProcAddress(kernel32, "SetThreadDescription");
+    if(__SetThreadDescription)
+    {
+       __SetThreadDescription(GetCurrentThread(), threadname);
+    }
+    else
+    {
 #pragma warning(push)
 #pragma warning(disable : 4204)
 #pragma warning(disable : 6312)
 #pragma warning(disable : 6322)
 /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
 #pragma pack(push, 8)
-    struct THREADNAME_INFO {
-        KDuint32 type;       // must be 0x1000
-        const KDchar *name;  // pointer to name (in user addr space)
-        KDuint32 threadid;   // thread ID (-1=caller thread)
-        KDuint32 flags;      // reserved for future use, must be zero
-    };
+        struct THREADNAME_INFO {
+            KDuint32 type;       // must be 0x1000
+            const KDchar *name;  // pointer to name (in user addr space)
+            KDuint32 threadid;   // thread ID (-1=caller thread)
+            KDuint32 flags;      // reserved for future use, must be zero
+        };
 #pragma pack(pop)
-    struct THREADNAME_INFO info = {.type = 0x1000, .name = threadname, .threadid = GetCurrentThreadId(), .flags = 0};
-    if(IsDebuggerPresent())
-    {
-        __try
+        struct THREADNAME_INFO info = {.type = 0x1000, .name = threadname, .threadid = GetCurrentThreadId(), .flags = 0};
+        if(IsDebuggerPresent())
         {
-            RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR *)&info);
+            __try
+            {
+                RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR *)&info);
+            }
+            /* clang-format off */
+            __except(EXCEPTION_CONTINUE_EXECUTION)
+            /* clang-format on */
+            {
+            }
         }
-        /* clang-format off */
-        __except(EXCEPTION_CONTINUE_EXECUTION)
-        /* clang-format on */
-        {
-        }
-    }
 #pragma warning(pop)
+    }
 #elif defined(__linux__)
     prctl(PR_SET_NAME, (long)threadname, 0UL, 0UL, 0UL);
 #endif
