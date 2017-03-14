@@ -262,16 +262,71 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
     switch(error)
     {
         case(ERROR_ACCESS_DENIED):
+        case(ERROR_LOCK_VIOLATION):
+        case(ERROR_SHARING_VIOLATION):
+        case(ERROR_WRITE_PROTECT):
         {
             kderror = KD_EACCES;
             break;
         }
+        case(ERROR_INVALID_HANDLE):
+        {
+            kderror = KD_EBADF;
+            break;
+        }
+        case(ERROR_BUSY):
+        case(ERROR_CHILD_NOT_COMPLETE):
+        case(ERROR_PIPE_BUSY):
+        case(ERROR_PIPE_CONNECTED):
+        case(ERROR_SIGNAL_PENDING,):
+        {
+            kderror = KD_EBUSY;
+            break;
+        }
+        case(ERROR_ALREADY_EXISTS):
+        case(ERROR_DIR_NOT_EMPTY):
+        case(ERROR_FILE_EXISTS):
+        {
+            kderror = KD_EEXIST;
+            break;
+        }
+        case(ERROR_BAD_USERNAME):
+        case(ERROR_BAD_PIPE):
+        case(ERROR_INVALID_DATA):
+        case(ERROR_INVALID_PARAMETER):
+        case(ERROR_INVALID_SIGNAL_NUMBER):
+        case(ERROR_META_EXPANSION_TOO_LONG):
+        case(ERROR_NEGATIVE_SEEK):
+        case(ERROR_NO_TOKEN):
+        case(ERROR_THREAD_1_INACTIVE):
+        {
+            kderror = KD_EINVAL;
+            break;
+        }
+        case(ERROR_CRC):
+        case(ERROR_IO_DEVICE):
+        case(ERROR_NO_SIGNAL_SENT):
+        case(ERROR_OPEN_FAILED):
+        case(ERROR_SIGNAL_REFUSED):
+        case(ERROR_OPEN_FAILED):
+        {
+            kderror = KD_EIO;
+            break;
+        }
+        case(ERROR_NO_MORE_SEARCH_HANDLES):
         case(ERROR_TOO_MANY_OPEN_FILES):
         {
             kderror = KD_EMFILE;
             break;
         }
+        case(ERROR_FILENAME_EXCED_RANGE):
+        {
+            kderror = KD_ENAMETOOLONG;
+            break;
+        }
+        case(ERROR_BAD_PATHNAME):
         case(ERROR_FILE_NOT_FOUND):
+        case(ERROR_INVALID_NAME):
         case(ERROR_PATH_NOT_FOUND):
         {
             kderror = KD_ENOENT;
@@ -281,6 +336,15 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(ERROR_OUTOFMEMORY):
         {
             kderror = KD_ENOMEM;
+            break;
+        }
+        case(ERROR_END_OF_MEDIA):
+        case(ERROR_DISK_FULL):
+        case(ERROR_HANDLE_DISK_FULL):
+        case(ERROR_NO_DATA_DETECTED):
+        case(ERROR_OM_OVERFLOW):
+        {
+            kderror = KD_ENOSPC;
             break;
         }
         default:
