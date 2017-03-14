@@ -113,7 +113,6 @@
 #   endif
 #   include <sys/stat.h>
 #   include <sys/syscall.h>
-#   include <sys/utsname.h>
 #   if defined(__APPLE__) || defined(BSD)
 #       include <sys/mount.h>
 #       include <malloc/malloc.h> /* malloc_size */
@@ -471,12 +470,30 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     }
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
-#if defined(_WIN32)
+#if defined(__EMSCRIPTEN__)
+        return "Web (Emscripten)";
+#elif defined(__MINGW32__)
+        return "Windows (MinGW)";
+#elif defined(_WIN32)
         return "Windows";
-#elif defined(__unix__) || defined(__APPLE__)
-        static struct utsname name;
-        uname(&name);
-        return name.sysname;
+#elif defined(__ANDROID__)
+        return "Android";
+#elif defined(__linux__)
+        return "Linux";
+#elif defined(__APPLE__) && TARGET_OS_IPHONE
+        return "iOS";
+#elif defined(__APPLE__) && TARGET_OS_MAC
+        return "macOS";
+#elif defined(__FreeBSD__)
+        return "FreeBSD";
+#elif defined(__NetBSD__)
+        return "NetBSD";
+#elif defined(__OpenBSD__)
+        return "OpenBSD";
+#elif defined(__DragonFly__)
+        return "DragonFly BSD";
+#else 
+        return "Unknown";
 #endif
     }
     kdSetError(KD_EINVAL);
