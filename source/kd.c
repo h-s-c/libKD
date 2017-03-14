@@ -420,9 +420,8 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
 }
 
 /* kdQueryIndexedAttribcv: Obtain the value of an indexed string OpenKODE Core attribute. */
-KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribute, KD_UNUSED KDint __index)
+KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribute, KD_UNUSED KDint index)
 {
-    /* Some C implementations define an index function in string.h which leads to errors with GCC 4.6 and -Wshadow */
     kdSetError(KD_EINVAL);
     return KD_NULL;
 }

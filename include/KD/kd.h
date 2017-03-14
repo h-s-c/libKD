@@ -94,7 +94,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute);
 #define KD_ATTRIB_PLATFORM 41
 
 /* kdQueryIndexedAttribcv: Obtain the value of an indexed string OpenKODE Core attribute. */
-KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KDint attribute, KDint __index);
+KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KDint attribute, KDint index);
 
 /*******************************************************
  * Threads and synchronization
