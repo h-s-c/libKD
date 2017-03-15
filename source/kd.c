@@ -3965,7 +3965,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
     { /* |x| >= 1 */
         if(ix == 0x3f800000)
         { /* |x| == 1 */
-            return hx.f * KD_PI_2_KHR;
+            return hx.f * KD_PI_2_F;
         }                                     /* asin(+-1) = +-pi/2 with inexact */
         return (hx.f - hx.f) / (hx.f - hx.f); /* asin(|x|>1) is NaN */
     }
@@ -4605,12 +4605,12 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
         ln2_lo = 9.0580006145e-06f, /* 0x3717f7d1 */
         two25 = 3.355443200e+07f,   /* 0x4c000000 */
         /* |(log(1+s)-log(1-s))/s - Lg(s)| < 2**-34.24 (~[-4.95e-11, 4.97e-11]). */
-        Lg1 = 0xaaaaaa.0p-24f, /* 0.66666662693 */
-        Lg2 = 0xccce13.0p-25f, /* 0.40000972152 */
-        Lg3 = 0x91e9ee.0p-25f, /* 0.28498786688 */
-        Lg4 = 0xf89e26.0p-26f; /* 0.24279078841 */
+        Lg1 = 6.6666662693023682e-01f, /* 0xaaaaaa.0p-24f */
+        Lg2 = 4.0000972151756287e-01f, /* 0xccce13.0p-25f */
+        Lg3 = 2.8498786687850952e-01f, /* 0x91e9ee.0p-25f */
+        Lg4 = 2.4279078841209412e-01f; /* 0xf89e26.0p-26f */
 
-    volatile float vzero = 0.0;
+    volatile KDfloat32 vzero = 0.0;
 
     KDfloat32 hfsq, f, s, z, R, w, t1, t2, dk;
     KDint32 k, ix, i, j;
@@ -5770,7 +5770,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
     ix = hx & KDINT32_MAX;
     EXTRACT_WORDS(hy, ly, y);
     iy = hy & KDINT32_MAX;
-    if(((ix | ((lx | -lx) >> 31)) > 0x7ff00000) || ((iy | ((ly | -(KDint)ly) >> 31)) > 0x7ff00000)) /* x or y is NaN */
+    if(((ix | ((lx | -(KDint)lx) >> 31)) > 0x7ff00000) || ((iy | ((ly | -(KDint)ly) >> 31)) > 0x7ff00000)) /* x or y is NaN */
     {
         return x + y;
     }
@@ -6278,7 +6278,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdExpKHR(KDfloat64KHR x)
     {
         if(k == 1024)
         {
-            return y * 2.0 * 0x1p1023;
+            return y * 2.0 * 8.98847e+307;
         }
         return y * twopk;
     }
@@ -6911,7 +6911,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
     _mm_store_sd(&result, _mm_sqrt_sd(_mm_load_sd(&result), _mm_load_sd(&x)));
     return result;
 #else
-    const KDfloat64KHR one = 1.0;
     const KDfloat64KHR tiny = 1.0e-300;
     KDfloat64KHR z;
     KDint32 sign = (KDint)0x80000000;
@@ -7254,7 +7253,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
 KD_API KDfloat64KHR KD_APIENTRY kdRoundKHR(KDfloat64KHR x)
 {
 #ifdef __SSE4_1__
-    KDfloat32 result = 0.0f;
+    KDfloat64KHR result = 0.0f;
     _mm_store_sd(&result, _mm_round_sd(_mm_load_sd(&result), _mm_load_sd(&x), _MM_FROUND_TO_NEAREST_INT));
     return result;
 #else
@@ -7313,7 +7312,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
     hy &= KDINT32_MAX;    /* |y| */
 
     /* purge off exception values */
-    if((hy | ly) == 0 || (hx >= 0x7ff00000) ||    /* y=0,or x not finite */
+    if((hy | ly) == 0 || (hx >= 0x7ff00000) ||           /* y=0,or x not finite */
         ((hy | ((ly | -(KDint)ly) >> 31)) > 0x7ff00000)) /* or y is NaN */
     {
         return (x * y) / (x * y);
