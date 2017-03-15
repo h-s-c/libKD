@@ -277,7 +277,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(ERROR_CHILD_NOT_COMPLETE):
         case(ERROR_PIPE_BUSY):
         case(ERROR_PIPE_CONNECTED):
-        case(ERROR_SIGNAL_PENDING,):
+        case(ERROR_SIGNAL_PENDING):
         {
             kderror = KD_EBUSY;
             break;
