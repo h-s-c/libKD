@@ -305,7 +305,6 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(ERROR_CRC):
         case(ERROR_IO_DEVICE):
         case(ERROR_NO_SIGNAL_SENT):
-        case(ERROR_OPEN_FAILED):
         case(ERROR_SIGNAL_REFUSED):
         case(ERROR_OPEN_FAILED):
         {
@@ -341,7 +340,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(ERROR_DISK_FULL):
         case(ERROR_HANDLE_DISK_FULL):
         case(ERROR_NO_DATA_DETECTED):
-        case(ERROR_OM_OVERFLOW):
+        case(ERROR_EOM_OVERFLOW):
         {
             kderror = KD_ENOSPC;
             break;
@@ -617,7 +616,10 @@ static void *__kdThreadStart(void *init)
     SETTHREADDESCRIPTION __SetThreadDescription = (SETTHREADDESCRIPTION)GetProcAddress(kernel32, "SetThreadDescription");
     if(__SetThreadDescription)
     {
-        __SetThreadDescription(GetCurrentThread(), threadname);
+        KDint size = MultiByteToWideChar(0, 0, threadname, -1, NULL, 0);
+        WCHAR *buffer = (WCHAR *)kdMalloc(sizeof(WCHAR) * size);
+        MultiByteToWideChar(0, 0, threadname, -1, buffer, size);
+        __SetThreadDescription(GetCurrentThread(), (const WCHAR *)buffer);
     }
     else
     {
@@ -2863,10 +2865,10 @@ static inline KDfloat32 __kdCosdfKernel(KDfloat64KHR x)
 {
     /* |cos(x) - c(x)| < 2**-34.1 (~[-5.37e-11, 5.295e-11]). */
     const KDfloat64KHR
-        C0 = -0x1ffffffd0c5e81.0p-54, /* -0.499999997251031003120 */
-        C1 = 0x155553e1053a42.0p-57,  /*  0.0416666233237390631894 */
-        C2 = -0x16c087e80f1e27.0p-62, /* -0.00138867637746099294692 */
-        C3 = 0x199342e0ee5069.0p-68;  /*  0.0000243904487962774090654 */
+        C0 = -4.9999999725103100e-01, /* -0x1ffffffd0c5e81.0p-54 */
+        C1 = 4.1666623323739063e-02,  /*  0x155553e1053a42.0p-57 */
+        C2 = -1.3886763774609929e-03, /* -0x16c087e80f1e27.0p-62 */
+        C3 = 2.4390448796277409e-05;  /*  0x199342e0ee5069.0p-68 */
 
     KDfloat64KHR r, w, z;
     /* Try to optimize for parallel evaluation. */
@@ -2880,10 +2882,10 @@ static inline KDfloat32 __kdSindfKernel(KDfloat64KHR x)
 {
     /* |sin(x)/x - s(x)| < 2**-37.5 (~[-4.89e-12, 4.824e-12]). */
     const KDfloat64KHR
-        S1 = -0x15555554cbac77.0p-55, /* -0.166666666416265235595 */
-        S2 = 0x111110896efbb2.0p-59,  /*  0.0083333293858894631756 */
-        S3 = -0x1a00f9e2cae774.0p-65, /* -0.000198393348360966317347 */
-        S4 = 0x16cd878c3b46a7.0p-71;  /*  0.0000027183114939898219064 */
+        S1 = -1.6666666641626524e-01, /* -0x15555554cbac77.0p-55 */
+        S2 = 8.3333293858894632e-03,  /* 0x111110896efbb2.0p-59 */
+        S3 = -1.9839334836096632e-04, /* -0x1a00f9e2cae774.0p-65 */
+        S4 = 2.7183114939898219e-06;  /* 0x16cd878c3b46a7.0p-71 */
 
     KDfloat64KHR r, s, w, z;
     /* Try to optimize for parallel evaluation. */
@@ -3171,10 +3173,10 @@ KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
 static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
 {
     static const KDfloat32
-        two25 = 3.355443200e+07,   /* 0x4c000000 */
-        twom25 = 2.9802322388e-08, /* 0x33000000 */
-        huge = 1.0e+30,
-        tiny = 1.0e-30;
+        two25 = 3.355443200e+07f,   /* 0x4c000000 */
+        twom25 = 2.9802322388e-08f, /* 0x33000000 */
+        huge = 1.0e+30f,
+        tiny = 1.0e-30f;
 
     __KDFloatShape ix = {x};
     KDint32 k;
@@ -3802,13 +3804,13 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
     if(ix < 0x413921fb || medium)
     { /* |x| ~< 2^20*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        fn = x * invpio2 + 0x1.8p52;
-        fn = fn - 0x1.8p52;
+        fn = x * invpio2 + 6.7553994410557440e+15;
+        fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
         r = x - fn * pio2_1;
         w = fn * pio2_1t; /* 1st round good to 85 bit */
         {
-            u_int32_t high;
+            KDuint32 high;
             j = ix >> 20;
             y[0] = r - w;
             GET_HIGH_WORD(high, y[0]);
@@ -3878,12 +3880,12 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
 KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
 {
     volatile KDfloat32
-        pio2_lo = 7.5497894159e-08; /* 0x33a22168 */
+        pio2_lo = 7.5497894159e-08f; /* 0x33a22168 */
     const KDfloat32
-        pS0 = 1.6666586697e-01,
-        pS1 = -4.2743422091e-02,
-        pS2 = -8.6563630030e-03,
-        qS1 = -7.0662963390e-01;
+        pS0 = 1.6666586697e-01f,
+        pS1 = -4.2743422091e-02f,
+        pS2 = -8.6563630030e-03f,
+        qS1 = -7.0662963390e-01f;
 
     __KDFloatShape hx = {x};
     KDfloat32 z, p, q, r, w, s, c;
@@ -3947,12 +3949,12 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
 KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
 {
     const KDfloat32
-        huge = 1.000e+30,
+        huge = 1.000e+30f,
         /* coefficient for R(x^2) */
-        pS0 = 1.6666586697e-01,
-        pS1 = -4.2743422091e-02,
-        pS2 = -8.6563630030e-03,
-        qS1 = -7.0662963390e-01;
+        pS0 = 1.6666586697e-01f,
+        pS1 = -4.2743422091e-02f,
+        pS2 = -8.6563630030e-03f,
+        qS1 = -7.0662963390e-01f;
 
     __KDFloatShape hx = {x};
     KDfloat32 t, w, p, q, s;
@@ -4004,28 +4006,28 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
 KD_API KDfloat32 KD_APIENTRY kdAtanf(KDfloat32 x)
 {
     const KDfloat32 atanhi[] = {
-        4.6364760399e-01, /* atan(0.5)hi 0x3eed6338 */
-        7.8539812565e-01, /* atan(1.0)hi 0x3f490fda */
-        9.8279368877e-01, /* atan(1.5)hi 0x3f7b985e */
-        1.5707962513e+00, /* atan(inf)hi 0x3fc90fda */
+        4.6364760399e-01f, /* atan(0.5)hi 0x3eed6338 */
+        7.8539812565e-01f, /* atan(1.0)hi 0x3f490fda */
+        9.8279368877e-01f, /* atan(1.5)hi 0x3f7b985e */
+        1.5707962513e+00f, /* atan(inf)hi 0x3fc90fda */
     };
 
     const KDfloat32 atanlo[] = {
-        5.0121582440e-09, /* atan(0.5)lo 0x31ac3769 */
-        3.7748947079e-08, /* atan(1.0)lo 0x33222168 */
-        3.4473217170e-08, /* atan(1.5)lo 0x33140fb4 */
-        7.5497894159e-08, /* atan(inf)lo 0x33a22168 */
+        5.0121582440e-09f, /* atan(0.5)lo 0x31ac3769 */
+        3.7748947079e-08f, /* atan(1.0)lo 0x33222168 */
+        3.4473217170e-08f, /* atan(1.5)lo 0x33140fb4 */
+        7.5497894159e-08f, /* atan(inf)lo 0x33a22168 */
     };
 
     const KDfloat32 aT[] = {
-        3.3333328366e-01,
-        -1.9999158382e-01,
-        1.4253635705e-01,
-        -1.0648017377e-01,
-        6.1687607318e-02,
+        3.3333328366e-01f,
+        -1.9999158382e-01f,
+        1.4253635705e-01f,
+        -1.0648017377e-01f,
+        6.1687607318e-02f,
     };
 
-    const KDfloat32 huge = 1.0e30;
+    const KDfloat32 huge = 1.0e30f;
     KDfloat32 w, s1, s2, z;
     KDint32 ix, hx, id;
     GET_FLOAT_WORD(hx, x);
@@ -4107,8 +4109,8 @@ KD_API KDfloat32 KD_APIENTRY kdAtanf(KDfloat32 x)
 KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
 {
     volatile KDfloat32
-        tiny = 1.0e-30,
-        pi_lo = -8.7422776573e-08; /* 0xb3bbbd2e */
+        tiny = 1.0e-30f,
+        pi_lo = -8.7422776573e-08f; /* 0xb3bbbd2e */
 
     KDfloat32 z;
     KDint32 k, m, hx, hy, ix, iy;
@@ -4483,29 +4485,29 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
 {
     const KDfloat32
         halF[2] = {
-            0.5, -0.5,
+            0.5f, -0.5f,
         },
-        o_threshold = 8.8721679688e+01,  /* 0x42b17180 */
-        u_threshold = -1.0397208405e+02, /* 0xc2cff1b5 */
+        o_threshold = 8.8721679688e+01f,  /* 0x42b17180 */
+        u_threshold = -1.0397208405e+02f, /* 0xc2cff1b5 */
         ln2HI[2] = {
-            6.9314575195e-01, /* 0x3f317200 */
-            -6.9314575195e-01,
+            6.9314575195e-01f, /* 0x3f317200 */
+            -6.9314575195e-01f,
         }, /* 0xbf317200 */
         ln2LO[2] = {
-            1.4286067653e-06, /* 0x35bfbe8e */
-            -1.4286067653e-06,
-        },                         /* 0xb5bfbe8e */
-        invln2 = 1.4426950216e+00, /* 0x3fb8aa3b */
+            1.4286067653e-06f, /* 0x35bfbe8e */
+            -1.4286067653e-06f,
+        },                          /* 0xb5bfbe8e */
+        invln2 = 1.4426950216e+00f, /* 0x3fb8aa3b */
         /*
          * Domain [-0.34568, 0.34568], range ~[-4.278e-9, 4.447e-9]:
          * |x*(exp(x)+1)/(exp(x)-1) - p(x)| < 2**-27.74
          */
-        P1 = 1.6666625440e-1,  /*  0xaaaa8f.0p-26 */
-        P2 = -2.7667332906e-3; /* -0xb55215.0p-32 */
+        P1 = 1.6666625440e-1f,  /*  0xaaaa8f.0p-26 */
+        P2 = -2.7667332906e-3f; /* -0xb55215.0p-32 */
 
     volatile KDfloat32
-        huge = 1.0e+30,
-        twom100 = 7.8886090522e-31; /* 2**-100=0x0d800000 */
+        huge = 1.0e+30f,
+        twom100 = 7.8886090522e-31f; /* 2**-100=0x0d800000 */
 
     KDfloat32 y, hi = 0.0f, lo = 0.0f, c, t, twopk;
     KDint32 k = 0, xsb;
@@ -4599,14 +4601,14 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
 KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
 {
     const KDfloat32
-        ln2_hi = 6.9313812256e-01, /* 0x3f317180 */
-        ln2_lo = 9.0580006145e-06, /* 0x3717f7d1 */
-        two25 = 3.355443200e+07,   /* 0x4c000000 */
+        ln2_hi = 6.9313812256e-01f, /* 0x3f317180 */
+        ln2_lo = 9.0580006145e-06f, /* 0x3717f7d1 */
+        two25 = 3.355443200e+07f,   /* 0x4c000000 */
         /* |(log(1+s)-log(1-s))/s - Lg(s)| < 2**-34.24 (~[-4.95e-11, 4.97e-11]). */
-        Lg1 = 0xaaaaaa.0p-24, /* 0.66666662693 */
-        Lg2 = 0xccce13.0p-25, /* 0.40000972152 */
-        Lg3 = 0x91e9ee.0p-25, /* 0.28498786688 */
-        Lg4 = 0xf89e26.0p-26; /* 0.24279078841 */
+        Lg1 = 0xaaaaaa.0p-24f, /* 0.66666662693 */
+        Lg2 = 0xccce13.0p-25f, /* 0.40000972152 */
+        Lg3 = 0x91e9ee.0p-25f, /* 0.28498786688 */
+        Lg4 = 0xf89e26.0p-26f; /* 0.24279078841 */
 
     volatile float vzero = 0.0;
 
@@ -4713,39 +4715,39 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
 {
     static const KDfloat32
         bp[] = {
-            1.0, 1.5,
+            1.0f, 1.5f,
         },
         dp_h[] = {
-            0.0, 5.84960938e-01,
+            0.0f, 5.84960938e-01f,
         }, /* 0x3f15c000 */
         dp_l[] = {
-            0.0, 1.56322085e-06,
-        },                  /* 0x35d1cfdc */
-        two24 = 16777216.0, /* 0x4b800000 */
-        huge = 1.0e30,
-        tiny = 1.0e-30,
+            0.0f, 1.56322085e-06f,
+        },                   /* 0x35d1cfdc */
+        two24 = 16777216.0f, /* 0x4b800000 */
+        huge = 1.0e30f,
+        tiny = 1.0e-30f,
         /* poly coefs for (3/2)*(log(x)-2s-2/3*s**3 */
-        L1 = 6.0000002384e-01,      /* 0x3f19999a */
-        L2 = 4.2857143283e-01,      /* 0x3edb6db7 */
-        L3 = 3.3333334327e-01,      /* 0x3eaaaaab */
-        L4 = 2.7272811532e-01,      /* 0x3e8ba305 */
-        L5 = 2.3066075146e-01,      /* 0x3e6c3255 */
-        L6 = 2.0697501302e-01,      /* 0x3e53f142 */
-        P1 = 1.6666667163e-01,      /* 0x3e2aaaab */
-        P2 = -2.7777778450e-03,     /* 0xbb360b61 */
-        P3 = 6.6137559770e-05,      /* 0x388ab355 */
-        P4 = -1.6533901999e-06,     /* 0xb5ddea0e */
-        P5 = 4.1381369442e-08,      /* 0x3331bb4c */
-        lg2 = 6.9314718246e-01,     /* 0x3f317218 */
-        lg2_h = 6.93145752e-01,     /* 0x3f317200 */
-        lg2_l = 1.42860654e-06,     /* 0x35bfbe8c */
-        ovt = 4.2995665694e-08,     /* -(128-log2(ovfl+.5ulp)) */
-        cp = 9.6179670095e-01,      /* 0x3f76384f =2/(3ln2) */
-        cp_h = 9.6191406250e-01,    /* 0x3f764000 =12b cp */
-        cp_l = -1.1736857402e-04,   /* 0xb8f623c6 =tail of cp_h */
-        ivln2 = 1.4426950216e+00,   /* 0x3fb8aa3b =1/ln2 */
-        ivln2_h = 1.4426879883e+00, /* 0x3fb8aa00 =16b 1/ln2*/
-        ivln2_l = 7.0526075433e-06; /* 0x36eca570 =1/ln2 tail*/
+        L1 = 6.0000002384e-01f,      /* 0x3f19999a */
+        L2 = 4.2857143283e-01f,      /* 0x3edb6db7 */
+        L3 = 3.3333334327e-01f,      /* 0x3eaaaaab */
+        L4 = 2.7272811532e-01f,      /* 0x3e8ba305 */
+        L5 = 2.3066075146e-01f,      /* 0x3e6c3255 */
+        L6 = 2.0697501302e-01f,      /* 0x3e53f142 */
+        P1 = 1.6666667163e-01f,      /* 0x3e2aaaab */
+        P2 = -2.7777778450e-03f,     /* 0xbb360b61 */
+        P3 = 6.6137559770e-05f,      /* 0x388ab355 */
+        P4 = -1.6533901999e-06f,     /* 0xb5ddea0e */
+        P5 = 4.1381369442e-08f,      /* 0x3331bb4c */
+        lg2 = 6.9314718246e-01f,     /* 0x3f317218 */
+        lg2_h = 6.93145752e-01f,     /* 0x3f317200 */
+        lg2_l = 1.42860654e-06f,     /* 0x35bfbe8c */
+        ovt = 4.2995665694e-08f,     /* -(128-log2(ovfl+.5ulp)) */
+        cp = 9.6179670095e-01f,      /* 0x3f76384f =2/(3ln2) */
+        cp_h = 9.6191406250e-01f,    /* 0x3f764000 =12b cp */
+        cp_l = -1.1736857402e-04f,   /* 0xb8f623c6 =tail of cp_h */
+        ivln2 = 1.4426950216e+00f,   /* 0x3fb8aa3b =1/ln2 */
+        ivln2_h = 1.4426879883e+00f, /* 0x3fb8aa00 =16b 1/ln2*/
+        ivln2_l = 7.0526075433e-06f; /* 0x36eca570 =1/ln2 tail*/
 
     KDfloat32 z, ax, z_h, z_l, p_h, p_l;
     KDfloat32 y1, t1, t2, r, s, sn, t, u, v, w;
@@ -5122,7 +5124,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
     _mm_store_ss(&result, _mm_ceil_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
     return result;
 #else
-    const KDfloat32 huge = 1.000e+30f;
+    const KDfloat32 huge = 1.0e30f;
     KDint32 i0, j0;
     KDuint32 i;
 
@@ -5185,7 +5187,7 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
     _mm_store_ss(&result, _mm_floor_ss(_mm_load_ss(&result), _mm_load_ss(&x)));
     return result;
 #else
-    const KDfloat32 huge = 1.000e+30f;
+    const KDfloat32 huge = 1.0e30f;
     KDint32 i0, j0;
     KDuint32 i;
 
@@ -5293,7 +5295,7 @@ KD_API KDfloat32 KD_APIENTRY kdInvsqrtf(KDfloat32 x)
 KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
 {
     const KDfloat32 Zero[] = {
-        0.0, -0.0,
+        0.0f, -0.0f,
     };
     KDint32 n, hx, hy, hz, ix, iy, sx, i;
 
@@ -5554,7 +5556,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
     ix = hx & 0x7fffffff;
     if(ix >= 0x3ff00000)
     { /* |x|>= 1 */
-        u_int32_t lx;
+        KDuint32 lx;
         GET_LOW_WORD(lx, x);
         if(((ix - 0x3ff00000) | lx) == 0)
         {
@@ -5768,7 +5770,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
     ix = hx & KDINT32_MAX;
     EXTRACT_WORDS(hy, ly, y);
     iy = hy & KDINT32_MAX;
-    if(((ix | ((lx | -lx) >> 31)) > 0x7ff00000) || ((iy | ((ly | -ly) >> 31)) > 0x7ff00000)) /* x or y is NaN */
+    if(((ix | ((lx | -lx) >> 31)) > 0x7ff00000) || ((iy | ((ly | -(KDint)ly) >> 31)) > 0x7ff00000)) /* x or y is NaN */
     {
         return x + y;
     }
@@ -7312,7 +7314,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
 
     /* purge off exception values */
     if((hy | ly) == 0 || (hx >= 0x7ff00000) ||    /* y=0,or x not finite */
-        ((hy | ((ly | -ly) >> 31)) > 0x7ff00000)) /* or y is NaN */
+        ((hy | ((ly | -(KDint)ly) >> 31)) > 0x7ff00000)) /* or y is NaN */
     {
         return (x * y) / (x * y);
     }
