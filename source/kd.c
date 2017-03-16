@@ -9517,8 +9517,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     image->levels = 0;
 
     KDStat st;
-    KDint error = kdStat(pathname, &st);
-    if(error == -1)
+    if(kdStat(pathname, &st) == -1)
     {
         kdFree(image);
         kdSetError(KD_EIO);
@@ -9556,7 +9555,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
 
     KDint channels = 0;
-    error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
+    KDint error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
     if(error == 0)
     {
         kdFree(image);
@@ -9635,8 +9634,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     image->levels = 0;
 
     KDStat st;
-    KDint error = kdFstat(file, &st);
-    if(error == -1)
+    if( kdFstat(file, &st) == -1)
     {
         kdFree(image);
         kdSetError(KD_EIO);
@@ -9645,16 +9643,14 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     image->size = (KDsize)st.st_size;
 
     void *filedata = kdMalloc(image->size);
-    error = (KDint)kdFread(filedata, image->size, 1, file);
-    if(error != 1)
+    if(kdFread(filedata, image->size, 1, file) != 1)
     {
         kdFree(image);
         kdSetError(KD_EIO);
         return KD_NULL;
     }
 
-    error = kdFseek(file, 0, KD_SEEK_SET);
-    if(error == -1)
+    if(kdFseek(file, 0, KD_SEEK_SET) == -1)
     {
         kdFree(image);
         kdSetError(KD_EIO);
@@ -9925,10 +9921,14 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
 }
 
 /* kdSscanfKHR, kdVsscanfKHR: Read formatted input from a buffer. */
-KD_API KDint KD_APIENTRY kdSscanfKHR(KD_UNUSED const KDchar *str, KD_UNUSED const KDchar *format, ...)
+KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ...)
 {
-    /* TODO: Implement */
-    return KD_EOF;
+    KDint result = 0;
+    KDVaListKHR ap;
+    KD_VA_START_KHR(ap, format);
+    result =  kdVsscanfKHR(str, format, ap);
+    KD_VA_END_KHR(ap);
+    return result;
 }
 
 KD_API KDint KD_APIENTRY kdVsscanfKHR(KD_UNUSED const KDchar *str, KD_UNUSED const KDchar *format, KD_UNUSED KDVaListKHR ap)
@@ -9938,16 +9938,39 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(KD_UNUSED const KDchar *str, KD_UNUSED con
 }
 
 /* kdFscanfKHR, kdVfscanfKHR: Read formatted input from a file. */
-KD_API KDint KD_APIENTRY kdFscanfKHR(KD_UNUSED KDFile *file, KD_UNUSED const KDchar *format, ...)
+KD_API KDint KD_APIENTRY kdFscanfKHR(KDFile *file, const KDchar *format, ...)
 {
-    /* TODO: Implement */
-    return KD_EOF;
+    KDint result = 0;
+    KDVaListKHR ap;
+    KD_VA_START_KHR(ap, format);
+    result = kdVfscanfKHR(file, format, ap);
+    KD_VA_END_KHR(ap);
+    return result;
 }
 
-KD_API KDint KD_APIENTRY kdVfscanfKHR(KD_UNUSED KDFile *file, KD_UNUSED const KDchar *format, KD_UNUSED KDVaListKHR ap)
+KD_API KDint KD_APIENTRY kdVfscanfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap)
 {
-    /* TODO: Implement */
-    return KD_EOF;
+    KDStat st;
+    if(kdFstat(file, &st) == -1)
+    {
+        kdSetError(KD_EIO);
+        return KD_EOF;
+    }
+    KDsize size = (KDsize)st.st_size;
+    void *buffer = kdMalloc(size);
+    if(buffer == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_EOF;
+    }
+    if(kdFread(buffer, size, 1, file) != 1)
+    {
+        kdSetError(KD_EIO);
+        return KD_EOF;
+    }
+    KDint retval = kdVsscanfKHR((const KDchar *)buffer, format, ap);
+    kdFree(buffer);
+    return retval;
 }
 
 /******************************************************************************
