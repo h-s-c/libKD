@@ -616,10 +616,9 @@ static void *__kdThreadStart(void *init)
     SETTHREADDESCRIPTION __SetThreadDescription = (SETTHREADDESCRIPTION)GetProcAddress(kernel32, "SetThreadDescription");
     if(__SetThreadDescription)
     {
-        KDint size = MultiByteToWideChar(0, 0, threadname, -1, NULL, 0);
-        WCHAR *buffer = (WCHAR *)kdMalloc(sizeof(WCHAR) * size);
-        MultiByteToWideChar(0, 0, threadname, -1, buffer, size);
-        __SetThreadDescription(GetCurrentThread(), (const WCHAR *)buffer);
+        WCHAR wthreadname[256] = L"KDThread";
+        MultiByteToWideChar(0, 0, threadname, -1, wthreadname, 256); 
+        __SetThreadDescription(GetCurrentThread(), (const WCHAR *)wthreadname);
     }
     else
     {
