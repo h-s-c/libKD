@@ -166,16 +166,16 @@
 #endif
 
 #if defined(_MSC_VER)
-    typedef __int16                 KDint16;
+    typedef signed   __int16        KDint16;
     typedef unsigned __int16        KDuint16;
-    typedef __int32                 KDint32;
+    typedef signed   __int32        KDint32;
     typedef unsigned __int32        KDuint32;
-    typedef __int64                 KDint64;
+    typedef signed   __int64        KDint64;
     typedef unsigned __int64        KDuint64;
 #else
-    typedef short                   KDint16;
+    typedef signed   short          KDint16;
     typedef unsigned short          KDuint16;
-    typedef int                     KDint32;
+    typedef signed   int            KDint32;
     typedef unsigned int            KDuint32;
     typedef signed   long long      KDint64;
     typedef unsigned long long      KDuint64;
