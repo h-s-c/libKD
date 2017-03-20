@@ -617,7 +617,7 @@ static void *__kdThreadStart(void *init)
     if(__SetThreadDescription)
     {
         WCHAR wthreadname[256] = L"KDThread";
-        MultiByteToWideChar(0, 0, threadname, -1, wthreadname, 256); 
+        MultiByteToWideChar(0, 0, threadname, -1, wthreadname, 256);
         __SetThreadDescription(GetCurrentThread(), (const WCHAR *)wthreadname);
     }
     else
@@ -4727,8 +4727,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
             0.0f, 1.56322085e-06f,
         },                   /* 0x35d1cfdc */
         two24 = 16777216.0f, /* 0x4b800000 */
-        huge = 1.0e30f,
-        tiny = 1.0e-30f,
+        huge = 1.0e30f, tiny = 1.0e-30f,
         /* poly coefs for (3/2)*(log(x)-2s-2/3*s**3 */
         L1 = 6.0000002384e-01f,      /* 0x3f19999a */
         L2 = 4.2857143283e-01f,      /* 0x3edb6db7 */
@@ -6497,9 +6496,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         }, /* 0x3FE2B803, 0x40000000 */
         dp_l[] = {
             0.0, 1.35003920212974897128e-08,
-        }, /* 0x3E4CFDEB, 0x43CFD006 */
-        zero = 0.0,
-        one = 1.0, two = 2.0, two53 = 9007199254740992.0, /* 0x43400000, 0x00000000 */
+        },                          /* 0x3E4CFDEB, 0x43CFD006 */
+        two53 = 9007199254740992.0, /* 0x43400000, 0x00000000 */
         huge = 1.0e300, tiny = 1.0e-300,
         /* poly coefs for (3/2)*(log(x)-2s-2/3*s**3 */
         L1 = 5.99999999999994648725e-01,      /* 0x3FE33333, 0x33333303 */
@@ -6538,13 +6536,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     /* y==zero: x**0 = 1 */
     if((iy | ly) == 0)
     {
-        return one;
+        return 1.0;
     }
 
     /* x==1: 1**y = 1, even if y is NaN */
     if(hx == 0x3ff00000 && lx == 0)
     {
-        return one;
+        return 1.0;
     }
 
     /* y!=zero: result is NaN if either arg is NaN */
@@ -6594,22 +6592,22 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         { /* y is +-inf */
             if(((ix - 0x3ff00000) | lx) == 0)
             {
-                return one; /* (-1)**+-inf is 1 */
+                return 1.0; /* (-1)**+-inf is 1 */
             }
             else if(ix >= 0x3ff00000) /* (|x|>1)**+-inf = inf,0 */
             {
-                return (hy >= 0) ? y : zero;
+                return (hy >= 0) ? y : 0.0;
             }
             else /* (|x|<1)**-,+inf = inf,0 */
             {
-                return (hy < 0) ? -y : zero;
+                return (hy < 0) ? -y : 0.0;
             }
         }
         if(iy == 0x3ff00000)
         { /* y is  +-1 */
             if(hy < 0)
             {
-                return one / x;
+                return 1.0 / x;
             }
             else
             {
@@ -6638,7 +6636,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
             z = ax; /*x is +-0,+-inf,+-1*/
             if(hy < 0)
             {
-                z = one / z; /* z = (1/|x|) */
+                z = 1.0 / z; /* z = (1/|x|) */
             }
             if(hx < 0)
             {
@@ -6663,10 +6661,10 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         return (x - x) / (x - x);
     }
 
-    s = one; /* s (sign of result -ve**odd) = -1 else = 1 */
+    s = 1.0; /* s (sign of result -ve**odd) = -1 else = 1 */
     if((n | (yisint - 1)) == 0)
     {
-        s = -one; /* (-ve)**(odd int) */
+        s = -1.0; /* (-ve)**(odd int) */
     }
 
     /* |y| is huge */
@@ -6694,7 +6692,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         }
         /* now |1-x| is tiny <= 2**-20, suffice to compute 
        log(x) by x-x^2/2+x^3/3-x^4/4 */
-        t = ax - one; /* t has 20 trailing zeros */
+        t = ax - 1.0; /* t has 20 trailing zeros */
         w = (t * t) * (0.5 - t * (0.3333333333333333333333 - t * 0.25));
         u = ivln2_h * t; /* ivln2_h has 21 sig. bits */
         v = t * ivln2_l - w * ivln2;
@@ -6735,12 +6733,12 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
 
         /* compute ss = s_h+s_l = (x-1)/(x+1) or (x-1.5)/(x+1.5) */
         u = ax - bp[k]; /* bp[0]=1.0, bp[1]=1.5 */
-        v = one / (ax + bp[k]);
+        v = 1.0 / (ax + bp[k]);
         ss = u * v;
         s_h = ss;
         SET_LOW_WORD(s_h, 0);
         /* t_h=ax+bp[k] High */
-        t_h = zero;
+        t_h = 0.0;
         SET_HIGH_WORD(t_h, ((ix >> 1) | 0x20000000) + 0x00080000 + (k << 18));
         t_l = ax - (t_h - bp[k]);
         s_l = v * ((u - s_h * t_h) - s_h * t_l);
@@ -6813,7 +6811,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     { /* if |z| > 0.5, set n = [z+0.5] */
         n = j + (0x00100000 >> (k + 1));
         k = ((n & 0x7fffffff) >> 20) - 0x3ff; /* new k for n */
-        t = zero;
+        t = 0.0;
         SET_HIGH_WORD(t, n & ~(0x000fffff >> k));
         n = ((n & 0x000fffff) | 0x00100000) >> (20 - k);
         if(j < 0)
@@ -6830,8 +6828,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     w = v - (z - u);
     t = z * z;
     t1 = z - t * (P1 + t * (P2 + t * (P3 + t * (P4 + t * P5))));
-    r = (z * t1) / (t1 - two) - (w + z * w);
-    z = one - (r - z);
+    r = (z * t1) / (t1 - 2.0) - (w + z * w);
+    z = 1.0 - (r - z);
     GET_HIGH_WORD(j, z);
     j += (n << 20);
     if((j >> 20) <= 0)
@@ -9637,7 +9635,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     image->levels = 0;
 
     KDStat st;
-    if( kdFstat(file, &st) == -1)
+    if(kdFstat(file, &st) == -1)
     {
         kdFree(image);
         kdSetError(KD_EIO);
@@ -9929,7 +9927,7 @@ KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ..
     KDint result = 0;
     KDVaListKHR ap;
     KD_VA_START_KHR(ap, format);
-    result =  kdVsscanfKHR(str, format, ap);
+    result = kdVsscanfKHR(str, format, ap);
     KD_VA_END_KHR(ap);
     return result;
 }
@@ -10005,6 +10003,11 @@ struct KDAtomicPtrVEN {
 KD_API KDAtomicIntVEN *KD_APIENTRY kdAtomicIntCreateVEN(KDint value)
 {
     KDAtomicIntVEN *object = (KDAtomicIntVEN *)kdMalloc(sizeof(KDAtomicIntVEN));
+    if(object == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, value);
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
@@ -10019,6 +10022,11 @@ KD_API KDAtomicIntVEN *KD_APIENTRY kdAtomicIntCreateVEN(KDint value)
 KD_API KDAtomicPtrVEN *KD_APIENTRY kdAtomicPtrCreateVEN(void *value)
 {
     KDAtomicPtrVEN *object = (KDAtomicPtrVEN *)kdMalloc(sizeof(KDAtomicPtrVEN));
+    if(object == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, (KDuintptr)value);
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
