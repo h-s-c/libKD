@@ -672,7 +672,7 @@ static KDThread *__kdThreadInit(void)
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-    thread->eventqueue = kdQueueCreateVEN(100);
+    thread->eventqueue = kdQueueCreateVEN(64);
     if(thread->eventqueue == KD_NULL)
     {
         kdFree(thread);
@@ -1226,7 +1226,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
     kdPumpEvents();
     if(kdQueueSizeVEN(eventqueue) > 0)
     {
-        lastevent = (KDEvent *)kdQueuePopHeadVEN(eventqueue);
+        lastevent = (KDEvent *)kdQueuePullVEN(eventqueue);
     }
     else
     {
@@ -1339,7 +1339,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
     for(KDuint i = 0; i < queuesize; i++)
     {
-        KDEvent *callbackevent = kdQueuePopHeadVEN(kdThreadSelf()->eventqueue);
+        KDEvent *callbackevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
         if(callbackevent != KD_NULL)
         {
             if(!__kdExecCallback(callbackevent))
@@ -1747,7 +1747,11 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     {
         event->timestamp = kdGetTimeUST();
     }
-    kdQueuePushTailVEN(thread->eventqueue, (void *)event);
+    KDint error = kdQueuePushVEN(thread->eventqueue, (void *)event);
+    if(error == -1)
+    {
+        kdAssert(0);
+    }
     return 0;
 }
 
@@ -10200,149 +10204,134 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
 }
 
 /******************************************************************************
- * OpenKODE Core extension: KD_VEN_concurrent_queue
+ * OpenKODE Core extension: KD_VEN_queue
+ *
+ * Notes:
+ * - Based on http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
  ******************************************************************************/
 
-typedef struct __KDQueueNode __KDQueueNode;
-struct __KDQueueNode {
-    __KDQueueNode *next;
-    __KDQueueNode *prev;
-    void *value;
+typedef struct __kdQueueCell __kdQueueCell;
+struct __kdQueueCell {
+    KDAtomicIntVEN *sequence;
+    void *data;
 };
 
 struct KDQueueVEN {
-    KDThreadMutex *mutex;
-    __KDQueueNode *head;
-    __KDQueueNode *tail;
-    KDsize size;
+    KDsize buffer_mask;
+    __kdQueueCell *buffer;
+    KDAtomicIntVEN *tail;
+    KDAtomicIntVEN *head;
 };
 
-KD_API KDQueueVEN *KD_APIENTRY kdQueueCreateVEN(KD_UNUSED KDsize maxsize)
+KD_API KDQueueVEN *KD_APIENTRY kdQueueCreateVEN(KDsize size)
 {
+    kdAssert((size >= 2) && ((size & (size - 1)) == 0));
+
     KDQueueVEN *queue = (KDQueueVEN *)kdMalloc(sizeof(KDQueueVEN));
-    queue->mutex = kdThreadMutexCreate(KD_NULL);
-    queue->head = KD_NULL;
-    queue->tail = KD_NULL;
-    queue->size = 0;
+    if(queue == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    queue->buffer_mask = size - 1;
+    queue->buffer = kdMalloc(sizeof(__kdQueueCell) * size);
+    if(queue->buffer == KD_NULL)
+    {
+        kdFree(queue);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+
+    for(KDsize i = 0; i != size; i += 1)
+    {
+        queue->buffer[i].sequence = kdAtomicIntCreateVEN(i);
+    }
+
+    queue->tail = kdAtomicIntCreateVEN(0);
+    queue->head = kdAtomicIntCreateVEN(0);
     return queue;
 }
 
 KD_API KDint KD_APIENTRY kdQueueFreeVEN(KDQueueVEN *queue)
 {
-    kdThreadMutexFree(queue->mutex);
+    kdAtomicIntFreeVEN(queue->head);
+    kdAtomicIntFreeVEN(queue->tail);
+
+    for(KDsize i = 0; i != queue->buffer_mask + 1; i += 1)
+    {
+        kdAtomicIntFreeVEN(queue->buffer[i].sequence);
+    }
+
     kdFree(queue);
     return 0;
 }
 
 KD_API KDsize KD_APIENTRY kdQueueSizeVEN(KDQueueVEN *queue)
 {
-    kdThreadMutexLock(queue->mutex);
-    KDsize size = queue->size;
-    kdThreadMutexUnlock(queue->mutex);
-    return size;
+    return kdAtomicIntLoadVEN(queue->tail) - kdAtomicIntLoadVEN(queue->head);
 }
 
-KD_API void KD_APIENTRY kdQueuePushHeadVEN(KDQueueVEN *queue, void *value)
+KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
 {
-    __KDQueueNode *node = (__KDQueueNode *)kdMalloc(sizeof(__KDQueueNode));
-    node->value = value;
-    node->prev = KD_NULL;
-    node->next = KD_NULL;
+    __kdQueueCell *cell;
+    KDsize pos = kdAtomicIntLoadVEN(queue->tail);
+    for(;;)
+    {
+        cell = &queue->buffer[pos & queue->buffer_mask];
+        KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
+        KDintptr dif = (KDintptr)seq - (KDintptr)pos;
+        if(dif == 0)
+        {
+            if(kdAtomicIntCompareExchangeVEN(queue->tail, pos, pos + 1))
+            {
+                break;
+            }
+        }
+        else if(dif < 0)
+        {
+            kdSetError(KD_EAGAIN);
+            return -1;
+        }
+        else
+        {
+            pos = kdAtomicIntLoadVEN(queue->tail);
+        }
+    }
 
-    kdThreadMutexLock(queue->mutex);
-    if((node->next = queue->head) != KD_NULL)
-    {
-        node->next->prev = node;
-    }
-    queue->head = node;
-    if(!queue->tail)
-    {
-        queue->tail = node;
-    }
-    queue->size++;
-    kdThreadMutexUnlock(queue->mutex);
+    cell->data = value;
+    kdAtomicIntStoreVEN(cell->sequence, pos + 1);
+
+    return 0;
 }
 
-KD_API void KD_APIENTRY kdQueuePushTailVEN(KDQueueVEN *queue, void *value)
+KD_API void *KD_APIENTRY kdQueuePullVEN(KDQueueVEN *queue)
 {
-    __KDQueueNode *node = (__KDQueueNode *)kdMalloc(sizeof(__KDQueueNode));
-    node->value = value;
-    node->prev = KD_NULL;
-    node->next = KD_NULL;
-
-    kdThreadMutexLock(queue->mutex);
-    node->prev = queue->tail;
-    if(node->prev != KD_NULL)
+    __kdQueueCell *cell;
+    KDsize pos = (KDsize)kdAtomicIntLoadVEN(queue->head);
+    for(;;)
     {
-        queue->tail->next = node;
-    }
-    queue->tail = node;
-    if(!queue->head)
-    {
-        queue->head = node;
-    }
-    queue->size++;
-    kdThreadMutexUnlock(queue->mutex);
-}
-
-KD_API void *KD_APIENTRY kdQueuePopHeadVEN(KDQueueVEN *queue)
-{
-    __KDQueueNode *node = KD_NULL;
-    void *value = KD_NULL;
-
-    kdThreadMutexLock(queue->mutex);
-    if(queue->head)
-    {
-        node = queue->head;
-        queue->head = node->next;
-        if(queue->head != KD_NULL)
+        cell = &queue->buffer[pos & queue->buffer_mask];
+        KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
+        KDintptr dif = (KDintptr)seq - (KDintptr)(pos + 1);
+        if(dif == 0)
         {
-            queue->head->prev = KD_NULL;
+            if(kdAtomicIntCompareExchangeVEN(queue->head, pos, pos + 1))
+            {
+                break;
+            }
         }
-        if(queue->tail == node)
+        else if(dif < 0)
         {
-            queue->tail = KD_NULL;
+            kdSetError(KD_EAGAIN);
+            return KD_NULL;
         }
-        queue->size--;
-    }
-    kdThreadMutexUnlock(queue->mutex);
-
-    if(node)
-    {
-        value = node->value;
-        kdFree(node);
-    }
-
-    return value;
-}
-
-KD_API void *KD_APIENTRY kdQueuePopTailVEN(KDQueueVEN *queue)
-{
-    __KDQueueNode *node = KD_NULL;
-    void *value = KD_NULL;
-
-    kdThreadMutexLock(queue->mutex);
-    if(queue->head)
-    {
-        node = queue->tail;
-        queue->tail = node->prev;
-        if(queue->tail != KD_NULL)
+        else
         {
-            queue->tail->next = KD_NULL;
+            pos = kdAtomicIntLoadVEN(queue->head);
         }
-        if(queue->head == node)
-        {
-            queue->head = KD_NULL;
-        }
-        queue->size--;
-    }
-    kdThreadMutexUnlock(queue->mutex);
-
-    if(node)
-    {
-        value = node->value;
-        kdFree(node);
     }
 
+    void *value = cell->data;
+    kdAtomicIntStoreVEN(cell->sequence, pos + queue->buffer_mask + 1);
     return value;
 }

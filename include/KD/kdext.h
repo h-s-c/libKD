@@ -35,7 +35,7 @@
 #include <KD/KHR_perfcounter.h>
 #include <KD/KHR_thread_storage.h>
 #include <KD/VEN_atomic_ops.h>
-#include <KD/VEN_concurrent_queue.h>
+#include <KD/VEN_queue.h>
 
 #define KD_ATX_dxtcomp
 #define KD_ATX_imgdec
@@ -48,7 +48,7 @@
 #define KD_KHR_perfcounter
 #define KD_KHR_thread_storage
 #define KD_VEN_atomic_ops
-#define KD_VEN_concurrent_queue
+#define KD_VEN_queue
 
 /*******************************************************
  * Errors (extensions)
