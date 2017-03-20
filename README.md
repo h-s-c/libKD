@@ -1,29 +1,28 @@
-#OpenKODE Core implementation
+# OpenKODE Core implementation
 
-###License
-[![Zlib License](http://img.shields.io/:license-zlib-blue.svg)](http://opensource.org/licenses/Zlib)  
+### License
+[![Zlib License](https://img.shields.io/:license-zlib-blue.svg)](https://opensource.org/licenses/Zlib)  
 
-###Status
-[![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=Coverity Scan)](https://scan.coverity.com/projects/h-s-c-libkd)  
+### Status
+[![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=CoverityScan)](https://scan.coverity.com/projects/h-s-c-libkd)  
   
-[![Travis CI](https://img.shields.io/travis/h-s-c/libKD.svg?label=Travis CI)](https://travis-ci.org/h-s-c/libKD)  
-[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libKD.svg?label=AppVeyor CI)](https://ci.appveyor.com/project/h-s-c/libKD)  
-[![Wercker CI](https://img.shields.io/wercker/ci/h-s-c/libKD.svg?label=Wercker CI)](https://app.wercker.com/h-s-c/libKD)
+[![Travis CI](https://img.shields.io/travis/h-s-c/libKD.svg?label=TravisCI)](https://travis-ci.org/h-s-c/libKD)  
+[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libKD.svg?label=AppVeyorCI)](https://ci.appveyor.com/project/h-s-c/libKD)  
 
-###About
+### About
 -   Cross-platform system API similar to POSIX or SDL
 
-###Notes
+### Notes
 -   [Specification](https://www.khronos.org/registry/kode/)
 
-###Platforms
+### Platforms
 -   Windows, Android, Linux, Web (ASM.js) support
 -   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
 
-###Compilers
+### Compilers
 -   Visual C++ (2013 and up)
 -   GCC (4.7 and up)
 -   Clang/Xcode, Intel C++, Mingw-w64, Tiny C, Emscripten
 
-###Dependencies
+### Dependencies
 -   EGL, OpenGL ES (samples)

@@ -10290,7 +10290,7 @@ KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
         KDintptr dif = (KDintptr)seq - (KDintptr)pos;
         if(dif == 0)
         {
-            if(kdAtomicIntCompareExchangeVEN((KDint)queue->tail, pos, pos + 1))
+            if(kdAtomicIntCompareExchangeVEN(queue->tail, (KDint)pos, (KDint)pos + 1))
             {
                 break;
             }
@@ -10307,7 +10307,7 @@ KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
     }
 
     cell->data = value;
-    kdAtomicIntStoreVEN((KDint)cell->sequence, pos + 1);
+    kdAtomicIntStoreVEN(cell->sequence, (KDint)pos + 1);
 
     return 0;
 }
@@ -10323,7 +10323,7 @@ KD_API void *KD_APIENTRY kdQueuePullVEN(KDQueueVEN *queue)
         KDintptr dif = (KDintptr)seq - (KDintptr)(pos + 1);
         if(dif == 0)
         {
-            if(kdAtomicIntCompareExchangeVEN((KDint)queue->head, pos, pos + 1))
+            if(kdAtomicIntCompareExchangeVEN(queue->head, (KDint)pos, (KDint)pos + 1))
             {
                 break;
             }
@@ -10340,6 +10340,6 @@ KD_API void *KD_APIENTRY kdQueuePullVEN(KDQueueVEN *queue)
     }
 
     void *value = cell->data;
-    kdAtomicIntStoreVEN((KDint)cell->sequence, pos + queue->buffer_mask + 1);
+    kdAtomicIntStoreVEN(cell->sequence, (KDint)(pos + queue->buffer_mask) + 1);
     return value;
 }
