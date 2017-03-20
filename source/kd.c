@@ -10252,7 +10252,7 @@ KD_API KDQueueVEN *KD_APIENTRY kdQueueCreateVEN(KDsize size)
 
     for(KDsize i = 0; i != size; i += 1)
     {
-        queue->buffer[i].sequence = kdAtomicIntCreateVEN(i);
+        queue->buffer[i].sequence = kdAtomicIntCreateVEN((KDint)i);
     }
 
     queue->tail = kdAtomicIntCreateVEN(0);
@@ -10282,7 +10282,7 @@ KD_API KDsize KD_APIENTRY kdQueueSizeVEN(KDQueueVEN *queue)
 KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
 {
     __kdQueueCell *cell;
-    KDsize pos = kdAtomicIntLoadVEN(queue->tail);
+    KDsize pos = (KDsize)kdAtomicIntLoadVEN(queue->tail);
     for(;;)
     {
         cell = &queue->buffer[pos & queue->buffer_mask];
@@ -10290,7 +10290,7 @@ KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
         KDintptr dif = (KDintptr)seq - (KDintptr)pos;
         if(dif == 0)
         {
-            if(kdAtomicIntCompareExchangeVEN(queue->tail, pos, pos + 1))
+            if(kdAtomicIntCompareExchangeVEN((KDint)queue->tail, pos, pos + 1))
             {
                 break;
             }
@@ -10302,12 +10302,12 @@ KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
         }
         else
         {
-            pos = kdAtomicIntLoadVEN(queue->tail);
+            pos = (KDsize)kdAtomicIntLoadVEN(queue->tail);
         }
     }
 
     cell->data = value;
-    kdAtomicIntStoreVEN(cell->sequence, pos + 1);
+    kdAtomicIntStoreVEN((KDint)cell->sequence, pos + 1);
 
     return 0;
 }
@@ -10323,7 +10323,7 @@ KD_API void *KD_APIENTRY kdQueuePullVEN(KDQueueVEN *queue)
         KDintptr dif = (KDintptr)seq - (KDintptr)(pos + 1);
         if(dif == 0)
         {
-            if(kdAtomicIntCompareExchangeVEN(queue->head, pos, pos + 1))
+            if(kdAtomicIntCompareExchangeVEN((KDint)queue->head, pos, pos + 1))
             {
                 break;
             }
@@ -10335,11 +10335,11 @@ KD_API void *KD_APIENTRY kdQueuePullVEN(KDQueueVEN *queue)
         }
         else
         {
-            pos = kdAtomicIntLoadVEN(queue->head);
+            pos = (KDsize)kdAtomicIntLoadVEN(queue->head);
         }
     }
 
     void *value = cell->data;
-    kdAtomicIntStoreVEN(cell->sequence, pos + queue->buffer_mask + 1);
+    kdAtomicIntStoreVEN((KDint)cell->sequence, pos + queue->buffer_mask + 1);
     return value;
 }

@@ -181,7 +181,7 @@
     typedef unsigned long long      KDuint64;
 #endif
 
-#if defined(_WIN64)
+#if defined(_MSC_VER) && defined(_WIN64)
     typedef signed   __int64        KDintptr;
     typedef unsigned __int64        KDuintptr;
     typedef signed   __int64        KDssize;
