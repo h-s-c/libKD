@@ -9550,6 +9550,11 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     if(fm == INVALID_HANDLE_VALUE || filedata == KD_NULL)
 #endif
     {
+#if defined(__unix__) || defined(__APPLE__)
+        close(fd);
+#elif(_WIN32)
+        CloseHandle(fd);
+#endif
         kdFree(image);
         kdSetError(KD_EIO);
         return KD_NULL;
@@ -9559,6 +9564,13 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     KDint error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
     if(error == 0)
     {
+#if defined(__unix__) || defined(__APPLE__)
+        munmap(filedata, image->size);
+        close(fd);
+#elif(_WIN32)
+        UnmapViewOfFile(filedata);
+        CloseHandle(fd);
+#endif
         kdFree(image);
         kdSetError(KD_EILSEQ);
         return KD_NULL;
@@ -9644,15 +9656,22 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     image->size = (KDsize)st.st_size;
 
     void *filedata = kdMalloc(image->size);
+    if(filedata == KD_NULL)
+    {
+        kdFree(image);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
     if(kdFread(filedata, image->size, 1, file) != 1)
     {
+        kdFree(filedata);
         kdFree(image);
         kdSetError(KD_EIO);
         return KD_NULL;
     }
-
     if(kdFseek(file, 0, KD_SEEK_SET) == -1)
     {
+        kdFree(filedata);
         kdFree(image);
         kdSetError(KD_EIO);
         return KD_NULL;
@@ -9688,6 +9707,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         }
         default:
         {
+            kdFree(filedata);
             kdFree(image);
             kdSetError(KD_EINVAL);
             return KD_NULL;
@@ -9697,6 +9717,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
 
     if(flags != 0)
     {
+        kdFree(filedata);
         kdFree(image);
         kdSetError(KD_EINVAL);
         return KD_NULL;
@@ -9705,6 +9726,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     image->buffer = stbi_load_from_memory(filedata, (KDint)image->size, &image->width, &image->height, (int[]){0}, channels);
     if(image->buffer == KD_NULL)
     {
+        kdFree(filedata);
         kdFree(image);
         kdSetError(KD_EILSEQ);
         return KD_NULL;
@@ -9966,6 +9988,7 @@ KD_API KDint KD_APIENTRY kdVfscanfKHR(KDFile *file, const KDchar *format, KDVaLi
     }
     if(kdFread(buffer, size, 1, file) != 1)
     {
+        kdFree(buffer);
         kdSetError(KD_EIO);
         return KD_EOF;
     }
