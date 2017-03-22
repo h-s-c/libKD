@@ -2,6 +2,12 @@
 [![GitHub Release](https://img.shields.io/github/release/h-s-c/libKD.svg)](https://github.com/h-s-c/libKD/releases)  
 [![Zlib License](https://img.shields.io/:license-zlib-blue.svg)](https://opensource.org/licenses/Zlib)  
 
+### Ubuntu Install
+```bash
+curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.deb.sh | sudo bash
+apt-get install kd
+```
+
 ### Status
 [![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=CoverityScan)](https://scan.coverity.com/projects/h-s-c-libkd)  
   
