@@ -1,5 +1,4 @@
 # OpenKODE Core implementation
-[![GitHub Release](https://img.shields.io/github/release/h-s-c/libKD.svg)](https://github.com/h-s-c/libKD/releases)  
 [![Zlib License](https://img.shields.io/:license-zlib-blue.svg)](https://opensource.org/licenses/Zlib)  
 
 ### Ubuntu Install
