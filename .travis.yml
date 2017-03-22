@@ -245,7 +245,7 @@ matrix:
         - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
         - sudo dpkg --add-architecture i386
         - sudo apt-get update -qq
-        - sudo apt-get install -qq wine1.8
+        - sudo apt-get install -y wine1.8
       install: 
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
@@ -268,7 +268,7 @@ matrix:
         - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
         - sudo dpkg --add-architecture i386
         - sudo apt-get update -qq
-        - sudo apt-get install -qq wine1.8
+        - sudo apt-get install -y wine1.8
       install: 
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
@@ -345,5 +345,3 @@ matrix:
   allow_failures:
     - compiler: icc # Unstable
     - compiler: clang-5.0 # Unstable
-    - compiler: x86_64-w64-mingw32-gcc # Unstable
-    - compiler: i686-w64-mingw32-gcc # Unstable
