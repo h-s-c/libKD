@@ -239,13 +239,13 @@ matrix:
         apt:
           sources: 
             - ubuntu-toolchain-r-test
-            - sourceline: 'ppa:wine/wine-builds'
+            - sourceline: 'ppa:ubuntu-wine'
           packages: ['mingw-w64', 'valgrind', 'binutils-gold']
       before_install: 
         - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
         - sudo dpkg --add-architecture i386
         - sudo apt-get update -qq
-        - sudo apt-get install -y --install-recommends winehq-staging
+        - sudo apt-get install -y wine1.8
       install: 
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
@@ -262,13 +262,13 @@ matrix:
         apt:
           sources: 
             - ubuntu-toolchain-r-test
-            - sourceline: 'ppa:wine/wine-builds'
+            - sourceline: 'ppa:ubuntu-wine'
           packages: ['mingw-w64', 'valgrind', 'binutils-gold']
       before_install: 
         - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
         - sudo dpkg --add-architecture i386
         - sudo apt-get update -qq
-        - sudo apt-get install -y --install-recommends winehq-staging
+        - sudo apt-get install -y wine1.8
       install: 
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
