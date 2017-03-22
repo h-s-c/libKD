@@ -12,7 +12,7 @@ matrix:
       sudo: required
       addons:
         apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'ca-certificates']
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev', 'ca-certificates']
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
         - COVERITY_SCAN_PROJECT_NAME="h-s-c/libKD"
@@ -33,7 +33,7 @@ matrix:
       sudo: required
       addons:
         apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
       deploy:
         provider: packagecloud
         dist: "ubuntu/trusty"
@@ -57,7 +57,7 @@ matrix:
       sudo: false
       addons:
         apt:
-          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev']
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
       deploy:
         provider: packagecloud
         dist: "ubuntu/precise"
@@ -82,7 +82,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['gcc-6', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -93,7 +93,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['gcc-5', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -104,7 +104,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['gcc-4.9', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -115,7 +115,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['gcc-4.8', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -126,7 +126,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['gcc-4.7', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -140,7 +140,7 @@ matrix:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-5.0', 'llvm-5.0', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['clang-5.0', 'llvm-5.0', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -154,7 +154,7 @@ matrix:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-4.0', 'llvm-4.0', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['clang-4.0', 'llvm-4.0', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -168,7 +168,7 @@ matrix:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-3.9', 'llvm-3.9', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['clang-3.9', 'llvm-3.9', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -182,7 +182,7 @@ matrix:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-3.8', 'llvm-3.8', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['clang-3.8', 'llvm-3.8', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -193,7 +193,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.6', 'llvm-3.6', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['clang-3.6', 'llvm-3.6', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -204,7 +204,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.5', 'llvm-3.5', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['clang-3.5', 'llvm-3.5', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -215,7 +215,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: 
         - python ci-tools/install_cmake.py 
         - python ci-tools/install_icc.py
@@ -229,7 +229,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['tcc', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev']
+          packages: ['tcc', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
