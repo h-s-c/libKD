@@ -52,31 +52,6 @@ matrix:
           else true; fi;
 
     - os: linux
-      compiler: gcc-4.7
-      dist: precise
-      sudo: false
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
-      deploy:
-        provider: packagecloud
-        dist: "ubuntu/precise"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: python ci-tools/install_cmake.py  
-      script:
-        - if [ "$TRAVIS_TAG" ]; then 
-            python ci-tools/run_cpack.py;
-          else true; fi;
-
-    - os: linux
       compiler: gcc-6
       dist: trusty
       sudo: required
