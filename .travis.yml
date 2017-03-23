@@ -52,7 +52,7 @@ matrix:
           else true; fi;
 
     - os: linux
-      compiler: gcc
+      compiler: gcc-4.7
       dist: precise
       sudo: false
       addons:
