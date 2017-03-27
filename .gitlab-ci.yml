@@ -1,9 +1,0 @@
-before_script:
-  - apt-get update -y
-  - apt-get install -y build-essential python valgrind libegl1-mesa-dev
-
-default:
-  script:
-    - git submodule update --init --recursive
-    - python ci-tools/install_cmake.py
-    - python ci-tools/run_ctest.py
