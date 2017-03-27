@@ -10,8 +10,8 @@ apt-get install kd
 ### Status
 [![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=CoverityScan)](https://scan.coverity.com/projects/h-s-c-libkd)  
   
-[![Travis CI](https://img.shields.io/travis/h-s-c/libKD.svg?label=TravisCI)](https://travis-ci.org/h-s-c/libKD)  
-[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libKD.svg?label=AppVeyorCI)](https://ci.appveyor.com/project/h-s-c/libKD)  
+[![Travis CI](https://img.shields.io/travis/h-s-c/libKD/master.svg?label=TravisCI)](https://travis-ci.org/h-s-c/libKD)  
+[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libKD/master.svg?label=AppVeyorCI)](https://ci.appveyor.com/project/h-s-c/libKD)  
 
 ### About
 -   Cross-platform system API similar to POSIX or SDL
