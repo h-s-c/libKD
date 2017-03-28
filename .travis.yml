@@ -300,6 +300,9 @@ matrix:
       compiler: gcc
       dist: trusty
       sudo: required
+      addons:
+        apt:
+          packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev']
       deploy:
         provider: packagecloud
         dist: "ubuntu/trusty"
@@ -320,8 +323,7 @@ matrix:
     - os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=yakkety
       sudo: required
-      services:
-        - docker
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -339,10 +341,10 @@ matrix:
           else true; fi;
       script:
         - if [ "$TRAVIS_TAG" ]; then 
-            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION \
-              apt-get install -qq build-essential valgrind binutils-gold libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev; \
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get update && \
+              apt-get -y install build-essential python valgrind binutils-gold libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev; \
               python ci-tools/install_cmake.py; \
-              python ci-tools/run_cpack.py;
+              python ci-tools/run_cpack.py;"
           else true; fi;
 
   allow_failures:
