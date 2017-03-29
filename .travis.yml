@@ -443,7 +443,7 @@ matrix:
         token:
           secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
         skip_cleanup: true
-        package_glob: "*.deb"
+        package_glob: "*.rpm"
         on:
           tags: true
       install:
@@ -471,7 +471,7 @@ matrix:
         token:
           secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
         skip_cleanup: true
-        package_glob: "*.deb"
+        package_glob: "*.rpm"
         on:
           tags: true
       install:
@@ -499,7 +499,7 @@ matrix:
         token:
           secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
         skip_cleanup: true
-        package_glob: "*.deb"
+        package_glob: "*.rpm"
         on:
           tags: true
       install:
@@ -527,7 +527,7 @@ matrix:
         token:
           secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
         skip_cleanup: true
-        package_glob: "*.deb"
+        package_glob: "*.rpm"
         on:
           tags: true
       install:
