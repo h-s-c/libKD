@@ -509,7 +509,7 @@ matrix:
       script:
         - if [ "$TRAVIS_TAG" ]; then 
             docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
-              yum -y groupinstall \"C Development Tools and Libraries\" && 
+              yum -y groupinstall \"Development Tools\" && 
               yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
               python ci-tools/install_cmake.py;
               python ci-tools/run_cpack.py;"
@@ -537,7 +537,7 @@ matrix:
       script:
         - if [ "$TRAVIS_TAG" ]; then 
             docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
-              yum -y groupinstall \"C Development Tools and Libraries\" && 
+              yum -y groupinstall \"Development Tools\" && 
               yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
               python ci-tools/install_cmake.py;
               python ci-tools/run_cpack.py;"
