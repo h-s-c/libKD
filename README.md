@@ -18,19 +18,25 @@
 ### Ubuntu/Debian Install
 ```bash
 curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.deb.sh | sudo bash
-apt-get install kd
+apt-get install libkd
 ```
 
 ### Fedora Install
 ```bash
 curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
-dnf install kd
+dnf install libkd
 ```
 
 ### Opensuse Install
 ```bash
 curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
-zypper install kd
+zypper install libkd
+```
+
+### CentOS/Oracle Install
+```bash
+curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
+yum install libkd
 ```
 
 ### Compilers

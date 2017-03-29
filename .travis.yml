@@ -488,6 +488,62 @@ matrix:
           else true; fi;
 
     - os: linux
+      env: DOCKER_IMAGE=centos DOCKER_IMAGE_VERSION=7
+      sudo: required
+      services: docker
+      deploy:
+        provider: packagecloud
+        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        skip_cleanup: true
+        package_glob: "*.rpm"
+        on:
+          tags: true
+      install:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
+      script:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
+              yum -y groupinstall \"C Development Tools and Libraries\" && 
+              yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
+
+    - os: linux
+      env: DOCKER_IMAGE=oraclelinux DOCKER_IMAGE_VERSION=7
+      sudo: required
+      services: docker
+      deploy:
+        provider: packagecloud
+        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        skip_cleanup: true
+        package_glob: "*.rpm"
+        on:
+          tags: true
+      install:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
+      script:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
+              yum -y groupinstall \"C Development Tools and Libraries\" && 
+              yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
+
+    - os: linux
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.2
       sudo: required
       services: docker
