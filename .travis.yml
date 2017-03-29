@@ -212,6 +212,19 @@ matrix:
 
     - os: osx
       compiler: clang
+      osx_image: xcode8.3
+      install: 
+        - brew update
+#        - brew install valgrind
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+        - wget -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+        - wget -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+        - python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
+    - os: osx
+      compiler: clang
       osx_image: xcode8.2
       install: 
         - brew update
