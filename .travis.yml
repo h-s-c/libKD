@@ -488,7 +488,7 @@ matrix:
           else true; fi;
 
     - os: linux
-      env: DOCKER_IMAGE=centos DOCKER_IMAGE_VERSION=7
+      env: DOCKER_IMAGE=el DOCKER_IMAGE_VERSION=7
       sudo: required
       services: docker
       deploy:
@@ -516,7 +516,7 @@ matrix:
           else true; fi;
 
     - os: linux
-      env: DOCKER_IMAGE=oraclelinux DOCKER_IMAGE_VERSION=7
+      env: DOCKER_IMAGE=ol DOCKER_IMAGE_VERSION=7
       sudo: required
       services: docker
       deploy:

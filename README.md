@@ -33,7 +33,7 @@ curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh |
 zypper install libkd
 ```
 
-### CentOS/Oracle Install
+### RHEL/CentOS/Oracle/Amazon Install
 ```bash
 curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
 yum install libkd
