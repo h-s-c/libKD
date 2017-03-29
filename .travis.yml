@@ -317,8 +317,8 @@ matrix:
           else true; fi;
       script:
         - if [ "$TRAVIS_TAG" ]; then 
-            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get update &&
-              apt-get -y install build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
+            docker run -e "TRAVIS_TAG=$TRAVIS_TAG" -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+              apt-get -qq -y install build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
               python ci-tools/install_cmake.py;
               python ci-tools/run_cpack.py;"
           else true; fi;
@@ -432,7 +432,7 @@ matrix:
           else true; fi;
 
     - os: linux
-      env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=wheezy
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=25
       sudo: required
       services: docker
       deploy:
@@ -452,8 +452,93 @@ matrix:
           else true; fi;
       script:
         - if [ "$TRAVIS_TAG" ]; then 
-            docker run -e "TRAVIS_TAG=$TRAVIS_TAG" -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-              apt-get -qq -y install build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
+            docker run -e "TRAVIS_TAG=$TRAVIS_TAG" -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+              dnf -y groupinstall "C Development Tools and Libraries" && 
+              dnf -y install python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
+
+    - os: linux
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=24
+      sudo: required
+      services: docker
+      deploy:
+        provider: packagecloud
+        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        skip_cleanup: true
+        package_glob: "*.deb"
+        on:
+          tags: true
+      install:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
+      script:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -e "TRAVIS_TAG=$TRAVIS_TAG" -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+              dnf -y groupinstall "C Development Tools and Libraries" && 
+              dnf -y install python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
+
+    - os: linux
+      env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.2
+      sudo: required
+      services: docker
+      deploy:
+        provider: packagecloud
+        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        skip_cleanup: true
+        package_glob: "*.deb"
+        on:
+          tags: true
+      install:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
+      script:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -e "TRAVIS_TAG=$TRAVIS_TAG" -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper update --non-interactive &&
+              zypper install --non-interactive -t pattern devel_C_C++ && 
+              zypper install --non-interactive python Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
+
+    - os: linux
+      env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.1
+      sudo: required
+      services: docker
+      deploy:
+        provider: packagecloud
+        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        skip_cleanup: true
+        package_glob: "*.deb"
+        on:
+          tags: true
+      install:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
+      script:
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -e "TRAVIS_TAG=$TRAVIS_TAG" -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper update --non-interactive &&
+              zypper install --non-interactive -t pattern devel_C_C++ && 
+              zypper install --non-interactive python Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel;
               python ci-tools/install_cmake.py;
               python ci-tools/run_cpack.py;"
           else true; fi;
