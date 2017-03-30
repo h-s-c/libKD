@@ -1,4 +1,4 @@
-# OpenKODE Core implementation
+# OpenKODE Core implementation 
 [![Zlib License](https://img.shields.io/:license-zlib-blue.svg)](https://opensource.org/licenses/Zlib)  
 
 ### Status
