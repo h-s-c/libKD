@@ -501,12 +501,12 @@ matrix:
           else true; fi;
 
     - os: linux
-      env: DOCKER_IMAGE=el DOCKER_IMAGE_VERSION=7
+      env: DOCKER_IMAGE=centos DOCKER_IMAGE_VERSION=7
       sudo: required
       services: docker
       deploy:
         provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        dist: "el/$DOCKER_IMAGE_VERSION"
         repository: "libKD"
         username: "h-s-c"
         token:
@@ -529,12 +529,12 @@ matrix:
           else true; fi;
 
     - os: linux
-      env: DOCKER_IMAGE=ol DOCKER_IMAGE_VERSION=7
+      env: DOCKER_IMAGE=oracleinux DOCKER_IMAGE_VERSION=7
       sudo: required
       services: docker
       deploy:
         provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        dist: "ol/$DOCKER_IMAGE_VERSION"
         repository: "libKD"
         username: "h-s-c"
         token:
