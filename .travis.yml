@@ -10,8 +10,6 @@ matrix:
       compiler: gcc-6
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -23,8 +21,6 @@ matrix:
       compiler: gcc-5
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -36,8 +32,6 @@ matrix:
       compiler: gcc-4.9
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -49,8 +43,6 @@ matrix:
       compiler: gcc-4.8
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -62,8 +54,6 @@ matrix:
       compiler: gcc-4.7
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -75,8 +65,6 @@ matrix:
       compiler: clang-5.0
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: 
@@ -91,8 +79,6 @@ matrix:
       compiler: clang-4.0
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: 
@@ -107,8 +93,6 @@ matrix:
       compiler: clang-3.9
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: 
@@ -123,8 +107,6 @@ matrix:
       compiler: clang-3.8
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: 
@@ -139,8 +121,6 @@ matrix:
       compiler: clang-3.6
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -152,8 +132,6 @@ matrix:
       compiler: clang-3.5
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -165,8 +143,6 @@ matrix:
       compiler: icc
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -181,8 +157,6 @@ matrix:
       compiler: tcc
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -194,8 +168,6 @@ matrix:
       compiler: x86_64-w64-mingw32-gcc
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: 
@@ -219,8 +191,6 @@ matrix:
       compiler: i686-w64-mingw32-gcc
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           sources: 
@@ -243,8 +213,6 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode8.3
-      branches:
-        except: /^v[0-9]/
       install: 
         - brew update
 #        - brew install valgrind
@@ -258,8 +226,6 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode8.2
-      branches:
-        except: /^v[0-9]/
       install: 
         - brew update
 #        - brew install valgrind
@@ -273,8 +239,6 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode8.1
-      branches:
-        except: /^v[0-9]/
       install: 
         - brew update
 #        - brew install valgrind
@@ -288,8 +252,6 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode8
-      branches:
-        except: /^v[0-9]/
       install: 
         - brew update
         - brew install valgrind
@@ -303,8 +265,6 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode7.3
-      branches:
-        except: /^v[0-9]/
       install: 
         - brew update
         - brew install valgrind
@@ -318,8 +278,6 @@ matrix:
     - os: osx
       compiler: clang
       osx_image: xcode6.4
-      branches:
-        except: /^v[0-9]/
       install: 
         - brew update
         - brew install valgrind
@@ -334,8 +292,6 @@ matrix:
       compiler: gcc
       dist: trusty
       sudo: required
-      branches:
-        except: /^v[0-9]/
       addons:
         apt:
           packages: ['libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev', 'ca-certificates']
@@ -354,11 +310,9 @@ matrix:
           else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=yakkety
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -371,19 +325,21 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+              apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -396,19 +352,21 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+              apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -421,19 +379,21 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+              apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -446,19 +406,21 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+              apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -471,19 +433,21 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+              apt-get -qq -y install git dpkg build-essential python libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=25
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -496,20 +460,22 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
-            dnf -y groupinstall \"C Development Tools and Libraries\" && 
-            dnf -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+              dnf -y groupinstall \"C Development Tools and Libraries\" && 
+              dnf -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=24
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -522,20 +488,22 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
-            dnf -y groupinstall \"C Development Tools and Libraries\" && 
-            dnf -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+              dnf -y groupinstall \"C Development Tools and Libraries\" && 
+              dnf -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=centos DOCKER_IMAGE_VERSION=7
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "el/$DOCKER_IMAGE_VERSION"
@@ -548,20 +516,22 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
-            yum -y groupinstall \"Development Tools\" && 
-            yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
+              yum -y groupinstall \"Development Tools\" && 
+              yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=oraclelinux DOCKER_IMAGE_VERSION=7
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "ol/$DOCKER_IMAGE_VERSION"
@@ -574,20 +544,22 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
-            yum -y groupinstall \"Development Tools\" && 
-            yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "yum -y update &&
+              yum -y groupinstall \"Development Tools\" && 
+              yum -y install git rpm-build python mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.2
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -600,20 +572,22 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
-            zypper -n install -t pattern devel_C_C++ && 
-            zypper -n install git rpm-build python Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
+              zypper -n install -t pattern devel_C_C++ && 
+              zypper -n install git rpm-build python Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
     - os: linux
-      services: docker
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.1
       sudo: required
-      branches:
-        only: /^v[0-9]/
+      services: docker
       deploy:
         provider: packagecloud
         dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -626,13 +600,17 @@ matrix:
         on:
           tags: true
       install:
-        - docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+          else true; fi;
       script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
-            zypper -n install -t pattern devel_C_C++ && 
-            zypper -n install git rpm-build python Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
+        - if [ "$TRAVIS_TAG" ]; then 
+            docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
+              zypper -n install -t pattern devel_C_C++ && 
+              zypper -n install git rpm-build python Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel;
+              python ci-tools/install_cmake.py;
+              python ci-tools/run_cpack.py;"
+          else true; fi;
 
   allow_failures:
     - compiler: icc # Unstable
