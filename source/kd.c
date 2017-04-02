@@ -877,7 +877,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #else
     if(once_control == 0)
     {
-        once_control = (void *)1;
+        *once_control = (KDThreadOnce)1;
         init_routine();
     }
 #endif
