@@ -760,7 +760,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if(attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(thread);
-        __kdThreadFree(thread);
         return KD_NULL;
     }
 
@@ -770,6 +769,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
+    __kdThreadFree(kdThreadSelf());
     KD_UNUSED KDint result = 0;
     if(retval != KD_NULL)
     {
