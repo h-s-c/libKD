@@ -1,3 +1,6 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 /******************************************************************************
  * libKD
  * zlib/libpng License
@@ -779,7 +782,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
 #endif
-    while(1)
+    while(1) //-V779
     {
         ;
     }
@@ -1670,7 +1673,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 }
                 case MappingNotify:
                 {
-                    XRefreshKeyboardMapping((XMappingEvent *)&xevent);
+                    XRefreshKeyboardMapping(&xevent.xmapping);
                     /* Dont break here or we leak event */
                 }
                 default:
@@ -4316,7 +4319,7 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
     /* cos(Inf or NaN) is NaN */
     else if(ix >= KD_HUGE_VALF)
     {
-        return x - x;
+        return x - x; //-V501
         /* general argument reduction needed */
     }
     else
@@ -4401,7 +4404,7 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
     /* sin(Inf or NaN) is NaN */
     else if(ix >= KD_HUGE_VALF)
     {
-        return x - x;
+        return x - x; //-V501
         /* general argument reduction needed */
     }
     else
@@ -4472,7 +4475,7 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
     /* tan(Inf or NaN) is NaN */
     else if(ix >= KD_HUGE_VALF)
     {
-        return x - x;
+        return x - x; //-V501
         /* general argument reduction needed */
     }
     else
@@ -4623,12 +4626,12 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     if(ix < 0x00800000)
     { /* x < 2**-126  */
         if((ix & KD_HUGE_VALF) == 0)
-        {
+        { /* log(+-0)=-inf */
             return -two25 / vzero;
-        } /* log(+-0)=-inf */
+        }
         if(ix < 0)
-        {
-            return (x - x) / (x - x); /* log(-#) = NaN */
+        { /* log(-#) = NaN */
+            return (x - x) / (x - x);  //-V501
         }
         k -= 25;
         x *= two25; /* subnormal number, scale up x */
@@ -4860,7 +4863,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     /* (x<0)**(non-int) is NaN */
     if((n | yisint) == 0)
     {
-        return (x - x) / (x - x);
+        return (x - x) / (x - x); //-V501
     }
     sn = 1.0f; /* s (sign of result -ve**odd) = -1 else = 1 */
     if((n | (yisint - 1)) == 0)
@@ -5053,13 +5056,13 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     if(ix <= 0)
     {
         if((ix & (~sign)) == 0)
-        {
-            return x; /* sqrt(+-0) = +-0 */
+        { /* sqrt(+-0) = +-0 */
+            return x;
         }
         else if(ix < 0)
-        {
-            return (x - x) / (x - x);
-        } /* sqrt(-ve) = sNaN */
+        { /* sqrt(-ve) = sNaN */
+            return (x - x) / (x - x); //-V501
+        } 
     }
     /* normalize x */
     m = (ix >> 23);
@@ -5465,9 +5468,10 @@ KD_API KDfloat64KHR KD_APIENTRY kdAcosKHR(KDfloat64KHR x)
             else
             {
                 return KD_PI_KHR + 2.0 * pio2_lo;
-            } /* acos(-1)= pi */
+            }
         }
-        return (x - x) / (x - x); /* acos(|x|>1) is NaN */
+        /* acos(|x|>1) is NaN */
+        return (x - x) / (x - x); //-V501
     }
     if(ix < 0x3fe00000)
     { /* |x| < 0.5 */
@@ -5565,7 +5569,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
             /* asin(1)=+-pi/2 with inexact */
             return x * KD_PI_2_KHR + x * pio2_lo;
         }
-        return (x - x) / (x - x); /* asin(|x|>1) is NaN */
+        /* asin(|x|>1) is NaN */
+        return (x - x) / (x - x); //-V501
     }
     else if(ix < 0x3fe00000)
     { /* |x|<0.5 */
@@ -5947,7 +5952,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
     /* cos(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x;
+        return x - x; //-V501
     }
 
     /* argument reduction needed */
@@ -6024,7 +6029,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
     /* sin(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x;
+        return x - x; //-V501
     }
     /* argument reduction needed */
     else
@@ -6100,7 +6105,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
     /* tan(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x; /* NaN */
+        return x - x; //-V501
     }
 
     /* argument reduction needed */
@@ -6658,7 +6663,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     /* (x<0)**(non-int) is NaN */
     if((n | yisint) == 0)
     {
-        return (x - x) / (x - x);
+        return (x - x) / (x - x); //-V501
     }
 
     s = 1.0; /* s (sign of result -ve**odd) = -1 else = 1 */
@@ -6935,7 +6940,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
         }
         else if(ix0 < 0)
         {
-            return (x - x) / (x - x);
+            return (x - x) / (x - x); //-V501
         } /* sqrt(-ve) = sNaN */
     }
     /* normalize x */
@@ -7121,7 +7126,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCeilKHR(KDfloat64KHR x)
     }
     else
     {
-        i = ((KDint32)(0xffffffff)) >> (j0 - 20);
+        i = ((KDuint32)(0xffffffff)) >> (j0 - 20);
         if((i1 & i) == 0)
         {
             return x; /* x is integral */
@@ -8066,6 +8071,11 @@ struct KDFile {
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
+    if(file == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
     file->pathname = pathname;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
@@ -8638,6 +8648,11 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         return KD_NULL;
     }
     KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
+    if(dir == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     if(FindFirstFile(pathname, &data) == INVALID_HANDLE_VALUE)
@@ -9631,6 +9646,11 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoFromStreamATX(KDFile *file)
 KD_API KDImageATX KD_APIENTRY kdGetImageATX(const KDchar *pathname, KDint format, KDint flags)
 {
     KDFile *file = kdFopen(pathname, "rb");
+    if(file == KD_NULL)
+    {
+        kdSetError(KD_EIO);
+        return KD_NULL;
+    }
     KDImageATX image = kdGetImageFromStreamATX(file, format, flags);
     kdFclose(file);
     return image;
