@@ -663,6 +663,10 @@ static void *__kdThreadStart(void *init)
 
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
     void *result = thread->start_routine(thread->arg);
+    if(thread->attr != KD_NULL && thread->attr->detachstate == KD_THREAD_CREATE_DETACHED)
+    {
+        __kdThreadFree(thread);
+    }
     return result;
 }
 #endif
@@ -769,7 +773,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
-    __kdThreadFree(kdThreadSelf());
     KD_UNUSED KDint result = 0;
     if(retval != KD_NULL)
     {
@@ -791,22 +794,24 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
-    KD_UNUSED KDint error = 0;
-    KDint resinit = 0;
-    KD_UNUSED KDint *result = &resinit;
-    if(retval != KD_NULL)
+    KDint ipretvalinit = 0;
+    KD_UNUSED KDint *ipretval = &ipretvalinit;
+    if(intretval != KD_NULL)
     {
-        result = *retval;
+        ipretval = *retval;
     }
+
+    KDint error = 0;
+    KDint result = 0;
 #if defined(KD_THREAD_C11)
-    error = thrd_join(thread->nativethread, result);
+    error = thrd_join(thread->nativethread, ipretval);
     if(error == thrd_error)
 #elif defined(KD_THREAD_POSIX)
     error = pthread_join(thread->nativethread, retval);
     if(error == EINVAL || error == ESRCH)
 #elif defined(KD_THREAD_WIN32)
     error = WaitForSingleObject(thread->nativethread, INFINITE);
-    GetExitCodeThread(thread->nativethread, (LPDWORD)result);
+    GetExitCodeThread(thread->nativethread, (LPDWORD)ipretval);
     CloseHandle(thread->nativethread);
     if(error != 0)
 #else
@@ -814,10 +819,10 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 #endif
     {
         kdSetError(KD_EINVAL);
-        return -1;
+        result = -1;
     }
     __kdThreadFree(thread);
-    return 0;
+    return result;
 }
 
 /* kdThreadDetach: Allow resources to be freed as soon as a thread terminates. */
