@@ -599,6 +599,60 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
+static KDThread *__kdThreadInit(void)
+{
+    KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
+    if(thread == KD_NULL)
+    {
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
+    thread->eventqueue = kdQueueCreateVEN(64);
+    if(thread->eventqueue == KD_NULL)
+    {
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
+    thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
+    if(thread->lastdirent == KD_NULL)
+    {
+        kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
+    thread->lastevent = KD_NULL;
+    thread->lasterror = 0;
+    thread->callbackindex = 0;
+    thread->callbacks = (__KDCallback **)kdMalloc(sizeof(__KDCallback *));
+    if(thread->callbacks == KD_NULL)
+    {
+        kdFree(thread->lastdirent);
+        kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
+    return thread;
+}
+
+static void __kdThreadFree(KDThread *thread)
+{
+    for(KDsize i = 0; i < thread->callbackindex; i++)
+    {
+        kdFree(thread->callbacks[i]);
+    }
+    kdFree(thread->callbacks);
+    if(thread->lastevent != KD_NULL)
+    {
+        kdFreeEvent(thread->lastevent);
+    }
+    kdFree(thread->lastdirent);
+    kdQueueFreeVEN(thread->eventqueue);
+    kdFree(thread);
+}
+
 static KDThreadStorageKeyKHR __kd_threadlocal = 0;
 static void __kdThreadInitOnce(void)
 {
@@ -671,60 +725,6 @@ static void *__kdThreadStart(void *init)
 }
 #endif
 
-static KDThread *__kdThreadInit(void)
-{
-    KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
-    if(thread == KD_NULL)
-    {
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
-    thread->eventqueue = kdQueueCreateVEN(64);
-    if(thread->eventqueue == KD_NULL)
-    {
-        kdFree(thread);
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
-    thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
-    if(thread->lastdirent == KD_NULL)
-    {
-        kdQueueFreeVEN(thread->eventqueue);
-        kdFree(thread);
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
-    thread->lastevent = KD_NULL;
-    thread->lasterror = 0;
-    thread->callbackindex = 0;
-    thread->callbacks = (__KDCallback **)kdMalloc(sizeof(__KDCallback *));
-    if(thread->callbacks == KD_NULL)
-    {
-        kdFree(thread->lastdirent);
-        kdQueueFreeVEN(thread->eventqueue);
-        kdFree(thread);
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
-    return thread;
-}
-
-static void __kdThreadFree(KDThread *thread)
-{
-    for(KDsize i = 0; i < thread->callbackindex; i++)
-    {
-        kdFree(thread->callbacks[i]);
-    }
-    kdFree(thread->callbacks);
-    if(thread->lastevent != KD_NULL)
-    {
-        kdFreeEvent(thread->lastevent);
-    }
-    kdFree(thread->lastdirent);
-    kdQueueFreeVEN(thread->eventqueue);
-    kdFree(thread);
-}
-
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
 #if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
@@ -796,7 +796,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
     KDint ipretvalinit = 0;
     KD_UNUSED KDint *ipretval = &ipretvalinit;
-    if(intretval != KD_NULL)
+    if(retval != KD_NULL)
     {
         ipretval = *retval;
     }
