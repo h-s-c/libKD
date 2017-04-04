@@ -156,6 +156,7 @@ project (KD C)
     if(CPPLINT AND CMAKE_MAJOR_VERSION GREATER 2 AND CMAKE_MINOR_VERSION GREATER 7)
         set_target_properties(KD PROPERTIES C_CPPLINT ${CPPLINT})
     endif()
+    mark_as_advanced(CLANG_TIDY CPPLINT)
 
     install(TARGETS KD DESTINATION lib)
     file(GLOB KD_HEADERS "${CMAKE_SOURCE_DIR}/include/KD/*.h")
