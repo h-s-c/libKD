@@ -786,7 +786,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
 #endif
-    while(1) //-V779
+    while(1)  //-V779
     {
         ;
     }
@@ -1476,12 +1476,11 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         event->type = KD_EVENT_INPUT_KEY_ATX;
                         KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
-
-/* Press or release */
 #if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 6313)
 #endif
+                        /* Press or release */
                         if(raw->data.keyboard.Flags & RI_KEY_MAKE)
 #if defined(_MSC_VER)
 #pragma warning(pop)
@@ -5133,7 +5132,7 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
     /* cos(Inf or NaN) is NaN */
     else if(ix >= KD_HUGE_VALF)
     {
-        return x - x; //-V501
+        return x - x;  //-V501
         /* general argument reduction needed */
     }
     else
@@ -5218,7 +5217,7 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
     /* sin(Inf or NaN) is NaN */
     else if(ix >= KD_HUGE_VALF)
     {
-        return x - x; //-V501
+        return x - x;  //-V501
         /* general argument reduction needed */
     }
     else
@@ -5289,7 +5288,7 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
     /* tan(Inf or NaN) is NaN */
     else if(ix >= KD_HUGE_VALF)
     {
-        return x - x; //-V501
+        return x - x;  //-V501
         /* general argument reduction needed */
     }
     else
@@ -5444,7 +5443,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
             return -two25 / vzero;
         }
         if(ix < 0)
-        { /* log(-#) = NaN */
+        {                              /* log(-#) = NaN */
             return (x - x) / (x - x);  //-V501
         }
         k -= 25;
@@ -5677,7 +5676,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     /* (x<0)**(non-int) is NaN */
     if((n | yisint) == 0)
     {
-        return (x - x) / (x - x); //-V501
+        return (x - x) / (x - x);  //-V501
     }
     sn = 1.0f; /* s (sign of result -ve**odd) = -1 else = 1 */
     if((n | (yisint - 1)) == 0)
@@ -5874,9 +5873,9 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
             return x;
         }
         else if(ix < 0)
-        { /* sqrt(-ve) = sNaN */
-            return (x - x) / (x - x); //-V501
-        } 
+        {                              /* sqrt(-ve) = sNaN */
+            return (x - x) / (x - x);  //-V501
+        }
     }
     /* normalize x */
     m = (ix >> 23);
@@ -6285,7 +6284,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAcosKHR(KDfloat64KHR x)
             }
         }
         /* acos(|x|>1) is NaN */
-        return (x - x) / (x - x); //-V501
+        return (x - x) / (x - x);  //-V501
     }
     if(ix < 0x3fe00000)
     { /* |x| < 0.5 */
@@ -6384,7 +6383,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
             return x * KD_PI_2_KHR + x * pio2_lo;
         }
         /* asin(|x|>1) is NaN */
-        return (x - x) / (x - x); //-V501
+        return (x - x) / (x - x);  //-V501
     }
     else if(ix < 0x3fe00000)
     { /* |x|<0.5 */
@@ -6766,7 +6765,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
     /* cos(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x; //-V501
+        return x - x;  //-V501
     }
 
     /* argument reduction needed */
@@ -6843,7 +6842,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
     /* sin(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x; //-V501
+        return x - x;  //-V501
     }
     /* argument reduction needed */
     else
@@ -6919,7 +6918,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
     /* tan(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x; //-V501
+        return x - x;  //-V501
     }
 
     /* argument reduction needed */
@@ -7477,7 +7476,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     /* (x<0)**(non-int) is NaN */
     if((n | yisint) == 0)
     {
-        return (x - x) / (x - x); //-V501
+        return (x - x) / (x - x);  //-V501
     }
 
     s = 1.0; /* s (sign of result -ve**odd) = -1 else = 1 */
@@ -7754,8 +7753,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
         }
         else if(ix0 < 0)
         {
-            return (x - x) / (x - x); //-V501
-        } /* sqrt(-ve) = sNaN */
+            return (x - x) / (x - x);  //-V501
+        }                              /* sqrt(-ve) = sNaN */
     }
     /* normalize x */
     m = (ix0 >> 20);
