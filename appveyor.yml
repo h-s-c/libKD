@@ -8,10 +8,10 @@ image:
 before_build:
   - cinst ninja wget opencppcoverage
   - refreshenv
-  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-  - wget --no-check-certificate -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+  - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+  - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+  - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+  - wget --no-check-certificate -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
 
 build_script:
   - git submodule update --init --recursive
