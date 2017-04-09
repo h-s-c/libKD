@@ -37,7 +37,7 @@ include(CheckIncludeFiles)
 include(CheckLibraryExists)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
-set(KD_BUILD_EXAMPLES "On" CACHE BOOL "Build with examples")
+set(KD_BUILD_EXAMPLES "Off" CACHE BOOL "Build with examples")
 set(KD_BUILD_TESTS "On" CACHE BOOL "Build with tests")
 set(KD_BUILD_STDLIB "default" CACHE STRING "Build with libc (default/musl/none)")
 set_property(CACHE KD_BUILD_STDLIB PROPERTY STRINGS "default" "musl" "none") 
