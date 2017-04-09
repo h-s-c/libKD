@@ -8974,7 +8974,7 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 }
 
 /* kdFflush: Flush an open file. */
-KD_API KDint KD_APIENTRY kdFflush(KDFile *file)
+KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
 {
 #if !defined(_WIN32)
     KDint retval = fflush(file->file);
