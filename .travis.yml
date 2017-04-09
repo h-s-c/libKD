@@ -13,7 +13,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'ninja-build', valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['gcc-6', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
