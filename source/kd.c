@@ -2805,23 +2805,23 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 #   pragma warning(disable : 4100)
 #endif
 /* TODO: Catch argc/agv */
-KD_API int WINAPI WinMainCRTStartup(void)
+int WINAPI WinMainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
 }
-KD_API int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nShowCmd)
 {
     return __kdPreMain(0, KD_NULL);
 }
-KD_API int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
     return __kdPreMain(0, KD_NULL);
 }
-KD_API int WINAPI mainCRTStartup(void)
+int WINAPI mainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
 }
-KD_API int wmain(int argc, PWSTR *argv, PWSTR *envp)
+int wmain(int argc, PWSTR *argv, PWSTR *envp)
 {
     return __kdPreMain(0, KD_NULL);
 }
