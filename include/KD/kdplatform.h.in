@@ -129,8 +129,6 @@
 
 #if defined(__ANDROID__)
     #include <sys/cdefs.h>
-#else
-    #define __NDK_FPABI__
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -139,13 +137,10 @@
     #else
         #define KD_API __declspec(dllimport)
     #endif
-#elif defined(__GNUC__) || defined(__clang__)
-    #if defined(KD_EXPORTS)
-        #define KD_API __attribute__((__visibility__("default"))) __NDK_FPABI__
-    #else
-        #define KD_API __attribute__((__visibility__("hidden"))) __NDK_FPABI__
-    #endif
-#else
+#elif defined(__ANDROID__)
+    #include <sys/cdefs.h>
+    #define KD_API __attribute__((__visibility__("default"))) __NDK_FPABI__
+#else 
     #define KD_API
 #endif
 
