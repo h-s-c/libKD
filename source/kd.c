@@ -2799,21 +2799,40 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 #endif
 
 
-#if defined(_WIN32) && defined(KD_FREESTANDING)
-int WINAPI mainCRTStartup(void)
+#if defined(_WIN32)
+#if defined(_MSC_VER)
+#   pragma warning(push)
+#   pragma warning(disable : 4100)
+#endif
+/* TODO: Catch argc/agv */
+KD_API int WINAPI WinMainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
 }
-int WINAPI WinMainCRTStartup(void)
+KD_API int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
 {
     return __kdPreMain(0, KD_NULL);
 }
-#else
+KD_API int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    return __kdPreMain(0, KD_NULL);
+}
+KD_API int WINAPI mainCRTStartup(void)
+{
+    return __kdPreMain(0, KD_NULL);
+}
+KD_API int wmain(int argc, PWSTR *argv, PWSTR *envp)
+{
+    return __kdPreMain(0, KD_NULL);
+}
+#if defined(_MSC_VER)
+#   pragma warning(pop)
+#endif
+#endif
 KD_API int main(int argc, char **argv)
 {
     return __kdPreMain(argc, argv);
 }
-#endif
 
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
