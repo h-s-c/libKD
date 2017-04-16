@@ -2800,20 +2800,16 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 
 
 #if defined(_WIN32)
-#if defined(_MSC_VER)
-#   pragma warning(push)
-#   pragma warning(disable : 4100)
-#endif
 /* TODO: Catch argc/agv */
 int WINAPI WinMainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
 }
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nShowCmd)
+int WINAPI wWinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED PWSTR lpCmdLine, KD_UNUSED int nShowCmd)
 {
     return __kdPreMain(0, KD_NULL);
 }
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED LPSTR lpCmdLine, KD_UNUSED int nShowCmd)
 {
     return __kdPreMain(0, KD_NULL);
 }
@@ -2821,13 +2817,10 @@ int WINAPI mainCRTStartup(void)
 {
     return __kdPreMain(0, KD_NULL);
 }
-int wmain(int argc, PWSTR *argv, PWSTR *envp)
+int wmain(KD_UNUSED int argc, KD_UNUSED PWSTR *argv, KD_UNUSED PWSTR *envp)
 {
     return __kdPreMain(0, KD_NULL);
 }
-#if defined(_MSC_VER)
-#   pragma warning(pop)
-#endif
 #endif
 KD_API int main(int argc, char **argv)
 {
