@@ -45,6 +45,8 @@
 #   define KD_UNUSED __attribute__((__unused__))
 #elif defined(_MSC_VER)
 #   define KD_UNUSED __pragma(warning(suppress: 4100 4101))
+#elif defined(__LCLINT__)
+#   define KD_UNUSED /*@unused@*/
 #else
 #   define KD_UNUSED
 #endif
