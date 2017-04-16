@@ -52,6 +52,7 @@ project (KD C)
     else()
         add_library(KD SHARED ${KD_SOURCE})
     endif()
+    install(TARGETS KD DESTINATION lib)
 
     if(DEFINED ENV{CI})
         if(DEFINED CI_FLAGS)
@@ -62,6 +63,9 @@ project (KD C)
 
     set_target_properties(KD PROPERTIES C_STANDARD 11 C_EXTENSIONS "OFF")
     set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE "True")    
+
+    target_include_directories(KD PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_include_directories(KD PUBLIC ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
 
     if(MSVC)
         target_compile_options(KD PRIVATE /W4 /WX /wd4100 /wd4127)
@@ -83,10 +87,6 @@ project (KD C)
             set_target_properties(KD PROPERTIES LINK_FLAGS ${EMCC_FLAGS})
         endif()
     endif()
-
-    target_include_directories(KD PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    target_include_directories(KD PUBLIC ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
-
     set(KD_WINDOW_SUPPORTED "On")
     if(ANDROID)
         set(KD_WINDOW_ANDROID "On")
@@ -116,6 +116,7 @@ project (KD C)
             target_include_directories(KD PUBLIC ${EGL_INCLUDE_DIR})
         endif()
     endif()
+    configure_file(${CMAKE_SOURCE_DIR}/include/KD/kdplatform.h.in ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h)
 
     if(NOT KD_BUILD_STDLIB MATCHES "none")
         find_package(Threads)
@@ -130,8 +131,6 @@ project (KD C)
         target_link_libraries(KD PRIVATE android)
         target_link_libraries(KD PRIVATE log)
     endif()
-
-    configure_file(${CMAKE_SOURCE_DIR}/include/KD/kdplatform.h.in ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h)
    
     if(WIN32)
          target_compile_definitions(KD PRIVATE "_WIN32_WINNT=0x0600")
@@ -152,9 +151,10 @@ project (KD C)
     endif()
     mark_as_advanced(CLANG_TIDY CPPLINT)
 
-    install(TARGETS KD DESTINATION lib)
     file(GLOB KD_HEADERS "${CMAKE_SOURCE_DIR}/include/KD/*.h")
-    install(FILES ${KD_HEADERS} ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h  DESTINATION include/KD)
+    list(APPEND KD_HEADERS ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h)
+    install(FILES ${KD_HEADERS} DESTINATION include/KD)
+    source_group(TREE "KD" FILES ${KD_HEADERS})
 
     # Tests
     if(KD_BUILD_TESTS)
