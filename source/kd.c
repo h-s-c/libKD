@@ -659,9 +659,9 @@ static void __kdThreadInitOnce(void)
 {
     __kd_threadlocal = kdMapThreadStorageKHR(&__kd_threadlocal);
 }
-#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
-static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;
 
+static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;
+#if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
 static void *__kdThreadStart(void *init)
 {
     KDThread *thread = (KDThread *)init;
@@ -786,10 +786,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
 #endif
-    while(1)  //-V779
-    {
-        ;
-    }
+    kdExit(result);
 }
 
 /* kdThreadJoin: Wait for termination of another thread. */
@@ -802,7 +799,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
         ipretval = *retval;
     }
 
-    KDint error = 0;
+    KD_UNUSED KDint error = 0;
     KDint result = 0;
 #if defined(KD_THREAD_C11)
     error = thrd_join(thread->nativethread, ipretval);
@@ -881,9 +878,9 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
     kdMemcpy(&pfunc, &init_routine, sizeof(init_routine));
     InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, pfunc, NULL);
 #else
-    if(once_control == 0)
+    if(once_control->impl == 0)
     {
-        *once_control = (KDThreadOnce)1;
+        once_control->impl = (void*)1;
         init_routine();
     }
 #endif
