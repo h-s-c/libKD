@@ -44,6 +44,9 @@ void* test_func( void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
+#if defined(__EMSCRIPTEN__)
+    return 0;
+#endif
     test_once_count = kdAtomicIntCreateVEN(0);
     KDThread* threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0 ; i < THREAD_COUNT ; i++)

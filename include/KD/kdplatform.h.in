@@ -117,6 +117,12 @@
 #   define KD_ATOMIC_MUTEX
 #endif
 
+#if defined(__EMSCRIPTEN__)
+/* Deactivate threading on this platform for now. */
+#undef KD_THREAD_POSIX
+#undef KD_THREAD_C11
+#endif
+
 /******************************************************************************
  * Specification defined
  ******************************************************************************/

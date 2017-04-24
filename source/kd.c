@@ -45,9 +45,6 @@
 #   ifdef __linux__
 #       define _GNU_SOURCE
 #   endif
-#   ifdef __EMSCRIPTEN__
-#       define _POSIX_SOURCE
-#   endif
 #   include <sys/param.h>
 #   ifdef BSD
 #       define _BSD_SOURCE
@@ -107,7 +104,7 @@
 #   include <fcntl.h>
 #   include <dirent.h>
 #   include <dlfcn.h>
-#   if defined(__GLIBC__)
+#   if defined(__GLIBC__) || defined(__EMSCRIPTEN__)
 #       include <malloc.h> /* malloc_usable_size */
 #   endif
 #   include <sys/mman.h> /* mincore, mmap */
@@ -3393,7 +3390,7 @@ kdRealloc(void *ptr, KDsize size)
 
 KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
 {
-#if defined(__unix__)
+#if defined(__GLIBC__) || defined(__EMSCRIPTEN__)
     return malloc_usable_size(ptr);
 #elif defined(__APPLE__)
     return malloc_size(ptr);
@@ -8695,6 +8692,8 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
             return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000;
         }
     }
+#elif defined(__EMSCRIPTEN__)
+    return emscripten_get_now() * 1000000;
 #else
     return clock();
 #endif

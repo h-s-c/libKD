@@ -89,10 +89,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
     
     KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
-    void* native_window = KD_NULL;
-    kdRealizePlatformWindowVEN(kd_window, &native_window);
+    EGLNativeWindowType native_window;
+    kdRealizeWindow(kd_window, &native_window);
 
-    EGLSurface egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, native_window, KD_NULL);
+    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
 
     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
 
@@ -166,8 +166,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 {
                     eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
                     eglDestroySurface(egl_display, egl_surface);
-                    kdRealizePlatformWindowVEN(kd_window, &native_window);
-                    egl_surface = eglCreatePlatformWindowSurface(egl_display, egl_config, native_window, KD_NULL);
+                    kdRealizeWindow(kd_window, &native_window);
+                    egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
                     eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
                     break;
                 }

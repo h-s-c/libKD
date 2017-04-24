@@ -44,6 +44,9 @@ static void* test_func( void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
+#if defined(__EMSCRIPTEN__)
+    return 0;
+#endif
     static KDThread* threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0 ; i < THREAD_COUNT ;i++)
     {
