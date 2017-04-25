@@ -34,7 +34,7 @@
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_WIN32
 #cmakedefine KD_WINDOW_ANDROID
-#cmakedefine KD_WINDOW_NULL
+#cmakedefine KD_WINDOW_COCOA
 #cmakedefine KD_FREESTANDING
 
 #if defined(KD_WINDOW_X11)
@@ -115,6 +115,12 @@
 #   define KD_THREAD_POSIX
 #else
 #   define KD_ATOMIC_MUTEX
+#endif
+
+#if defined(__EMSCRIPTEN__)
+/* Deactivate threading on this platform for now. */
+#undef KD_THREAD_POSIX
+#undef KD_THREAD_C11
 #endif
 
 /******************************************************************************
