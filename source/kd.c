@@ -1180,7 +1180,9 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
     ts.tv_nsec = (KDint32)timeout - ((KDint32)ts.tv_sec * 1000000000);
 #endif
 
-#if defined(KD_THREAD_C11)
+#if defined(__EMSCRIPTEN__)
+    emscripten_sleep(timeout / 1000000);
+#elif defined(KD_THREAD_C11)
     thrd_sleep(&ts, NULL);
 #elif defined(KD_THREAD_POSIX)
     nanosleep(&ts, NULL);
@@ -1355,7 +1357,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 
 #ifdef KD_WINDOW_SUPPORTED
     KD_UNUSED KDWindow *window = __kd_window;
-#if defined(KD_WINDOW_ANDROID)
+#if defined(__EMSCRIPTEN__)
+    emscripten_sleep(1);
+#elif defined(KD_WINDOW_ANDROID)
     AInputEvent *aevent = NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     if(__kd_androidinputqueue != KD_NULL)
@@ -8846,6 +8850,11 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
     timer->thread = kdThreadCreate(KD_NULL, __kdTimerHandler, payload);
     if(timer->thread == KD_NULL)
     {
+        if(kdGetError() == KD_ENOSYS)
+        {
+            kdLogMessage("kdSetTimer() needs a threading implementation.\n");
+            kdAssert(0);
+        }
         kdFree(timer);
         kdFree(payload);
         kdSetError(KD_ENOMEM);

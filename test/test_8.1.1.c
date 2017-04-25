@@ -44,15 +44,16 @@ static void* test_func( void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-#if defined(__EMSCRIPTEN__)
-    return 0;
-#endif
     static KDThread* threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0 ; i < THREAD_COUNT ;i++)
     {
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
         if(threads[i] == KD_NULL)
         {
+            if(kdGetError() == KD_ENOSYS)
+            {
+                return 0;
+            }
             kdAssert(0);
         }
     }

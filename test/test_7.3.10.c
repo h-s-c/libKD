@@ -44,9 +44,6 @@ void* test_func( void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-#if defined(__EMSCRIPTEN__)
-    return 0;
-#endif
     test_once_count = kdAtomicIntCreateVEN(0);
     KDThread* threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0 ; i < THREAD_COUNT ; i++)
@@ -54,6 +51,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
         if(threads[i] == KD_NULL)
         {
+            if(kdGetError() == KD_ENOSYS)
+            {
+                return 0;
+            }
             kdAssert(0);
         }
     }

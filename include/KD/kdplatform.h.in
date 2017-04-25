@@ -34,7 +34,7 @@
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_WIN32
 #cmakedefine KD_WINDOW_ANDROID
-#cmakedefine KD_WINDOW_NULL
+#cmakedefine KD_WINDOW_COCOA
 #cmakedefine KD_FREESTANDING
 
 #if defined(KD_WINDOW_X11)
