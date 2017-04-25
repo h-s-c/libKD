@@ -1054,7 +1054,7 @@ static unsigned char *stbi__load_and_postprocess_8bit(stbi__context *s, int *x, 
       for (row = 0; row < (h>>1); row++) {
          for (col = 0; col < w; col++) {
             for (z = 0; z < channels; z++) {
-               stbi_uc temp = image[(row * w + col) * channels + z];
+               stbi_uc temp = image[(row * w + col) * channels + z]; // NOLINT
                image[(row * w + col) * channels + z] = image[((h - row - 1) * w + col) * channels + z];
                image[((h - row - 1) * w + col) * channels + z] = temp;
             }

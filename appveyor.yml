@@ -1,28 +1,21 @@
-version: 0.1.{build}
+version: "{build}"
 
-environment:
-  matrix:
-    - CTEST_CMAKE_GENERATOR: Visual Studio 15 2017
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    - CTEST_CMAKE_GENERATOR: Visual Studio 15 2017 Win64
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    - CTEST_CMAKE_GENERATOR: Visual Studio 14 2015
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-    - CTEST_CMAKE_GENERATOR: Visual Studio 14 2015 Win64
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-    - CTEST_CMAKE_GENERATOR: Visual Studio 12 2013
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-    - CTEST_CMAKE_GENERATOR: Visual Studio 12 2013 Win64
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+image:
+- Visual Studio 2017
+- Visual Studio 2015
+- Visual Studio 2013
 
 before_build:
-  - cinst wget opencppcoverage
+  - cinst ninja wget opencppcoverage
   - refreshenv
-  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-  - wget --no-check-certificate -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-  - wget --no-check-certificate -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
+  - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
+  - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
+  - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
+  - wget --no-check-certificate -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
 
 build_script:
   - git submodule update --init --recursive
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" (call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2015" (call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2013" (call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" amd64)
   - python ci-tools/run_ctest.py

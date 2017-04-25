@@ -21,6 +21,8 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
+set(CPACK_CMAKE_GENERATOR "Ninja")
+
 set(CPACK_PACKAGE_NAME "libkd")
 set(CPACK_PACKAGE_CONTACT "h-s-c@users.noreply.github.com")
 set(CPACK_PACKAGE_VENDOR "Kevin Schmidt")
@@ -39,7 +41,6 @@ list(GET CPACK_PACKAGE_VERSION 1 CPACK_PACKAGE_VERSION_MINOR)
 list(GET CPACK_PACKAGE_VERSION 2 CPACK_PACKAGE_VERSION_PATCH)
 set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
-set(CPACK_CMAKE_GENERATOR "Unix Makefiles")
 set(CPACK_INSTALL_CMAKE_PROJECTS "build;KD;ALL;/")
 
 if(UNIX)

@@ -16,11 +16,6 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#endif
-
-
 typedef struct
 {
    // Handle to a program object
@@ -165,6 +160,12 @@ void Draw ( UserData *userData )
                            -0.5f, -0.5f, 0.0f,
                             0.5f, -0.5f, 0.0f };
 
+   // No clientside arrays, so do this in a webgl-friendly manner
+   GLuint vertexPosObject;
+   glGenBuffers(1, &vertexPosObject);
+   glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
+   glBufferData(GL_ARRAY_BUFFER, 9*4, vVertices, GL_STATIC_DRAW);
+
    // Set the viewport
    KDint32 windowsize[2];
    kdGetWindowPropertyiv(userData->window, KD_WINDOWPROPERTY_SIZE, windowsize);
@@ -177,8 +178,9 @@ void Draw ( UserData *userData )
    glUseProgram ( userData->programObject );
 
    // Load the vertex data
-   glVertexAttribPointer ( 0, 3, GL_FLOAT, GL_FALSE, 0, vVertices );
-   glEnableVertexAttribArray ( 0 );
+   glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
+   glVertexAttribPointer(0 /* ? */, 3, GL_FLOAT, 0, 0, 0);
+   glEnableVertexAttribArray(0);
 
    glDrawArrays ( GL_TRIANGLES, 0, 3 );
 
@@ -312,15 +314,10 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
       kdExit ( 0 );
 
    // Main Loop
-#ifdef __EMSCRIPTEN__
-   emscripten_set_main_loop_arg(Mainloop, (void*)&userData, 0, 1);
-#else
    while ( 1 )
    {
       Mainloop((void*)&userData);
    }
-#endif
-
    Exit( &userData);
 
    return 0;

@@ -34,7 +34,7 @@
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_WIN32
 #cmakedefine KD_WINDOW_ANDROID
-#cmakedefine KD_WINDOW_NULL
+#cmakedefine KD_WINDOW_COCOA
 #cmakedefine KD_FREESTANDING
 
 #if defined(KD_WINDOW_X11)
@@ -45,6 +45,8 @@
 #   define KD_UNUSED __attribute__((__unused__))
 #elif defined(_MSC_VER)
 #   define KD_UNUSED __pragma(warning(suppress: 4100 4101))
+#elif defined(__LCLINT__)
+#   define KD_UNUSED /*@unused@*/
 #else
 #   define KD_UNUSED
 #endif
@@ -115,6 +117,12 @@
 #   define KD_ATOMIC_MUTEX
 #endif
 
+#if defined(__EMSCRIPTEN__)
+/* Deactivate threading on this platform for now. */
+#undef KD_THREAD_POSIX
+#undef KD_THREAD_C11
+#endif
+
 /******************************************************************************
  * Specification defined
  ******************************************************************************/
@@ -127,19 +135,20 @@
     #define KD_APIENTRY
 #endif
 
+#if defined(__ANDROID__)
+    #include <sys/cdefs.h>
+#endif
+
 #if defined(_MSC_VER) || defined(__MINGW32__)
     #if defined(KD_EXPORTS)
         #define KD_API __declspec(dllexport)
     #else
         #define KD_API __declspec(dllimport)
     #endif
-#elif defined(__GNUC__) || defined(__clang__)
-    #if defined(KD_EXPORTS)
-        #define KD_API __attribute__((__visibility__("default")))
-    #else
-        #define KD_API __attribute__((__visibility__("hidden")))
-    #endif
-#else
+#elif defined(__ANDROID__)
+    #include <sys/cdefs.h>
+    #define KD_API __attribute__((__visibility__("default"))) __NDK_FPABI__
+#else 
     #define KD_API
 #endif
 

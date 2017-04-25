@@ -9,7 +9,7 @@
 [![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=CoverityScan)](https://scan.coverity.com/projects/h-s-c-libkd)  
 
 ### About
--   Cross-platform system API similar to POSIX or SDL
+-   Cross-platform system API similar to SDL created by Khronos (OpenGl etc.)
 -   [Specification](https://www.khronos.org/registry/kode/)
 
 ### Platforms
@@ -44,4 +44,10 @@ zypper install libkd
 ```bash
 curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
 yum install libkd
+```
+
+## Build from source
+```bash
+cmake -G Ninja -Bbuild -H.
+ninja -C build
 ```

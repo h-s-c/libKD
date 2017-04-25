@@ -21,6 +21,8 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
+set(CTEST_CMAKE_GENERATOR "Ninja")
+
 set(CTEST_PROJECT_NAME "libKD")
 set(CTEST_NIGHTLY_START_TIME "00:00:00 GMT")
 
