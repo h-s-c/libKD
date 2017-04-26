@@ -80,7 +80,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     };
 
     EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-   
+
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
 
@@ -88,7 +88,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLConfig egl_config;
     eglChooseConfig(egl_display, egl_attributes, &egl_config, 1, &egl_num_configs);
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
-    
+
     KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
     EGLNativeWindowType native_window;
     kdRealizeWindow(kd_window, &native_window);
@@ -103,7 +103,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     }
 
 #if defined(GL_KHR_debug)
-    if(kdStrstrVEN((const KDchar*)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
+    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
     {
         glEnable(GL_DEBUG_OUTPUT_KHR);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
@@ -123,13 +123,13 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessagefKHR("Client APIs: %s\n", eglQueryString(egl_display, EGL_CLIENT_APIS));
     kdLogMessagefKHR("Extensions: %s\n", eglQueryString(egl_display, EGL_EXTENSIONS));
     kdLogMessage("-----GLES2-----\n");
-    kdLogMessagefKHR("Vendor: %s\n", (const KDchar*)glGetString(GL_VENDOR));
-    kdLogMessagefKHR("Version: %s\n", (const KDchar*)glGetString(GL_VERSION));
-    kdLogMessagefKHR("Renderer: %s\n", (const KDchar*)glGetString(GL_RENDERER));
-    kdLogMessagefKHR("Extensions: %s\n", (const KDchar*)glGetString(GL_EXTENSIONS));
+    kdLogMessagefKHR("Vendor: %s\n", (const KDchar *)glGetString(GL_VENDOR));
+    kdLogMessagefKHR("Version: %s\n", (const KDchar *)glGetString(GL_VERSION));
+    kdLogMessagefKHR("Renderer: %s\n", (const KDchar *)glGetString(GL_RENDERER));
+    kdLogMessagefKHR("Extensions: %s\n", (const KDchar *)glGetString(GL_EXTENSIONS));
 
     kdInstallCallback(&kd_callback, KD_EVENT_QUIT, KD_NULL);
-    KDTimer* kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
+    KDTimer *kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
 
     KDfloat32 r = 0.0f;
     KDfloat32 g = 1.0f;
@@ -202,7 +202,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         }
     }
-    
+
     eglDestroyContext(egl_display, egl_context);
     eglDestroySurface(egl_display, egl_surface);
     eglTerminate(egl_display);

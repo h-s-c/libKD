@@ -18,171 +18,176 @@
 
 typedef struct
 {
-   // Handle to a program object
-   GLuint programObject;
+    // Handle to a program object
+    GLuint programObject;
 
-   // EGL handles
-   EGLDisplay eglDisplay;
-   EGLContext eglContext;
-   EGLSurface eglSurface;
+    // EGL handles
+    EGLDisplay eglDisplay;
+    EGLContext eglContext;
+    EGLSurface eglSurface;
 
-   //KD handles
-   KDWindow *window;
+    //KD handles
+    KDWindow *window;
 } UserData;
 
 ///
 // Create a shader object, load the shader source, and
 // compile the shader.
 //
-GLuint LoadShader ( GLenum type, const char *shaderSrc )
+GLuint LoadShader(GLenum type, const KDchar *shaderSrc)
 {
-   GLuint shader;
-   GLint compiled;
-   
-   // Create the shader object
-   shader = glCreateShader ( type );
+    GLuint shader;
+    GLint compiled;
 
-   if ( shader == 0 )
-      return 0;
+    // Create the shader object
+    shader = glCreateShader(type);
 
-   // Load the shader source
-   glShaderSource ( shader, 1, &shaderSrc, KD_NULL  );
-   
-   // Compile the shader
-   glCompileShader ( shader );
+    if(shader == 0)
+    {
+        return 0;
+    }
 
-   // Check the compile status
-   glGetShaderiv ( shader, GL_COMPILE_STATUS, &compiled );
+    // Load the shader source
+    glShaderSource(shader, 1, &shaderSrc, KD_NULL);
 
-   if ( !compiled ) 
-   {
-      GLint infoLen = 0;
+    // Compile the shader
+    glCompileShader(shader);
 
-      glGetShaderiv ( shader, GL_INFO_LOG_LENGTH, &infoLen );
+    // Check the compile status
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
-      if ( infoLen > 1 )
-      {
-         char* infoLog = kdMalloc (sizeof(char) * infoLen );
+    if(!compiled)
+    {
+        GLint infoLen = 0;
 
-         glGetShaderInfoLog ( shader, infoLen, KD_NULL , infoLog );
-         kdLogMessage ( infoLog );
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
 
-         kdFree ( infoLog );
-      }
+        if(infoLen > 1)
+        {
+            KDchar *infoLog = kdMalloc(sizeof(KDchar) * infoLen);
 
-      glDeleteShader ( shader );
-      return 0;
-   }
+            glGetShaderInfoLog(shader, infoLen, KD_NULL, infoLog);
+            kdLogMessage(infoLog);
 
-   return shader;
+            kdFree(infoLog);
+        }
 
+        glDeleteShader(shader);
+        return 0;
+    }
+
+    return shader;
 }
 
 ///
 // Initialize the shader and program object
 //
-KDboolean Init ( UserData *userData )
+KDboolean Init(UserData *userData)
 {
-   const KDchar* vShaderStr =  
-      "attribute vec4 vPosition;    \n"
-      "void main()                  \n"
-      "{                            \n"
-      "   gl_Position = vPosition;  \n"
-      "}                            \n";
-   
-   const KDchar* fShaderStr =  
-      "precision mediump float;\n"\
-      "void main()                                  \n"
-      "{                                            \n"
-      "  gl_FragColor = vec4 ( 1.0, 0.0, 0.0, 1.0 );\n"
-      "}                                            \n";
+    const KDchar *vShaderStr =
+        "attribute vec4 vPosition;    \n"
+        "void main()                  \n"
+        "{                            \n"
+        "   gl_Position = vPosition;  \n"
+        "}                            \n";
 
-   GLuint vertexShader;
-   GLuint fragmentShader;
-   GLuint programObject;
-   GLint linked;
+    const KDchar *fShaderStr =
+        "precision mediump float;\n"
+        "void main()                                  \n"
+        "{                                            \n"
+        "  gl_FragColor = vec4 ( 1.0, 0.0, 0.0, 1.0 );\n"
+        "}                                            \n";
 
-   // Load the vertex/fragment shaders
-   vertexShader = LoadShader ( GL_VERTEX_SHADER, vShaderStr );
-   fragmentShader = LoadShader ( GL_FRAGMENT_SHADER, fShaderStr );
+    GLuint vertexShader;
+    GLuint fragmentShader;
+    GLuint programObject;
+    GLint linked;
 
-   // Create the program object
-   programObject = glCreateProgram ( );
-   
-   if ( programObject == 0 )
-      return 0;
+    // Load the vertex/fragment shaders
+    vertexShader = LoadShader(GL_VERTEX_SHADER, vShaderStr);
+    fragmentShader = LoadShader(GL_FRAGMENT_SHADER, fShaderStr);
 
-   glAttachShader ( programObject, vertexShader );
-   glAttachShader ( programObject, fragmentShader );
+    // Create the program object
+    programObject = glCreateProgram();
 
-   // Bind vPosition to attribute 0   
-   glBindAttribLocation ( programObject, 0, "vPosition" );
+    if(programObject == 0)
+    {
+        return 0;
+    }
 
-   // Link the program
-   glLinkProgram ( programObject );
+    glAttachShader(programObject, vertexShader);
+    glAttachShader(programObject, fragmentShader);
 
-   // Check the link status
-   glGetProgramiv ( programObject, GL_LINK_STATUS, &linked );
+    // Bind vPosition to attribute 0
+    glBindAttribLocation(programObject, 0, "vPosition");
 
-   if ( !linked ) 
-   {
-      GLint infoLen = 0;
+    // Link the program
+    glLinkProgram(programObject);
 
-      glGetProgramiv ( programObject, GL_INFO_LOG_LENGTH, &infoLen );
+    // Check the link status
+    glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
 
-      if ( infoLen > 1 )
-      {
-         KDchar* infoLog = kdMalloc (sizeof(char) * infoLen );
+    if(!linked)
+    {
+        GLint infoLen = 0;
 
-         glGetProgramInfoLog ( programObject, infoLen, KD_NULL , infoLog );
-         kdLogMessage ( infoLog );
+        glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &infoLen);
 
-         kdFree ( infoLog );
-      }
+        if(infoLen > 1)
+        {
+            KDchar *infoLog = kdMalloc(sizeof(char) * infoLen);
 
-      glDeleteProgram ( programObject );
-      return 0;
-   }
+            glGetProgramInfoLog(programObject, infoLen, KD_NULL, infoLog);
+            kdLogMessage(infoLog);
 
-   // Store the program object
-   userData->programObject = programObject;
+            kdFree(infoLog);
+        }
 
-   glClearColor ( 0.0f, 0.0f, 0.0f, 0.0f );
-   return 1;
+        glDeleteProgram(programObject);
+        return 0;
+    }
+
+    // Store the program object
+    userData->programObject = programObject;
+
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    return 1;
 }
 
 ///
 // Draw a triangle using the shader pair created in Init()
 //
-void Draw ( UserData *userData )
+void Draw(UserData *userData)
 {
-   GLfloat vVertices[] = {  0.0f,  0.5f, 0.0f, 
-                           -0.5f, -0.5f, 0.0f,
-                            0.5f, -0.5f, 0.0f };
+    GLfloat vVertices[] = {
+        0.0f, 0.5f, 0.0f,
+        -0.5f, -0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f
+    };
 
-   // No clientside arrays, so do this in a webgl-friendly manner
-   GLuint vertexPosObject;
-   glGenBuffers(1, &vertexPosObject);
-   glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
-   glBufferData(GL_ARRAY_BUFFER, 9*4, vVertices, GL_STATIC_DRAW);
+    // No clientside arrays, so do this in a webgl-friendly manner
+    GLuint vertexPosObject;
+    glGenBuffers(1, &vertexPosObject);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
+    glBufferData(GL_ARRAY_BUFFER, 9 * 4, vVertices, GL_STATIC_DRAW);
 
-   // Set the viewport
-   KDint32 windowsize[2];
-   kdGetWindowPropertyiv(userData->window, KD_WINDOWPROPERTY_SIZE, windowsize);
-   glViewport ( 0, 0, windowsize[0], windowsize[1]);
-   
-   // Clear the color buffer
-   glClear ( GL_COLOR_BUFFER_BIT );
+    // Set the viewport
+    KDint32 windowsize[2];
+    kdGetWindowPropertyiv(userData->window, KD_WINDOWPROPERTY_SIZE, windowsize);
+    glViewport(0, 0, windowsize[0], windowsize[1]);
 
-   // Use the program object
-   glUseProgram ( userData->programObject );
+    // Clear the color buffer
+    glClear(GL_COLOR_BUFFER_BIT);
 
-   // Load the vertex data
-   glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
-   glVertexAttribPointer(0 , 3, GL_FLOAT, 0, 0, 0);
-   glEnableVertexAttribArray(0);
+    // Use the program object
+    glUseProgram(userData->programObject);
 
-   glDrawArrays ( GL_TRIANGLES, 0, 3 );
+    // Load the vertex data
+    glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
+    glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
+    glEnableVertexAttribArray(0);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
 
@@ -191,143 +196,150 @@ void Draw ( UserData *userData )
 //
 //    Initialize an EGL rendering context and all associated elements
 //
-EGLBoolean InitEGLContext ( UserData *userData,
-                            EGLConfig config )
+EGLBoolean InitEGLContext(UserData *userData,
+    EGLConfig config)
 {
-   EGLContext context;
-   EGLSurface surface;   
-   EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
+    EGLContext context;
+    EGLSurface surface;
+    EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE};
 
-   // Get native window handle
-   EGLNativeWindowType hWnd;
-   if(kdRealizeWindow(userData->window, &hWnd) != 0)
-   {
-      return EGL_FALSE;
-   }
-   surface = eglCreateWindowSurface(userData->eglDisplay, config, hWnd, KD_NULL );
-   if ( surface == EGL_NO_SURFACE )
-   {
-      return EGL_FALSE;
-   }
+    // Get native window handle
+    EGLNativeWindowType hWnd;
+    if(kdRealizeWindow(userData->window, &hWnd) != 0)
+    {
+        return EGL_FALSE;
+    }
+    surface = eglCreateWindowSurface(userData->eglDisplay, config, hWnd, KD_NULL);
+    if(surface == EGL_NO_SURFACE)
+    {
+        return EGL_FALSE;
+    }
 
-   // Create a GL context
-   context = eglCreateContext(userData->eglDisplay, config, EGL_NO_CONTEXT, contextAttribs );
-   if ( context == EGL_NO_CONTEXT )
-   {
-      return EGL_FALSE;
-   }   
+    // Create a GL context
+    context = eglCreateContext(userData->eglDisplay, config, EGL_NO_CONTEXT, contextAttribs);
+    if(context == EGL_NO_CONTEXT)
+    {
+        return EGL_FALSE;
+    }
 
-   // Make the context current
-   if ( !eglMakeCurrent(userData->eglDisplay, surface, surface, context) )
-   {
-      return EGL_FALSE;
-   }
+    // Make the context current
+    if(!eglMakeCurrent(userData->eglDisplay, surface, surface, context))
+    {
+        return EGL_FALSE;
+    }
 
-   userData->eglContext = context;
-   userData->eglSurface = surface;
+    userData->eglContext = context;
+    userData->eglSurface = surface;
 
-   return EGL_TRUE;
+    return EGL_TRUE;
 }
 
 ///
 // Cleanup
 //
-void ShutDown ( UserData *userData)
+void ShutDown(UserData *userData)
 {
-   // EGL clean up
-   eglMakeCurrent ( 0, 0, 0, 0 );
-   eglDestroySurface ( userData->eglDisplay, userData->eglSurface );
-   eglDestroyContext ( userData->eglDisplay, userData->eglContext );
+    // EGL clean up
+    eglMakeCurrent(0, 0, 0, 0);
+    eglDestroySurface(userData->eglDisplay, userData->eglSurface);
+    eglDestroyContext(userData->eglDisplay, userData->eglContext);
 
-   // Destroy the window
-   kdDestroyWindow(userData->window);
+    // Destroy the window
+    kdDestroyWindow(userData->window);
 }
 
-KDboolean Mainloop ( UserData *userData )
+KDboolean Mainloop(UserData *userData)
 {
 
-   // Wait for an event
-   const KDEvent *evt = kdWaitEvent(0);
-   if (evt) {
-   // Exit app
-      if (evt->type == KD_EVENT_QUIT)
-      {
-         return 0;
-      }
-   }
+    // Wait for an event
+    const KDEvent *evt = kdWaitEvent(0);
+    if(evt)
+    {
+        // Exit app
+        if(evt->type == KD_EVENT_QUIT)
+        {
+            return 0;
+        }
+    }
 
-   // Draw frame
-   Draw(userData);
+    // Draw frame
+    Draw(userData);
 
-   eglSwapBuffers ( userData->eglDisplay, userData->eglSurface );
-   return 1;
+    eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
+    return 1;
 }
 
-/// 
-// kdMain() 
+///
+// kdMain()
 //
 //    Main function for OpenKODE application
 //
-KDint kdMain ( KDint argc, const KDchar *const *argv )
+KDint kdMain(KDint argc, const KDchar *const *argv)
 {
-   EGLint attribList[] =
-   {
-       EGL_SURFACE_TYPE,      EGL_WINDOW_BIT,
-       EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES2_BIT,
-       EGL_RED_SIZE,          8,
-       EGL_GREEN_SIZE,        8,
-       EGL_BLUE_SIZE,         8,
-       EGL_ALPHA_SIZE,        EGL_DONT_CARE,
-       EGL_DEPTH_SIZE,        EGL_DONT_CARE,
-       EGL_STENCIL_SIZE,      EGL_DONT_CARE,
-       EGL_SAMPLE_BUFFERS,    0,
-       EGL_NONE
-   };
-   EGLint majorVersion, 
-         minorVersion;
-   UserData userData;
-   EGLint numConfigs;
-   EGLConfig config;
+    EGLint attribList[] =
+    {
+        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE,           8,
+        EGL_GREEN_SIZE,         8,
+        EGL_BLUE_SIZE,          8,
+        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
+        EGL_DEPTH_SIZE,         EGL_DONT_CARE,
+        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
+        EGL_SAMPLE_BUFFERS,     0,
+        EGL_NONE
+    };
 
-   userData.eglDisplay = eglGetDisplay( EGL_DEFAULT_DISPLAY );
+    EGLint majorVersion, minorVersion;
+    UserData userData;
+    EGLint numConfigs;
+    EGLConfig config;
 
-   // Initialize EGL
-   if ( !eglInitialize(userData.eglDisplay, &majorVersion, &minorVersion) )
-   {
-      return EGL_FALSE;
-   }
+    userData.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 
-   // Get configs
-   if ( !eglGetConfigs(userData.eglDisplay, KD_NULL , 0, &numConfigs) )
-   {
-      return EGL_FALSE;
-   }
+    // Initialize EGL
+    if(!eglInitialize(userData.eglDisplay, &majorVersion, &minorVersion))
+    {
+        return EGL_FALSE;
+    }
 
-   // Choose config
-   if ( !eglChooseConfig(userData.eglDisplay, attribList, &config, 1, &numConfigs) )
-   {
-      return EGL_FALSE;
-   }
+    // Get configs
+    if(!eglGetConfigs(userData.eglDisplay, KD_NULL, 0, &numConfigs))
+    {
+        return EGL_FALSE;
+    }
 
-   // Use OpenKODE to create a Window
-   userData.window = kdCreateWindow ( userData.eglDisplay, config, KD_NULL );
-   if( !userData.window )
-      kdExit ( 0 );
+    // Choose config
+    if(!eglChooseConfig(userData.eglDisplay, attribList, &config, 1, &numConfigs))
+    {
+        return EGL_FALSE;
+    }
 
-   if ( !InitEGLContext ( &userData, config ) )
-      kdExit ( 0 );
+    // Use OpenKODE to create a Window
+    userData.window = kdCreateWindow(userData.eglDisplay, config, KD_NULL);
+    if(!userData.window)
+    {
+        kdExit(0);
+    }
 
-   if ( !Init ( &userData ) )
-      kdExit ( 0 );
+    if(!InitEGLContext(&userData, config))
+    {
+        kdExit(0);
+    }
 
-   // Main Loop
+    if(!Init(&userData))
+    {
+        kdExit(0);
+    }
+
+    // Main Loop
     KDboolean run = 1;
-   while (  run )
-   {
-      run = Mainloop(&userData);
-   }
+    while(run)
+    {
+        run = Mainloop(&userData);
+    }
 
-   ShutDown( &userData);
+    ShutDown(&userData);
 
-   return 0;
+    return 0;
 }
