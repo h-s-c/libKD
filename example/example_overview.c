@@ -66,6 +66,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         EGL_ALPHA_SIZE,         EGL_DONT_CARE,
         EGL_DEPTH_SIZE,         EGL_DONT_CARE,
         EGL_STENCIL_SIZE,       EGL_DONT_CARE,
+        EGL_SAMPLE_BUFFERS,     0,
         EGL_NONE
     };
 

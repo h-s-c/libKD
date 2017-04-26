@@ -349,6 +349,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         default:
         {
             /* TODO: Handle other errorcodes */
+            kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unknown errorcode: %d\n", error);
             kdAssert(0);
         }
     }
@@ -360,6 +361,11 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(EISDIR):
         {
             kderror = KD_EACCES;
+            break;
+        }
+        case(EAGAIN):
+        {
+            kderror = KD_ETRY_AGAIN;
             break;
         }
         case(EBADF):
@@ -428,6 +434,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         default:
         {
             /* TODO: Handle other errorcodes */
+            kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unknown errorcode: %d\n", error);
             kdAssert(0);
         }
     }
@@ -443,6 +450,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         }
     }
     /* Error is not in allowed list */
+    kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unexpected errorcode: %d\n", kderror);
     kdAssert(0);
 }
 
@@ -8681,16 +8689,16 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     GetSystemTimeAsFileTime(&filetime);
     largeuint.LowPart = filetime.dwLowDateTime;
     largeuint.HighPart = filetime.dwHighDateTime;
-    return largeuint.QuadPart * 100;
+    return largeuint.QuadPart * 1e+2L;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return ts.tv_nsec;
+    return (ts.tv_sec * 1e+9L) + ts.tv_nsec;
 #elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038
     /* Supported as of XCode 8 / macOS Sierra 10.12 */
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_nsec;
+    return (ts.tv_sec * 1e+9L) + ts.tv_nsec;
 #elif defined(EGL_NV_system_time) && !defined(__APPLE__)
     if(kdStrstrVEN(eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS), "EGL_NV_system_time"))
     {
@@ -8698,13 +8706,13 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
         PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
         if(eglGetSystemTimeNV && eglGetSystemTimeFrequencyNV)
         {
-            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000;
+            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1e+9L;
         }
     }
 #elif defined(__EMSCRIPTEN__)
-    return emscripten_get_now() * 1000000;
+    return emscripten_get_now() * 1e+6L;
 #else
-    return clock();
+    return (clock() / CLOCKS_PER_SEC) * 1e+9L;
 #endif
 }
 
@@ -8718,7 +8726,7 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
     largeuint.LowPart = filetime.dwLowDateTime;
     largeuint.HighPart = filetime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
-    KDtime time = (KDtime)((largeuint.QuadPart / 10000000) - 11644473600LL);
+    KDtime time = (KDtime)((largeuint.QuadPart * 1e-7) - 11644473600LL);
     (*timep) = time;
     return time;
 #else
@@ -9022,7 +9030,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
         error = GetLastError();
 #else
     retval = fread(buffer, size, count, file->file);
-    if(retval != size)
+    if(retval != count)
     {
         error = errno;
 #endif
@@ -10190,7 +10198,12 @@ KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nat
 KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
 {
     kdLogMessagefKHR("---Assertion---\nCondition: %s\nFile: %s(%i)\n", condition, filename, linenumber);
+
+#if defined(__GNUC__) || defined(__clang__)
+    __builtin_trap();
+#else
     kdExit(EXIT_FAILURE);
+#endif
 }
 
 /* kdLogMessage: Output a log message. */
@@ -10517,7 +10530,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    if(kdFread(filedata, image->size, 1, file) != 1)
+    if(kdFread(filedata, 1, image->size, file) != image->size)
     {
         kdFree(filedata);
         kdFree(image);
@@ -10841,7 +10854,7 @@ KD_API KDint KD_APIENTRY kdVfscanfKHR(KDFile *file, const KDchar *format, KDVaLi
         kdSetError(KD_ENOMEM);
         return KD_EOF;
     }
-    if(kdFread(buffer, size, 1, file) != 1)
+    if(kdFread(buffer, 1, size, file) != size)
     {
         kdFree(buffer);
         kdSetError(KD_EIO);

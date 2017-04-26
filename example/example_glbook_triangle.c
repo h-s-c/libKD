@@ -81,16 +81,16 @@ GLuint LoadShader ( GLenum type, const char *shaderSrc )
 ///
 // Initialize the shader and program object
 //
-int Init ( UserData *userData )
+KDboolean Init ( UserData *userData )
 {
-   const char* vShaderStr =  
+   const KDchar* vShaderStr =  
       "attribute vec4 vPosition;    \n"
       "void main()                  \n"
       "{                            \n"
       "   gl_Position = vPosition;  \n"
       "}                            \n";
    
-   const char* fShaderStr =  
+   const KDchar* fShaderStr =  
       "precision mediump float;\n"\
       "void main()                                  \n"
       "{                                            \n"
@@ -132,7 +132,7 @@ int Init ( UserData *userData )
 
       if ( infoLen > 1 )
       {
-         char* infoLog = kdMalloc (sizeof(char) * infoLen );
+         KDchar* infoLog = kdMalloc (sizeof(char) * infoLen );
 
          glGetProgramInfoLog ( programObject, infoLen, KD_NULL , infoLog );
          kdLogMessage ( infoLog );
@@ -179,12 +179,10 @@ void Draw ( UserData *userData )
 
    // Load the vertex data
    glBindBuffer(GL_ARRAY_BUFFER, vertexPosObject);
-   glVertexAttribPointer(0 /* ? */, 3, GL_FLOAT, 0, 0, 0);
+   glVertexAttribPointer(0 , 3, GL_FLOAT, 0, 0, 0);
    glEnableVertexAttribArray(0);
 
    glDrawArrays ( GL_TRIANGLES, 0, 3 );
-
-   eglSwapBuffers ( userData->eglDisplay, userData->eglSurface );
 }
 
 
@@ -231,7 +229,10 @@ EGLBoolean InitEGLContext ( UserData *userData,
    return EGL_TRUE;
 }
 
-void Exit ( UserData *userData)
+///
+// Cleanup
+//
+void ShutDown ( UserData *userData)
 {
    // EGL clean up
    eglMakeCurrent ( 0, 0, 0, 0 );
@@ -242,20 +243,24 @@ void Exit ( UserData *userData)
    kdDestroyWindow(userData->window);
 }
 
-void Mainloop ( void* args )
+KDboolean Mainloop ( UserData *userData )
 {
-   UserData *userData = (UserData*)args;
 
    // Wait for an event
    const KDEvent *evt = kdWaitEvent(0);
    if (evt) {
    // Exit app
-      if (evt->type == KD_EVENT_WINDOW_CLOSE)
-         Exit(userData);
+      if (evt->type == KD_EVENT_QUIT)
+      {
+         return 0;
+      }
    }
 
    // Draw frame
    Draw(userData);
+
+   eglSwapBuffers ( userData->eglDisplay, userData->eglSurface );
+   return 1;
 }
 
 /// 
@@ -267,12 +272,15 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
 {
    EGLint attribList[] =
    {
-       EGL_RED_SIZE,       8,
-       EGL_GREEN_SIZE,     8,
-       EGL_BLUE_SIZE,      8,
-       EGL_ALPHA_SIZE,     EGL_DONT_CARE,
-       EGL_DEPTH_SIZE,     EGL_DONT_CARE,
-       EGL_STENCIL_SIZE,   EGL_DONT_CARE,
+       EGL_SURFACE_TYPE,      EGL_WINDOW_BIT,
+       EGL_RENDERABLE_TYPE,   EGL_OPENGL_ES2_BIT,
+       EGL_RED_SIZE,          8,
+       EGL_GREEN_SIZE,        8,
+       EGL_BLUE_SIZE,         8,
+       EGL_ALPHA_SIZE,        EGL_DONT_CARE,
+       EGL_DEPTH_SIZE,        EGL_DONT_CARE,
+       EGL_STENCIL_SIZE,      EGL_DONT_CARE,
+       EGL_SAMPLE_BUFFERS,    0,
        EGL_NONE
    };
    EGLint majorVersion, 
@@ -301,7 +309,6 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
       return EGL_FALSE;
    }
 
-
    // Use OpenKODE to create a Window
    userData.window = kdCreateWindow ( userData.eglDisplay, config, KD_NULL );
    if( !userData.window )
@@ -310,15 +317,17 @@ KDint kdMain ( KDint argc, const KDchar *const *argv )
    if ( !InitEGLContext ( &userData, config ) )
       kdExit ( 0 );
 
-    if ( !Init ( &userData ) )
+   if ( !Init ( &userData ) )
       kdExit ( 0 );
 
    // Main Loop
-   while ( 1 )
+    KDboolean run = 1;
+   while (  run )
    {
-      Mainloop((void*)&userData);
+      run = Mainloop(&userData);
    }
-   Exit( &userData);
+
+   ShutDown( &userData);
 
    return 0;
 }
