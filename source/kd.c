@@ -182,6 +182,7 @@
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
+#   pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
@@ -756,8 +757,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #elif defined(KD_THREAD_WIN32)
     thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)thread, 0, KD_NULL);
     error = thread->nativethread ? 0 : 1;
-#else
-    kdAssert(0);
 #endif
 
     if(error != 0)
@@ -779,6 +778,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
+    __kdThreadFree(kdThreadSelf());
     KD_UNUSED KDint result = 0;
     if(retval != KD_NULL)
     {
@@ -1029,8 +1029,6 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
     error = pthread_cond_init(&cond->nativecond, KD_NULL);
 #elif defined(KD_THREAD_WIN32)
     InitializeConditionVariable(&cond->nativecond);
-#else
-    kdAssert(0);
 #endif
     if(error != 0)
     {
@@ -8839,7 +8837,8 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
 {
     if(periodic != KD_TIMER_ONESHOT && periodic != KD_TIMER_PERIODIC_AVERAGE && periodic != KD_TIMER_PERIODIC_MINIMUM)
     {
-        kdAssert(0);
+        kdLogMessagefKHR("kdSetTimer() encountered unknown periodic value.");
+        return KD_NULL;
     }
 
     __KDTimerPayload *payload = (__KDTimerPayload *)kdMalloc(sizeof(__KDTimerPayload));
@@ -8863,13 +8862,13 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
     timer->thread = kdThreadCreate(KD_NULL, __kdTimerHandler, payload);
     if(timer->thread == KD_NULL)
     {
+        kdFree(timer);
+        kdFree(payload);
         if(kdGetError() == KD_ENOSYS)
         {
             kdLogMessage("kdSetTimer() needs a threading implementation.\n");
-            kdAssert(0);
+            return KD_NULL;
         }
-        kdFree(timer);
-        kdFree(payload);
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
@@ -9371,7 +9370,8 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         }
         else
         {
-            kdAssert(0);
+            kdSetError(KD_EACCES);
+            return -1;
         }
         LARGE_INTEGER size;
         size.LowPart = data.nFileSizeLow;
@@ -9401,7 +9401,8 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         }
         else
         {
-            kdAssert(0);
+            kdSetError(KD_EACCES);
+            return -1;
         }
         buf->st_size = posixstat.st_size;
 #if defined(__ANDROID__)
@@ -10349,8 +10350,9 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
         default:
         {
-            kdAssert(0);
-            break;
+            kdFree(image);
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
         }
     }
 
@@ -10425,20 +10427,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 
     KDint channels = 0;
     KDint error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
-    if(error == 0)
-    {
-#if defined(__unix__) || defined(__APPLE__)
-        munmap(filedata, image->size);
-        close(fd);
-#elif(_WIN32)
-        UnmapViewOfFile(filedata);
-        CloseHandle(fd);
-#endif
-        kdFree(image);
-        kdSetError(KD_EILSEQ);
-        return KD_NULL;
-    }
-
     switch(channels)
     {
         case(4):
@@ -10467,19 +10455,25 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
         }
         default:
         {
-            kdAssert(0);
+            error = 0;
             break;
         }
     }
 
 #if defined(__unix__) || defined(__APPLE__)
-    error = munmap(filedata, image->size);
-    kdAssert(error == 0);
+    munmap(filedata, image->size);
     close(fd);
 #elif(_WIN32)
     UnmapViewOfFile(filedata);
     CloseHandle(fd);
 #endif
+
+    if(error == 0)
+    {
+        kdFree(image);
+        kdSetError(KD_EILSEQ);
+        return KD_NULL;
+    }
 
     return image;
 }

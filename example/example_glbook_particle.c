@@ -140,7 +140,7 @@ GLuint LoadShader(GLenum type, const char *shaderSrc)
 //
 KDboolean Init(UserData *userData)
 {
-    GLbyte vShaderStr[] =
+    const KDchar *vShaderStr =
         "uniform float u_time;		                           \n"
         "uniform vec3 u_centerPosition;                       \n"
         "attribute float a_lifetime;                          \n"
@@ -163,7 +163,7 @@ KDboolean Init(UserData *userData)
         "  gl_PointSize = ( v_lifetime * v_lifetime ) * 40.0; \n"
         "}";
 
-    GLbyte fShaderStr[] =
+    const KDchar *fShaderStr =
         "precision mediump float;                             \n"
         "uniform vec4 u_color;		                           \n"
         "varying float v_lifetime;                            \n"
@@ -270,7 +270,7 @@ KDboolean Init(UserData *userData)
     // Initialize time to cause reset on first update
     userData->time = 1.0f;
 
-    userData->textureId = LoadTexture("smoke.jpg");
+    userData->textureId = LoadTexture("data/smoke.jpg");
     if(userData->textureId <= 0)
     {
         return 0;
@@ -362,6 +362,8 @@ void Draw(UserData *userData)
     glUniform1i(userData->samplerLoc, 0);
 
     glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+
+    eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
 }
 
 ///
@@ -407,26 +409,6 @@ EGLBoolean InitEGLContext(UserData *userData,
     return EGL_TRUE;
 }
 
-///
-// Cleanup
-//
-void ShutDown(UserData *userData)
-{
-    // Delete texture object
-    glDeleteTextures(1, &userData->textureId);
-
-    // Delete program object
-    glDeleteProgram(userData->programObject);
-
-    // EGL clean up
-    eglMakeCurrent(0, 0, 0, 0);
-    eglDestroySurface(userData->eglDisplay, userData->eglSurface);
-    eglDestroyContext(userData->eglDisplay, userData->eglContext);
-
-    // Destroy the window
-    kdDestroyWindow(userData->window);
-}
-
 KDboolean Mainloop(UserData *userData, float deltatime)
 {
     // Wait for an event
@@ -448,6 +430,18 @@ KDboolean Mainloop(UserData *userData, float deltatime)
 
     eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
     return 1;
+}
+
+///
+// Cleanup
+//
+void ShutDown(UserData *userData)
+{
+    // Delete texture object
+    glDeleteTextures (1, &userData->textureId);
+
+    // Delete program object
+    glDeleteProgram (userData->programObject);
 }
 
 ///
@@ -519,13 +513,29 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     KDuint frames = 0;
 
     // Main Loop
-    KDboolean run = 1;
-    while(run)
+    while(1)
     {
+        // Wait for an event
+        const KDEvent *evt = kdWaitEvent(0);
+        if(evt)
+        {
+            // Exit app
+            if(evt->type == KD_EVENT_QUIT)
+            {
+                break;
+            }
+        }
+
+        // Update
         KDust t2 = kdGetTimeUST();
         deltatime = (KDfloat32)((t2 - t1) * 1e-9);
         t1 = t2;
-        run = Mainloop(&userData, deltatime);
+        Update(&userData, deltatime);
+
+        // Draw frame
+        Draw(&userData);
+
+        // Benchmark
         totaltime += deltatime;
         frames++;
         if(totaltime > 2.0f)
@@ -537,6 +547,14 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     }
 
     ShutDown(&userData);
+
+    // EGL clean up
+    eglMakeCurrent(0, 0, 0, 0);
+    eglDestroySurface(userData.eglDisplay, userData.eglSurface);
+    eglDestroyContext(userData.eglDisplay, userData.eglContext);
+
+    // Destroy the window
+    kdDestroyWindow(userData.window);
 
     return 0;
 }

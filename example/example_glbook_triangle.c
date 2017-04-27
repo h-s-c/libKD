@@ -188,8 +188,9 @@ void Draw(UserData *userData)
     glEnableVertexAttribArray(0);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
-}
 
+    eglSwapBuffers ( userData->eglDisplay, userData->eglSurface );
+}
 
 ///
 // InitEGLContext()
@@ -232,41 +233,6 @@ EGLBoolean InitEGLContext(UserData *userData,
     userData->eglSurface = surface;
 
     return EGL_TRUE;
-}
-
-///
-// Cleanup
-//
-void ShutDown(UserData *userData)
-{
-    // EGL clean up
-    eglMakeCurrent(0, 0, 0, 0);
-    eglDestroySurface(userData->eglDisplay, userData->eglSurface);
-    eglDestroyContext(userData->eglDisplay, userData->eglContext);
-
-    // Destroy the window
-    kdDestroyWindow(userData->window);
-}
-
-KDboolean Mainloop(UserData *userData)
-{
-
-    // Wait for an event
-    const KDEvent *evt = kdWaitEvent(0);
-    if(evt)
-    {
-        // Exit app
-        if(evt->type == KD_EVENT_QUIT)
-        {
-            return 0;
-        }
-    }
-
-    // Draw frame
-    Draw(userData);
-
-    eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
-    return 1;
 }
 
 ///
@@ -333,13 +299,30 @@ KDint kdMain(KDint argc, const KDchar *const *argv)
     }
 
     // Main Loop
-    KDboolean run = 1;
-    while(run)
+    while(1)
     {
-        run = Mainloop(&userData);
+        // Wait for an event
+        const KDEvent *evt = kdWaitEvent(0);
+        if(evt)
+        {
+            // Exit app
+            if(evt->type == KD_EVENT_QUIT)
+            {
+                break;
+            }
+        }
+
+        // Draw frame
+        Draw(&userData);
     }
 
-    ShutDown(&userData);
+    // EGL clean up
+    eglMakeCurrent(0, 0, 0, 0);
+    eglDestroySurface(userData.eglDisplay, userData.eglSurface);
+    eglDestroyContext(userData.eglDisplay, userData.eglContext);
+
+    // Destroy the window
+    kdDestroyWindow(userData.window);
 
     return 0;
 }
