@@ -10202,6 +10202,8 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
 
 #if defined(__GNUC__) || defined(__clang__)
     __builtin_trap();
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    __debugbreak()
 #else
     kdExit(EXIT_FAILURE);
 #endif
