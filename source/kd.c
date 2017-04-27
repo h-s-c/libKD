@@ -182,6 +182,7 @@
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
+#   pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
@@ -349,6 +350,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         default:
         {
             /* TODO: Handle other errorcodes */
+            kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unknown errorcode: %d\n", error);
             kdAssert(0);
         }
     }
@@ -360,6 +362,11 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         case(EISDIR):
         {
             kderror = KD_EACCES;
+            break;
+        }
+        case(EAGAIN):
+        {
+            kderror = KD_ETRY_AGAIN;
             break;
         }
         case(EBADF):
@@ -428,6 +435,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         default:
         {
             /* TODO: Handle other errorcodes */
+            kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unknown errorcode: %d\n", error);
             kdAssert(0);
         }
     }
@@ -443,6 +451,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint al
         }
     }
     /* Error is not in allowed list */
+    kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unexpected errorcode: %d\n", kderror);
     kdAssert(0);
 }
 
@@ -748,8 +757,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #elif defined(KD_THREAD_WIN32)
     thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)thread, 0, KD_NULL);
     error = thread->nativethread ? 0 : 1;
-#else
-    kdAssert(0);
 #endif
 
     if(error != 0)
@@ -771,6 +778,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
+    __kdThreadFree(kdThreadSelf());
     KD_UNUSED KDint result = 0;
     if(retval != KD_NULL)
     {
@@ -1021,8 +1029,6 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
     error = pthread_cond_init(&cond->nativecond, KD_NULL);
 #elif defined(KD_THREAD_WIN32)
     InitializeConditionVariable(&cond->nativecond);
-#else
-    kdAssert(0);
 #endif
     if(error != 0)
     {
@@ -8681,16 +8687,16 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     GetSystemTimeAsFileTime(&filetime);
     largeuint.LowPart = filetime.dwLowDateTime;
     largeuint.HighPart = filetime.dwHighDateTime;
-    return largeuint.QuadPart * 100;
+    return largeuint.QuadPart * 100LL;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return ts.tv_nsec;
+    return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 #elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038
     /* Supported as of XCode 8 / macOS Sierra 10.12 */
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_nsec;
+    return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 #elif defined(EGL_NV_system_time) && !defined(__APPLE__)
     if(kdStrstrVEN(eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS), "EGL_NV_system_time"))
     {
@@ -8698,13 +8704,13 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
         PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
         if(eglGetSystemTimeNV && eglGetSystemTimeFrequencyNV)
         {
-            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000;
+            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000LL;
         }
     }
 #elif defined(__EMSCRIPTEN__)
-    return emscripten_get_now() * 1000000;
+    return emscripten_get_now() * 1000000LL;
 #else
-    return clock();
+    return (clock() / CLOCKS_PER_SEC) * 1000000000LL;
 #endif
 }
 
@@ -8718,7 +8724,7 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
     largeuint.LowPart = filetime.dwLowDateTime;
     largeuint.HighPart = filetime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
-    KDtime time = (KDtime)((largeuint.QuadPart / 10000000) - 11644473600LL);
+    KDtime time = (KDtime)((largeuint.QuadPart * 1e-7) - 11644473600LL);
     (*timep) = time;
     return time;
 #else
@@ -8831,7 +8837,8 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
 {
     if(periodic != KD_TIMER_ONESHOT && periodic != KD_TIMER_PERIODIC_AVERAGE && periodic != KD_TIMER_PERIODIC_MINIMUM)
     {
-        kdAssert(0);
+        kdLogMessagefKHR("kdSetTimer() encountered unknown periodic value.");
+        return KD_NULL;
     }
 
     __KDTimerPayload *payload = (__KDTimerPayload *)kdMalloc(sizeof(__KDTimerPayload));
@@ -8855,13 +8862,13 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
     timer->thread = kdThreadCreate(KD_NULL, __kdTimerHandler, payload);
     if(timer->thread == KD_NULL)
     {
+        kdFree(timer);
+        kdFree(payload);
         if(kdGetError() == KD_ENOSYS)
         {
             kdLogMessage("kdSetTimer() needs a threading implementation.\n");
-            kdAssert(0);
+            return KD_NULL;
         }
-        kdFree(timer);
-        kdFree(payload);
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
@@ -9022,7 +9029,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
         error = GetLastError();
 #else
     retval = fread(buffer, size, count, file->file);
-    if(retval != size)
+    if(retval != count)
     {
         error = errno;
 #endif
@@ -9363,7 +9370,8 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         }
         else
         {
-            kdAssert(0);
+            kdSetError(KD_EACCES);
+            return -1;
         }
         LARGE_INTEGER size;
         size.LowPart = data.nFileSizeLow;
@@ -9393,7 +9401,8 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         }
         else
         {
-            kdAssert(0);
+            kdSetError(KD_EACCES);
+            return -1;
         }
         buf->st_size = posixstat.st_size;
 #if defined(__ANDROID__)
@@ -10190,7 +10199,14 @@ KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nat
 KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
 {
     kdLogMessagefKHR("---Assertion---\nCondition: %s\nFile: %s(%i)\n", condition, filename, linenumber);
+
+#if defined(__GNUC__) || defined(__clang__)
+    __builtin_trap();
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    __debugbreak();
+#else
     kdExit(EXIT_FAILURE);
+#endif
 }
 
 /* kdLogMessage: Output a log message. */
@@ -10336,8 +10352,9 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
         default:
         {
-            kdAssert(0);
-            break;
+            kdFree(image);
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
         }
     }
 
@@ -10412,20 +10429,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 
     KDint channels = 0;
     KDint error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
-    if(error == 0)
-    {
-#if defined(__unix__) || defined(__APPLE__)
-        munmap(filedata, image->size);
-        close(fd);
-#elif(_WIN32)
-        UnmapViewOfFile(filedata);
-        CloseHandle(fd);
-#endif
-        kdFree(image);
-        kdSetError(KD_EILSEQ);
-        return KD_NULL;
-    }
-
     switch(channels)
     {
         case(4):
@@ -10454,19 +10457,25 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
         }
         default:
         {
-            kdAssert(0);
+            error = 0;
             break;
         }
     }
 
 #if defined(__unix__) || defined(__APPLE__)
-    error = munmap(filedata, image->size);
-    kdAssert(error == 0);
+    munmap(filedata, image->size);
     close(fd);
 #elif(_WIN32)
     UnmapViewOfFile(filedata);
     CloseHandle(fd);
 #endif
+
+    if(error == 0)
+    {
+        kdFree(image);
+        kdSetError(KD_EILSEQ);
+        return KD_NULL;
+    }
 
     return image;
 }
@@ -10517,7 +10526,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    if(kdFread(filedata, image->size, 1, file) != 1)
+    if(kdFread(filedata, 1, image->size, file) != image->size)
     {
         kdFree(filedata);
         kdFree(image);
@@ -10841,7 +10850,7 @@ KD_API KDint KD_APIENTRY kdVfscanfKHR(KDFile *file, const KDchar *format, KDVaLi
         kdSetError(KD_ENOMEM);
         return KD_EOF;
     }
-    if(kdFread(buffer, size, 1, file) != 1)
+    if(kdFread(buffer, 1, size, file) != size)
     {
         kdFree(buffer);
         kdSetError(KD_EIO);
