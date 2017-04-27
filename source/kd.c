@@ -8687,16 +8687,16 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     GetSystemTimeAsFileTime(&filetime);
     largeuint.LowPart = filetime.dwLowDateTime;
     largeuint.HighPart = filetime.dwHighDateTime;
-    return largeuint.QuadPart * 1e+2L;
+    return largeuint.QuadPart * 100LL;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return (ts.tv_sec * 1e+9L) + ts.tv_nsec;
+    return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 #elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038
     /* Supported as of XCode 8 / macOS Sierra 10.12 */
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (ts.tv_sec * 1e+9L) + ts.tv_nsec;
+    return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 #elif defined(EGL_NV_system_time) && !defined(__APPLE__)
     if(kdStrstrVEN(eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS), "EGL_NV_system_time"))
     {
@@ -8704,13 +8704,13 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
         PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
         if(eglGetSystemTimeNV && eglGetSystemTimeFrequencyNV)
         {
-            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1e+9L;
+            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000LL;
         }
     }
 #elif defined(__EMSCRIPTEN__)
-    return emscripten_get_now() * 1e+6L;
+    return emscripten_get_now() * 1000000LL;
 #else
-    return (clock() / CLOCKS_PER_SEC) * 1e+9L;
+    return (clock() / CLOCKS_PER_SEC) * 1000000000LL;
 #endif
 }
 
