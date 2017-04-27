@@ -120,7 +120,7 @@ project (KD C)
     endif()
     configure_file(${CMAKE_SOURCE_DIR}/include/KD/kdplatform.h.in ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h)
 
-    if(NOT KD_BUILD_STDLIB MATCHES "none")
+    if(NOT EMSCRIPTEN AND NOT KD_BUILD_STDLIB MATCHES "none")
         find_package(Threads)
         target_link_libraries(KD PRIVATE ${CMAKE_THREAD_LIBS_INIT})
         target_link_libraries(KD PRIVATE ${CMAKE_DL_LIBS})
