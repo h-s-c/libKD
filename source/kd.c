@@ -151,6 +151,7 @@
 
 #if defined(__EMSCRIPTEN__)
 #   include <emscripten/emscripten.h>
+#   include <emscripten/html5.h>
 #endif
 
 #if defined(__APPLE__)
@@ -10005,6 +10006,13 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         wl_display_roundtrip(window->nativedisplay);
     }
 #endif
+#elif defined(__EMSCRIPTEN__)
+    EmscriptenFullscreenStrategy strategy;
+    kdMemset(&strategy, 0, sizeof(strategy));
+    strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
+    strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
+    strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
+    emscripten_enter_soft_fullscreen(0, &strategy);
 #endif
     __kd_window = window;
     return window;
@@ -10063,6 +10071,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
             kdPostThreadEvent(event, kdThreadSelf());
             return 0;
         }
+#elif defined(__EMSCRIPTEN__)
+        emscripten_set_canvas_size(param[0], param[1]);
+        return 0;
 #endif
     }
     kdSetError(KD_EOPNOTSUPP);

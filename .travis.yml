@@ -165,6 +165,7 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
+      compiler: emcc
       env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=browser-asmjs
       sudo: required
       services: docker
@@ -172,7 +173,7 @@ matrix:
         - docker pull $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "
-            cmake -DCMAKE_TOOLCHAIN_FILE=ci-tools/toolchain/toolchain-emscripten.cmake -DKD_BUILD_EXAMPLES=1 -DCMAKE_BUILD_TYPE=Debug -G Ninja -Bbuild -H.;
+            cmake -DKD_BUILD_EXAMPLES=1 -DCMAKE_BUILD_TYPE=Debug -G Ninja -Bbuild -H.;
             ninja -C build;"
 
     - os: linux

@@ -175,7 +175,7 @@ project (KD C)
             if(MSVC)
                 set_property(TARGET ${TEST_NAME} APPEND PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS "ON")
             elseif(EMSCRIPTEN)
-                set_target_properties(${TEST_NAME} PROPERTIES LINK_FLAGS "${EMCC_FLAGS} --emrun")
+                set_target_properties(${TEST_NAME} PROPERTIES LINK_FLAGS "${EMCC_FLAGS}")
             elseif(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
                 #TCC does not support -Wl,--export-dynamic
                 set_target_properties(${TEST_NAME} PROPERTIES ENABLE_EXPORTS "OFF")    
