@@ -175,7 +175,6 @@ matrix:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
 
     - os: linux
-      compiler: x86_64-w64-mingw32-gcc
       env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=windows-x64
       sudo: required
       services: docker
@@ -190,7 +189,6 @@ matrix:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
 
     - os: linux
-      compiler: i686-w64-mingw32-gcc
       env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=windows-x86
       sudo: required
       services: docker
@@ -583,6 +581,6 @@ matrix:
   allow_failures:
     - compiler: icc # Unstable
     - compiler: clang-5.0 # Unstable
-    - compiler: emcc # Testing
-    - compiler: x86_64-w64-mingw32-gcc # Testing
-    - compiler: i686-w64-mingw32-gcc # Testing
+    - env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=browser-asmjs # Testing
+    - env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=windows-x64 # Testing
+    - env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=windows-x86 # Testing
