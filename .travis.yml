@@ -165,7 +165,6 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: emcc
       env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=browser-asmjs
       sudo: required
       services: docker
@@ -173,9 +172,7 @@ matrix:
         - docker pull $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION;
         - python ci-tools/install_cmake.py
       script:
-        - env > env-file
-        - docker run --env-file env-file `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
-
+        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
 
     - os: linux
       compiler: x86_64-w64-mingw32-gcc
@@ -190,8 +187,7 @@ matrix:
         - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py
       script:
-        - env > env-file
-        - docker run --env-file env-file -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
+        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
 
     - os: linux
       compiler: i686-w64-mingw32-gcc
@@ -206,8 +202,7 @@ matrix:
         - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py
       script:
-        - env > env-file
-        - docker run --env-file env-file -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
+        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE/$DOCKER_IMAGE_VERSION /bin/bash -c "python ci-tools/run_ctest.py"
 
     - os: osx
       compiler: clang
@@ -588,4 +583,6 @@ matrix:
   allow_failures:
     - compiler: icc # Unstable
     - compiler: clang-5.0 # Unstable
-    - env: DOCKER_IMAGE=dockcross DOCKER_IMAGE_VERSION=browser-asmjs # Testing
+    - compiler: emcc # Testing
+    - compiler: x86_64-w64-mingw32-gcc # Testing
+    - compiler: i686-w64-mingw32-gcc # Testing
