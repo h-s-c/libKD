@@ -184,6 +184,7 @@
 #   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
 #   pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#   pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
@@ -2745,14 +2746,19 @@ static int __kdPreMain(int argc, char **argv)
 #elif defined(_WIN32)
     HMODULE handle = GetModuleHandle(0);
     kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
+    if(kdmain == NULL)
+    {
+        kdLogMessagefKHR("Unable to locate kdMain.\n");
+        kdExit(EXIT_FAILURE);
+    }
     result = kdmain(argc, (const KDchar *const *)argv);
 #else
     void *app = dlopen(NULL, RTLD_NOW);
     void *rawptr = dlsym(app, "kdMain");
     if(dlerror() != NULL)
     {
-        kdLogMessage("Cant dlopen self. Dont strip symbols from me.\n");
-        kdAssert(0);
+        kdLogMessage("Unable to locate kdMain.\n");
+        kdExit(EXIT_FAILURE);
     }
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
@@ -2811,10 +2817,6 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 
 #if defined(_WIN32)
 /* TODO: Catch argc/agv */
-int WINAPI WinMainCRTStartup(void)
-{
-    return __kdPreMain(0, KD_NULL);
-}
 int WINAPI wWinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED PWSTR lpCmdLine, KD_UNUSED int nShowCmd)
 {
     return __kdPreMain(0, KD_NULL);
@@ -2823,14 +2825,20 @@ int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInsta
 {
     return __kdPreMain(0, KD_NULL);
 }
-int WINAPI mainCRTStartup(void)
-{
-    return __kdPreMain(0, KD_NULL);
-}
 int wmain(KD_UNUSED int argc, KD_UNUSED PWSTR *argv, KD_UNUSED PWSTR *envp)
 {
     return __kdPreMain(0, KD_NULL);
 }
+#ifdef KD_FREESTANDING
+int WINAPI WinMainCRTStartup(void)
+{
+    return __kdPreMain(0, KD_NULL);
+}
+int WINAPI mainCRTStartup(void)
+{
+    return __kdPreMain(0, KD_NULL);
+}
+#endif
 #endif
 KD_API int main(int argc, char **argv)
 {

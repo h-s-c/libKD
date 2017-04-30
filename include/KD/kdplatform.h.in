@@ -140,11 +140,7 @@
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-    #if defined(KD_EXPORTS)
-        #define KD_API __declspec(dllexport)
-    #else
-        #define KD_API __declspec(dllimport)
-    #endif
+    #define KD_API __declspec(dllexport)
 #elif defined(__ANDROID__)
     #include <sys/cdefs.h>
     #define KD_API __attribute__((__visibility__("default"))) __NDK_FPABI__

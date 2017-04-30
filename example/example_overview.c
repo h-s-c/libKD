@@ -54,7 +54,7 @@ static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenu
 }
 #endif
 
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+KD_API KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     const EGLint egl_attributes[] =
     {

@@ -23,7 +23,7 @@
 
 #include <KD/kd.h>
 
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+KD_API KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     KDtime time;
     KDTm tm;
