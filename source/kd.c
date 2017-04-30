@@ -182,9 +182,11 @@
 #       pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #       pragma GCC diagnostic ignored "-Wshift-negative-value"
 #   endif
+#   if !defined(__clang__)
+#       pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#   endif
 #   pragma GCC diagnostic ignored "-Wsign-compare"
 #   pragma GCC diagnostic ignored "-Wstrict-aliasing"
-#   pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
 #   pragma warning(disable : 4244)
