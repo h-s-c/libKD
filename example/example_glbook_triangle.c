@@ -240,7 +240,7 @@ EGLBoolean InitEGLContext(UserData *userData,
 //
 //    Main function for OpenKODE application
 //
-KD_API KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     EGLint attribList[] =
     {

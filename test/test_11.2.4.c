@@ -23,7 +23,7 @@
 
 #include <KD/kd.h>
 
-KD_API KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     KDchar string[20];
     KDssize size = 0;

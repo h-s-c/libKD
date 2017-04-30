@@ -39,7 +39,7 @@ void KD_APIENTRY callback2(const KDEvent *event)
     kdDefaultEvent(event);
 }
 
-KD_API KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     kdInstallCallback(&callback1, KD_EVENT_QUIT, (void*)1234);
     kdInstallCallback(&callback2, KD_EVENT_QUIT, (void*)1234);
