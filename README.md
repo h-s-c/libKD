@@ -13,7 +13,7 @@
 -   [Specification](https://www.khronos.org/registry/kode/)
 
 ### Platforms
--   Windows, Android, Linux, Web support
+-   Windows, Android (API 17+), Linux, Web support
 -   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
 
 ### Compilers

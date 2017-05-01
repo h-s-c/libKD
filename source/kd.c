@@ -128,6 +128,10 @@
 #       endif
 #   endif
 #   if defined(__ANDROID__)
+#       include <android/api-level.h>
+#       if __ANDROID_API__ < 17
+#           error "__ANDROID_API__ >= 17 required."
+#       endif
 #       include <android/log.h>
 #       include <android/native_activity.h>
 #   endif
@@ -891,7 +895,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #else
     if(once_control->impl == 0)
     {
-        once_control->impl = (void*)1;
+        once_control->impl = (void *)1;
         init_routine();
     }
 #endif
@@ -3406,7 +3410,7 @@ kdRealloc(void *ptr, KDsize size)
 
 KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
 {
-#if defined(__GLIBC__) || defined(__EMSCRIPTEN__)
+#if defined(__GLIBC__) || defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     return malloc_usable_size(ptr);
 #elif defined(__APPLE__)
     return malloc_size(ptr);
