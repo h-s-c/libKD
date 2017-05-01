@@ -409,29 +409,6 @@ EGLBoolean InitEGLContext(UserData *userData,
     return EGL_TRUE;
 }
 
-KDboolean Mainloop(UserData *userData, float deltatime)
-{
-    // Wait for an event
-    const KDEvent *evt = kdWaitEvent(0);
-    if(evt)
-    {
-        // Exit app
-        if(evt->type == KD_EVENT_QUIT)
-        {
-            return 0;
-        }
-    }
-
-    // Update
-    Update(userData, deltatime);
-
-    // Draw frame
-    Draw(userData);
-
-    eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
-    return 1;
-}
-
 ///
 // Cleanup
 //
@@ -520,7 +497,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         if(evt)
         {
             // Exit app
-            if(evt->type == KD_EVENT_QUIT)
+            if(evt->type == KD_EVENT_WINDOW_CLOSE)
             {
                 break;
             }

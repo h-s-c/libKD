@@ -29,8 +29,6 @@
  *
  * - Only one window is supported
  * - Networking is not supported
- * - KD_EVENT_QUIT events received by threads other then the mainthread
- *   only exit the thread
  * - To receive orientation changes AndroidManifest.xml should include
  *   android:configChanges="orientation|keyboardHidden|screenSize"
  *
@@ -782,7 +780,6 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 /* kdThreadExit: Terminate this thread. */
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
-    __kdThreadFree(kdThreadSelf());
     KD_UNUSED KDint result = 0;
     if(retval != KD_NULL)
     {
@@ -1267,15 +1264,8 @@ KD_API void KD_APIENTRY kdSetEventUserptr(KD_UNUSED void *userptr)
 }
 
 /* kdDefaultEvent: Perform default processing on an unrecognized event. */
-KD_API void KD_APIENTRY kdDefaultEvent(const KDEvent *event)
+KD_API void KD_APIENTRY kdDefaultEvent(KD_UNUSED const KDEvent *event)
 {
-    if(event)
-    {
-        if(event->type == KD_EVENT_QUIT)
-        {
-            kdThreadExit(KD_NULL);
-        }
-    }
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
@@ -1422,7 +1412,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case WM_QUIT:
                 {
                     ShowWindow(window->nativewindow, SW_HIDE);
-                    event->type = KD_EVENT_QUIT;
+                    event->type = KD_EVENT_WINDOW_CLOSE;
                     if(!__kdExecCallback(event))
                     {
                         kdPostEvent(event);
@@ -2489,7 +2479,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 {
                     if((Atom)xevent.xclient.data.l[0] == XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False))
                     {
-                        event->type = KD_EVENT_QUIT;
+                        event->type = KD_EVENT_WINDOW_CLOSE;
                         if(!__kdExecCallback(event))
                         {
                             kdPostEvent(event);
@@ -2622,7 +2612,7 @@ static KDThreadMutex *__kd_androidactivity_mutex = KD_NULL;
 static void __kd_AndroidOnDestroy(ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
-    event->type = KD_EVENT_QUIT;
+    event->type = KD_EVENT_WINDOW_CLOSE;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 

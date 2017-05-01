@@ -306,7 +306,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         if(evt)
         {
             // Exit app
-            if(evt->type == KD_EVENT_QUIT)
+            if(evt->type == KD_EVENT_WINDOW_CLOSE)
             {
                 break;
             }
