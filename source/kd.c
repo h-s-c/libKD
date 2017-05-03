@@ -51,6 +51,7 @@
 
 #ifdef _MSC_VER
 #   define _CRT_SECURE_NO_WARNINGS 1
+#   pragma warning(disable : 28251)
 #endif
 
 /******************************************************************************
@@ -88,13 +89,10 @@
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN
 #   endif
-#   pragma warning(push)
-#   pragma warning(disable : 28251)
 #   include <windows.h>
 #   include <wincrypt.h> /* CryptGenRandom etc. */
 #   include <direct.h> /* R_OK/W_OK/X_OK */
 #   include <intrin.h> /* _mm_* */
-#   pragma warning(pop)
 #   ifndef inline
 #       define inline __inline /* MSVC redefinition fix */
 #   endif
@@ -4305,7 +4303,7 @@ static KDint __kdRemPio2Kernel(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0,
         twon24 = 5.96046447753906250000e-08; /* 0x3E700000, 0x00000000 */
 
     KDint32 jz, jx, jv, jk, carry, n, iq[20], i, j, k, m, q0, ih;
-    KDfloat64KHR z, fw, f[20], fq[20], q[20];
+    KDfloat64KHR z, fw, f[20] = {0}, fq[20], q[20];
 
     /* initialize jk*/
     jk = 3;
