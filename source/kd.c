@@ -102,9 +102,6 @@
 #   include <fcntl.h>
 #   include <dirent.h>
 #   include <dlfcn.h>
-#   if defined(__GLIBC__) || defined(__EMSCRIPTEN__)
-#       include <malloc.h> /* malloc_usable_size */
-#   endif
 #   include <sys/mman.h> /* mincore, mmap */
 #   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
 #       include <sys/random.h> /* getentropy/getrandom */
@@ -113,7 +110,6 @@
 #   include <sys/syscall.h>
 #   if defined(__APPLE__) || defined(BSD)
 #       include <sys/mount.h>
-#       include <malloc/malloc.h> /* malloc_size */
 #   else
 #       include <sys/vfs.h>
 #   endif
@@ -128,10 +124,6 @@
 #       endif
 #   endif
 #   if defined(__ANDROID__)
-#       include <android/api-level.h>
-#       if __ANDROID_API__ < 17
-#           error "__ANDROID_API__ >= 17 required."
-#       endif
 #       include <android/log.h>
 #       include <android/native_activity.h>
 #   endif
@@ -3406,17 +3398,6 @@ kdRealloc(void *ptr, KDsize size)
         return KD_NULL;
     }
     return result;
-}
-
-KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
-{
-#if defined(__GLIBC__) || defined(__EMSCRIPTEN__) || defined(__ANDROID__)
-    return malloc_usable_size(ptr);
-#elif defined(__APPLE__)
-    return malloc_size(ptr);
-#elif defined(_WIN32)
-    return HeapSize(GetProcessHeap(), 0, ptr);
-#endif
 }
 
 /******************************************************************************
@@ -10337,7 +10318,6 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
     image->levels = 0;
     image->width = width;
     image->height = height;
-    image->buffer = kdMalloc(width * height * sizeof(KDuint8));
 
     switch(comptype)
     {
@@ -10373,6 +10353,15 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
     }
 
+    image->size = image->width * image->height * image->alpha ? 2 : 1;
+    image->buffer = kdMalloc(image->size);
+    if(image->buffer == KD_NULL)
+    {
+        kdFree(image);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+
     KDuint8 block[64];
     for(KDint y = 0; y < image->height; y += 4)
     {
@@ -10384,7 +10373,6 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
     }
 
-    image->size = kdMallocSizeVEN(image->buffer);
     return image;
 }
 
@@ -10524,6 +10512,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
     image->levels = 0;
+    image->size = image->width * image->height;
 
     KDStat st;
     if(kdFstat(file, &st) == -1)
@@ -10532,16 +10521,15 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         kdSetError(KD_EIO);
         return KD_NULL;
     }
-    image->size = (KDsize)st.st_size;
 
-    void *filedata = kdMalloc(image->size);
+    void *filedata = kdMalloc(st.st_size);
     if(filedata == KD_NULL)
     {
         kdFree(image);
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    if(kdFread(filedata, 1, image->size, file) != image->size)
+    if(kdFread(filedata, 1, st.st_size, file) != st.st_size)
     {
         kdFree(filedata);
         kdFree(image);
@@ -10593,6 +10581,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             break;
         }
     }
+    image->size = image->size * channels;
 
     if(flags != 0)
     {
@@ -10602,7 +10591,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
 
-    image->buffer = stbi_load_from_memory(filedata, (KDint)image->size, &image->width, &image->height, (int[]){0}, channels);
+    image->buffer = stbi_load_from_memory(filedata, st.st_size, &image->width, &image->height, (int[]){0}, channels);
     if(image->buffer == KD_NULL)
     {
         kdFree(filedata);
@@ -10612,7 +10601,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     }
     kdFree(filedata);
 
-    image->size = kdMallocSizeVEN(image->buffer);
     return image;
 }
 

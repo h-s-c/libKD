@@ -83,12 +83,6 @@ KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b);
 KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KDsize buflen);
 
 /*******************************************************
- * Memory allocation
- *******************************************************/
-
-KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr);
-
-/*******************************************************
  * String and memory functions (extensions)
  *******************************************************/
 
