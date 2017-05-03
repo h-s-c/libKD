@@ -10580,7 +10580,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             break;
         }
     }
-    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
 
     if(flags != 0)
     {
@@ -10600,6 +10599,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     }
     kdFree(filedata);
 
+    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
     return image;
 }
 
