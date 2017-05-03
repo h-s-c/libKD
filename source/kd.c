@@ -10387,7 +10387,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
     }
 
-    image->size = image->width * image->height * (image->alpha ? 2 : 1);
+    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->alpha ? 2 : 1);
     image->buffer = kdMalloc(image->size);
     if(image->buffer == KD_NULL)
     {
