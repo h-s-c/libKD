@@ -10529,7 +10529,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    if(kdFread(filedata, 1, st.st_size, file) != st.st_size)
+    if(kdFread(filedata, 1, st.st_size, file) != (KDsize)st.st_size)
     {
         kdFree(filedata);
         kdFree(image);
