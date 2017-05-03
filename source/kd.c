@@ -198,6 +198,8 @@
 #   pragma warning(disable : 4244)
 #   pragma warning(disable : 4701)
 #   pragma warning(disable : 4703)
+#   pragma warning(disable : 6001)
+#   pragma warning(disable : 6011)
 #elif defined(__TINYC__)  
 #   define STBI_NO_SIMD
 #endif
