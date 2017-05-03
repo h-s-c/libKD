@@ -131,8 +131,6 @@
 #       include <android/api-level.h>
 #       include <android/log.h>
 #       include <android/native_activity.h>
-#   endif
-#   if defined(KD_WINDOW_ANDROID)
 #       include <android/native_window.h>
 #       include <android/window.h>
 #   endif
@@ -1318,7 +1316,7 @@ struct KDWindow {
 #endif
 };
 
-#if defined(KD_WINDOW_ANDROID)
+#ifdef __ANDROID__
 static AInputQueue *__kd_androidinputqueue = KD_NULL;
 static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 #endif
@@ -1373,7 +1371,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     KD_UNUSED KDWindow *window = __kd_window;
 #if defined(__EMSCRIPTEN__)
     emscripten_sleep(1);
-#elif defined(KD_WINDOW_ANDROID)
+#elif defined(__ANDROID__)
     AInputEvent *aevent = NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     if(__kd_androidinputqueue != KD_NULL)
@@ -9919,7 +9917,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
     window->originthr = kdThreadSelf();
 
-#if defined(KD_WINDOW_ANDROID)
+#if defined(__ANDROID__)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
     WNDCLASS windowclass = {0};
@@ -10132,7 +10130,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(KD_WINDOW_ANDROID)
+#if defined(__ANDROID__)
         param[0] = ANativeWindow_getWidth(window->nativewindow);
         param[1] = ANativeWindow_getHeight(window->nativewindow);
         return 0;
@@ -10172,7 +10170,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-#if defined(KD_WINDOW_ANDROID)
+#if defined(__ANDROID__)
     for(;;)
     {
         kdThreadMutexLock(__kd_androidwindow_mutex);

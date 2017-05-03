@@ -33,7 +33,6 @@
 #cmakedefine KD_WINDOW_X11
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_WIN32
-#cmakedefine KD_WINDOW_ANDROID
 #cmakedefine KD_WINDOW_COCOA
 #cmakedefine KD_FREESTANDING
 
