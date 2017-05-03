@@ -88,10 +88,13 @@
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN
 #   endif
+#   pragma warning(push)
+#   pragma warning(disable : 28251)
 #   include <windows.h>
 #   include <wincrypt.h> /* CryptGenRandom etc. */
 #   include <direct.h> /* R_OK/W_OK/X_OK */
 #   include <intrin.h> /* _mm_* */
+#   pragma warning(pop)
 #   ifndef inline
 #       define inline __inline /* MSVC redefinition fix */
 #   endif
@@ -660,7 +663,7 @@ static void __kdThreadFree(KDThread *thread)
         kdFree(thread->callbacks[i]);
     }
     kdFree(thread->callbacks);
-    if(thread->lastevent != KD_NULL)
+    if(thread->lastevent)
     {
         kdFreeEvent(thread->lastevent);
     }
@@ -685,8 +688,12 @@ static void *__kdThreadStart(void *init)
     KD_UNUSED const char *threadname = thread->attr ? thread->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
     typedef HRESULT(WINAPI * SETTHREADDESCRIPTION)(HANDLE hThread, PCWSTR lpThreadDescription);
+    SETTHREADDESCRIPTION __SetThreadDescription = KD_NULL;
     HMODULE kernel32 = GetModuleHandle("Kernel32.dll");
-    SETTHREADDESCRIPTION __SetThreadDescription = (SETTHREADDESCRIPTION)GetProcAddress(kernel32, "SetThreadDescription");
+    if(kernel32)
+    {
+        __SetThreadDescription = (SETTHREADDESCRIPTION)GetProcAddress(kernel32, "SetThreadDescription");
+    }
     if(__SetThreadDescription)
     {
         WCHAR wthreadname[256] = L"KDThread";
@@ -733,7 +740,7 @@ static void *__kdThreadStart(void *init)
 
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
     void *result = thread->start_routine(thread->arg);
-    if(thread->attr != KD_NULL && thread->attr->detachstate == KD_THREAD_CREATE_DETACHED)
+    if(thread->attr && thread->attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         __kdThreadFree(thread);
     }
@@ -775,7 +782,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         return KD_NULL;
     }
 
-    if(attr != KD_NULL && attr->detachstate == KD_THREAD_CREATE_DETACHED)
+    if(attr && attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         kdThreadDetach(thread);
         return KD_NULL;
@@ -788,7 +795,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
     KD_UNUSED KDint result = 0;
-    if(retval != KD_NULL)
+    if(retval)
     {
         result = *(KDint *)retval;
     }
@@ -812,7 +819,7 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
     KDint ipretvalinit = 0;
     KD_UNUSED KDint *ipretval = &ipretvalinit;
-    if(retval != KD_NULL)
+    if(retval)
     {
         ipretval = *retval;
     }
@@ -894,7 +901,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #elif defined(KD_THREAD_WIN32)
     void *pfunc = KD_NULL;
     kdMemcpy(&pfunc, &init_routine, sizeof(init_routine));
-    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, pfunc, NULL);
+    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, pfunc, KD_NULL);
 #else
     if(once_control->impl == 0)
     {
@@ -955,7 +962,7 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mute
 /* kdThreadMutexFree: Free a mutex. */
 KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
 {
-    if(mutex != KD_NULL)
+    if(mutex)
     {
 /* No need to free anything on WIN32*/
 #if defined(KD_THREAD_C11)
@@ -1202,9 +1209,9 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #if defined(__EMSCRIPTEN__)
     emscripten_sleep(timeout / 1000000);
 #elif defined(KD_THREAD_C11)
-    thrd_sleep(&ts, NULL);
+    thrd_sleep(&ts, KD_NULL);
 #elif defined(KD_THREAD_POSIX)
-    nanosleep(&ts, NULL);
+    nanosleep(&ts, KD_NULL);
 #elif defined(KD_THREAD_WIN32)
     HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
     if(!timer)
@@ -1239,7 +1246,7 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
     KDQueueVEN *eventqueue = kdThreadSelf()->eventqueue;
     KDEvent *lastevent = kdThreadSelf()->lastevent;
-    if(lastevent != KD_NULL)
+    if(lastevent)
     {
         kdFreeEvent(lastevent);
     }
@@ -1287,7 +1294,7 @@ static KDboolean __kdExecCallback(KDEvent *event)
     __KDCallback **callbacks = kdThreadSelf()->callbacks;
     for(KDuint i = 0; i < callbackindex; i++)
     {
-        if(callbacks[i]->func != KD_NULL)
+        if(callbacks[i]->func)
         {
             KDboolean typematch = callbacks[i]->eventtype == event->type || callbacks[i]->eventtype == 0;
             KDboolean userptrmatch = callbacks[i]->eventuserptr == event->userptr;
@@ -1357,7 +1364,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     for(KDuint i = 0; i < queuesize; i++)
     {
         KDEvent *callbackevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
-        if(callbackevent != KD_NULL)
+        if(callbackevent)
         {
             if(!__kdExecCallback(callbackevent))
             {
@@ -1372,9 +1379,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 #if defined(__EMSCRIPTEN__)
     emscripten_sleep(1);
 #elif defined(__ANDROID__)
-    AInputEvent *aevent = NULL;
+    AInputEvent *aevent = KD_NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
-    if(__kd_androidinputqueue != KD_NULL)
+    if(__kd_androidinputqueue)
     {
         while(AInputQueue_getEvent(__kd_androidinputqueue, &aevent) >= 0)
         {
@@ -2002,7 +2009,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case KeyPress:
                 {
                     KeySym keysym;
-                    XLookupString(&xevent.xkey, NULL, 25, &keysym, NULL);
+                    XLookupString(&xevent.xkey, KD_NULL, 25, &keysym, KD_NULL);
                     event->type = KD_EVENT_INPUT_KEY_ATX;
                     KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
 
@@ -2745,7 +2752,7 @@ static int __kdPreMain(int argc, char **argv)
 #elif defined(_WIN32)
     HMODULE handle = GetModuleHandle(0);
     kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
-    if(kdmain == NULL)
+    if(kdmain == KD_NULL)
     {
         kdLogMessagefKHR("Unable to locate kdMain.\n");
         kdExit(EXIT_FAILURE);
@@ -2754,7 +2761,7 @@ static int __kdPreMain(int argc, char **argv)
 #else
     void *app = dlopen(NULL, RTLD_NOW);
     void *rawptr = dlsym(app, "kdMain");
-    if(dlerror() != NULL)
+    if(dlerror())
     {
         kdLogMessage("Unable to locate kdMain.\n");
         kdExit(EXIT_FAILURE);
@@ -3102,7 +3109,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
             }
         }
     }
-    if(endptr != KD_NULL)
+    if(endptr)
     {
         *endptr = (KDchar *)(any ? s - 1 : nptr);
     }
@@ -3305,7 +3312,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
     }
 #elif defined(__unix__) || defined(__APPLE__)
     FILE *urandom = fopen("/dev/urandom", "r");
-    if(urandom != NULL)
+    if(urandom)
     {
         if(fread((void *)buf, sizeof(KDuint8), buflen, urandom) != buflen)
         {
@@ -3345,11 +3352,10 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 #if defined(KD_FREESTANDING)
     return "";
 #else
-    const KDchar *result = setlocale(LC_ALL, NULL);
-    if(result == NULL)
+    const KDchar *result = setlocale(LC_ALL, KD_NULL);
+    if(result == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
-        return KD_NULL;
     }
     return result;
 #endif
@@ -3374,10 +3380,9 @@ kdMalloc(KDsize size)
 #else
     result = malloc(size);
 #endif
-    if(result == NULL)
+    if(result == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
-        return KD_NULL;
     }
     return result;
 }
@@ -3409,10 +3414,9 @@ kdRealloc(void *ptr, KDsize size)
 #else
     result = realloc(ptr, size);
 #endif
-    if(result == NULL)
+    if(result == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
-        return KD_NULL;
     }
     return result;
 }
@@ -8969,12 +8973,12 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         access = GENERIC_READ | GENERIC_WRITE;
     }
-    file->file = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, create, 0, NULL);
+    file->file = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
     if(file->file != INVALID_HANDLE_VALUE)
     {
         if(mode[0] == 'a')
         {
-            SetFilePointer(file, 0, NULL, FILE_END);
+            SetFilePointer(file, 0, KD_NULL, FILE_END);
         }
     }
     else
@@ -8982,7 +8986,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         error = GetLastError();
 #else
     file->file = fopen(pathname, mode);
-    if(file->file == NULL)
+    if(file->file == KD_NULL)
     {
         error = errno;
 #endif
@@ -9039,7 +9043,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     DWORD bytesread = 0;
-    retval = ReadFile(file->file, buffer, (DWORD)(count * size), &bytesread, NULL) ? bytesread / size : 0;
+    retval = ReadFile(file->file, buffer, (DWORD)(count * size), &bytesread, KD_NULL) ? bytesread / size : 0;
     if(retval != size)
     {
         error = GetLastError();
@@ -9062,7 +9066,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     DWORD byteswritten = 0;
-    retval = WriteFile(file->file, buffer, (DWORD)(count * size), &byteswritten, NULL) ? byteswritten / size : 0;
+    retval = WriteFile(file->file, buffer, (DWORD)(count * size), &byteswritten, KD_NULL) ? byteswritten / size : 0;
     if(retval != size)
     {
         error = GetLastError();
@@ -9084,7 +9088,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    if(ReadFile(file->file, &retval, 1, (DWORD[]){0}, NULL) == TRUE)
+    if(ReadFile(file->file, &retval, 1, (DWORD[]){0}, KD_NULL) == TRUE)
     {
         error = GetLastError();
 #else
@@ -9105,7 +9109,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    if(WriteFile(file->file, &retval, 1, (DWORD[]){0}, NULL) == TRUE)
+    if(WriteFile(file->file, &retval, 1, (DWORD[]){0}, KD_NULL) == TRUE)
     {
         error = GetLastError();
 #else
@@ -9214,7 +9218,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
         if(seekorigins[i].seekorigin_kd == origin)
         {
 #if defined(_WIN32)
-            DWORD retval = SetFilePointer(file->file, (LONG)offset, NULL, seekorigins[i].seekorigin);
+            DWORD retval = SetFilePointer(file->file, (LONG)offset, KD_NULL, seekorigins[i].seekorigin);
             if(retval == INVALID_SET_FILE_POINTER)
             {
                 error = GetLastError();
@@ -9239,7 +9243,7 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
     KDoff position = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    position = (KDoff)SetFilePointer(file->file, 0, NULL, FILE_CURRENT);
+    position = (KDoff)SetFilePointer(file->file, 0, KD_NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
     {
         error = GetLastError();
@@ -9261,7 +9265,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = CreateDirectory(pathname, NULL);
+    retval = CreateDirectory(pathname, KD_NULL);
     if(retval == 0)
     {
         error = GetLastError();
@@ -9520,7 +9524,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         error = GetLastError();
 #else
     dir->dir = opendir(pathname);
-    if(dir->dir == NULL)
+    if(dir->dir == KD_NULL)
     {
         error = errno;
 #endif
@@ -9839,7 +9843,7 @@ static KDboolean __kdIsPointerDereferencable(void *p)
     KDuint8 valid = 0;
     const KDint page_size = sysconf(_SC_PAGESIZE);
 
-    if(p == NULL)
+    if(p == KD_NULL)
     {
         return 0;
     }
@@ -9854,7 +9858,7 @@ static KDboolean __kdIsPointerDereferencable(void *p)
 
     return (valid & 0x01) == 0x01;
 #else
-    return p != NULL;
+    return p != KD_NULL;
 #endif
 }
 static void registry_add_object(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
@@ -9891,7 +9895,7 @@ static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
-    if(__kd_window != KD_NULL)
+    if(__kd_window)
     {
         /* One window only */
         kdSetError(KD_EPERM);
@@ -10174,7 +10178,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     for(;;)
     {
         kdThreadMutexLock(__kd_androidwindow_mutex);
-        if(__kd_androidwindow != KD_NULL)
+        if(__kd_androidwindow)
         {
             window->nativewindow = __kd_androidwindow;
             kdThreadMutexUnlock(__kd_androidwindow_mutex);
@@ -10383,7 +10387,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
     }
 
-    image->size = image->width * image->height * image->alpha ? 2 : 1;
+    image->size = image->width * image->height * (image->alpha ? 2 : 1);
     image->buffer = kdMalloc(image->size);
     if(image->buffer == KD_NULL)
     {
@@ -10446,8 +10450,11 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     if(filedata == MAP_FAILED)
 #elif(_WIN32)
     HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
-    filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, image->size);
-    if(fm == INVALID_HANDLE_VALUE || filedata == KD_NULL)
+    if(fm)
+    {
+        filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, image->size);
+    }
+    if(filedata == KD_NULL)
 #endif
     {
 #if defined(__unix__) || defined(__APPLE__)
@@ -10637,7 +10644,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
 KD_API void KD_APIENTRY kdFreeImageATX(KDImageATX image)
 {
     _KDImageATX *_image = image;
-    if(_image->buffer != KD_NULL)
+    if(_image->buffer)
     {
         kdFree(_image->buffer);
     }
@@ -10804,7 +10811,7 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
     for(KDint i = 0; i < len; i++)
     {
 #if defined(_WIN32)
-        WriteFile(out, &buf[i], 1, (DWORD[]){0}, NULL);
+        WriteFile(out, &buf[i], 1, (DWORD[]){0}, KD_NULL);
 #else
         printf("%c", buf[i]);
 #endif
