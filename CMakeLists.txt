@@ -70,7 +70,7 @@ project (KD C)
 
     if(MSVC)
         target_compile_options(KD PRIVATE /W4 /WX /wd4100 /wd4127)
-    else()
+    elseif(NOT CMAKE_C_COMPILER_ID STREQUAL "PGI")
         target_compile_options(KD PRIVATE -Wall -Wextra -Werror -Wshadow -pedantic)
         target_compile_options(KD PRIVATE -Wno-attributes -Wno-missing-field-initializers -Wno-unused-parameter -Wno-unused-function)
         target_compile_options(KD PRIVATE $<$<CONFIG:Debug>:-fno-omit-frame-pointer>)

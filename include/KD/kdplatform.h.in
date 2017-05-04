@@ -112,6 +112,9 @@
 #elif defined(__TINYC__)
 #   define KD_ATOMIC_MUTEX
 #   define KD_THREAD_POSIX
+#elif defined(__PGIC__)
+#   define KD_ATOMIC_MUTEX
+#   define KD_THREAD_POSIX
 #else
 #   define KD_ATOMIC_MUTEX
 #endif

@@ -120,7 +120,7 @@
 #   if defined(__linux__)
 #       include <sys/prctl.h>
 #   endif
-#   if !defined(__TINYC__)  
+#   if !defined(__TINYC__)  && !defined(__PGIC__)
 #       if defined(__x86_64__) || defined(__i386__)
 #           include <x86intrin.h>        
 #       elif defined(__ARM_NEON__)       
