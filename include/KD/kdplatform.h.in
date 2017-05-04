@@ -33,7 +33,6 @@
 #cmakedefine KD_WINDOW_X11
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_WIN32
-#cmakedefine KD_WINDOW_ANDROID
 #cmakedefine KD_WINDOW_COCOA
 #cmakedefine KD_FREESTANDING
 
@@ -140,13 +139,12 @@
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-    #if defined(KD_EXPORTS)
-        #define KD_API __declspec(dllexport)
-    #else
-        #define KD_API __declspec(dllimport)
-    #endif
+    #define KD_API __declspec(dllexport)
 #elif defined(__ANDROID__)
     #include <sys/cdefs.h>
+    #ifndef __NDK_FPABI__
+    #define __NDK_FPABI__
+    #endif
     #define KD_API __attribute__((__visibility__("default"))) __NDK_FPABI__
 #else 
     #define KD_API
@@ -171,7 +169,11 @@
 #ifdef KD_NDEBUG
     #define kdAssert(c) ((void) 0)
 #else
-    #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+    #if defined(__GNUC__) || defined(__clang__)
+        #define kdAssert(c) (__builtin_expect((c), 0) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+    #else
+        #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+    #endif
 #endif
 
 #if defined(_MSC_VER)

@@ -165,27 +165,38 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: x86_64-w64-mingw32-gcc
-      dist: trusty
+      env: DOCKER_IMAGE=dockcross/browser-asmjs 
       sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'ppa:ubuntu-wine'
-          packages: ['mingw-w64', 'ninja-build', 'valgrind', 'binutils-gold']
-      before_install: 
-        - sudo sed -i -e 's/deb http/deb [arch=amd64] http/' "/etc/apt/sources.list.d/google-chrome.list" "/opt/google/chrome/cron/google-chrome"
-        - sudo dpkg --add-architecture i386
-        - sudo apt-get update -qq
-        - sudo apt-get install -y wine1.8
-      install: 
+      services: docker
+      install:
+        - docker pull $DOCKER_IMAGE;
+        - python ci-tools/install_cmake.py
+      script:
+        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
+
+    - os: linux
+      env: DOCKER_IMAGE=dockcross/windows-x64
+      sudo: required
+      services: docker
+      install:
+        - docker pull $DOCKER_IMAGE;
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
         - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+        - python ci-tools/install_cmake.py
+      script:
+        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
+
+    - os: linux
+      env: DOCKER_IMAGE=dockcross/android-arm
+      sudo: required
+      services: docker
+      install:
+        - docker pull $DOCKER_IMAGE;
+        - python ci-tools/install_cmake.py
+      script:
+        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
     - os: osx
       compiler: clang
@@ -240,7 +251,6 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: gcc
       dist: trusty
       sudo: required
       addons:
@@ -566,3 +576,4 @@ matrix:
   allow_failures:
     - compiler: icc # Unstable
     - compiler: clang-5.0 # Unstable
+    - env: DOCKER_IMAGE=dockcross/android-arm # Testing

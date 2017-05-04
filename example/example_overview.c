@@ -34,7 +34,7 @@ static void KD_APIENTRY kd_callback(const KDEvent *event)
 {
     switch(event->type)
     {
-        case(KD_EVENT_QUIT):
+        case(KD_EVENT_WINDOW_CLOSE):
         {
             quit = 1;
             break;
@@ -128,7 +128,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     kdLogMessagefKHR("Renderer: %s\n", (const KDchar *)glGetString(GL_RENDERER));
     kdLogMessagefKHR("Extensions: %s\n", (const KDchar *)glGetString(GL_EXTENSIONS));
 
-    kdInstallCallback(&kd_callback, KD_EVENT_QUIT, KD_NULL);
+    kdInstallCallback(&kd_callback, KD_EVENT_WINDOW_CLOSE, KD_NULL);
     KDTimer *kd_timer = kdSetTimer(1000000000, KD_TIMER_PERIODIC_AVERAGE, KD_NULL);
 
     KDfloat32 r = 0.0f;
