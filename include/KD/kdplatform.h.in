@@ -169,7 +169,11 @@
 #ifdef KD_NDEBUG
     #define kdAssert(c) ((void) 0)
 #else
-    #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+    #if defined(__GNUC__) || defined(__clang__)
+        #define kdAssert(c) (__builtin_expect((c), 0) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+    #else
+        #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+    #endif
 #endif
 
 #if defined(_MSC_VER)
