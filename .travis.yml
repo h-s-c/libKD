@@ -6,7 +6,7 @@ cache:
 
 jobs:
   include:
-    - stage: Compiler compatibility testing (Linux)
+    - stage: Compiler compatibility testing (linux)
       os: linux
       compiler: gcc-6
       dist: trusty
@@ -59,20 +59,6 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.7', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: linux
-      compiler: clang-5.0
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-5.0', 'llvm-5.0', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -167,6 +153,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=dockcross/browser-asmjs 
+      dist: trusty
       sudo: required
       services: docker
       install:
@@ -177,6 +164,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=dockcross/windows-x64
+      dist: trusty
       sudo: required
       services: docker
       install:
@@ -189,17 +177,7 @@ jobs:
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/android-arm
-      sudo: required
-      services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
-
-    - stage: Compiler compatibility testing (MacOS)
+    - stage: Compiler compatibility testing (macos)
       os: osx
       compiler: clang
       osx_image: xcode8.3
@@ -276,6 +254,7 @@ jobs:
     - stage: Deployment (packagecloud)
       os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=yakkety
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -303,6 +282,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -330,6 +310,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -357,6 +338,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -384,6 +366,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -411,6 +394,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=25
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -439,6 +423,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=24
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -467,6 +452,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=centos DOCKER_IMAGE_VERSION=7
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -495,6 +481,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=oraclelinux DOCKER_IMAGE_VERSION=7
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -523,6 +510,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.2
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -551,6 +539,7 @@ jobs:
 
     - os: linux
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.1
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -576,8 +565,3 @@ jobs:
               python ci-tools/install_cmake.py;
               python ci-tools/run_cpack.py;"
           else true; fi;
-
-  allow_failures:
-    - compiler: icc # Unstable
-    - compiler: clang-5.0 # Unstable
-    - env: DOCKER_IMAGE=dockcross/android-arm # Testing
