@@ -4,9 +4,10 @@ cache:
   directories:
     - ci-tools/cache
 
-matrix:
+jobs:
   include:
-    - os: linux
+    - stage: Compiler compatibility testing (Linux)
+      os: linux
       compiler: gcc-6
       dist: trusty
       sudo: required
@@ -198,7 +199,8 @@ matrix:
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - os: osx
+    - stage: Compiler compatibility testing (MacOS)
+      os: osx
       compiler: clang
       osx_image: xcode8.3
       install: 
@@ -250,7 +252,8 @@ matrix:
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
-    - os: linux
+    - stage: Deployment (coverity)
+      os: linux
       dist: trusty
       sudo: required
       addons:
@@ -270,7 +273,8 @@ matrix:
             curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
           else true; fi;
 
-    - os: linux
+    - stage: Deployment (packagecloud)
+      os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=yakkety
       sudo: required
       services: docker
