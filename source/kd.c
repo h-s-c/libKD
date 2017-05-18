@@ -2499,11 +2499,16 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         }
                         break;
                     }
+#if __GNUC__ >= 7
+                    __attribute__ ((fallthrough));
+#endif
                 }
                 case MappingNotify:
                 {
                     XRefreshKeyboardMapping(&xevent.xmapping);
-                    /* Dont break here or we leak event */
+#if __GNUC__ >= 7
+                    __attribute__ ((fallthrough));
+#endif
                 }
                 default:
                 {
