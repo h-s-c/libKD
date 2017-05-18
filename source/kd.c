@@ -2741,24 +2741,23 @@ static int __kdPreMain(int argc, char **argv)
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
 
     KDint result = 0;
-#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
-    typedef KDint(KD_APIENTRY * KDMAIN)(KDint, const KDchar *const *);
-    KDMAIN kdmain = KD_NULL;
-#endif
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__) || (defined(__MINGW32__) && !defined(__MINGW64__))
     result = kdMain(argc, (const KDchar *const *)argv);
+#if defined(__ANDROID__)
     kdThreadMutexFree(__kd_androidactivity_mutex);
     kdThreadMutexFree(__kd_androidinputqueue_mutex);
     kdThreadMutexFree(__kd_androidwindow_mutex);
     kdThreadMutexFree(__kd_androidmainthread_mutex);
-#elif defined(__EMSCRIPTEN__)
-    result = kdMain(argc, (const KDchar *const *)argv);
-#elif defined(_WIN32)
+#endif
+#else
+    typedef KDint(KD_APIENTRY * KDMAIN)(KDint, const KDchar *const *);
+    KDMAIN kdmain = KD_NULL;
+#if defined(_WIN32)
     HMODULE handle = GetModuleHandle(0);
     kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
     if(kdmain == KD_NULL)
     {
-        kdLogMessagefKHR("Unable to locate kdMain.\n");
+        kdLogMessage("Unable to locate kdMain.\n");
         kdExit(EXIT_FAILURE);
     }
     result = kdmain(argc, (const KDchar *const *)argv);
@@ -2774,6 +2773,7 @@ static int __kdPreMain(int argc, char **argv)
     kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);
+#endif
 #endif
 
     __kdCleanupThreadStorageKHR();
@@ -8861,7 +8861,7 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
 {
     if(periodic != KD_TIMER_ONESHOT && periodic != KD_TIMER_PERIODIC_AVERAGE && periodic != KD_TIMER_PERIODIC_MINIMUM)
     {
-        kdLogMessagefKHR("kdSetTimer() encountered unknown periodic value.");
+        kdLogMessage("kdSetTimer() encountered unknown periodic value.\n");
         return KD_NULL;
     }
 
