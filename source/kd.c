@@ -3315,14 +3315,14 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
         buf[i] = (KDuint8)(emscripten_random() * 255) % 256;
     }
 #elif defined(__unix__) || defined(__APPLE__)
-    FILE *urandom = fopen("/dev/urandom", "r");
+    KDFile *urandom = kdFopen("/dev/urandom", "r");
     if(urandom)
     {
-        if(fread((void *)buf, sizeof(KDuint8), buflen, urandom) != buflen)
+        if(kdFread((void *)buf, 1, buflen, urandom) != buflen)
         {
             retval = -1;
         }
-        fclose(urandom);
+        kdFclose(urandom);
     }
 #else
     kdLogMessage("No cryptographic RNG available.");
@@ -10811,21 +10811,14 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
 {
 #if defined(_WIN32)
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-#endif
-    for(KDint i = 0; i < len; i++)
-    {
-#if defined(_WIN32)
-        WriteFile(out, &buf[i], 1, (DWORD[]){0}, KD_NULL);
+    WriteFile(out, buf, len, (DWORD[]){0}, KD_NULL);
 #else
-        printf("%c", buf[i]);
+    write(STDOUT_FILENO, buf, len);
 #endif
-    }
     if(len < STB_SPRINTF_MIN)
     {
 #if defined(_WIN32)
         FlushFileBuffers(out);
-#else
-        fflush(stdout);
 #endif
         return KD_NULL;
     }
