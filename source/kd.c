@@ -8926,9 +8926,9 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
 /* kdFopen: Open a file from the file system. */
 struct KDFile {
 #if defined(_WIN32)
-    HANDLE file;
+    HANDLE nativefile;
 #else
-    FILE *file;
+    KDint nativefile;
 #endif
     const KDchar *pathname;
     KDboolean eof;
@@ -8977,20 +8977,53 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         access = GENERIC_READ | GENERIC_WRITE;
     }
-    file->file = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
-    if(file->file != INVALID_HANDLE_VALUE)
+    file->nativefile = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
+    if(file->nativefile != INVALID_HANDLE_VALUE)
     {
         if(mode[0] == 'a')
         {
-            SetFilePointer(file, 0, KD_NULL, FILE_END);
+            SetFilePointer(file->nativefile, 0, KD_NULL, FILE_END);
         }
     }
     else
     {
         error = GetLastError();
 #else
-    file->file = fopen(pathname, mode);
-    if(file->file == KD_NULL)
+    KDint access = 0;
+    mode_t create = 0;
+    switch(mode[0])
+    {
+        case 'w':
+        {
+            access = O_WRONLY | O_CREAT;
+            create = S_IRUSR | S_IWUSR;
+            break;
+        }
+        case 'r':
+        {
+            access = O_RDONLY;
+            create = 0;
+            break;
+        }
+        case 'a':
+        {
+            access = O_WRONLY | O_CREAT | O_APPEND;
+            create = 0;
+            break;
+        }
+        default:
+        {
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
+        }
+    }
+    if(mode[1] == '+' || mode[2] == '+')
+    {
+        access = O_RDWR | O_CREAT;
+        create = S_IRUSR | S_IWUSR;
+    }
+    file->nativefile = open(pathname, access, create);
+    if(file->nativefile == -1)
     {
         error = errno;
 #endif
@@ -9008,13 +9041,13 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = CloseHandle(file->file);
+    retval = CloseHandle(file->nativefile);
     if(retval == 0)
     {
         error = GetLastError();
 #else
-    retval = fclose(file->file);
-    if(retval == EOF)
+    retval = close(file->nativefile);
+    if(retval == -1)
     {
         error = errno;
 #endif
@@ -9030,9 +9063,10 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
 {
 #if !defined(_WIN32)
-    KDint retval = fflush(file->file);
-    if(retval == EOF)
+    KDint retval = fsync(file->nativefile);
+    if(retval == -1)
     {
+        file->error = 1;
         kdSetErrorPlatformVEN(errno, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
@@ -9043,47 +9077,86 @@ KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
 /* kdFread: Read from a file. */
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
-    KDsize retval = 0;
+    KDssize retval = 0;
     KDPlatformErrorVEN error = 0;
+    KDsize length = count * size;
 #if defined(_WIN32)
-    DWORD bytesread = 0;
-    retval = ReadFile(file->file, buffer, (DWORD)(count * size), &bytesread, KD_NULL) ? bytesread / size : 0;
-    if(retval != size)
+    BOOL success = ReadFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
+    if(success == TRUE && retval == 0)
+    {
+        file->eof = 1;
+        return KD_EOF;
+    }
+    if(success == FALSE)
     {
         error = GetLastError();
 #else
-    retval = fread(buffer, size, count, file->file);
-    if(retval != count)
+    KDchar* temp = buffer;
+    while (length != 0 && (retval = read(file->nativefile, temp, length)) != 0) 
+    {
+      if (retval == -1) 
+      {
+        if (errno != EINTR)
+        {
+            break;
+        }
+      }
+      length -= retval;
+      temp += retval;
+    }
+    if(retval == 0)
+    {
+        file->eof = 1;
+        return KD_EOF;
+    }
+    length = count * size;
+    if((KDsize)retval != length)
     {
         error = errno;
 #endif
+        file->error = 1;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
-        return kdFerror(file);
+        return KD_EOF;
     }
-    return retval;
+    return (KDsize)retval;
 }
 
 /* kdFwrite: Write to a file. */
 KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
-    KDsize retval = 0;
+    KDssize retval = 0;
     KDPlatformErrorVEN error = 0;
+    KDsize length = count * size;
 #if defined(_WIN32)
-    DWORD byteswritten = 0;
-    retval = WriteFile(file->file, buffer, (DWORD)(count * size), &byteswritten, KD_NULL) ? byteswritten / size : 0;
-    if(retval != size)
+    BOOL success = WriteFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
+    if(success == FALSE)
     {
         error = GetLastError();
 #else
-    retval = fwrite(buffer, size, count, file->file);
-    if(retval != size)
+    KDchar *temp = KD_NULL;
+    kdMemcpy(temp, buffer, length);
+    while (length != 0 && (retval = write(file->nativefile, temp, length)) != 0) 
+    {
+        if (retval == -1) 
+        {
+            if (errno != EINTR)
+            {
+                break;
+            }
+        }
+        length -= retval;
+        temp += retval;
+    }
+    length = count * size;
+    if((KDsize)retval != length)
     {
         error = errno;
 #endif
+        file->error = 1;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
-        return kdFerror(file);
+        return KD_EOF;
     }
-    return retval;
+    return (KDsize)retval;
 }
 
 /* kdGetc: Read next byte from an open file. */
@@ -9092,17 +9165,30 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    if(ReadFile(file->file, &retval, 1, (DWORD[]){0}, KD_NULL) == TRUE)
+    DWORD byteswritten = 0;
+    BOOL success = ReadFile(file->nativefile, &retval, 1, &byteswritten, KD_NULL);
+    if(success == TRUE && byteswritten == 0)
+    {
+        file->eof = 1;
+        return KD_EOF;
+    }
+    if(success == FALSE)
     {
         error = GetLastError();
 #else
-    retval = fgetc(file->file);
-    if(retval == EOF)
+    KDint success = (KDsize)read(file->nativefile, &retval, 1);
+    if(success == 0)
+    {
+        file->eof = 1;
+        return KD_EOF;
+    }
+    if(success == -1)
     {
         error = errno;
 #endif
+        file->error = 1;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
-        return kdFerror(file);
+        return KD_EOF;
     }
     return retval;
 }
@@ -9113,17 +9199,19 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    if(WriteFile(file->file, &retval, 1, (DWORD[]){0}, KD_NULL) == TRUE)
+    BOOL success = WriteFile(file->nativefile, &retval, 1, (DWORD[]){0}, KD_NULL);
+    if(success == FALSE)
     {
         error = GetLastError();
 #else
-    retval = fputc(retval, file->file);
-    if(retval == EOF)
+    KDint success = (KDsize)write(file->nativefile, &retval, 1);
+    if(success == -1)
     {
         error = errno;
 #endif
+        file->error = 1;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
-        return kdFerror(file);
+        return KD_EOF;
     }
     c = retval;
     return c;
@@ -9156,12 +9244,7 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 /* kdFEOF: Check for end of file. */
 KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 {
-#if defined(_WIN32)
     if(file->eof == 1)
-#else
-    KDint error = feof(file->file);
-    if(error != 0)
-#endif
     {
         return KD_EOF;
     }
@@ -9171,11 +9254,7 @@ KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 /* kdFerror: Check for an error condition on an open file. */
 KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 {
-#if defined(_WIN32)
     if(file->error == 1)
-#else
-    if(ferror(file->file) != 0)
-#endif
     {
         return KD_EOF;
     }
@@ -9185,12 +9264,8 @@ KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 /* kdClearerr: Clear a file's error and end-of-file indicators. */
 KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 {
-#if defined(_WIN32)
-    file->eof = 0;
     file->error = 0;
-#else
-    clearerr(file->file);
-#endif
+    file->eof = 0;
 }
 
 /* TODO: Cleanup */
@@ -9222,12 +9297,12 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
         if(seekorigins[i].seekorigin_kd == origin)
         {
 #if defined(_WIN32)
-            DWORD retval = SetFilePointer(file->file, (LONG)offset, KD_NULL, seekorigins[i].seekorigin);
+            DWORD retval = SetFilePointer(file->nativefile, (LONG)offset, KD_NULL, seekorigins[i].seekorigin);
             if(retval == INVALID_SET_FILE_POINTER)
             {
                 error = GetLastError();
 #else
-            KDint retval = fseek(file->file, (KDint32)offset, seekorigins[i].seekorigin);
+            KDint retval = lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
             if(retval != 0)
             {
                 error = errno;
@@ -9247,12 +9322,12 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
     KDoff position = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    position = (KDoff)SetFilePointer(file->file, 0, KD_NULL, FILE_CURRENT);
+    position = (KDoff)SetFilePointer(file->nativefile, 0, KD_NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
     {
         error = GetLastError();
 #else
-    position = ftell(file->file);
+    position = lseek(file->nativefile, 0, SEEK_CUR);
     if(position == -1)
     {
         error = errno;
