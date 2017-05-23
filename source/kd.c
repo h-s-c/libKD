@@ -9085,9 +9085,8 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     if(success == TRUE && retval == 0)
     {
         file->eof = 1;
-        return KD_EOF;
     }
-    if(success == FALSE)
+    else if(success == FALSE)
     {
         error = GetLastError();
 #else
@@ -9104,19 +9103,17 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
       length -= retval;
       temp += retval;
     }
+    length = count * size;
     if(retval == 0)
     {
         file->eof = 1;
-        return KD_EOF;
     }
-    length = count * size;
-    if((KDsize)retval != length)
+    else if((KDsize)retval != length)
     {
         error = errno;
 #endif
         file->error = 1;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
-        return KD_EOF;
     }
     return (KDsize)retval;
 }
@@ -9154,7 +9151,6 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 #endif
         file->error = 1;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
-        return KD_EOF;
     }
     return (KDsize)retval;
 }
@@ -9172,7 +9168,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
         file->eof = 1;
         return KD_EOF;
     }
-    if(success == FALSE)
+    else if(success == FALSE)
     {
         error = GetLastError();
 #else
@@ -9182,7 +9178,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
         file->eof = 1;
         return KD_EOF;
     }
-    if(success == -1)
+    else if(success == -1)
     {
         error = errno;
 #endif
@@ -9349,7 +9345,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
     {
         error = GetLastError();
 #else
-    retval = mkdir(pathname, S_IRWXU);
+    retval = mkdir(pathname, S_IRUSR | S_IWUSR);
     if(retval == -1)
     {
         error = errno;
