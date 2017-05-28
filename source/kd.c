@@ -247,7 +247,6 @@ struct KDThread {
     void *arg;
     const KDThreadAttr *attr;
     KDQueueVEN *eventqueue;
-    KDDirent *lastdirent;
     KDEvent *lastevent;
     KDint lasterror;
     KDuint callbackindex;
@@ -632,21 +631,12 @@ static KDThread *__kdThreadInit(void)
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-    thread->lastdirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
-    if(thread->lastdirent == KD_NULL)
-    {
-        kdQueueFreeVEN(thread->eventqueue);
-        kdFree(thread);
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
     thread->lastevent = KD_NULL;
     thread->lasterror = 0;
     thread->callbackindex = 0;
     thread->callbacks = (__KDCallback **)kdMalloc(sizeof(__KDCallback *));
     if(thread->callbacks == KD_NULL)
     {
-        kdFree(thread->lastdirent);
         kdQueueFreeVEN(thread->eventqueue);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
@@ -666,7 +656,6 @@ static void __kdThreadFree(KDThread *thread)
     {
         kdFreeEvent(thread->lastevent);
     }
-    kdFree(thread->lastdirent);
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
 }
@@ -1212,7 +1201,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #elif defined(KD_THREAD_POSIX)
     nanosleep(&ts, KD_NULL);
 #elif defined(KD_THREAD_WIN32)
-    HANDLE timer = CreateWaitableTimer(KD_NULL, 1, KD_NULL);
+    HANDLE timer = CreateWaitableTimerA(KD_NULL, 1, KD_NULL);
     if(!timer)
     {
         kdAssert(0);
@@ -2829,24 +2818,24 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 /* TODO: Catch argc/agv */
 int WINAPI wWinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED PWSTR lpCmdLine, KD_UNUSED int nShowCmd)
 {
-    return __kdPreMain(0, KD_NULL);
+    return __kdPreMain(__argc, __argv);
 }
 int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED LPSTR lpCmdLine, KD_UNUSED int nShowCmd)
 {
-    return __kdPreMain(0, KD_NULL);
+    return __kdPreMain(__argc, __argv);
 }
 int wmain(KD_UNUSED int argc, KD_UNUSED PWSTR *argv, KD_UNUSED PWSTR *envp)
 {
-    return __kdPreMain(0, KD_NULL);
+    return __kdPreMain(__argc, __argv);
 }
 #ifdef KD_FREESTANDING
 int WINAPI WinMainCRTStartup(void)
 {
-    return __kdPreMain(0, KD_NULL);
+    return __kdPreMain(__argc, __argv);
 }
 int WINAPI mainCRTStartup(void)
 {
-    return __kdPreMain(0, KD_NULL);
+    return __kdPreMain(__argc, __argv);
 }
 #endif
 #endif
@@ -3302,7 +3291,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 #elif defined(_WIN32) && !defined(_M_ARM)
     /* Non-conforming to OpenKODE spec (blocking). */
     HCRYPTPROV provider = 0;
-    retval = CryptAcquireContext(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT) - 1;
+    retval = CryptAcquireContextA(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT) - 1;
     if(retval == 0)
     {
         retval = CryptGenRandom(provider, (KDuint32)buflen, buf) - 1;
@@ -3339,7 +3328,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KD_UNUSED KDsize buflen)
 {
 #if defined(_WIN32)
-    return GetEnvironmentVariable(env, buf, (DWORD)buflen);
+    return GetEnvironmentVariableA(env, buf, (DWORD)buflen);
 #else
     buf = getenv(env);
     return kdStrlen(buf);
@@ -3353,16 +3342,24 @@ KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KD_UNUSED 
 /* kdGetLocale: Determine the current language and locale. */
 KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 {
-#if defined(KD_FREESTANDING)
-    return "";
+    /* TODO: Add ISO 3166-1 part.*/
+    static KDchar localestore[2] = "";
+#if defined(_WIN32)
+    KDint localesize = GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, KD_NULL, 0);
+    KDchar *locale = (KDchar *)kdMalloc(localesize);
+    GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, locale, localesize);
+    kdMemcpy(localestore, locale, 2);
+    kdFree(locale);
 #else
-    const KDchar *result = setlocale(LC_ALL, KD_NULL);
-    if(result == KD_NULL)
+    setlocale(LC_ALL, "");
+    KDchar *locale = setlocale(LC_CTYPE, KD_NULL);
+    if(locale == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
     }
-    return result;
+    kdMemcpy(localestore, locale, 2 /* 5 */);
 #endif
+    return (const KDchar *)localestore;
 }
 
 /******************************************************************************
@@ -8977,7 +8974,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         access = GENERIC_READ | GENERIC_WRITE;
     }
-    file->nativefile = CreateFile(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
+    file->nativefile = CreateFileA(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
     if(file->nativefile != INVALID_HANDLE_VALUE)
     {
         if(mode[0] == 'a')
@@ -9340,7 +9337,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = CreateDirectory(pathname, KD_NULL);
+    retval = CreateDirectoryA(pathname, KD_NULL);
     if(retval == 0)
     {
         error = GetLastError();
@@ -9362,7 +9359,7 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = RemoveDirectory(pathname);
+    retval = RemoveDirectoryA(pathname);
     if(retval == 0)
     {
         error = GetLastError();
@@ -9384,7 +9381,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = MoveFile(src, dest);
+    retval = MoveFileA(src, dest);
     if(retval == 0)
     {
         error = GetLastError();
@@ -9406,7 +9403,7 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
     KDint retval = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
-    retval = DeleteFile(pathname);
+    retval = DeleteFileA(pathname);
     if(retval == 0)
     {
         error = GetLastError();
@@ -9429,7 +9426,7 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    HANDLE file = FindFirstFile(pathname, &data);
+    HANDLE file = FindFirstFileA(pathname, &data);
     retval = (KDint)SetFileValidData(file, (LONGLONG)length);
     FindClose(file);
     if(retval == 0)
@@ -9453,7 +9450,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE)
+    if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
@@ -9529,7 +9526,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    if(FindFirstFile(pathname, &data) != INVALID_HANDLE_VALUE)
+    if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
         {
@@ -9573,10 +9570,11 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 /* kdOpenDir: Open a directory ready for listing. */
 struct KDDir {
 #if defined(_WIN32)
-    HANDLE dir;
+    HANDLE nativedir;
 #else
-    DIR *dir;
+    DIR *nativedir;
 #endif
+    KDDirent *dirent;
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
@@ -9592,18 +9590,38 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
+    dir->dirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
+    if(dir->dirent == KD_NULL)
+    {
+        kdFree(dir);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    if(FindFirstFile(pathname, &data) == INVALID_HANDLE_VALUE)
+    if(kdStrcmp(pathname, ".") == 0)
+    {
+        KDsize curdirsize = (KDsize)GetCurrentDirectoryA(0, KD_NULL);
+        KDchar *curdir = (KDchar *)kdMalloc(curdirsize);
+        GetCurrentDirectoryA((DWORD)curdirsize, curdir);
+        dir->nativedir = FindFirstFileA((const KDchar*)curdir, &data);
+        kdFree(curdir);
+    }
+    else
+    {
+        dir->nativedir = FindFirstFileA(pathname, &data);
+    }
+    if(dir->nativedir == INVALID_HANDLE_VALUE)
     {
         error = GetLastError();
 #else
-    dir->dir = opendir(pathname);
-    if(dir->dir == KD_NULL)
+    dir->nativedir = opendir(pathname);
+    if(dir->nativedir == KD_NULL)
     {
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
+        kdFree(dir->dirent);
         kdFree(dir);
         return KD_NULL;
     }
@@ -9614,43 +9632,48 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
     KDPlatformErrorVEN error = 0;
-    KDDirent *lastdirent = kdThreadSelf()->lastdirent;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-    if(FindNextFile(dir->dir, &data) != 0)
+    if(FindNextFileA(dir->nativedir, &data) != 0)
     {
-        lastdirent->d_name = data.cFileName;
+        dir->dirent->d_name = data.cFileName;
     }
     else
     {
         error = GetLastError();
+        if(error == ERROR_NO_MORE_FILES)
+        {
+            return KD_NULL;
+        }
 #else
-    struct dirent *posixdirent = readdir(dir->dir);
-    if(posixdirent)
+    struct dirent *de = readdir(dir->nativedir);
+    if(de != KD_NULL)
     {
-        lastdirent->d_name = posixdirent->d_name;
+        dir->dirent->d_name =  de->d_name;
+    }
+    else if(errno == 0)
+    {
+        return KD_NULL;
     }
     else
     {
         error = errno;
 #endif
-        if(error != 0)
-        {
-            kdSetErrorPlatformVEN(error, KD_EIO | KD_ENOMEM);
-        }
+        kdSetErrorPlatformVEN(error, KD_EIO | KD_ENOMEM);
         return KD_NULL;
     }
-    return lastdirent;
+    return dir->dirent;
 }
 
 /* kdCloseDir: Close a directory. */
 KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 {
 #if defined(_WIN32)
-    FindClose(dir->dir);
+    FindClose(dir->nativedir);
 #else
-    closedir(dir->dir);
+    closedir(dir->nativedir);
 #endif
+    kdFree(dir->dirent);
     kdFree(dir);
     return 0;
 }
@@ -10510,7 +10533,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     if(fd == -1)
 #elif(_WIN32)
     WIN32_FIND_DATA data;
-    HANDLE fd = FindFirstFile(pathname, &data);
+    HANDLE fd = FindFirstFileA(pathname, &data);
     if(fd == INVALID_HANDLE_VALUE)
 #endif
     {
