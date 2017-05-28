@@ -9603,6 +9603,13 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
     {
         KDsize curdirsize = (KDsize)GetCurrentDirectoryA(0, KD_NULL);
         KDchar *curdir = (KDchar *)kdMalloc(curdirsize);
+        if(curdir == KD_NULL)
+        {
+            kdFree(dir->dirent);
+            kdFree(dir);
+            kdSetError(KD_ENOMEM);
+            return KD_NULL;
+        }
         GetCurrentDirectoryA((DWORD)curdirsize, curdir);
         dir->nativedir = FindFirstFileA((const KDchar*)curdir, &data);
         kdFree(curdir);
