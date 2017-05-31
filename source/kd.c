@@ -9601,8 +9601,8 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
     WIN32_FIND_DATA data;
     if(kdStrcmp(pathname, ".") == 0)
     {
-        KDsize curdirsize = (KDsize)GetCurrentDirectoryA(0, KD_NULL);
-        KDchar *curdir = (KDchar *)kdMalloc(curdirsize);
+        DWORD curdirsize = GetCurrentDirectoryA(0, KD_NULL);
+        KDchar *curdir = (KDchar *)kdMalloc((KDsize)curdirsize);
         if(curdir == KD_NULL)
         {
             kdFree(dir->dirent);
@@ -9610,8 +9610,11 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
             kdSetError(KD_ENOMEM);
             return KD_NULL;
         }
-        GetCurrentDirectoryA((DWORD)curdirsize, curdir);
-        dir->nativedir = FindFirstFileA((const KDchar*)curdir, &data);
+        curdirsize = GetCurrentDirectoryA(curdirsize, curdir);
+        if(curdirsize != 0)
+        {
+            dir->nativedir = FindFirstFileA((const KDchar*)curdir, &data);
+        }
         kdFree(curdir);
     }
     else
