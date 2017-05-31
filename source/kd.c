@@ -9610,11 +9610,9 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
             kdSetError(KD_ENOMEM);
             return KD_NULL;
         }
-        curdirsize = GetCurrentDirectoryA(curdirsize, curdir);
-        if(curdirsize != 0)
-        {
-            dir->nativedir = FindFirstFileA((const KDchar*)curdir, &data);
-        }
+        GetCurrentDirectoryA(curdirsize, curdir);
+#pragma warning (suppress : 6102)
+        dir->nativedir = FindFirstFileA((const KDchar*)curdir, &data);
         kdFree(curdir);
     }
     else
