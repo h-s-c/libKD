@@ -29,7 +29,7 @@ static void* test_func( void *arg)
 {
     for(;;)
     {
-        const KDEvent *event = kdWaitEvent(1500000000);
+        const KDEvent *event = kdWaitEvent(-1);
         if(event)
         {
             if(event->type == KD_EVENT_QUIT)

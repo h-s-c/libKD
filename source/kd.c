@@ -656,6 +656,10 @@ static void __kdThreadFree(KDThread *thread)
     {
         kdFreeEvent(thread->lastevent);
     }
+    while(kdQueueSizeVEN(thread->eventqueue) > 0)
+    {
+        kdFreeEven((KDEvent *)kdQueuePullVEN(thread->eventqueue));
+    }
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
 }
@@ -668,7 +672,7 @@ static void __kdThreadInitOnce(void)
 
 static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
-static void *__kdThreadStart(void *init)
+static void *__kdThreadRun(void *init)
 {
     KDThread *thread = (KDThread *)init;
     kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
@@ -755,11 +759,11 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 
     KDint error = 0;
 #if defined(KD_THREAD_C11)
-    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadStart, thread);
+    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadRun, thread);
 #elif defined(KD_THREAD_POSIX)
-    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, thread);
+    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
 #elif defined(KD_THREAD_WIN32)
-    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)thread, 0, KD_NULL);
+    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadRun, (LPVOID)thread, 0, KD_NULL);
     error = thread->nativethread ? 0 : 1;
 #endif
 
@@ -2766,7 +2770,7 @@ static int __kdPreMain(int argc, char **argv)
 #endif
 
     __kdCleanupThreadStorageKHR();
-#if defined(__ANDROID__)
+#if !defined(__ANDROID__)
     __kdThreadFree(thread);
 #endif
     kdThreadMutexFree(__kd_tls_mutex);
@@ -11313,6 +11317,7 @@ KD_API KDint KD_APIENTRY kdQueueFreeVEN(KDQueueVEN *queue)
         kdAtomicIntFreeVEN(queue->buffer[i].sequence);
     }
 
+    kdFree(queue->buffer);
     kdFree(queue);
     return 0;
 }
