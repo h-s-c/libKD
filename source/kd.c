@@ -656,6 +656,10 @@ static void __kdThreadFree(KDThread *thread)
     {
         kdFreeEvent(thread->lastevent);
     }
+    while(kdQueueSizeVEN(thread->eventqueue) > 0)
+    {
+        kdFreeEven((KDEvent *)kdQueuePullVEN(thread->eventqueue));
+    }
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
 }
@@ -668,7 +672,7 @@ static void __kdThreadInitOnce(void)
 
 static KDThreadOnce __kd_threadlocal_once = KD_THREAD_ONCE_INIT;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
-static void *__kdThreadStart(void *init)
+static void *__kdThreadRun(void *init)
 {
     KDThread *thread = (KDThread *)init;
     kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
@@ -755,11 +759,11 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 
     KDint error = 0;
 #if defined(KD_THREAD_C11)
-    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadStart, thread);
+    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadRun, thread);
 #elif defined(KD_THREAD_POSIX)
-    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadStart, thread);
+    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
 #elif defined(KD_THREAD_WIN32)
-    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadStart, (LPVOID)thread, 0, KD_NULL);
+    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadRun, (LPVOID)thread, 0, KD_NULL);
     error = thread->nativethread ? 0 : 1;
 #endif
 
@@ -2489,14 +2493,14 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         break;
                     }
 #if __GNUC__ >= 7
-                    __attribute__ ((fallthrough));
+                    __attribute__((fallthrough));
 #endif
                 }
                 case MappingNotify:
                 {
                     XRefreshKeyboardMapping(&xevent.xmapping);
 #if __GNUC__ >= 7
-                    __attribute__ ((fallthrough));
+                    __attribute__((fallthrough));
 #endif
                 }
                 default:
@@ -2766,7 +2770,7 @@ static int __kdPreMain(int argc, char **argv)
 #endif
 
     __kdCleanupThreadStorageKHR();
-#if defined(__ANDROID__)
+#if !defined(__ANDROID__)
     __kdThreadFree(thread);
 #endif
     kdThreadMutexFree(__kd_tls_mutex);
@@ -9087,18 +9091,18 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     {
         error = GetLastError();
 #else
-    KDchar* temp = buffer;
-    while (length != 0 && (retval = read(file->nativefile, temp, length)) != 0) 
+    KDchar *temp = buffer;
+    while(length != 0 && (retval = read(file->nativefile, temp, length)) != 0)
     {
-      if (retval == -1) 
-      {
-        if (errno != EINTR)
+        if(retval == -1)
         {
-            break;
+            if(errno != EINTR)
+            {
+                break;
+            }
         }
-      }
-      length -= retval;
-      temp += retval;
+        length -= retval;
+        temp += retval;
     }
     length = count * size;
     if(retval == 0)
@@ -9129,11 +9133,11 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 #else
     KDchar *temp = KD_NULL;
     kdMemcpy(temp, buffer, length);
-    while (length != 0 && (retval = write(file->nativefile, temp, length)) != 0) 
+    while(length != 0 && (retval = write(file->nativefile, temp, length)) != 0)
     {
-        if (retval == -1) 
+        if(retval == -1)
         {
-            if (errno != EINTR)
+            if(errno != EINTR)
             {
                 break;
             }
@@ -9611,8 +9615,8 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
             return KD_NULL;
         }
         GetCurrentDirectoryA(curdirsize, curdir);
-#pragma warning (suppress : 6102)
-        dir->nativedir = FindFirstFileA((const KDchar*)curdir, &data);
+#pragma warning(suppress : 6102)
+        dir->nativedir = FindFirstFileA((const KDchar *)curdir, &data);
         kdFree(curdir);
     }
     else
@@ -9657,7 +9661,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     struct dirent *de = readdir(dir->nativedir);
     if(de != KD_NULL)
     {
-        dir->dirent->d_name =  de->d_name;
+        dir->dirent->d_name = de->d_name;
     }
     else if(errno == 0)
     {
@@ -9808,31 +9812,35 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KD_UNUSED KDSocket *socket, KD_UNUSED 
 }
 
 /* kdHtonl: Convert a 32-bit integer from host to network byte order. */
-KD_API KDuint32 KD_APIENTRY kdHtonl(KD_UNUSED KDuint32 hostlong)
+KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return 0;
+    union {
+        KDint i;
+        KDchar c;
+    } u = {1};
+    return u.c ? (hostlong >> 24 | hostlong >> (8 & 0xff00) | hostlong << (8 & 0xff0000) | hostlong << 24) : hostlong;
 }
 
 /* kdHtons: Convert a 16-bit integer from host to network byte order. */
-KD_API KDuint16 KD_APIENTRY kdHtons(KD_UNUSED KDuint16 hostshort)
+KD_API KDuint16 KD_APIENTRY kdHtons(KDuint16 hostshort)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return (KDuint16)0;
+    union {
+        KDint i;
+        KDchar c;
+    } u = {1};
+    return u.c ? (hostshort << 8 | hostshort >> 8) : hostshort;
 }
 
 /* kdNtohl: Convert a 32-bit integer from network to host byte order. */
-KD_API KDuint32 KD_APIENTRY kdNtohl(KD_UNUSED KDuint32 netlong)
+KD_API KDuint32 KD_APIENTRY kdNtohl(KDuint32 netlong)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return 0;
+    return kdHtonl(netlong);
 }
 
 /* kdNtohs: Convert a 16-bit integer from network to host byte order. */
-KD_API KDuint16 KD_APIENTRY kdNtohs(KD_UNUSED KDuint16 netshort)
+KD_API KDuint16 KD_APIENTRY kdNtohs(KDuint16 netshort)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return (KDuint16)0;
+    return kdHtons(netshort);
 }
 
 /* kdInetAton: Convert a "dotted quad" format address to an integer. */
@@ -9843,10 +9851,24 @@ KD_API KDint KD_APIENTRY kdInetAton(KD_UNUSED const KDchar *cp, KD_UNUSED KDuint
 }
 
 /* kdInetNtop: Convert a network address to textual form. */
-KD_API const KDchar *KD_APIENTRY kdInetNtop(KD_UNUSED KDuint af, KD_UNUSED const void *src, KD_UNUSED KDchar *dst, KD_UNUSED KDsize cnt)
+KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *dst, KDsize cnt)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return KD_NULL;
+    if(af != KD_AF_INET)
+    {
+        kdSetError(KD_EAFNOSUPPORT);
+        return KD_NULL;
+    }
+    if(cnt < KD_INET_ADDRSTRLEN)
+    {
+        kdSetError(KD_ENOSPC);
+        return KD_NULL;
+    }
+
+    KDuint32 address = kdNtohl(((KDInAddr *)src)->s_addr);
+    KDchar tempstore[sizeof("255.255.255.255")] = "";
+    kdSnprintfKHR(tempstore, sizeof(tempstore), "%u.%u.%u.%u", address);
+    kdStrcpy_s(dst, cnt, tempstore);
+    return (const KDchar *)dst;
 }
 
 /******************************************************************************
@@ -11295,6 +11317,7 @@ KD_API KDint KD_APIENTRY kdQueueFreeVEN(KDQueueVEN *queue)
         kdAtomicIntFreeVEN(queue->buffer[i].sequence);
     }
 
+    kdFree(queue->buffer);
     kdFree(queue);
     return 0;
 }
