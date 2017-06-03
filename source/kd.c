@@ -658,7 +658,7 @@ static void __kdThreadFree(KDThread *thread)
     }
     while(kdQueueSizeVEN(thread->eventqueue) > 0)
     {
-        kdFreeEven((KDEvent *)kdQueuePullVEN(thread->eventqueue));
+        kdFreeEvent((KDEvent *)kdQueuePullVEN(thread->eventqueue));
     }
     kdQueueFreeVEN(thread->eventqueue);
     kdFree(thread);
