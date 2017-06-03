@@ -23,6 +23,10 @@
 
 #include <KD/kd.h>
 
+#ifdef KD_NDEBUG
+#error "Dont run tests with NDEBUG defined."
+#endif
+
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     KDchar string[20];

@@ -23,6 +23,10 @@
 
 #include <KD/kd.h>
 
+#ifdef KD_NDEBUG
+#error "Dont run tests with NDEBUG defined."
+#endif
+
 /* Test if we can register multiple callbacks to the same eventype/eventuserptr combo. */
 static KDboolean quit = 0;
 void KD_APIENTRY callback1(const KDEvent *event)

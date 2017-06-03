@@ -24,6 +24,10 @@
 #include <KD/kd.h>
 #include <KD/kdext.h>
 
+#ifdef KD_NDEBUG
+#error "Dont run tests with NDEBUG defined."
+#endif
+
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
 KDAtomicIntVEN* test_once_count = KD_NULL;

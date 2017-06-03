@@ -23,6 +23,10 @@
 
 #include <KD/kd.h>
 
+#ifdef KD_NDEBUG
+#error "Dont run tests with NDEBUG defined."
+#endif
+
 /* Test if we can can communicate properly with event loops in different threads. */
 #define THREAD_COUNT 10
 static void* test_func( void *arg)
