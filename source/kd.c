@@ -9615,7 +9615,9 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
             return KD_NULL;
         }
         GetCurrentDirectoryA(curdirsize, curdir);
+#if defined(_MSC_VER)
 #pragma warning(suppress : 6102)
+#endif
         dir->nativedir = FindFirstFileA((const KDchar *)curdir, &data);
         kdFree(curdir);
     }
