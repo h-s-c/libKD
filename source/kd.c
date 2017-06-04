@@ -10217,7 +10217,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
             XFlush(window->nativedisplay);
             KDEvent *event = kdCreateEvent();
             event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-            kdPostThreadEvent(event, kdThreadSelf());
+            kdPostEvent(event);
             return 0;
         }
 #elif defined(__EMSCRIPTEN__)
@@ -10247,7 +10247,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
 #endif
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-        kdPostThreadEvent(event, kdThreadSelf());
+        kdPostEvent(event);
         return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
