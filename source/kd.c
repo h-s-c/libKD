@@ -92,9 +92,11 @@
 #   include <wincrypt.h> /* CryptGenRandom etc. */
 #   include <direct.h> /* R_OK/W_OK/X_OK */
 #   include <intrin.h> /* _mm_* */
+#   include <winsock2.h> /* WSA */
 #   ifndef inline
 #       define inline __inline /* MSVC redefinition fix */
 #   endif
+#   undef s_addr /* OpenKODE uses this */
 #endif
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -145,7 +147,7 @@
 #       include <wayland-client.h>
 #       include <wayland-egl.h>
 #   endif
-#   undef st_mtime /* POSIX reserved but OpenKODE uses this */
+#   undef st_mtime /* OpenKODE uses this */
 #endif
 
 #if defined(__EMSCRIPTEN__)
@@ -2715,6 +2717,10 @@ static KDThreadMutex *__kd_tls_mutex = KD_NULL;
 static void __kdCleanupThreadStorageKHR(void);
 static int __kdPreMain(int argc, char **argv)
 {
+#if defined(_WIN32)
+    WSAStartup(0x202, (WSADATA[]){0});
+#endif
+
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
     __kd_tls_mutex = kdThreadMutexCreate(KD_NULL);
 
@@ -2771,6 +2777,10 @@ static int __kdPreMain(int argc, char **argv)
 #endif
     kdThreadMutexFree(__kd_tls_mutex);
     kdThreadMutexFree(__kd_userptrmtx);
+
+#if defined(_WIN32)
+    WSACleanup();
+#endif
     return result;
 }
 
@@ -9726,6 +9736,7 @@ typedef struct {
 } __KDNameLookupPayload;
 static void *__kdNameLookupHandler(void *arg)
 {
+    /* TODO: Make async, threadsafe and cancelable */
     __KDNameLookupPayload *payload = (__KDNameLookupPayload *)arg;
 
     struct hostent *he = gethostbyname(payload->hostname);

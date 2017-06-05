@@ -135,7 +135,8 @@ project (KD C)
     endif()
    
     if(WIN32)
-         target_compile_definitions(KD PRIVATE "_WIN32_WINNT=0x0600")
+        target_link_libraries(KD PRIVATE ws2_32)
+        target_compile_definitions(KD PRIVATE "_WIN32_WINNT=0x0600")
     endif()
 
     if(EMSCRIPTEN)
