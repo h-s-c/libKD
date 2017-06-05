@@ -2722,7 +2722,7 @@ static int __kdPreMain(int argc, char **argv)
     if(WSAStartup(0x202, (WSADATA[]){0}) != 0)
     {
         kdLogMessage("Winsock2 error.\n");
-        kdExit(EXIT_FAILURE);
+        kdExit(-1);
     }
 #endif
 
@@ -2758,7 +2758,7 @@ static int __kdPreMain(int argc, char **argv)
     if(kdmain == KD_NULL)
     {
         kdLogMessage("Unable to locate kdMain.\n");
-        kdExit(EXIT_FAILURE);
+        kdExit(-1);
     }
     result = kdmain(argc, (const KDchar *const *)argv);
 #else
@@ -2767,7 +2767,7 @@ static int __kdPreMain(int argc, char **argv)
     if(dlerror())
     {
         kdLogMessage("Unable to locate kdMain.\n");
-        kdExit(EXIT_FAILURE);
+        kdExit(-1);
     }
     /* ISO C forbids assignment between function pointer and ‘void *’ */
     kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
@@ -2786,7 +2786,7 @@ static int __kdPreMain(int argc, char **argv)
 #if defined(_WIN32)
     WSACleanup();
 #endif
-    return result;
+    kdExit(result);
 }
 
 #ifdef __ANDROID__
@@ -2830,16 +2830,7 @@ void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_
 
 
 #if defined(_WIN32)
-/* TODO: Catch argc/agv */
-int WINAPI wWinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED PWSTR lpCmdLine, KD_UNUSED int nShowCmd)
-{
-    return __kdPreMain(__argc, __argv);
-}
 int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED LPSTR lpCmdLine, KD_UNUSED int nShowCmd)
-{
-    return __kdPreMain(__argc, __argv);
-}
-int wmain(KD_UNUSED int argc, KD_UNUSED PWSTR *argv, KD_UNUSED PWSTR *envp)
 {
     return __kdPreMain(__argc, __argv);
 }
@@ -2862,6 +2853,15 @@ KD_API int main(int argc, char **argv)
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 {
+    if(status == 0)
+    {
+        status = EXIT_SUCCESS;
+    }
+    else
+    {
+        status = EXIT_FAILURE;
+    }
+
 #if defined(_WIN32)
     ExitProcess(status);
     while(1)
@@ -10460,7 +10460,7 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     __debugbreak();
 #else
-    kdExit(EXIT_FAILURE);
+    kdExit(-1);
 #endif
 }
 
