@@ -105,10 +105,12 @@
 #   if defined(__GLIBC__) || defined(__EMSCRIPTEN__)        
 #       include <malloc.h> /* malloc_usable_size */       
 #   endif
+#   include <netdb.h>
 #   include <sys/mman.h> /* mincore, mmap */
 #   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
 #       include <sys/random.h> /* getentropy/getrandom */
 #   endif
+#   include <sys/socket.h>
 #   include <sys/stat.h>
 #   include <sys/syscall.h>
 #   if defined(__APPLE__) || defined(BSD)
@@ -847,13 +849,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 #if defined(KD_THREAD_C11)
     error = thrd_detach(thread->nativethread);
 #elif defined(KD_THREAD_POSIX)
-    KDint detachstate = 0;
-    error = pthread_attr_getdetachstate(&thread->attr->nativeattr, &detachstate);
-    /* Already detached */
-    if(error == 0 && detachstate == PTHREAD_CREATE_DETACHED)
-    {
-        error = pthread_detach(thread->nativethread);
-    }
+    error = pthread_detach(thread->nativethread);
 #elif defined(KD_THREAD_WIN32)
     CloseHandle(thread->nativethread);
 #else
@@ -9723,16 +9719,67 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
  ******************************************************************************/
 
 /* kdNameLookup: Look up a hostname. */
-KD_API KDint KD_APIENTRY kdNameLookup(KD_UNUSED KDint af, KD_UNUSED const KDchar *hostname, KD_UNUSED void *eventuserptr)
+typedef struct {
+    const KDchar *hostname;
+    void *eventuserptr;
+    KDThread *destination;
+} __KDNameLookupPayload;
+static void *__kdNameLookupHandler(void *arg)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return -1;
+    __KDNameLookupPayload *payload = (__KDNameLookupPayload *)arg;
+
+    struct hostent *he = gethostbyname(payload->hostname);
+    if(he == NULL)
+    {
+        return 0;
+    }
+
+    static KDSockaddr addr;
+    kdMemset(&addr, 0, sizeof(addr));
+    addr.family = KD_AF_INET;
+    addr.data.sin.address = ((KDInAddr *)he->h_addr)->s_addr;
+
+    static KDEventNameLookup lookupevent;
+    kdMemset(&lookupevent, 0, sizeof(lookupevent));
+    lookupevent.result = &addr;
+
+    /* Post event to the original thread */
+    KDEvent *event = kdCreateEvent();
+    event->type = KD_EVENT_NAME_LOOKUP_COMPLETE;
+    event->userptr = payload->eventuserptr;
+    event->data.namelookup = lookupevent;
+    kdPostThreadEvent(event, payload->destination);
+
+    return 0;
+}
+KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *eventuserptr)
+{
+    if(af != KD_AF_INET)
+    {
+        kdSetError(KD_EINVAL);
+        return -1;
+    }
+
+    static __KDNameLookupPayload payload;
+    kdMemset(&payload, 0, sizeof(payload));
+    payload.hostname = hostname;
+    payload.eventuserptr = eventuserptr;
+    payload.destination = kdThreadSelf();
+
+    KDThread *thread = kdThreadCreate(KD_NULL, __kdNameLookupHandler, &payload);
+    if(thread == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return -1;
+    }
+    kdThreadDetach(thread);
+
+    return 0;
 }
 
 /* kdNameLookupCancel: Selectively cancels ongoing kdNameLookup operations. */
 KD_API void KD_APIENTRY kdNameLookupCancel(KD_UNUSED void *eventuserptr)
 {
-    kdSetError(KD_EOPNOTSUPP);
 }
 
 /* kdSocketCreate: Creates a socket. */
@@ -9820,7 +9867,15 @@ KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
         KDint i;
         KDchar c;
     } u = {1};
-    return u.c ? (hostlong >> 24 | hostlong >> (8 & 0xff00) | hostlong << (8 & 0xff0000) | hostlong << 24) : hostlong;
+    if(u.c)
+    {
+        KDuint8 *s = (KDuint8 *)&hostlong;
+        return (KDuint32)(s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
+    }
+    else
+    {
+        return hostlong;
+    }
 }
 
 /* kdHtons: Convert a 16-bit integer from host to network byte order. */
@@ -9830,7 +9885,15 @@ KD_API KDuint16 KD_APIENTRY kdHtons(KDuint16 hostshort)
         KDint i;
         KDchar c;
     } u = {1};
-    return u.c ? (hostshort << 8 | hostshort >> 8) : hostshort;
+    if(u.c)
+    {
+        KDuint8 *s = (KDuint8 *)&hostshort;
+        return (KDuint32)(s[0] << 8 | s[1]);
+    }
+    else
+    {
+        return hostshort;
+    }
 }
 
 /* kdNtohl: Convert a 32-bit integer from network to host byte order. */
@@ -9867,8 +9930,9 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *
     }
 
     KDuint32 address = kdNtohl(((KDInAddr *)src)->s_addr);
+    KDuint8 *s = (KDuint8 *)&address;
     KDchar tempstore[sizeof("255.255.255.255")] = "";
-    kdSnprintfKHR(tempstore, sizeof(tempstore), "%u.%u.%u.%u", address);
+    kdSnprintfKHR(tempstore, sizeof(tempstore), "%u.%u.%u.%u", s[3], s[2], s[1], s[0]);
     kdStrcpy_s(dst, cnt, tempstore);
     return (const KDchar *)dst;
 }
