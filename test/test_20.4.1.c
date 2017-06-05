@@ -54,7 +54,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                     break;
                 }
 
-                KDInAddr address = {};
+                KDInAddr address;
+                kdMemset(&address, 0, sizeof(address));
                 address.s_addr = ((const KDSockaddr *)lookupevent.result)->data.sin.address;
                 kdAssert(kdNtohl(address.s_addr) == 3221233671);
 
