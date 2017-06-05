@@ -2721,7 +2721,8 @@ static int __kdPreMain(int argc, char **argv)
 #if defined(_WIN32)
     if(WSAStartup(0x202, (WSADATA[]){0}) != 0)
     {
-        kdAssert(0);
+        kdLogMessage("Winsock2 error.\n");
+        kdExit(EXIT_FAILURE);
     }
 #endif
 
