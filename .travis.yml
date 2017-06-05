@@ -177,21 +177,6 @@ jobs:
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/windows-x86
-      dist: trusty
-      sudo: required
-      services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
-
     - stage: Compiler compatibility testing (macos)
       os: osx
       compiler: clang
