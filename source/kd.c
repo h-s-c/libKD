@@ -93,6 +93,7 @@
 #   include <direct.h> /* R_OK/W_OK/X_OK */
 #   include <intrin.h> /* _mm_* */
 #   include <winsock2.h> /* WSA */
+#   include <ws2tcpip.h> 
 #   ifndef inline
 #       define inline __inline /* MSVC redefinition fix */
 #   endif
@@ -9739,20 +9740,35 @@ static void *__kdNameLookupHandler(void *arg)
     /* TODO: Make async, threadsafe and cancelable */
     __KDNameLookupPayload *payload = (__KDNameLookupPayload *)arg;
 
-    struct hostent *he = gethostbyname(payload->hostname);
-    if(he == NULL)
-    {
-        return 0;
-    }
+    static KDEventNameLookup lookupevent;
+    kdMemset(&lookupevent, 0, sizeof(lookupevent));
 
     static KDSockaddr addr;
     kdMemset(&addr, 0, sizeof(addr));
     addr.family = KD_AF_INET;
-    addr.data.sin.address = ((KDInAddr *)he->h_addr)->s_addr;
 
-    static KDEventNameLookup lookupevent;
-    kdMemset(&lookupevent, 0, sizeof(lookupevent));
-    lookupevent.result = &addr;
+    struct addrinfo *result = NULL;
+    struct addrinfo hints;
+    kdMemset( &hints, 0, sizeof(hints) );
+    hints.ai_family = AF_INET;
+    KDint retval = getaddrinfo(payload->hostname, 0, &hints, &result);
+    if(retval != 0)
+    {
+        lookupevent.error = KD_EHOST_NOT_FOUND;
+    }
+    else
+    {
+#if defined(_WIN32)
+#define s_addr S_un.S_addr
+#endif
+        addr.data.sin.address = ((struct sockaddr_in*)result->ai_addr)->sin_addr.s_addr;
+#if defined(_WIN32)
+#undef s_addr
+#endif
+        lookupevent.resultlen = sizeof(addr);
+        lookupevent.result = &addr;
+        freeaddrinfo(result);
+    }
 
     /* Post event to the original thread */
     KDEvent *event = kdCreateEvent();

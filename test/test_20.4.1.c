@@ -30,7 +30,15 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdNameLookup(KD_AF_INET, "www.icann.org", (void *)1234);
+    KDint retval = kdNameLookup(KD_AF_INET, "www.icann.org", (void *)1234);
+    if(retval == -1)
+    {
+        if(kdGetError() == KD_ENOSYS)
+        {
+            return 0;
+        }
+        kdAssert(0);
+    }
 
     for(;;)
     {
@@ -40,6 +48,12 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             if(event->type == KD_EVENT_NAME_LOOKUP_COMPLETE)
             {
                 KDEventNameLookup lookupevent = event->data.namelookup;
+                if(lookupevent.error == KD_EHOST_NOT_FOUND)
+                {
+                    /* No internet. */
+                    break;
+                }
+
                 KDInAddr address = {};
                 address.s_addr = ((const KDSockaddr *)lookupevent.result)->data.sin.address;
                 kdAssert(kdNtohl(address.s_addr) == 3221233671);
@@ -48,7 +62,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 kdInetNtop(KD_AF_INET, &address, c_addr, sizeof(c_addr));
                 kdLogMessagefKHR("%s\n", c_addr);
                 kdAssert(kdStrcmp(c_addr, "192.0.32.7") == 0);
-                
+
                 break;
             }
             kdDefaultEvent(event);
