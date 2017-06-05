@@ -2719,7 +2719,10 @@ static void __kdCleanupThreadStorageKHR(void);
 static int __kdPreMain(int argc, char **argv)
 {
 #if defined(_WIN32)
-    WSAStartup(0x202, (WSADATA[]){0});
+    if(WSAStartup(0x202, (WSADATA[]){0}) != 0)
+    {
+        kdAssert(0);
+    }
 #endif
 
     __kd_userptrmtx = kdThreadMutexCreate(KD_NULL);
