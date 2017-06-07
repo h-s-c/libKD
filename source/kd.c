@@ -9402,17 +9402,25 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     if(retval == 0)
     {
         error = GetLastError();
+        if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK)
+        {
+            error = ERROR_INVALID_PARAMETER;
+        }
 #else
     retval = rename(src, dest);
     if(retval == -1)
     {
         error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
-        if(kdGetError() == KD_EEXIST)
+        if(error == ENOTDIR)
         {
-            kdSetError(KD_EBUSY);
+            error = EINVAL;
         }
+        else if(error == ENOTEMPTY)
+        {
+            error = EACCES;
+        }
+#endif
+        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return -1;
     }
     return 0;

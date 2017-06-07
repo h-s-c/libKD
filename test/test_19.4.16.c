@@ -33,9 +33,9 @@ void create_file(const char *path, const char *buffer)
     KDFile *file = kdFopen(path, "w");
     kdAssert(file != KD_NULL);
 
-    KDint length = (KDint)kdStrlen(buffer);
-    KDint err = kdFwrite(buffer, 1, length, file);
-    kdAssert(err == length);
+    KDsize length = kdStrlen(buffer);
+    KDsize retval = kdFwrite(buffer, length, 1, file);
+    kdAssert(retval == length);
 
     kdFclose(file);
 }
@@ -88,12 +88,12 @@ void test()
     // can't overwrite a file with a folder
     err = kdRename("dir", "file");
     kdAssert(err == -1);
-    kdAssert(kdGetError() == KD_ENOENT);
+    kdAssert(kdGetError() == KD_EINVAL);
 
     // can't overwrite a non-empty folder
     err = kdRename("dir", "dir-nonempty");
     kdAssert(err == -1);
-    kdAssert(kdGetError() == KD_EBUSY);
+    kdAssert(kdGetError() == KD_EACCES);
 
     // source should not be ancestor of target
     err = kdRename("dir", "dir/somename");
@@ -103,7 +103,7 @@ void test()
     // target should not be an ancestor of source
     err = kdRename("dir/subdir", "dir");
     kdAssert(err == -1);
-    kdAssert(kdGetError() == KD_EBUSY);
+    kdAssert(kdGetError() == KD_EACCES);
 
     // do some valid renaming
     err = kdRename("dir/file", "dir/file1");
