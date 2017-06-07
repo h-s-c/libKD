@@ -9142,7 +9142,8 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     {
         error = GetLastError();
 #else
-    KDchar *temp = KD_NULL;
+    KDchar *temp = kdMalloc(length);
+    KDchar *_temp = temp;
     kdMemcpy(temp, buffer, length);
     while(length != 0 && (retval = write(file->nativefile, temp, length)) != 0)
     {
@@ -9156,6 +9157,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
         length -= retval;
         temp += retval;
     }
+    kdFree(_temp);
     length = count * size;
     if((KDsize)retval != length)
     {
@@ -9357,7 +9359,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
     {
         error = GetLastError();
 #else
-    retval = mkdir(pathname, S_IRUSR | S_IWUSR);
+    retval = mkdir(pathname, 0777);
     if(retval == -1)
     {
         error = errno;
@@ -9407,6 +9409,10 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
+        if(kdGetError() == KD_EEXIST)
+        {
+            kdSetError(KD_EBUSY);
+        }
         return -1;
     }
     return 0;

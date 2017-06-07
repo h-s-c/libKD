@@ -22,7 +22,6 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/kdext.h>
 
 #ifdef KD_NDEBUG
 #error "Dont run tests with NDEBUG defined."
@@ -61,7 +60,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
                 KDchar c_addr[sizeof("255.255.255.255")] = "";
                 kdInetNtop(KD_AF_INET, &address, c_addr, sizeof(c_addr));
-                kdLogMessagefKHR("%s\n", c_addr);
                 kdAssert(kdStrcmp(c_addr, "192.0.32.7") == 0);
 
                 break;
