@@ -33,7 +33,7 @@ void create_file(const char *path, const char *buffer)
     KDFile *file = kdFopen(path, "w");
     kdAssert(file != KD_NULL);
 
-    KDsize length = kdStrlen(buffer);
+    KDint length = (KDint)kdStrlen(buffer);
     KDint err = kdFwrite(buffer, 1, length, file);
     kdAssert(err == length);
 
