@@ -9025,6 +9025,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         }
         default:
         {
+            kdFree(file);
             kdSetError(KD_EINVAL);
             return KD_NULL;
         }
@@ -9172,11 +9173,11 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 /* kdGetc: Read next byte from an open file. */
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
-    KDint retval = 0;
+    KDuint8 byte = 0;
     KDPlatformErrorVEN error = 0;
 #if defined(_WIN32)
     DWORD byteswritten = 0;
-    BOOL success = ReadFile(file->nativefile, &retval, 1, &byteswritten, KD_NULL);
+    BOOL success = ReadFile(file->nativefile, &byte, 1, &byteswritten, KD_NULL);
     if(success == TRUE && byteswritten == 0)
     {
         file->eof = 1;
@@ -9186,7 +9187,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     {
         error = GetLastError();
 #else
-    KDint success = (KDsize)read(file->nativefile, &retval, 1);
+    KDint success = (KDsize)read(file->nativefile, &byte, 1);
     if(success == 0)
     {
         file->eof = 1;
@@ -9200,21 +9201,21 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
-    return retval;
+    return (KDint)byte;
 }
 
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-    KDint retval = 0;
     KDPlatformErrorVEN error = 0;
+    KDuint8 byte = c & 0xFF;
 #if defined(_WIN32)
-    BOOL success = WriteFile(file->nativefile, &retval, 1, (DWORD[]){0}, KD_NULL);
+    BOOL success = WriteFile(file->nativefile, &byte, 1, (DWORD[]){0}, KD_NULL);
     if(success == FALSE)
     {
         error = GetLastError();
 #else
-    KDint success = (KDsize)write(file->nativefile, &retval, 1);
+    KDint success = (KDsize)write(file->nativefile, &byte, 1);
     if(success == -1)
     {
         error = errno;
@@ -9223,8 +9224,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
-    c = retval;
-    return c;
+    return (KDint)byte;
 }
 
 /* kdFgets: Read a line of text from an open file. */
@@ -9404,8 +9404,9 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
         error = GetLastError();
         if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK)
         {
-            error = ERROR_INVALID_PARAMETER;
+            kdSetError(KD_EINVAL);
         }
+        else
 #else
     retval = rename(src, dest);
     if(retval == -1)
@@ -9413,14 +9414,17 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
         error = errno;
         if(error == ENOTDIR)
         {
-            error = EINVAL;
+            kdSetError(KD_EINVAL);
         }
         else if(error == ENOTEMPTY)
         {
-            error = EACCES;
+            kdSetError(KD_EACCES);
         }
+        else
 #endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
+        {
+            kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
+        }
         return -1;
     }
     return 0;
