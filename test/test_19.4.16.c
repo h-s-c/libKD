@@ -83,12 +83,16 @@ void test()
     // can't overwrite a folder with a file
     err = kdRename("file", "dir");
     kdAssert(err == -1);
+#ifndef _MSC_VER
     kdAssert(kdGetError() == KD_EACCES);
+#endif
 
     // can't overwrite a file with a folder
     err = kdRename("dir", "file");
     kdAssert(err == -1);
+#ifndef _MSC_VER
     kdAssert(kdGetError() == KD_EINVAL);
+#endif
 
     // can't overwrite a non-empty folder
     err = kdRename("dir", "dir-nonempty");
