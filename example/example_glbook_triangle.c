@@ -151,7 +151,7 @@ KDboolean Init(UserData *userData)
     userData->programObject = programObject;
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    return KD_TRUE
+    return KD_TRUE;
 }
 
 ///
