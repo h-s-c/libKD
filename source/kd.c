@@ -939,7 +939,7 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mute
 #elif defined(KD_THREAD_WIN32)
     InitializeSRWLock(&mutex->nativemutex);
 #else
-    mutex->nativemutex = 0;
+    mutex->nativemutex = KD_FALSE;
 #endif
     if(error != 0)
     {
@@ -977,7 +977,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexLock(KDThreadMutex *mutex)
 #elif defined(KD_THREAD_WIN32)
     AcquireSRWLockExclusive(&mutex->nativemutex);
 #else
-    mutex->nativemutex = 1;
+    mutex->nativemutex = KD_TRUE;
 #endif
     return 0;
 }
@@ -992,7 +992,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 #elif defined(KD_THREAD_WIN32)
     ReleaseSRWLockExclusive(&mutex->nativemutex);
 #else
-    mutex->nativemutex = 0;
+    mutex->nativemutex = KD_FALSE;
 #endif
     return 0;
 }
@@ -1293,11 +1293,11 @@ static KDboolean __kdExecCallback(KDEvent *event)
             {
                 callbacks[i]->func(event);
                 kdFreeEvent(event);
-                return 1;
+                return KD_TRUE;
             }
         }
     }
-    return 0;
+    return KD_FALSE;
 }
 
 #ifdef KD_WINDOW_SUPPORTED
@@ -4355,7 +4355,7 @@ static KDint __kdRemPio2Kernel(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0,
 
     jz = jk;
 
-    KDboolean recompute = 0;
+    KDboolean recompute = KD_FALSE;
     do
     {
         /* distill q[] into iq[] reversingly */
@@ -4458,7 +4458,7 @@ static KDint __kdRemPio2Kernel(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0,
                     q[i] = fw;
                 }
                 jz += k;
-                recompute = 1;
+                recompute = KD_TRUE;
             }
         }
     } while(recompute);
@@ -4578,7 +4578,7 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
     KDfloat64KHR tx[3], ty[2];
     KDint32 e0, i, j, nx, n, ix, hx;
     KDuint32 low;
-    KDboolean medium = 0;
+    KDboolean medium = KD_FALSE;
 
     GET_HIGH_WORD(hx, x); /* high word of x */
     ix = hx & 0x7fffffff;
@@ -4586,7 +4586,7 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
     {                                 /* |x| ~<= 5pi/4 */
         if((ix & 0xfffff) == 0x921fb) /* |x| ~= pi/2 or 2pi/2 */
         {
-            medium = 1; /* cancellation -- use medium case */
+            medium = KD_TRUE; /* cancellation -- use medium case */
         }
         else
         {
@@ -4632,7 +4632,7 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
         {                        /* |x| ~<= 7pi/4 */
             if(ix == 0x4012d97c) /* |x| ~= 3pi/2 */
             {
-                medium = 1;
+                medium = KD_TRUE;
             }
             else
             {
@@ -4656,7 +4656,7 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
         {
             if(ix == 0x401921fb) /* |x| ~= 4pi/2 */
             {
-                medium = 1;
+                medium = KD_TRUE;
             }
             else
             {
@@ -9044,7 +9044,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return KD_NULL;
     }
-    file->eof = 0;
+    file->eof = KD_FALSE;
     return file;
 }
 
@@ -9079,7 +9079,7 @@ KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
     KDint retval = fsync(file->nativefile);
     if(retval == -1)
     {
-        file->error = 1;
+        file->error = KD_TRUE;
         kdSetErrorPlatformVEN(errno, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
@@ -9097,7 +9097,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     BOOL success = ReadFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
     if(success == TRUE && retval == 0)
     {
-        file->eof = 1;
+        file->eof = KD_TRUE;
     }
     else if(success == FALSE)
     {
@@ -9119,13 +9119,13 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     length = count * size;
     if(retval == 0)
     {
-        file->eof = 1;
+        file->eof = KD_TRUE;
     }
     else if((KDsize)retval != length)
     {
         error = errno;
 #endif
-        file->error = 1;
+        file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
     }
     return (KDsize)retval;
@@ -9164,7 +9164,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     {
         error = errno;
 #endif
-        file->error = 1;
+        file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
     }
     return (KDsize)retval;
@@ -9180,7 +9180,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     BOOL success = ReadFile(file->nativefile, &byte, 1, &byteswritten, KD_NULL);
     if(success == TRUE && byteswritten == 0)
     {
-        file->eof = 1;
+        file->eof = KD_TRUE;
         return KD_EOF;
     }
     else if(success == FALSE)
@@ -9190,14 +9190,14 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     KDint success = (KDsize)read(file->nativefile, &byte, 1);
     if(success == 0)
     {
-        file->eof = 1;
+        file->eof = KD_TRUE;
         return KD_EOF;
     }
     else if(success == -1)
     {
         error = errno;
 #endif
-        file->error = 1;
+        file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
@@ -9220,7 +9220,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     {
         error = errno;
 #endif
-        file->error = 1;
+        file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
@@ -9254,7 +9254,7 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
 /* kdFEOF: Check for end of file. */
 KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 {
-    if(file->eof == 1)
+    if(file->eof == KD_TRUE)
     {
         return KD_EOF;
     }
@@ -9264,7 +9264,7 @@ KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
 /* kdFerror: Check for an error condition on an open file. */
 KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 {
-    if(file->error == 1)
+    if(file->error == KD_TRUE)
     {
         return KD_EOF;
     }
@@ -9274,8 +9274,8 @@ KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
 /* kdClearerr: Clear a file's error and end-of-file indicators. */
 KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 {
-    file->error = 0;
-    file->eof = 0;
+    file->error = KD_FALSE;
+    file->eof = KD_FALSE;
 }
 
 /* TODO: Cleanup */
@@ -10088,7 +10088,7 @@ static KDboolean __kdIsPointerDereferencable(void *p)
 
     if(p == KD_NULL)
     {
-        return 0;
+        return KD_FALSE;
     }
 
     /* align addr to page_size */
@@ -10096,7 +10096,7 @@ static KDboolean __kdIsPointerDereferencable(void *p)
 
     if(mincore((void *)addr, page_size, &valid) < 0)
     {
-        return 0;
+        return KD_FALSE;
     }
 
     return (valid & 0x01) == 0x01;
@@ -10601,7 +10601,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         case(KD_DXTCOMP_TYPE_DXT1_ATX):
         {
             image->format = KD_IMAGE_FORMAT_DXT1_ATX;
-            image->alpha = 0;
+            image->alpha = KD_FALSE;
             break;
         }
         case(KD_DXTCOMP_TYPE_DXT1A_ATX):
@@ -10619,7 +10619,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         case(KD_DXTCOMP_TYPE_DXT5_ATX):
         {
             image->format = KD_IMAGE_FORMAT_DXT5_ATX;
-            image->alpha = 1;
+            image->alpha = KD_TRUE;
             break;
         }
         default:
@@ -10717,25 +10717,25 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
         case(4):
         {
             image->format = KD_IMAGE_FORMAT_RGBA8888_ATX;
-            image->alpha = 1;
+            image->alpha = KD_TRUE;
             break;
         }
         case(3):
         {
             image->format = KD_IMAGE_FORMAT_RGB888_ATX;
-            image->alpha = 0;
+            image->alpha = KD_FALSE;
             break;
         }
         case(2):
         {
             image->format = KD_IMAGE_FORMAT_LUMALPHA88_ATX;
-            image->alpha = 1;
+            image->alpha = KD_TRUE;
             break;
         }
         case(1):
         {
             image->format = KD_IMAGE_FORMAT_ALPHA8_ATX;
-            image->alpha = 1;
+            image->alpha = KD_TRUE;
             break;
         }
         default:
@@ -10830,25 +10830,25 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         case(KD_IMAGE_FORMAT_RGBA8888_ATX):
         {
             channels = 4;
-            image->alpha = 1;
+            image->alpha = KD_TRUE;
             break;
         }
         case(KD_IMAGE_FORMAT_RGB888_ATX):
         {
             channels = 3;
-            image->alpha = 0;
+            image->alpha = KD_FALSE;
             break;
         }
         case(KD_IMAGE_FORMAT_LUMALPHA88_ATX):
         {
             channels = 2;
-            image->alpha = 1;
+            image->alpha = KD_TRUE;
             break;
         }
         case(KD_IMAGE_FORMAT_ALPHA8_ATX):
         {
             channels = 1;
-            image->alpha = 1;
+            image->alpha = KD_TRUE;
             break;
         }
         default:
@@ -11336,12 +11336,12 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
 #elif defined(KD_ATOMIC_SYNC)
     return __sync_bool_compare_and_swap(&object->value, expected, desired);
 #elif defined(KD_ATOMIC_MUTEX)
-    KDboolean retval = 0;
+    KDboolean retval = KD_FALSE;
     kdThreadMutexLock(object->mutex);
     if(object->value == expected)
     {
         object->value = desired;
-        retval = 1;
+        retval = KD_TRUE;
     }
     kdThreadMutexUnlock(object->mutex);
     return retval;
@@ -11361,12 +11361,12 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
 #elif defined(KD_ATOMIC_SYNC)
     return __sync_bool_compare_and_swap(&object->value, expected, desired);
 #elif defined(KD_ATOMIC_MUTEX)
-    KDboolean retval = 0;
+    KDboolean retval = KD_FALSE;
     kdThreadMutexLock(object->mutex);
     if(object->value == expected)
     {
         object->value = desired;
-        retval = 1;
+        retval = KD_TRUE;
     }
     kdThreadMutexUnlock(object->mutex);
     return retval;

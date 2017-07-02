@@ -29,14 +29,14 @@
 #include <GLES2/gl2ext.h>
 
 /* Example with eventloop, timer and callback*/
-static KDboolean quit = 0;
+static KDboolean quit = KD_FALSE;
 static void KD_APIENTRY kd_callback(const KDEvent *event)
 {
     switch(event->type)
     {
         case(KD_EVENT_WINDOW_CLOSE):
         {
-            quit = 1;
+            quit = KD_TRUE;
             break;
         }
         default:

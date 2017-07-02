@@ -112,7 +112,7 @@ KDboolean Init(UserData *userData)
 
     if(programObject == 0)
     {
-        return 0;
+        return KD_FALSE;
     }
 
     glAttachShader(programObject, vertexShader);
@@ -144,14 +144,14 @@ KDboolean Init(UserData *userData)
         }
 
         glDeleteProgram(programObject);
-        return 0;
+        return KD_FALSE;
     }
 
     // Store the program object
     userData->programObject = programObject;
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    return 1;
+    return KD_TRUE
 }
 
 ///

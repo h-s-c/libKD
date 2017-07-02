@@ -190,7 +190,7 @@ KDboolean Init(UserData *userData)
 
     if(programObject == 0)
     {
-        return 0;
+        return KD_FALSE;
     }
 
     glAttachShader(programObject, vertexShader);
@@ -222,7 +222,7 @@ KDboolean Init(UserData *userData)
         }
 
         glDeleteProgram(programObject);
-        return 0;
+        return KD_FALSE;
     }
 
     // Store the program object
@@ -273,10 +273,10 @@ KDboolean Init(UserData *userData)
     userData->textureId = LoadTexture("data/smoke.jpg");
     if(userData->textureId <= 0)
     {
-        return 0;
+        return KD_FALSE;
     }
 
-    return 1;
+    return KD_TRUE;
 }
 
 ///
