@@ -3,16 +3,12 @@
 #include <KD/kd.h>
 
 #ifndef KD_EVENT_UNDEFINED_QNX
-/* In the QNX KD implementation we define the range of 0x30000000 to 0x3FFFFFFF
- * reserved for implementation-dependent use for event type values.
- */
 #define KD_EVENT_UNDEFINED_QNX 0x30000000
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 
 #define KD_EVENT_WINDOW_CREATE_QNX              (KD_EVENT_UNDEFINED_QNX + 0)
