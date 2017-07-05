@@ -39,8 +39,8 @@
  ******************************************************************************/
 
 /* clang-format off */
-#if defined(__unix__)
-#   if defined(__linux__) || defined(__EMSCRIPTEN_)
+#if defined(__unix__) || defined(__EMSCRIPTEN__)
+#   if defined(__linux__) || defined(__EMSCRIPTEN__)
 #       define _GNU_SOURCE
 #   endif
 #   include <sys/param.h>
@@ -100,7 +100,7 @@
 #   undef s_addr /* OpenKODE uses this */
 #endif
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 #   include <unistd.h>
 #   include <fcntl.h>
 #   include <dirent.h>
@@ -135,6 +135,13 @@
 #       include <android/native_window.h>
 #       include <android/window.h>
 #   endif
+#   if defined(__APPLE__)
+#       include <TargetConditionals.h>
+#   endif
+#   if defined(__EMSCRIPTEN__)
+#       include <emscripten/emscripten.h>
+#       include <emscripten/html5.h>
+#   endif
 #   if defined(KD_WINDOW_X11)
 #       include <X11/Xlib.h>
 #       include <X11/Xutil.h>
@@ -145,15 +152,6 @@
 #       include <wayland-egl.h>
 #   endif
 #   undef st_mtime /* OpenKODE uses this */
-#endif
-
-#if defined(__EMSCRIPTEN__)
-#   include <emscripten/emscripten.h>
-#   include <emscripten/html5.h>
-#endif
-
-#if defined(__APPLE__)
-#   include <TargetConditionals.h>
 #endif
 
 #if defined(KD_THREAD_POSIX) || defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
@@ -10662,7 +10660,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
     image->size = (KDsize)st.st_size;
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     KDint fd = open(pathname, O_RDONLY, 0);
     if(fd == -1)
 #elif(_WIN32)
@@ -10677,7 +10675,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
 
     void *filedata = KD_NULL;
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, fd, 0);
     if(filedata == MAP_FAILED)
 #elif(_WIN32)
@@ -10689,7 +10687,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     if(filedata == KD_NULL)
 #endif
     {
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
         close(fd);
 #elif(_WIN32)
         CloseHandle(fd);
@@ -10734,7 +10732,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
         }
     }
 
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     munmap(filedata, image->size);
     close(fd);
 #elif(_WIN32)

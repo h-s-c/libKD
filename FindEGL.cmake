@@ -39,9 +39,11 @@ find_library(EGL_LIBRARY NAMES egl EGL libEGL PATHS $ENV{OPENGLES_LIBDIR}
                                                     ${CMAKE_SOURCE_DIR}/thirdparty/gles_mali/lib)
 
 if(EMSCRIPTEN)
-    set(EGL_LIBRARY EGL)
+    set(EGL_FOUND TRUE)
+    SET(EGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+    set(EGL_LIBRARY "nul")
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY)
+find_package_handle_standard_args(EGL DEFAULT_MSG EGL_INCLUDE_DIR)
 mark_as_advanced(EGL_INCLUDE_DIR EGL_LIBRARY)

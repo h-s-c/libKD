@@ -39,9 +39,11 @@ find_library(GLES2_LIBRARY NAMES GLESv2 libGLESv2 PATHS $ENV{OPENGLES_LIBDIR}
                                                         ${CMAKE_SOURCE_DIR}/thirdparty/gles_mali/lib)
 
 if(EMSCRIPTEN)
-    set(GLES2_LIBRARY GLESv2)
+    set(GLES2_FOUND TRUE)
+    SET(GLES2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+    set(GLES2_LIBRARY "nul")
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_LIBRARY)
+find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_INCLUDE_DIR)
 mark_as_advanced(GLES2_INCLUDE_DIR GLES2_LIBRARY)
