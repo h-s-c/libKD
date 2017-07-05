@@ -105,9 +105,6 @@
 #   include <fcntl.h>
 #   include <dirent.h>
 #   include <dlfcn.h>
-#   if defined(__GLIBC__) || defined(__EMSCRIPTEN__)        
-#       include <malloc.h> /* malloc_usable_size */       
-#   endif
 #   include <netdb.h>
 #   include <sys/mman.h> /* mincore, mmap */
 #   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
@@ -118,7 +115,6 @@
 #   include <sys/syscall.h>
 #   if defined(__APPLE__) || defined(BSD)
 #       include <sys/mount.h>
-#       include <malloc/malloc.h> /* malloc_size */
 #   else
 #       include <sys/vfs.h>
 #   endif
@@ -174,14 +170,6 @@
 /******************************************************************************
  * Thirdparty includes
  ******************************************************************************/
-
-#if defined(__ANDROID__)
-#   if __ANDROID_API__ < 17
-#       define USE_DL_PREFIX
-#       define USE_LOCKS 1
-#       include "malloc.c"
-#   endif
-#endif
 
 #if defined(__INTEL_COMPILER)
 #    pragma warning(push)
@@ -3391,10 +3379,11 @@ kdMalloc(KDsize size)
     void *result = KD_NULL;
 #if defined(_WIN32)
     result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
-#elif defined(__ANDROID__) && __ANDROID_API__ < 17
-    result = dlmalloc(size);
 #else
-    result = malloc(size);
+    size = size + sizeof(KDsize);
+    result = mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
+    *(KDsize*)result = size;
+    result = (KDchar*)result + sizeof(KDsize);
 #endif
     if(result == KD_NULL)
     {
@@ -3408,10 +3397,10 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 {
 #if defined(_WIN32)
     HeapFree(GetProcessHeap(), 0, ptr);
-#elif defined(__ANDROID__) && __ANDROID_API__ < 17
-    dlfree(ptr);
 #else
-    free(ptr);
+    ptr = (KDchar*)ptr - sizeof(KDsize);
+    KDsize size = *(KDsize*)ptr;
+    munmap(ptr, size);
 #endif
 }
 
@@ -3425,10 +3414,13 @@ kdRealloc(void *ptr, KDsize size)
     void *result = KD_NULL;
 #if defined(_WIN32)
     result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
-#elif defined(__ANDROID__) && __ANDROID_API__ < 17
-    result = dlrealloc(ptr, size);
 #else
-    result = realloc(ptr, size);
+    ptr = (KDchar*)ptr - sizeof(KDsize);
+    KDsize oldsize = *(KDsize*)ptr;
+    size = size + sizeof(KDsize);
+    result = mremap(ptr, oldsize, size, MREMAP_MAYMOVE);
+    *(KDsize*)result = size;
+    result = (KDchar*)result + sizeof(KDsize);
 #endif
     if(result == KD_NULL)
     {
@@ -3441,12 +3433,9 @@ KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
 {
 #if defined(_WIN32)
     return HeapSize(GetProcessHeap(), 0, ptr);
-#elif defined(__ANDROID__) && __ANDROID_API__ < 17
-    return dlmalloc_usable_size(ptr);
-#elif defined(__GLIBC__) || defined(__EMSCRIPTEN__) || defined(__ANDROID__)
-    return malloc_usable_size(ptr);
-#elif defined(__APPLE__)
-    return malloc_size(ptr);
+#else
+    ptr = (KDchar*)ptr - sizeof(KDsize);
+    return *(KDsize*)ptr;
 #endif
 }
 
