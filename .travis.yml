@@ -93,10 +93,7 @@ jobs:
       sudo: required
       addons:
         apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
+          sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.9', 'llvm-3.9', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py

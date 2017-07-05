@@ -39,17 +39,17 @@
  ******************************************************************************/
 
 /* clang-format off */
-#ifdef __unix__
-#   ifdef __linux__
+#if defined(__unix__)
+#   if defined(__linux__) || defined(__EMSCRIPTEN_)
 #       define _GNU_SOURCE
 #   endif
 #   include <sys/param.h>
-#   ifdef BSD
+#   if defined(BSD)
 #       define _BSD_SOURCE
 #   endif
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #   define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
