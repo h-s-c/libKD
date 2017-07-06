@@ -3419,7 +3419,7 @@ kdRealloc(void *ptr, KDsize size)
     ptr = (KDchar*)ptr - sizeof(KDsize);
     KDsize oldsize = *(KDsize*)ptr;
     result = kdMalloc(size);
-    kdMemcpy(result, (KDchar*)ptr + sizeof(KDsize), oldsize + sizeof(KDsize));
+    kdMemcpy(result, (KDchar*)ptr + sizeof(KDsize), oldsize);
     kdFree(ptr);
 #else
     ptr = (KDchar*)ptr - sizeof(KDsize);
