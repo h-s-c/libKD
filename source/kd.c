@@ -3412,6 +3412,10 @@ kdRealloc(void *ptr, KDsize size)
     void *result = KD_NULL;
 #if defined(_WIN32)
     result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
+#elif defined(__APPLE__)
+    /* HACK */
+    kdFree(ptr);
+    result = kdMalloc(size);
 #else
     ptr = (KDchar*)ptr - sizeof(KDsize);
     KDsize oldsize = *(KDsize*)ptr;
