@@ -211,6 +211,17 @@
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STBIR_ASSERT        kdAssert
+#define STBIR_MEMSET        kdMemset
+#define STBIR_MALLOC(s,c)   kdMalloc(s)
+#define STBIR_FREE(p,c)     kdFree(p)
+#define STBIR_CEIL          kdCeilKHR
+#define STBIR_FABS          kdFabsKHR
+#define STBIR_FLOOR         kdFloorKHR
+#define STBIR_POW           kdPowKHR
+#define STB_IMAGE_RESIZE_STATIC
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize.h"
 #define STB_SPRINTF_STATIC
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
@@ -947,9 +958,8 @@ KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
 #elif defined(KD_THREAD_POSIX)
         pthread_mutex_destroy(&mutex->nativemutex);
 #endif
+        kdFree(mutex);
     }
-
-    kdFree(mutex);
     return 0;
 }
 
@@ -3393,13 +3403,16 @@ kdMalloc(KDsize size)
 /* kdFree: Free allocated memory block. */
 KD_API void KD_APIENTRY kdFree(void *ptr)
 {
+    if(ptr)
+    {
 #if defined(_WIN32)
-    HeapFree(GetProcessHeap(), 0, ptr);
+        HeapFree(GetProcessHeap(), 0, ptr);
 #else
-    ptr = (KDchar*)ptr - sizeof(KDsize);
-    KDsize size = *(KDsize*)ptr;
-    munmap(ptr, size);
+        ptr = (KDchar*)ptr - sizeof(KDsize);
+        KDsize size = *(KDsize*)ptr;
+        munmap(ptr, size);
 #endif
+    }
 }
 
 /* kdRealloc: Resize memory block. */
