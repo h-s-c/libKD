@@ -3378,8 +3378,7 @@ kdMalloc(KDsize size)
 #if defined(_WIN32)
     result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 #else
-    size = size + sizeof(KDsize);
-    result = mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
+    result = mmap(0, size + sizeof(KDsize), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
     *(KDsize*)result = size;
     result = (KDchar*)result + sizeof(KDsize);
 #endif
@@ -3393,13 +3392,16 @@ kdMalloc(KDsize size)
 /* kdFree: Free allocated memory block. */
 KD_API void KD_APIENTRY kdFree(void *ptr)
 {
+    if(ptr)
+    {
 #if defined(_WIN32)
-    HeapFree(GetProcessHeap(), 0, ptr);
+        HeapFree(GetProcessHeap(), 0, ptr);
 #else
-    ptr = (KDchar*)ptr - sizeof(KDsize);
-    KDsize size = *(KDsize*)ptr;
-    munmap(ptr, size);
+        ptr = (KDchar*)ptr - sizeof(KDsize);
+        KDsize size = *(KDsize*)ptr;
+        munmap(ptr, size + sizeof(KDsize));
 #endif
+    }
 }
 
 /* kdRealloc: Resize memory block. */
@@ -3414,13 +3416,15 @@ kdRealloc(void *ptr, KDsize size)
     result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
 #elif defined(__APPLE__)
     /* HACK */
-    kdFree(ptr);
+    ptr = (KDchar*)ptr - sizeof(KDsize);
+    KDsize oldsize = *(KDsize*)ptr;
     result = kdMalloc(size);
+    kdMemcpy(result, (KDchar*)ptr + sizeof(KDsize), oldsize + sizeof(KDsize));
+    kdFree(ptr);
 #else
     ptr = (KDchar*)ptr - sizeof(KDsize);
     KDsize oldsize = *(KDsize*)ptr;
-    size = size + sizeof(KDsize);
-    result = mremap(ptr, oldsize, size, MREMAP_MAYMOVE);
+    result = mremap(ptr, oldsize + sizeof(KDsize), size + sizeof(KDsize), MREMAP_MAYMOVE);
     *(KDsize*)result = size;
     result = (KDchar*)result + sizeof(KDsize);
 #endif
