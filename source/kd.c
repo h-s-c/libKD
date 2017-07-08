@@ -3388,9 +3388,9 @@ kdMalloc(KDsize size)
 #if defined(_WIN32)
     result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 #else
-    result = mmap(0, size + sizeof(KDsize), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
-    *(KDsize*)result = size;
-    result = (KDchar*)result + sizeof(KDsize);
+    result = mmap(0, size + sizeof(KDsize), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    *(KDsize *)result = size;
+    result = (KDchar *)result + sizeof(KDsize);
 #endif
     if(result == KD_NULL)
     {
@@ -3407,8 +3407,8 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 #if defined(_WIN32)
         HeapFree(GetProcessHeap(), 0, ptr);
 #else
-        ptr = (KDchar*)ptr - sizeof(KDsize);
-        KDsize size = *(KDsize*)ptr;
+        ptr = (KDchar *)ptr - sizeof(KDsize);
+        KDsize size = *(KDsize *)ptr;
         munmap(ptr, size + sizeof(KDsize));
 #endif
     }
@@ -3426,17 +3426,17 @@ kdRealloc(void *ptr, KDsize size)
     result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
 #elif defined(__APPLE__)
     /* HACK */
-    ptr = (KDchar*)ptr - sizeof(KDsize);
-    KDsize oldsize = *(KDsize*)ptr;
+    ptr = (KDchar *)ptr - sizeof(KDsize);
+    KDsize oldsize = *(KDsize *)ptr;
     result = kdMalloc(size);
-    kdMemcpy(result, (KDchar*)ptr + sizeof(KDsize), oldsize);
+    kdMemcpy(result, (KDchar *)ptr + sizeof(KDsize), oldsize);
     kdFree(ptr);
 #else
-    ptr = (KDchar*)ptr - sizeof(KDsize);
-    KDsize oldsize = *(KDsize*)ptr;
+    ptr = (KDchar *)ptr - sizeof(KDsize);
+    KDsize oldsize = *(KDsize *)ptr;
     result = mremap(ptr, oldsize + sizeof(KDsize), size + sizeof(KDsize), MREMAP_MAYMOVE);
-    *(KDsize*)result = size;
-    result = (KDchar*)result + sizeof(KDsize);
+    *(KDsize *)result = size;
+    result = (KDchar *)result + sizeof(KDsize);
 #endif
     if(result == KD_NULL)
     {
@@ -3450,8 +3450,8 @@ KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
 #if defined(_WIN32)
     return HeapSize(GetProcessHeap(), 0, ptr);
 #else
-    ptr = (KDchar*)ptr - sizeof(KDsize);
-    return *(KDsize*)ptr;
+    ptr = (KDchar *)ptr - sizeof(KDsize);
+    return *(KDsize *)ptr;
 #endif
 }
 
@@ -8429,7 +8429,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  ******************************************************************************/
- /******************************************************************************
+/******************************************************************************
  * Copyright (c) 2006-2015, Wojciech Muła
  * All rights reserved.
  * 
@@ -8477,41 +8477,41 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 /* kdMemcmp: Compare two memory regions. */
 KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len)
 {
-    if(len == 0 || (src1 == src2)) 
+    if(len == 0 || (src1 == src2))
     {
         return 0;
     }
 #if defined(__SSE4_2__)
-    __m128i* ptr1 = (__m128i*)src1;
-    __m128i* ptr2 = (__m128i*)src2;
+    __m128i *ptr1 = (__m128i *)src1;
+    __m128i *ptr2 = (__m128i *)src2;
     enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
 
-    for (; len != 0; ptr1++, ptr2++) 
+    for(; len != 0; ptr1++, ptr2++)
     {
         const __m128i a = _mm_loadu_si128(ptr1);
         const __m128i b = _mm_loadu_si128(ptr2);
 
-        if (_mm_cmpestrc(a, len, b, len, mode)) 
+        if(_mm_cmpestrc(a, len, b, len, mode))
         {
             const KDint idx = _mm_cmpestri(a, len, b, len, mode);
-            const KDuint8 b1 = ((KDchar*)ptr1)[idx];
-            const KDuint8 b2 = ((KDchar*)ptr2)[idx];
+            const KDuint8 b1 = ((KDchar *)ptr1)[idx];
+            const KDuint8 b2 = ((KDchar *)ptr2)[idx];
 
-            if(b1 < b2) 
+            if(b1 < b2)
             {
                 return -1;
             }
-            else if (b1 > b2) 
+            else if(b1 > b2)
             {
                 return +1;
             }
-            else 
+            else
             {
                 return 0;
             }
-        } 
+        }
 
-        if (len > 16) 
+        if(len > 16)
         {
             len -= 16;
         }
@@ -8590,21 +8590,21 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
     kdAssert(ch >= 0);
     kdAssert(ch < 256);
 
-    __m128i* mem = (__m128i*)(KDchar*)str;
+    __m128i *mem = (__m128i *)(KDchar *)str;
     const __m128i set = _mm_setr_epi8(ch, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT };
 
-    for (;; mem++) 
+    for(;; mem++)
     {
         const __m128i chunk = _mm_loadu_si128(mem);
 
-        if(_mm_cmpistrc(set, chunk, mode)) 
+        if(_mm_cmpistrc(set, chunk, mode))
         {
             /* there is character ch in a chunk */
             const KDint idx = _mm_cmpistri(set, chunk, mode);
-            return (KDchar*)mem + idx;
-        } 
-        else if (_mm_cmpistrz(set, chunk, mode)) 
+            return (KDchar *)mem + idx;
+        }
+        else if(_mm_cmpistrz(set, chunk, mode))
         {
             /* there is zero byte in a chunk */
             break;
@@ -8629,34 +8629,34 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
 /* kdStrcmp: Compares two strings. */
 KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 {
-    if (str1 == str2) 
+    if(str1 == str2)
     {
         return 0;
     }
 #if defined(__SSE4_2__)
-    __m128i* ptr1 = (__m128i*)(KDchar*)str1;
-    __m128i* ptr2 = (__m128i*)(KDchar*)str2;
+    __m128i *ptr1 = (__m128i *)(KDchar *)str1;
+    __m128i *ptr2 = (__m128i *)(KDchar *)str2;
 
-    for (;; ptr1++, ptr2++) 
+    for(;; ptr1++, ptr2++)
     {
         const __m128i a = _mm_loadu_si128(ptr1);
         const __m128i b = _mm_loadu_si128(ptr2);
 
         enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
-        
-        if (_mm_cmpistrc(a, b, mode)) 
+
+        if(_mm_cmpistrc(a, b, mode))
         {
             /* a & b are different (not counting past-zero bytes) */
             const KDint idx = _mm_cmpistri(a, b, mode);
 
-            const KDuint8 b1 = ((KDchar*)ptr1)[idx];
-            const KDuint8 b2 = ((KDchar*)ptr2)[idx];
+            const KDuint8 b1 = ((KDchar *)ptr1)[idx];
+            const KDuint8 b2 = ((KDchar *)ptr2)[idx];
 
-            if(b1 < b2) 
+            if(b1 < b2)
             {
                 return -1;
             }
-            else if (b1 > b2) 
+            else if(b1 > b2)
             {
                 return +1;
             }
@@ -8664,8 +8664,8 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
             {
                 return 0;
             }
-        } 
-        else if (_mm_cmpistrz(a, b, mode)) 
+        }
+        else if(_mm_cmpistrz(a, b, mode))
         {
             /* a & b are same, but b contains a zero byte */
             break;
@@ -8692,9 +8692,9 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 #if defined(__SSE4_2__)
     KDsize result = 0;
     const __m128i zeros = _mm_setzero_si128();
-    __m128i* mem = (__m128i*)(KDchar *)s;
+    __m128i *mem = (__m128i *)(KDchar *)s;
 
-    for(;; mem++, result += 16) 
+    for(;; mem++, result += 16)
     {
         const __m128i data = _mm_loadu_si128(mem);
         enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
@@ -8707,7 +8707,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
          *       invocations with the same arguments to the single pcmpstri
          *       instruction. 
          */
-        if(_mm_cmpistrc(data, zeros, mode)) 
+        if(_mm_cmpistrc(data, zeros, mode))
         {
             const KDint idx = _mm_cmpistri(data, zeros, mode);
             return result + idx;
@@ -8716,14 +8716,14 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 #elif defined(__SSE4_1__)
     KDsize result = 0;
     const __m128i zeros = _mm_setzero_si128();
-    __m128i* mem = (__m128i*)(KDchar *)s;
+    __m128i *mem = (__m128i *)(KDchar *)s;
 
-    for(;; mem++, result += 16) 
+    for(;; mem++, result += 16)
     {
         const __m128i data = _mm_loadu_si128(mem);
-        const __m128i cmp  = _mm_cmpeq_epi8(data, zeros);
+        const __m128i cmp = _mm_cmpeq_epi8(data, zeros);
 
-        if (!_mm_testc_si128(zeros, cmp)) 
+        if(!_mm_testc_si128(zeros, cmp))
         {
             const KDint mask = _mm_movemask_epi8(cmp);
 #ifdef _MSC_VER
@@ -9965,7 +9965,7 @@ static void *__kdNameLookupHandler(void *arg)
 
     struct addrinfo *result = NULL;
     struct addrinfo hints;
-    kdMemset( &hints, 0, sizeof(hints) );
+    kdMemset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     KDint retval = getaddrinfo(payload->hostname, 0, &hints, &result);
     if(retval != 0)
@@ -9977,7 +9977,7 @@ static void *__kdNameLookupHandler(void *arg)
 #if defined(_WIN32)
 #define s_addr S_un.S_addr
 #endif
-        addr.data.sin.address = ((struct sockaddr_in*)result->ai_addr)->sin_addr.s_addr;
+        addr.data.sin.address = ((struct sockaddr_in *)result->ai_addr)->sin_addr.s_addr;
 #if defined(_WIN32)
 #undef s_addr
 #endif
