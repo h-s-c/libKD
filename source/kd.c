@@ -8380,7 +8380,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  *
  * Notes:
  * - Based on the BSD libc developed at the University of California, Berkeley
- * - kdStrcpy_s/kdStrncat_s based on strlcpy/strlcat by Todd C. Miller
+ * - kdStrcpy_s/kdStrncat_s based on work by Todd C. Miller
+ * - kdMemcmp/kdStrchr/kdStrcmp/kdStrlen (SSE) based on work by Wojciech Muła
  ******************************************************************************/
 /******************************************************************************
  * Copyright (c) 1990, 1993
@@ -8428,7 +8429,33 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  ******************************************************************************/
-
+ /******************************************************************************
+ * Copyright (c) 2006-2015, Wojciech Muła
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ******************************************************************************/
 
 /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
@@ -8450,17 +8477,59 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 /* kdMemcmp: Compare two memory regions. */
 KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len)
 {
-    if(len != 0)
+    if(len == 0 || (src1 == src2)) 
     {
-        const KDuint8 *p1 = src1, *p2 = src2;
-        do
-        {
-            if(*p1++ != *p2++)
-            {
-                return (*--p1 - *--p2);
-            }
-        } while(--len != 0);
+        return 0;
     }
+#if defined(__SSE4_2__)
+    __m128i* ptr1 = (__m128i*)src1;
+    __m128i* ptr2 = (__m128i*)src2;
+    enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
+
+    for (; len != 0; ptr1++, ptr2++) 
+    {
+        const __m128i a = _mm_loadu_si128(ptr1);
+        const __m128i b = _mm_loadu_si128(ptr2);
+
+        if (_mm_cmpestrc(a, len, b, len, mode)) 
+        {
+            const KDint idx = _mm_cmpestri(a, len, b, len, mode);
+            const KDuint8 b1 = ((KDchar*)ptr1)[idx];
+            const KDuint8 b2 = ((KDchar*)ptr2)[idx];
+
+            if(b1 < b2) 
+            {
+                return -1;
+            }
+            else if (b1 > b2) 
+            {
+                return +1;
+            }
+            else 
+            {
+                return 0;
+            }
+        } 
+
+        if (len > 16) 
+        {
+            len -= 16;
+        }
+        else
+        {
+            len = 0;
+        }
+    }
+#else
+    const KDuint8 *p1 = src1, *p2 = src2;
+    do
+    {
+        if(*p1++ != *p2++)
+        {
+            return (*--p1 - *--p2);
+        }
+    } while(--len != 0);
+#endif
     return 0;
 }
 
@@ -8517,11 +8586,35 @@ KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 /* kdStrchr: Scan string for a byte value. */
 KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
 {
-    KDchar c;
-    c = (KDchar)ch;
+#if defined(__SSE4_2__)
+    kdAssert(ch >= 0);
+    kdAssert(ch < 256);
+
+    __m128i* mem = (__m128i*)(KDchar*)str;
+    const __m128i set = _mm_setr_epi8(ch, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT };
+
+    for (;; mem++) 
+    {
+        const __m128i chunk = _mm_loadu_si128(mem);
+
+        if(_mm_cmpistrc(set, chunk, mode)) 
+        {
+            /* there is character ch in a chunk */
+            const KDint idx = _mm_cmpistri(set, chunk, mode);
+            return (KDchar*)mem + idx;
+        } 
+        else if (_mm_cmpistrz(set, chunk, mode)) 
+        {
+            /* there is zero byte in a chunk */
+            break;
+        }
+    }
+    return KD_NULL;
+#else
     for(;; ++str)
     {
-        if(*str == c)
+        if(*str == (KDchar)ch)
         {
             return ((KDchar *)str);
         }
@@ -8530,11 +8623,57 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
             return KD_NULL;
         }
     }
+#endif
 }
 
 /* kdStrcmp: Compares two strings. */
 KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 {
+    if (str1 == str2) 
+    {
+        return 0;
+    }
+#if defined(__SSE4_2__)
+    __m128i* ptr1 = (__m128i*)(KDchar*)str1;
+    __m128i* ptr2 = (__m128i*)(KDchar*)str2;
+
+    for (;; ptr1++, ptr2++) 
+    {
+        const __m128i a = _mm_loadu_si128(ptr1);
+        const __m128i b = _mm_loadu_si128(ptr2);
+
+        enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
+        
+        if (_mm_cmpistrc(a, b, mode)) 
+        {
+            /* a & b are different (not counting past-zero bytes) */
+            const KDint idx = _mm_cmpistri(a, b, mode);
+
+            const KDuint8 b1 = ((KDchar*)ptr1)[idx];
+            const KDuint8 b2 = ((KDchar*)ptr2)[idx];
+
+            if(b1 < b2) 
+            {
+                return -1;
+            }
+            else if (b1 > b2) 
+            {
+                return +1;
+            }
+            else
+            {
+                return 0;
+            }
+        } 
+        else if (_mm_cmpistrz(a, b, mode)) 
+        {
+            /* a & b are same, but b contains a zero byte */
+            break;
+        }
+    }
+
+    return 0;
+#else
     while(*str1 == *str2++)
     {
         if(*str1++ == '\0')
@@ -8543,17 +8682,67 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
         }
     }
     return *str1 - *(str2 - 1);
+#endif
 }
 
 /* kdStrlen: Determine the length of a string. */
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
     const KDchar *s = str;
+#if defined(__SSE4_2__)
+    KDsize result = 0;
+    const __m128i zeros = _mm_setzero_si128();
+    __m128i* mem = (__m128i*)(KDchar *)s;
+
+    for(;; mem++, result += 16) 
+    {
+        const __m128i data = _mm_loadu_si128(mem);
+        enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
+
+        /* Note: pcmpstri return mask/index and set ALU flags. Intrinsics
+         *       functions can return just single value (mask, particular
+         *       flag), so multiple intrinsics functions have to be called.
+         *
+         *       The good news: GCC and MSVC merges multiple _mm_cmpXstrX
+         *       invocations with the same arguments to the single pcmpstri
+         *       instruction. 
+         */
+        if(_mm_cmpistrc(data, zeros, mode)) 
+        {
+            const KDint idx = _mm_cmpistri(data, zeros, mode);
+            return result + idx;
+        }
+    }
+#elif defined(__SSE4_1__)
+    KDsize result = 0;
+    const __m128i zeros = _mm_setzero_si128();
+    __m128i* mem = (__m128i*)(KDchar *)s;
+
+    for(;; mem++, result += 16) 
+    {
+        const __m128i data = _mm_loadu_si128(mem);
+        const __m128i cmp  = _mm_cmpeq_epi8(data, zeros);
+
+        if (!_mm_testc_si128(zeros, cmp)) 
+        {
+            const KDint mask = _mm_movemask_epi8(cmp);
+#ifdef _MSC_VER
+            return result + __lzcnt(mask);
+#else
+            return result + __builtin_ctz(mask);
+#endif
+        }
+    }
+
+    kdAssert(0);
+    return 0;
+#else
     for(; *s; ++s)
     {
         ;
     }
     return (s - str);
+#endif
 }
 
 /* kdStrnlen: Determine the length of a string. */
