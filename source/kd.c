@@ -8381,7 +8381,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  * Notes:
  * - Based on the BSD libc developed at the University of California, Berkeley
  * - kdStrcpy_s/kdStrncat_s based on work by Todd C. Miller
- * - kdMemcmp/kdStrchr/kdStrcmp/kdStrlen (SSE) based on work by Wojciech Muła
+ * - kdMemcmp/kdStrchr/kdStrcmp/kdStrlen (SSE4) based on work by Wojciech Muła
+ * - kdMemchr/kdStrlen (SSE2) based on work by Mitsunari Shigeo
  ******************************************************************************/
 /******************************************************************************
  * Copyright (c) 1990, 1993
@@ -8436,10 +8437,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
- * 
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
@@ -8456,10 +8455,96 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
+/******************************************************************************
+ * Copyright (C) 2008 MITSUNARI Shigeo at Cybozu Labs, Inc.
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the organization nor the
+ *    names of its contributors may be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND 
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ******************************************************************************/
+
+KDuint32 __kdBitScanForward(KDuint32 x)
+{
+#if defined(__BMI__)
+    return _tzcnt_u32(x);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __builtin_ctz(x);
+#elif defined(_MSC_VER) || defined(__MINGW32__)
+    return _BitScanForward(&x, x);
+#endif
+}
 
 /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
+#if defined(__SSE2__)
+    const KDchar *p = (const KDchar *)src;
+    if(len >= 16)
+    {
+        __m128i c16 = _mm_set1_epi8((KDchar)byte);
+        /* 16 byte alignment */
+        KDsize ip = (KDsize)p;
+        KDsize n = ip & 15;
+        if(n > 0)
+        {
+            ip &= ~15;
+            __m128i x = *(const __m128i *)ip;
+            __m128i a = _mm_cmpeq_epi8(x, c16);
+            KDuint32 mask = _mm_movemask_epi8(a);
+            mask &= 0xffffffffUL << n;
+            if(mask)
+            {
+                return (void *)(ip + __kdBitScanForward(mask));
+            }
+            n = 16 - n;
+            len -= n;
+            p += n;
+        }
+        while(len >= 32)
+        {
+            __m128i x = *(const __m128i *)&p[0];
+            __m128i y = *(const __m128i *)&p[16];
+            __m128i a = _mm_cmpeq_epi8(x, c16);
+            __m128i b = _mm_cmpeq_epi8(y, c16);
+            KDuint32 mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+            if(mask)
+            {
+                return (void *)(p + __kdBitScanForward(mask));
+            }
+            len -= 32;
+            p += 32;
+        }
+    }
+    while(len > 0)
+    {
+        if(*p == byte)
+        {
+            return (void *)p;
+        }
+        p++;
+        len--;
+    }
+#else
     if(len != 0)
     {
         const KDuint8 *p = src;
@@ -8471,6 +8556,7 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
             }
         } while(--len != 0);
     }
+#endif
     return KD_NULL;
 }
 
@@ -8726,16 +8812,56 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         if(!_mm_testc_si128(zeros, cmp))
         {
             const KDint mask = _mm_movemask_epi8(cmp);
-#ifdef _MSC_VER
-            return result + __lzcnt(mask);
-#else
-            return result + __builtin_ctz(mask);
-#endif
+            return result + __kdBitScanForward(mask);
         }
     }
 
     kdAssert(0);
     return 0;
+#elif defined(__SSE2__)
+    __m128i c16 = _mm_set1_epi8(0);
+    /* 16 byte alignment */
+    KDsize ip = (KDsize)s;
+    KDsize n = ip & 15;
+    if(n > 0)
+    {
+        ip &= ~15;
+        __m128i x = *(const __m128i *)ip;
+        __m128i a = _mm_cmpeq_epi8(x, c16);
+        KDuint32 mask = _mm_movemask_epi8(a);
+        mask &= 0xffffffffUL << n;
+        if(mask)
+        {
+            return __kdBitScanForward(mask) - n;
+        }
+        s += 16 - n;
+    }
+    kdAssert(((KDsize)s & 15) == 0);
+    if((KDsize)s & 31)
+    {
+        __m128i x = *(const __m128i *)&s[0];
+        __m128i a = _mm_cmpeq_epi8(x, c16);
+        KDuint32 mask = _mm_movemask_epi8(a);
+        if(mask)
+        {
+            return s + __kdBitScanForward(mask) - str;
+        }
+        s += 16;
+    }
+    kdAssert(((KDsize)s & 31) == 0);
+    for(;;)
+    {
+        __m128i x = *(const __m128i *)&s[0];
+        __m128i y = *(const __m128i *)&s[16];
+        __m128i a = _mm_cmpeq_epi8(x, c16);
+        __m128i b = _mm_cmpeq_epi8(y, c16);
+        KDuint32 mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+        if(mask)
+        {
+            return s + __kdBitScanForward(mask) - str;
+        }
+        s += 32;
+    }
 #else
     for(; *s; ++s)
     {
