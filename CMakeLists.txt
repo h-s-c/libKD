@@ -24,8 +24,6 @@
 ###############################################################################
 # CMake toolchain file notes:
 #
-# Android:  https://github.com/taka-no-me/android-cmake
-#           or try NVIDIA Nsight Tegra Visual Studio Edition
 # Emscripten: $EMSCRIPTEN/cmake/Modules/Platform/Emscripten.cmake
 ###############################################################################
 
@@ -39,7 +37,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 
 option(KD_BUILD_EXAMPLES "Build with examples" Off)
 option(KD_BUILD_TESTS "Build with tests" On)
-option(KD_BUILD_OPTIMIZATON "Build with optimizations" Off)
+option(KD_BUILD_OPTIMIZATONS "Build with optimizations" Off)
 set(KD_BUILD_STDLIB "default" CACHE STRING "Build with libc (default/musl/none)")
 set_property(CACHE KD_BUILD_STDLIB PROPERTY STRINGS "default" "musl" "none")
 mark_as_advanced(KD_BUILD_STDLIB)
@@ -66,20 +64,24 @@ project (KD C)
     set_target_properties(KD PROPERTIES C_STANDARD 11 C_EXTENSIONS "OFF")
     set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE "True")    
 
+    if(KD_BUILD_OPTIMIZATONS AND CMAKE_MAJOR_VERSION GREATER 2 AND CMAKE_MINOR_VERSION GREATER 8)
+        set_target_properties(KD PROPERTIES INTERPROCEDURAL_OPTIMIZATION "ON")
+    endif()
+
     target_include_directories(KD PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_include_directories(KD PUBLIC ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
 
     if(MSVC)
         target_compile_options(KD PRIVATE /W4 /WX /wd4100 /wd4127)
-        if(KD_BUILD_OPTIMIZATON)
-            target_compile_options(KD PRIVATE /arch:SSE4.2)
+        if(KD_BUILD_OPTIMIZATONS)
+            target_compile_options(KD PRIVATE /arch:SSE4.2 /O2)
         endif()
     elseif(NOT CMAKE_C_COMPILER_ID STREQUAL "PGI")
         target_compile_options(KD PRIVATE -Wall -Wextra -Werror -Wshadow -pedantic)
         target_compile_options(KD PRIVATE -Wno-attributes -Wno-missing-field-initializers -Wno-unused-parameter -Wno-unused-function)
         target_compile_options(KD PRIVATE $<$<CONFIG:Debug>:-fno-omit-frame-pointer>)
-        if(KD_BUILD_OPTIMIZATON)
-            target_compile_options(KD PRIVATE -msse4.2)
+        if(KD_BUILD_OPTIMIZATONS)
+            target_compile_options(KD PRIVATE -msse4.2 -mtune=generic -O2)
         endif()
         if(KD_BUILD_STDLIB MATCHES "musl")
             target_compile_options(KD PRIVATE -mmusl)
