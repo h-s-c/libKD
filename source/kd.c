@@ -8836,8 +8836,8 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         }
         s += 16 - n;
     }
-    kdAssert(((KDsize)s & 15) == 0);
-    if((KDsize)s & 31)
+    kdAssert(((KDuintptr)s & 15) == 0);
+    if((KDuintptr)s & 31)
     {
         __m128i x = *(const __m128i *)&s[0];
         __m128i a = _mm_cmpeq_epi8(x, c16);
@@ -8848,7 +8848,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         }
         s += 16;
     }
-    kdAssert(((KDsize)s & 31) == 0);
+    kdAssert(((KDuintptr)s & 31) == 0);
     for(;;)
     {
         __m128i x = *(const __m128i *)&s[0];
