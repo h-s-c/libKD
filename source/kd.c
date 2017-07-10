@@ -9080,7 +9080,7 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
     largeuint.LowPart = filetime.dwLowDateTime;
     largeuint.HighPart = filetime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
-    KDtime time = (KDtime)((largeuint.QuadPart * 1e-7) - 11644473600LL);
+    KDtime time = (KDtime)((largeuint.QuadPart / 10000000LL) - 11644473600LL);
     (*timep) = time;
     return time;
 #else
@@ -9136,9 +9136,14 @@ KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 /* kdUSTAtEpoch: Get the UST corresponding to KDtime 0. */
 KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
 {
-    /* TODO: Implement */
-    kdAssert(0);
+#if defined(_WIN32)
+    /* Difference between NT epoch (1601)        *
+     * and OpenKODE epoch (1970) in nanoseconds  */
+    return 11644473600LL * 1000000000LL;
+#else
+    /* Unix epoch is the same as OpenKODE epoch */
     return 0;
+#endif
 }
 
 /******************************************************************************
