@@ -8490,7 +8490,7 @@ KDuint32 __kdBitScanForward(KDuint32 x)
 #elif defined(__GNUC__) || defined(__clang__)
     return __builtin_ctz(x);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    return _BitScanForward(&x, x);
+    return _BitScanForward((unsigned long*)&x, (unsigned long)x);
 #endif
 }
 
@@ -8503,8 +8503,8 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
     {
         __m128i c16 = _mm_set1_epi8((KDchar)byte);
         /* 16 byte alignment */
-        KDsize ip = (KDsize)p;
-        KDsize n = ip & 15;
+        KDuintptr ip = (KDuintptr)p;
+        KDuintptr n = ip & 15;
         if(n > 0)
         {
             ip &= ~15;
@@ -8821,8 +8821,8 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 #elif defined(__SSE2__)
     __m128i c16 = _mm_set1_epi8(0);
     /* 16 byte alignment */
-    KDsize ip = (KDsize)s;
-    KDsize n = ip & 15;
+    KDuintptr ip = (KDuintptr)s;
+    KDuintptr n = ip & 15;
     if(n > 0)
     {
         ip &= ~15;
