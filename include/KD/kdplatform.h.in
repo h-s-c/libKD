@@ -196,12 +196,14 @@
 #endif
 
 #if defined(_MSC_VER) && defined(_WIN64)
-    typedef signed   __int64        KDintptr;
     typedef unsigned __int64        KDuintptr;
     typedef signed   __int64        KDssize;
     typedef unsigned __int64        KDsize;
+#elif defined(__MINGW64__)
+    typedef unsigned long long      KDuintptr;
+    typedef signed   long long      KDssize;
+    typedef unsigned long long      KDsize;
 #else
-    typedef signed   long           KDintptr;
     typedef unsigned long           KDuintptr;
     typedef signed   long           KDssize;
     typedef unsigned long           KDsize;
@@ -213,10 +215,17 @@
 #define KDINT64_MIN     (-0x8000000000000000-1)
 #define KDINT64_MAX     0x7fffffffffffffff
 #define KDUINT64_MAX    0xffffffffffffffffU
+#if defined(_WIN64) || defined(__x86_64__) ||  defined(__aarch64__)
 #define KDSSIZE_MIN     KDINT64_MIN
 #define KDSSIZE_MAX     KDINT64_MAX
-#define KDSIZE_MAX      KDUINT_MAX
-#define KDUINTPTR_MAX   KDUINT_MAX
+#define KDSIZE_MAX      KDUINT64_MAX
+#define KDUINTPTR_MAX   KDUINT64_MAX
+#else
+#define KDSSIZE_MIN     KDINT_MIN
+#define KDSSIZE_MAX     KDINT_MAX 
+#define KDSIZE_MAX      KDUINT_MAX 
+#define KDUINTPTR_MAX   KDUINT_MAX 
+#endif
 #define KD_INFINITY     0x7f800000
 
 

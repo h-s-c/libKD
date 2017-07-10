@@ -11770,7 +11770,7 @@ KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
     {
         cell = &queue->buffer[pos & queue->buffer_mask];
         KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
-        KDintptr dif = (KDintptr)seq - (KDintptr)pos;
+        KDssize dif = (KDssize)seq - (KDssize)pos;
         if(dif == 0)
         {
             if(kdAtomicIntCompareExchangeVEN(queue->tail, (KDint)pos, (KDint)pos + 1))
@@ -11803,7 +11803,7 @@ KD_API void *KD_APIENTRY kdQueuePullVEN(KDQueueVEN *queue)
     {
         cell = &queue->buffer[pos & queue->buffer_mask];
         KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
-        KDintptr dif = (KDintptr)seq - (KDintptr)(pos + 1);
+        KDssize dif = (KDssize)seq - (KDssize)(pos + 1);
         if(dif == 0)
         {
             if(kdAtomicIntCompareExchangeVEN(queue->head, (KDint)pos, (KDint)pos + 1))
