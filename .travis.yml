@@ -177,7 +177,7 @@ jobs:
     - stage: Compiler compatibility testing (macos)
       os: osx
       compiler: clang
-      osx_image: xcode8.3
+      osx_image: xcode9
       install: 
         - brew update
         - brew install ninja
@@ -190,10 +190,10 @@ jobs:
 
     - os: osx
       compiler: clang
-      osx_image: xcode8
+      osx_image: xcode8.3
       install: 
         - brew update
-        - brew install ninja valgrind
+        - brew install ninja
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
