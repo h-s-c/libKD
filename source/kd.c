@@ -9037,13 +9037,11 @@ KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 KD_API KDust KD_APIENTRY kdGetTimeUST(void)
 {
 #if defined(_WIN32)
-    FILETIME filetime;
-    ULARGE_INTEGER largeuint;
-    /* 100-nanosecond intervals */
-    GetSystemTimeAsFileTime(&filetime);
-    largeuint.LowPart = filetime.dwLowDateTime;
-    largeuint.HighPart = filetime.dwHighDateTime;
-    return largeuint.QuadPart * 100LL;
+    LARGE_INTEGER tickspersecond;
+    LARGE_INTEGER tick;
+    QueryPerformanceFrequency(&tickspersecond);
+    QueryPerformanceCounter(&tick);
+    return (tick.QuadPart/tickspersecond.QuadPart) * 1000000000LL;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
@@ -9136,14 +9134,9 @@ KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
 /* kdUSTAtEpoch: Get the UST corresponding to KDtime 0. */
 KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
 {
-#if defined(_WIN32)
-    /* Difference between NT epoch (1601)        *
-     * and OpenKODE epoch (1970) in nanoseconds  */
-    return 11644473600LL * 1000000000LL;
-#else
-    /* Unix epoch is the same as OpenKODE epoch */
+    /* Implement */
+    kdAssert(0);
     return 0;
-#endif
 }
 
 /******************************************************************************
