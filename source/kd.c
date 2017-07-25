@@ -106,6 +106,7 @@
 #   include <dirent.h>
 #   include <dlfcn.h>
 #   include <netdb.h>
+#   include <netinet/in.h>
 #   include <sys/mman.h> /* mincore, mmap */
 #   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
 #       include <sys/random.h> /* getentropy/getrandom */
