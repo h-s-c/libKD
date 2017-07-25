@@ -179,34 +179,30 @@
     #endif
 #endif
 
-#if defined(_MSC_VER)
-    typedef signed   __int16        KDint16;
-    typedef unsigned __int16        KDuint16;
-    typedef signed   __int32        KDint32;
-    typedef unsigned __int32        KDuint32;
-    typedef signed   __int64        KDint64;
-    typedef unsigned __int64        KDuint64;
-#else
-    typedef signed   short          KDint16;
-    typedef unsigned short          KDuint16;
-    typedef signed   int            KDint32;
-    typedef unsigned int            KDuint32;
-    typedef signed   long long      KDint64;
-    typedef unsigned long long      KDuint64;
-#endif
+typedef signed   short          KDint16;
+typedef unsigned short          KDuint16;
+typedef signed   int            KDint32;
+typedef unsigned int            KDuint32;
+typedef signed   long long      KDint64;
+typedef unsigned long long      KDuint64;
 
-#if defined(_MSC_VER) && defined(_WIN64)
-    typedef unsigned __int64        KDuintptr;
-    typedef signed   __int64        KDssize;
-    typedef unsigned __int64        KDsize;
-#elif defined(__MINGW64__)
+#if defined(_WIN64)
+    /* LLP64 */
     typedef unsigned long long      KDuintptr;
     typedef signed   long long      KDssize;
     typedef unsigned long long      KDsize;
-#else
+#elif defined(__LP64__) || defined(_LP64)
+    /* LP64 */
     typedef unsigned long           KDuintptr;
     typedef signed   long           KDssize;
     typedef unsigned long           KDsize;
+#elif defined(__ILP32__) || defined(_ILP32) || defined(_WIN32)
+    /* ILP32 */
+    typedef unsigned int            KDuintptr;
+    typedef signed   int            KDssize;
+    typedef unsigned int            KDsize;
+#else
+    #error "Unknown data model"
 #endif
 
 #define KDINT_MIN       (-0x7fffffff-1)
@@ -215,12 +211,12 @@
 #define KDINT64_MIN     (-0x8000000000000000-1)
 #define KDINT64_MAX     0x7fffffffffffffff
 #define KDUINT64_MAX    0xffffffffffffffffU
-#if defined(_WIN64) || defined(__x86_64__) ||  defined(__aarch64__)
+#if defined(_WIN64) || defined(__LP64__) || defined(_LP64)
 #define KDSSIZE_MIN     KDINT64_MIN
 #define KDSSIZE_MAX     KDINT64_MAX
 #define KDSIZE_MAX      KDUINT64_MAX
 #define KDUINTPTR_MAX   KDUINT64_MAX
-#else
+#elif defined(__ILP32__) || defined(_ILP32) || defined(_WIN32)
 #define KDSSIZE_MIN     KDINT_MIN
 #define KDSSIZE_MAX     KDINT_MAX 
 #define KDSIZE_MAX      KDUINT_MAX 

@@ -9848,11 +9848,10 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
             return -1;
         }
         buf->st_size = posixstat.st_size;
-#if defined(__ANDROID__)
-        buf->st_mtime = posixstat.st_mtime;
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
         buf->st_mtime = posixstat.st_mtimespec.tv_sec;
 #else
+        /* We undef the st_mtime macro*/
         buf->st_mtime = posixstat.st_mtim.tv_sec;
 #endif
     }
