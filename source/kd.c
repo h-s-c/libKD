@@ -9351,10 +9351,10 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     }
     if(mode[1] == '+' || mode[2] == '+')
     {
-        access = O_RDWR | O_CREAT;
+        access = O_RDWR | O_CREAT ;
         create = S_IRUSR | S_IWUSR;
     }
-    file->nativefile = open(pathname, access, create);
+    file->nativefile = open(pathname, access | O_CLOEXEC, create);
     if(file->nativefile == -1)
     {
         error = errno;
@@ -10992,7 +10992,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     image->size = (KDsize)st.st_size;
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    KDint fd = open(pathname, O_RDONLY, 0);
+    KDint fd = open(pathname, O_RDONLY | O_CLOEXEC, 0);
     if(fd == -1)
 #elif(_WIN32)
     WIN32_FIND_DATA data;
