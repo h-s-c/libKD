@@ -8384,6 +8384,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  * - kdStrcpy_s/kdStrncat_s based on work by Todd C. Miller
  * - kdMemcmp/kdStrchr/kdStrcmp/kdStrlen (SSE4) based on work by Wojciech Muła
  * - kdMemchr/kdStrlen (SSE2) based on work by Mitsunari Shigeo
+ * - kdMemchr/kdStrlen (NEON) based on work by Masaki Ota
  ******************************************************************************/
 /******************************************************************************
  * Copyright (c) 1990, 1993
@@ -8483,6 +8484,33 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
+/******************************************************************************
+ * Copyright (C) 2016 Masaki Ota
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the organization nor the
+ *    names of its contributors may be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND 
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ******************************************************************************/
 
 KDuint32 __kdBitScanForward(KDuint32 x)
 {
@@ -8498,21 +8526,41 @@ KDuint32 __kdBitScanForward(KDuint32 x)
 /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
-#if defined(__SSE2__)
+#if defined(__SSE2__) || defined(__ARM_NEON__)
     const KDchar *p = (const KDchar *)src;
     if(len >= 16)
     {
+#if defined(__SSE2__)
         __m128i c16 = _mm_set1_epi8((KDchar)byte);
+#elif defined(__ARM_NEON__) 
+        uint8x16_t c16 = vdupq_n_u8((KDchar)byte);
+        static const uint8x16_t compaction_mask = { 
+            1, 2, 4, 8, 16, 32, 64, 128, 
+            1, 2, 4, 8, 16, 32, 64, 128 
+        };
+#endif
         /* 16 byte alignment */
         KDuintptr ip = (KDuintptr)p;
         KDuintptr n = ip & 15;
         if(n > 0)
         {
             ip &= ~15;
+            KDuint32 mask = 0;
+#if defined(__SSE2__)
             __m128i x = *(const __m128i *)ip;
             __m128i a = _mm_cmpeq_epi8(x, c16);
-            KDuint32 mask = _mm_movemask_epi8(a);
+            mask = _mm_movemask_epi8(a);
             mask &= 0xffffffffUL << n;
+#elif defined(__ARM_NEON__)
+            uint8x16_t x = *(const uint8x16_t *)ip;
+            uint8x16_t a = vceqq_u8(x, c16);
+            uint8x16_t am = vandq_u8(a, compaction_mask);
+            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+            a_sum = vpadd_u8(a_sum, a_sum);
+            a_sum = vpadd_u8(a_sum, a_sum);
+            mask = vget_lane_u16(vreinterpret_u16_u8(a_sum), 0);
+            mask = mask >> n;
+#endif
             if(mask)
             {
                 return (void *)(ip + __kdBitScanForward(mask));
@@ -8523,11 +8571,30 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
         }
         while(len >= 32)
         {
+            KDuint32 mask = 0;
+#if defined(__SSE2__)
             __m128i x = *(const __m128i *)&p[0];
             __m128i y = *(const __m128i *)&p[16];
             __m128i a = _mm_cmpeq_epi8(x, c16);
             __m128i b = _mm_cmpeq_epi8(y, c16);
-            KDuint32 mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+            mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+#elif defined(__ARM_NEON__)
+            uint8x16_t x = *(const uint8x16_t *)&p[0];
+            uint8x16_t y = *(const uint8x16_t *)&p[16];
+            uint8x16_t a = vceqq_u8(x, c16);
+            uint8x16_t b = vceqq_u8(y, c16);
+            uint8x8_t xx = vorr_u8(vget_low_u8(vorrq_u8(a, b)), vget_high_u8(vorrq_u8(a, b)));
+            if(vget_lane_u64(vreinterpret_u64_u8(xx), 0))
+            {
+                uint8x16_t am = vandq_u8(a, compaction_mask);
+                uint8x16_t bm = vandq_u8(b, compaction_mask);
+                uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+                uint8x8_t b_sum = vpadd_u8(vget_low_u8(bm), vget_high_u8(bm)); 
+                a_sum = vpadd_u8(a_sum, b_sum);
+                a_sum = vpadd_u8(a_sum, a_sum);
+                mask = vget_lane_u32(vreinterpret_u32_u8(a_sum), 0);
+            }
+#endif
             if(mask)
             {
                 return (void *)(p + __kdBitScanForward(mask));
@@ -8819,18 +8886,38 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 
     kdAssert(0);
     return 0;
-#elif defined(__SSE2__)
+#elif defined(__SSE2__) || defined(__ARM_NEON__)
+#if defined(__SSE2__)
     __m128i c16 = _mm_set1_epi8(0);
+#elif defined(__ARM_NEON__)
+    uint8x16_t c16 = vdupq_n_u8(0);
+    static const uint8x16_t compaction_mask = { 
+        1, 2, 4, 8, 16, 32, 64, 128, 
+        1, 2, 4, 8, 16, 32, 64, 128 
+    };
+#endif
     /* 16 byte alignment */
     KDuintptr ip = (KDuintptr)s;
     KDuintptr n = ip & 15;
     if(n > 0)
     {
         ip &= ~15;
+        KDuint32 mask = 0;
+#if defined(__SSE2__)
         __m128i x = *(const __m128i *)ip;
         __m128i a = _mm_cmpeq_epi8(x, c16);
-        KDuint32 mask = _mm_movemask_epi8(a);
+        mask = _mm_movemask_epi8(a);
         mask &= 0xffffffffUL << n;
+#elif defined(__ARM_NEON__)
+        uint8x16_t x = *(const uint8x16_t *)ip;
+        uint8x16_t a = vceqq_u8(x, c16);
+        uint8x16_t am = vandq_u8(a, compaction_mask);
+        uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+        a_sum = vpadd_u8(a_sum, a_sum);
+        a_sum = vpadd_u8(a_sum, a_sum);
+        mask = vget_lane_u16(vreinterpret_u16_u8(a_sum), 0);
+        mask = mask >> n;      
+#endif
         if(mask)
         {
             return __kdBitScanForward(mask) - n;
@@ -8840,9 +8927,24 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     kdAssert(((KDuintptr)s & 15) == 0);
     if((KDuintptr)s & 31)
     {
+        KDuint32 mask = 0;
+#if defined(__SSE2__)
         __m128i x = *(const __m128i *)&s[0];
         __m128i a = _mm_cmpeq_epi8(x, c16);
-        KDuint32 mask = _mm_movemask_epi8(a);
+        mask = _mm_movemask_epi8(a);
+#elif defined(__ARM_NEON__)
+        uint8x16_t x = *(const uint8x16_t *)&s[0];
+        uint8x16_t a = vceqq_u8(x, c16);
+        uint8x8_t xx = vorr_u8(vget_low_u8(x), vget_high_u8(x));
+        if(vget_lane_u64(vreinterpret_u64_u8(xx), 0))
+        {
+            uint8x16_t am = vandq_u8(a, compaction_mask);
+            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+            a_sum = vpadd_u8(a_sum, a_sum);
+            a_sum = vpadd_u8(a_sum, a_sum);
+            mask = vget_lane_u16(vreinterpret_u16_u8(a_sum), 0);
+        }
+#endif
         if(mask)
         {
             return s + __kdBitScanForward(mask) - str;
@@ -8852,11 +8954,30 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     kdAssert(((KDuintptr)s & 31) == 0);
     for(;;)
     {
+        KDuint32 mask = 0;
+#if defined(__SSE2__)
         __m128i x = *(const __m128i *)&s[0];
         __m128i y = *(const __m128i *)&s[16];
         __m128i a = _mm_cmpeq_epi8(x, c16);
         __m128i b = _mm_cmpeq_epi8(y, c16);
-        KDuint32 mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+        mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+#elif defined(__ARM_NEON__)
+        uint8x16_t x = *(const uint8x16_t *)&s[0];
+        uint8x16_t y = *(const uint8x16_t *)&s[16];
+        uint8x16_t a = vceqq_u8(x, c16);
+        uint8x16_t b = vceqq_u8(y, c16);
+        uint8x8_t xx = vorr_u8(vget_low_u8(vorrq_u8(a, b)), vget_high_u8(vorrq_u8(a, b)));
+        if(vget_lane_u64(vreinterpret_u64_u8(xx), 0))
+        {
+            uint8x16_t am = vandq_u8(a, compaction_mask);
+            uint8x16_t bm = vandq_u8(b, compaction_mask);
+            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+            uint8x8_t b_sum = vpadd_u8(vget_low_u8(bm), vget_high_u8(bm)); 
+            a_sum = vpadd_u8(a_sum, b_sum);
+            a_sum = vpadd_u8(a_sum, a_sum);
+            mask = vget_lane_u32(vreinterpret_u32_u8(a_sum), 0);
+        }
+#endif
         if(mask)
         {
             return s + __kdBitScanForward(mask) - str;
