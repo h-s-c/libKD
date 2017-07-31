@@ -23,10 +23,7 @@
 
 #include <KD/kd.h>
 #include <KD/kdext.h>
-
-#ifdef KD_NDEBUG
-#error "Dont run tests with NDEBUG defined."
-#endif
+#include "test.h"
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
@@ -59,7 +56,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             {
                 return 0;
             }
-            kdAssert(0);
+            TEST_FAIL();
         }
     }
     for(KDint k = 0 ; k < THREAD_COUNT ; k++)
@@ -67,11 +64,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         kdThreadJoin(threads[k], KD_NULL);
     }
 
-    KDint test = kdAtomicIntLoadVEN(test_once_count);
-    if(test != 1)
-    {
-        kdAssert(0);
-    }
+    TEST_EQ(kdAtomicIntLoadVEN(test_once_count), 1);
 
     kdAtomicIntFreeVEN(test_once_count);
     return 0;

@@ -22,10 +22,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-
-#ifdef KD_NDEBUG
-#error "Dont run tests with NDEBUG defined."
-#endif
+#include "test.h"
 
 /* Test if we can can communicate properly with event loops in different threads. */
 #define THREAD_COUNT 10
@@ -58,7 +55,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             {
                 return 0;
             }
-            kdAssert(0);
+            TEST_FAIL();
         }
     }
     for(KDint k = 0 ; k < THREAD_COUNT ;k++)
@@ -67,7 +64,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         event->type      = KD_EVENT_QUIT;
         if(kdPostThreadEvent(event, threads[k]) == -1)
         {
-            kdAssert(0);
+            TEST_FAIL();
         }
     }
     for(KDint j = 0 ; j < THREAD_COUNT ;j++)

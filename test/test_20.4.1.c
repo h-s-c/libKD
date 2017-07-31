@@ -22,10 +22,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-
-#ifdef KD_NDEBUG
-#error "Dont run tests with NDEBUG defined."
-#endif
+#include "test.h"
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
@@ -36,7 +33,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         {
             return 0;
         }
-        kdAssert(0);
+        TEST_FAIL();
     }
 
     for(;;)
@@ -56,11 +53,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 KDInAddr address;
                 kdMemset(&address, 0, sizeof(address));
                 address.s_addr = ((const KDSockaddr *)lookupevent.result)->data.sin.address;
-                kdAssert(kdNtohl(address.s_addr) == 3221233671);
+                TEST_EQ(kdNtohl(address.s_addr), 3221233671);
 
                 KDchar c_addr[sizeof("255.255.255.255")] = "";
                 kdInetNtop(KD_AF_INET, &address, c_addr, sizeof(c_addr));
-                kdAssert(kdStrcmp(c_addr, "192.0.32.7") == 0);
+                TEST_STREQ(c_addr, "192.0.32.7");
 
                 break;
             }

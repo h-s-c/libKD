@@ -23,19 +23,19 @@
 
 #include <KD/kd.h>
 #include <KD/kdext.h>
-
-#ifdef KD_NDEBUG
-#error "Dont run tests with NDEBUG defined."
-#endif
+#include "test.h"
 
 void create_file(const char *path, const char *buffer) 
 {
     KDFile *file = kdFopen(path, "w");
-    kdAssert(file != KD_NULL);
+    if(file == KD_NULL)
+    {
+        TEST_FAIL();
+    }
 
     KDsize length = kdStrlen(buffer);
     KDsize retval = kdFwrite(buffer, length, 1, file);
-    kdAssert(retval == length);
+    TEST_EQ(retval, length);
 
     kdFclose(file);
 }
@@ -77,62 +77,62 @@ void test()
 
     // can't rename something that doesn't exist
     err = kdRename("noexist", "dir");
-    kdAssert(err == -1);
-    kdAssert(kdGetError() == KD_ENOENT);
+    TEST_EQ(err, -1);
+    TEST_EQ(kdGetError(), KD_ENOENT);
 
     // can't overwrite a folder with a file
     err = kdRename("file", "dir");
-    kdAssert(err == -1);
+    TEST_EQ(err, -1);
 #ifndef _MSC_VER
-    kdAssert(kdGetError() == KD_EACCES);
+    TEST_EQ(kdGetError(), KD_EACCES);
 #endif
 
     // can't overwrite a file with a folder
     err = kdRename("dir", "file");
-    kdAssert(err == -1);
+    TEST_EQ(err, -1);
 #ifndef _MSC_VER
-    kdAssert(kdGetError() == KD_EINVAL);
+    TEST_EQ(kdGetError(), KD_EINVAL);
 #endif
 
     // can't overwrite a non-empty folder
     err = kdRename("dir", "dir-nonempty");
-    kdAssert(err == -1);
+    TEST_EQ(err, -1);
 #ifndef _MSC_VER
-    kdAssert(kdGetError() == KD_EACCES);
+    TEST_EQ(kdGetError(), KD_EACCES);
 #endif
 
     // source should not be ancestor of target
     err = kdRename("dir", "dir/somename");
-    kdAssert(err == -1);
+    TEST_EQ(err, -1);
 #ifndef _MSC_VER
-    kdAssert(kdGetError() == KD_EINVAL);
+    TEST_EQ(kdGetError(), KD_EINVAL);
 #endif
 
     // target should not be an ancestor of source
     err = kdRename("dir/subdir", "dir");
-    kdAssert(err == -1);
+    TEST_EQ(err, -1);
 #ifndef _MSC_VER
-    kdAssert(kdGetError() == KD_EACCES);
+    TEST_EQ(kdGetError(), KD_EACCES);
 #endif
 
     // do some valid renaming
     err = kdRename("dir/file", "dir/file1");
-    kdAssert(!err);
+    TEST_EQ(err, 0);
     err = kdRename("dir/file1", "dir/file2");
-    kdAssert(!err);
+    TEST_EQ(err, 0);
     err = kdAccess("dir/file2", KD_R_OK);
-    kdAssert(!err);
+    TEST_EQ(err, 0);
     err = kdRename("dir/subdir", "dir/subdir1");
-    kdAssert(!err);
+    TEST_EQ(err, 0);
     err = kdRename("dir/subdir1", "dir/subdir2");
-    kdAssert(!err);
+    TEST_EQ(err, 0);
     err = kdAccess("dir/subdir2", KD_R_OK);
-    kdAssert(!err);
+    TEST_EQ(err, 0);
 
     err = kdRename("dir/subdir2", "dir/subdir3/subdir3_1/subdir1 renamed");
-    kdAssert(!err);
+    TEST_EQ(err, 0);
     err = kdAccess("dir/subdir3/subdir3_1/subdir1 renamed", KD_R_OK);
-    kdAssert(!err);
+    TEST_EQ(err, 0);
 }
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)

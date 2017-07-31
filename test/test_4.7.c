@@ -23,10 +23,6 @@
 
 #include <KD/kd.h>
 
-#ifdef KD_NDEBUG
-#error "Dont run tests with NDEBUG defined."
-#endif
-
 /* Test if the stack is big enough according to the OpenKODE Core spec */
 struct recurse {
     struct recurse *next;

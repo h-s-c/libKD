@@ -24,10 +24,6 @@
 #include <KD/kd.h>
 #include <KD/kdext.h>
 
-#ifdef KD_NDEBUG
-#error "Dont run tests with NDEBUG defined."
-#endif
-
 /* "" is a valid return if no locale info can be gathered but this shouldn't happen */
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
@@ -42,7 +38,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     }
     else
     {
-        kdAssert(0);
+        return -1;
     }
     return 0;
 }

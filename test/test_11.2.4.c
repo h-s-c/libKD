@@ -22,23 +22,20 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-
-#ifdef KD_NDEBUG
-#error "Dont run tests with NDEBUG defined."
-#endif
+#include "test.h"
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     KDchar string[20];
     KDssize size = 0;
     size = kdLtostr(string, 20, 1234567890);
-    kdAssert(kdStrcmp(string, "1234567890") == 0);
-    kdAssert(size == 10);
+    TEST_STREQ(string, "1234567890");
+    TEST_EQ(size, 10);
     size = kdLtostr(string, 20, -1234567890);
-    kdAssert(kdStrcmp(string, "-1234567890") == 0);
-    kdAssert(size == 11);
+    TEST_STREQ(string, "-1234567890");
+    TEST_EQ(size, 11);
     size = kdUltostr(string, 20, 1234567890, 10);
-    kdAssert(kdStrcmp(string, "1234567890") == 0);
-    kdAssert(size == 10);
+    TEST_STREQ(string, "1234567890");
+    TEST_EQ(size, 10);
     return 0;
 }
