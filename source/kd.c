@@ -1462,6 +1462,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             event->type = KD_EVENT_INPUT_POINTER;
                             event->data.inputpointer.index = KD_INPUT_POINTER_X;
                             event->data.inputpointer.x = raw->data.mouse.lLastX;
+                            event->data.inputpointer.y = raw->data.mouse.lLastY;
                             if(!__kdExecCallback(event))
                             {
                                 kdPostEvent(event);
@@ -1469,6 +1470,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             KDEvent *event2 = kdCreateEvent();
                             event2->type = KD_EVENT_INPUT_POINTER;
                             event2->data.inputpointer.index = KD_INPUT_POINTER_Y;
+                            event2->data.inputpointer.x = raw->data.mouse.lLastX;
                             event2->data.inputpointer.y = raw->data.mouse.lLastY;
                             if(!__kdExecCallback(event2))
                             {
@@ -2453,6 +2455,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     event->type = KD_EVENT_INPUT_POINTER;
                     event->data.inputpointer.index = KD_INPUT_POINTER_X;
                     event->data.inputpointer.x = xevent.xmotion.x;
+                    event->data.inputpointer.y = xevent.xmotion.y;
                     if(!__kdExecCallback(event))
                     {
                         kdPostEvent(event);
@@ -2460,6 +2463,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     KDEvent *event2 = kdCreateEvent();
                     event2->type = KD_EVENT_INPUT_POINTER;
                     event2->data.inputpointer.index = KD_INPUT_POINTER_Y;
+                    event2->data.inputpointer.x = xevent.xmotion.x;
                     event2->data.inputpointer.y = xevent.xmotion.y;
                     if(!__kdExecCallback(event2))
                     {

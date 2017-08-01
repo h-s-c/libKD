@@ -14,7 +14,6 @@
 #include <KD/kd.h>
 #include <KD/kdext.h>
 #include <EGL/egl.h>
-#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 
 #define NUM_PARTICLES 2000
