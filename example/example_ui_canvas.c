@@ -1,35 +1,36 @@
 /* nuklear - v1.05 - public domain */
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <math.h>
-#include <assert.h>
-#include <math.h>
-#include <time.h>
-#include <limits.h>
+#include <KD/kd.h>
+#include <KD/kdext.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#if defined(GL_OES_mapbuffer)
+PFNGLMAPBUFFEROESPROC glMapBuffer;
+PFNGLUNMAPBUFFEROESPROC glUnmapBuffer;
+#endif
+#if defined(GL_OES_vertex_array_object)
+PFNGLGENVERTEXARRAYSOESPROC glGenVertexArrays;
+PFNGLBINDVERTEXARRAYOESPROC glBindVertexArray;
+#endif
+#if defined(GL_KHR_debug)
+PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback;
+#endif
 
 #define NK_PRIVATE
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
+#define NK_ASSERT kdAssert
+/* TODO: Get rid of standard malloc usage. */
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
 #define NK_INCLUDE_FONT_BAKING
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
-#include "../nuklear.h"
+#include "nuklear.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+static KDboolean quit = KD_FALSE;
 
 /* macros */
-#define WINDOW_WIDTH 1200
-#define WINDOW_HEIGHT 800
-
 #define MAX_VERTEX_MEMORY 512 * 1024
 #define MAX_ELEMENT_MEMORY 128 * 1024
 
@@ -37,8 +38,7 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) < (b) ? (b) : (a))
 #define LEN(a) (sizeof(a)/sizeof(a)[0])
-
-#define NK_SHADER_VERSION "#version 150\n"
+#define OFFSETOFF(st, m) ((KDsize)&(((st *)0)->m))
 
 /* ===============================================================
  *
@@ -67,62 +67,28 @@ struct device {
 };
 
 static void
-die(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    fputs("\n", stderr);
-    exit(EXIT_FAILURE);
-}
-
-static struct nk_image
-icon_load(const char *filename)
-{
-    int x,y,n;
-    GLuint tex;
-    unsigned char *data = stbi_load(filename, &x, &y, &n, 0);
-    if (!data) die("[SDL]: failed to load image: %s", filename);
-
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    stbi_image_free(data);
-    return nk_image_id((int)tex);
-}
-
-static void
 device_init(struct device *dev)
 {
     GLint status;
     static const GLchar *vertex_shader =
-        NK_SHADER_VERSION
         "uniform mat4 ProjMtx;\n"
-        "in vec2 Position;\n"
-        "in vec2 TexCoord;\n"
-        "in vec4 Color;\n"
-        "out vec2 Frag_UV;\n"
-        "out vec4 Frag_Color;\n"
+        "attribute vec2 Position;\n"
+        "attribute vec2 TexCoord;\n"
+        "attribute vec4 Color;\n"
+        "varying vec2 Frag_UV;\n"
+        "varying vec4 Frag_Color;\n"
         "void main() {\n"
         "   Frag_UV = TexCoord;\n"
         "   Frag_Color = Color;\n"
         "   gl_Position = ProjMtx * vec4(Position.xy, 0, 1);\n"
         "}\n";
     static const GLchar *fragment_shader =
-        NK_SHADER_VERSION
         "precision mediump float;\n"
         "uniform sampler2D Texture;\n"
-        "in vec2 Frag_UV;\n"
-        "in vec4 Frag_Color;\n"
-        "out vec4 Out_Color;\n"
+        "varying vec2 Frag_UV;\n"
+        "varying vec4 Frag_Color;\n"
         "void main(){\n"
-        "   Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
+        "   gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV);\n"
         "}\n";
 
     nk_buffer_init_default(&dev->cmds);
@@ -134,14 +100,14 @@ device_init(struct device *dev)
     glCompileShader(dev->vert_shdr);
     glCompileShader(dev->frag_shdr);
     glGetShaderiv(dev->vert_shdr, GL_COMPILE_STATUS, &status);
-    assert(status == GL_TRUE);
+    kdAssert(status == GL_TRUE);
     glGetShaderiv(dev->frag_shdr, GL_COMPILE_STATUS, &status);
-    assert(status == GL_TRUE);
+    kdAssert(status == GL_TRUE);
     glAttachShader(dev->prog, dev->vert_shdr);
     glAttachShader(dev->prog, dev->frag_shdr);
     glLinkProgram(dev->prog);
     glGetProgramiv(dev->prog, GL_LINK_STATUS, &status);
-    assert(status == GL_TRUE);
+    kdAssert(status == GL_TRUE);
 
     dev->uniform_tex = glGetUniformLocation(dev->prog, "Texture");
     dev->uniform_proj = glGetUniformLocation(dev->prog, "ProjMtx");
@@ -152,9 +118,9 @@ device_init(struct device *dev)
     {
         /* buffer setup */
         GLsizei vs = sizeof(struct nk_glfw_vertex);
-        size_t vp = offsetof(struct nk_glfw_vertex, position);
-        size_t vt = offsetof(struct nk_glfw_vertex, uv);
-        size_t vc = offsetof(struct nk_glfw_vertex, col);
+        size_t vp = OFFSETOFF(struct nk_glfw_vertex, position);
+        size_t vt = OFFSETOFF(struct nk_glfw_vertex, uv);
+        size_t vc = OFFSETOFF(struct nk_glfw_vertex, col);
 
         glGenBuffers(1, &dev->vbo);
         glGenBuffers(1, &dev->ebo);
@@ -176,7 +142,9 @@ device_init(struct device *dev)
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+#ifndef __EMSCRIPTEN__
     glBindVertexArray(0);
+#endif
 }
 
 static void
@@ -245,8 +213,13 @@ device_draw(struct device *dev, struct nk_context *ctx, int width, int height,
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_ELEMENT_MEMORY, NULL, GL_STREAM_DRAW);
 
         /* load draw vertices & elements directly into vertex + element buffer */
-        vertices = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-        elements = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+#ifdef __EMSCRIPTEN__
+        vertices = kdMalloc(MAX_VERTEX_MEMORY);
+        elements = kdMallloc(MAX_ELEMENT_MEMORY);
+#else
+        vertices = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
+        elements = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
+#endif
         {
             /* fill convert configuration */
             struct nk_convert_config config;
@@ -274,8 +247,15 @@ device_draw(struct device *dev, struct nk_context *ctx, int width, int height,
             nk_buffer_init_fixed(&ebuf, elements, MAX_ELEMENT_MEMORY);
             nk_convert(ctx, &dev->cmds, &vbuf, &ebuf, &config);}
         }
+#ifdef __EMSCRIPTEN__
+        glBufferSubData(GL_ARRAY_BUFFER, 0, (KDsize)MAX_VERTEX_MEMORY, vertices);
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, (KDsize)MAX_ELEMENT_MEMORY, elements);
+        kdFree(vertices);
+        kdFree(elements);
+#else
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+#endif
 
       /* iterate over and execute each draw command */
         nk_draw_foreach(cmd, ctx, &dev->cmds)
@@ -297,53 +277,93 @@ device_draw(struct device *dev, struct nk_context *ctx, int width, int height,
     glUseProgram(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+#ifndef __EMSCRIPTEN__
     glBindVertexArray(0);
+#endif
     glDisable(GL_BLEND);
     glDisable(GL_SCISSOR_TEST);
 }
 
-/* glfw callbacks (I don't know if there is a easier way to access text and scroll )*/
-static void error_callback(int e, const char *d){printf("Error %d: %s\n", e, d);}
-static void text_input(GLFWwindow *win, unsigned int codepoint)
-{nk_input_unicode((struct nk_context*)glfwGetWindowUserPointer(win), codepoint);}
-static void scroll_input(GLFWwindow *win, double _, double yoff)
-{UNUSED(_);nk_input_scroll((struct nk_context*)glfwGetWindowUserPointer(win), nk_vec2(0, (float)yoff));}
-
 static void
-pump_input(struct nk_context *ctx, GLFWwindow *win)
+pump_input(struct nk_context *ctx, KDWindow *win)
 {
-    double x, y;
     nk_input_begin(ctx);
-    glfwPollEvents();
 
-    nk_input_key(ctx, NK_KEY_DEL, glfwGetKey(win, GLFW_KEY_DELETE) == GLFW_PRESS);
-    nk_input_key(ctx, NK_KEY_ENTER, glfwGetKey(win, GLFW_KEY_ENTER) == GLFW_PRESS);
-    nk_input_key(ctx, NK_KEY_TAB, glfwGetKey(win, GLFW_KEY_TAB) == GLFW_PRESS);
-    nk_input_key(ctx, NK_KEY_BACKSPACE, glfwGetKey(win, GLFW_KEY_BACKSPACE) == GLFW_PRESS);
-    nk_input_key(ctx, NK_KEY_LEFT, glfwGetKey(win, GLFW_KEY_LEFT) == GLFW_PRESS);
-    nk_input_key(ctx, NK_KEY_RIGHT, glfwGetKey(win, GLFW_KEY_RIGHT) == GLFW_PRESS);
-    nk_input_key(ctx, NK_KEY_UP, glfwGetKey(win, GLFW_KEY_UP) == GLFW_PRESS);
-    nk_input_key(ctx, NK_KEY_DOWN, glfwGetKey(win, GLFW_KEY_DOWN) == GLFW_PRESS);
-
-    if (glfwGetKey(win, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
-        glfwGetKey(win, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) {
-        nk_input_key(ctx, NK_KEY_COPY, glfwGetKey(win, GLFW_KEY_C) == GLFW_PRESS);
-        nk_input_key(ctx, NK_KEY_PASTE, glfwGetKey(win, GLFW_KEY_P) == GLFW_PRESS);
-        nk_input_key(ctx, NK_KEY_CUT, glfwGetKey(win, GLFW_KEY_X) == GLFW_PRESS);
-        nk_input_key(ctx, NK_KEY_CUT, glfwGetKey(win, GLFW_KEY_E) == GLFW_PRESS);
-        nk_input_key(ctx, NK_KEY_SHIFT, 1);
-    } else {
-        nk_input_key(ctx, NK_KEY_COPY, 0);
-        nk_input_key(ctx, NK_KEY_PASTE, 0);
-        nk_input_key(ctx, NK_KEY_CUT, 0);
-        nk_input_key(ctx, NK_KEY_SHIFT, 0);
+    const KDEvent *event = kdWaitEvent(1000);
+    while(event)
+    {
+        switch(event->type)
+        {
+            case(KD_EVENT_WINDOW_CLOSE):
+            {
+                quit = KD_TRUE;
+                break;
+            }
+            case(KD_EVENT_INPUT_POINTER):
+            {
+                switch(event->data.inputpointer.index)
+                {
+                    case(KD_INPUT_POINTER_X):
+                    {
+                        nk_input_motion(ctx, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y);
+                        break;
+                    }
+                    case(KD_INPUT_POINTER_Y):
+                    {
+                        nk_input_motion(ctx, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y);
+                        break;
+                    }
+                    case(KD_EVENT_INPUT_POINTER):
+                    {
+                        nk_input_button(ctx, NK_BUTTON_LEFT, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y, event->data.inputpointer.select);
+                        break;
+                    }
+                }
+            }
+            case(KD_EVENT_INPUT_KEY_ATX):
+            {
+                KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                switch(keyevent->keycode)
+                {
+                    case(KD_KEY_ENTER_ATX):
+                    {
+                        nk_input_key(ctx, NK_KEY_ENTER, keyevent->flags == KD_KEY_PRESS_ATX);
+                        break;
+                    }
+                    case(KD_KEY_LEFT_ATX):
+                    {
+                        nk_input_key(ctx, NK_KEY_LEFT, keyevent->flags == KD_KEY_PRESS_ATX);
+                        break;
+                    }
+                    case(KD_KEY_RIGHT_ATX):
+                    {
+                        nk_input_key(ctx, NK_KEY_RIGHT, keyevent->flags == KD_KEY_PRESS_ATX);
+                        break;
+                    }
+                    case(KD_KEY_UP_ATX):
+                    {
+                        nk_input_key(ctx, NK_KEY_UP, keyevent->flags == KD_KEY_PRESS_ATX);
+                        break;
+                    }
+                    case(KD_KEY_DOWN_ATX):
+                    {
+                        nk_input_key(ctx, NK_KEY_DOWN, keyevent->flags == KD_KEY_PRESS_ATX);
+                        break;
+                    }
+                    default:
+                    {
+                        break;
+                    }
+                }
+                break;
+            }
+            default:
+            {
+                kdDefaultEvent(event);
+            }
+        }
+        event = kdWaitEvent(100);
     }
-
-    glfwGetCursorPos(win, &x, &y);
-    nk_input_motion(ctx, (int)x, (int)y);
-    nk_input_button(ctx, NK_BUTTON_LEFT, (int)x, (int)y, glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
-    nk_input_button(ctx, NK_BUTTON_MIDDLE, (int)x, (int)y, glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS);
-    nk_input_button(ctx, NK_BUTTON_RIGHT, (int)x, (int)y, glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
     nk_input_end(ctx);
 }
 
@@ -390,10 +410,17 @@ canvas_end(struct nk_context *ctx, struct nk_canvas *canvas)
     ctx->style.window.fixed_background = canvas->window_background;
 }
 
-int main(int argc, char *argv[])
+#if defined(GL_KHR_debug)
+static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+    kdLogMessage(message);
+}
+#endif
+
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     /* Platform */
-    static GLFWwindow *win;
+    static KDWindow *win;
     int width = 0, height = 0;
 
     /* GUI */
@@ -401,29 +428,83 @@ int main(int argc, char *argv[])
     struct nk_font_atlas atlas;
     struct nk_context ctx;
 
-    /* GLFW */
-    glfwSetErrorCallback(error_callback);
-    if (!glfwInit()) {
-        fprintf(stdout, "[GFLW] failed to init!\n");
-        exit(1);
+    /* KD */
+    const EGLint egl_attributes[] =
+    {
+        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE,           8,
+        EGL_GREEN_SIZE,         8,
+        EGL_BLUE_SIZE,          8,
+        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
+        EGL_DEPTH_SIZE,         EGL_DONT_CARE,
+        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
+        EGL_SAMPLE_BUFFERS,     0,
+        EGL_NONE
+    };
+
+    const EGLint egl_context_attributes[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+#if defined(EGL_KHR_create_context)    
+        EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
+#endif
+        EGL_NONE,
+    };
+
+    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+
+    eglInitialize(egl_display, 0, 0);
+    eglBindAPI(EGL_OPENGL_ES_API);
+
+    EGLint egl_num_configs = 0;
+    EGLConfig egl_config;
+    eglChooseConfig(egl_display, egl_attributes, &egl_config, 1, &egl_num_configs);
+    EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+
+    win = kdCreateWindow(egl_display, egl_config, KD_NULL);
+    EGLNativeWindowType native_window;
+    kdRealizeWindow(win, &native_window);
+
+    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
+
+    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+
+    if(eglGetError() != EGL_SUCCESS)
+    {
+        kdAssert(0);
     }
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    win = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Demo", NULL, NULL);
-    glfwMakeContextCurrent(win);
-    glfwSetWindowUserPointer(win, &ctx);
-    glfwSetCharCallback(win, text_input);
-    glfwSetScrollCallback(win, scroll_input);
-    glfwGetWindowSize(win, &width, &height);
+
+#if defined(GL_OES_mapbuffer)
+    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_mapbuffer"))
+    {
+        glMapBuffer = (PFNGLMAPBUFFEROESPROC)eglGetProcAddress("glMapBufferOES");
+        glUnmapBuffer = (PFNGLUNMAPBUFFEROESPROC)eglGetProcAddress("glUnmapBufferOES");
+    }
+#endif
+#if defined(GL_OES_vertex_array_object)
+    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_vertex_array_object"))
+    {
+        glGenVertexArrays = (PFNGLGENVERTEXARRAYSOESPROC)eglGetProcAddress("glGenVertexArraysOES");
+        glBindVertexArray = (PFNGLBINDVERTEXARRAYOESPROC)eglGetProcAddress("glBindVertexArrayOES");
+    }
+#endif
+#if defined(GL_KHR_debug)
+    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
+    {
+        glEnable(GL_DEBUG_OUTPUT_KHR);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+        glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
+        glDebugMessageCallback(&gl_callback, KD_NULL);
+    }
+#endif
 
     /* OpenGL */
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-    glewExperimental = 1;
-    if (glewInit() != GLEW_OK) {
-        fprintf(stderr, "Failed to setup GLEW\n");
-        exit(1);
-    }
+    KDint32 windowsize[2];
+    kdGetWindowPropertyiv(win, KD_WINDOWPROPERTY_SIZE, windowsize);
+    width = windowsize[0];
+    height = windowsize[1];
+    glViewport(0, 0, width, height);
 
     /* GUI */
     {device_init(&device);
@@ -437,8 +518,8 @@ int main(int argc, char *argv[])
     nk_font_atlas_end(&atlas, nk_handle_id((int)device.font_tex), &device.null);
     nk_init_default(&ctx, &font->handle);
 
-    glEnable(GL_TEXTURE_2D);
-    while (!glfwWindowShouldClose(win))
+
+    while (!quit)
     {
         /* input */
         pump_input(&ctx, win);
@@ -473,17 +554,18 @@ int main(int argc, char *argv[])
         canvas_end(&ctx, &canvas);}
 
         /* Draw */
-        glfwGetWindowSize(win, &width, &height);
+        kdGetWindowPropertyiv(win, KD_WINDOWPROPERTY_SIZE, windowsize);
+        width = windowsize[0];
+        height = windowsize[1];
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         device_draw(&device, &ctx, width, height, NK_ANTI_ALIASING_ON);
-        glfwSwapBuffers(win);
+        eglSwapBuffers(egl_display, egl_surface);
     }}}
     nk_font_atlas_clear(&atlas);
     nk_free(&ctx);
     device_shutdown(&device);
-    glfwTerminate();
     return 0;
 }
 
