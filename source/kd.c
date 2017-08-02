@@ -224,6 +224,9 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
 #define STB_SPRINTF_STATIC
+#if defined(__EMSCRIPTEN__)
+#define STB_SPRINTF_NOUNALIGNED
+#endif
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 #if defined(__INTEL_COMPILER) || defined(_MSC_VER)
@@ -3372,6 +3375,11 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
     if(locale == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
+    }
+    else if(kdStrcmp(locale, "C") == 0)
+    {
+        /* No locale support (musl, emscripten) */
+        locale = "en";
     }
     kdMemcpy(localestore, locale, 2 /* 5 */);
 #endif
@@ -10286,7 +10294,12 @@ KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *ev
 
     KDThread *thread = kdThreadCreate(KD_NULL, __kdNameLookupHandler, &payload);
     if(thread == KD_NULL)
-    {
+    {        
+        if(kdGetError() == KD_ENOSYS)
+        {
+            kdLogMessage("kdNameLookup() needs a threading implementation.\n");
+            return -1;
+        }
         kdSetError(KD_ENOMEM);
         return -1;
     }
