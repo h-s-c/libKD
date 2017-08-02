@@ -215,7 +215,7 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
         /* load draw vertices & elements directly into vertex + element buffer */
 #ifdef __EMSCRIPTEN__
         vertices = kdMalloc(MAX_VERTEX_MEMORY);
-        elements = kdMallloc(MAX_ELEMENT_MEMORY);
+        elements = kdMalloc(MAX_ELEMENT_MEMORY);
 #else
         vertices = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
         elements = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY_OES);
