@@ -8523,7 +8523,7 @@ static KDuint32 __kdBitScanForward(KDuint32 x)
 #elif defined(__GNUC__) || defined(__clang__)
     return __builtin_ctz(x);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
-    return _BitScanForward((unsigned long*)&x, (unsigned long)x);
+    return _BitScanForward((unsigned long *)&x, (unsigned long)x);
 #else
     static const KDchar ctz_lookup[256] = {
         0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
@@ -8541,17 +8541,16 @@ static KDuint32 __kdBitScanForward(KDuint32 x)
         6, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
         4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
         5, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,
-        4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0 
-    };
+        4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0};
     KDsize s = 0;
-    do 
+    do
     {
         KDuint32 r = (x >> s) & 0xff;
-        if (r != 0)
+        if(r != 0)
         {
-            return ctz_lookup[r] + (KDchar)s;  
+            return ctz_lookup[r] + (KDchar)s;
         }
-    } while ((s += 8) < (sizeof(KDuint32) * 8));
+    } while((s += 8) < (sizeof(KDuint32) * 8));
     return sizeof(KDuint32) - 1;
 #endif
 }
@@ -8565,12 +8564,11 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
     {
 #if defined(__SSE2__)
         __m128i c16 = _mm_set1_epi8((KDchar)byte);
-#elif defined(__ARM_NEON__) 
+#elif defined(__ARM_NEON__)
         uint8x16_t c16 = vdupq_n_u8((KDchar)byte);
-        static const uint8x16_t compaction_mask = { 
-            1, 2, 4, 8, 16, 32, 64, 128, 
-            1, 2, 4, 8, 16, 32, 64, 128 
-        };
+        static const uint8x16_t compaction_mask = {
+            1, 2, 4, 8, 16, 32, 64, 128,
+            1, 2, 4, 8, 16, 32, 64, 128};
 #endif
         /* 16 byte alignment */
         KDuintptr ip = (KDuintptr)p;
@@ -8588,7 +8586,7 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
             uint8x16_t x = *(const uint8x16_t *)ip;
             uint8x16_t a = vceqq_u8(x, c16);
             uint8x16_t am = vandq_u8(a, compaction_mask);
-            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am));
             a_sum = vpadd_u8(a_sum, a_sum);
             a_sum = vpadd_u8(a_sum, a_sum);
             mask = vget_lane_u16(vreinterpret_u16_u8(a_sum), 0);
@@ -8621,8 +8619,8 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
             {
                 uint8x16_t am = vandq_u8(a, compaction_mask);
                 uint8x16_t bm = vandq_u8(b, compaction_mask);
-                uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
-                uint8x8_t b_sum = vpadd_u8(vget_low_u8(bm), vget_high_u8(bm)); 
+                uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am));
+                uint8x8_t b_sum = vpadd_u8(vget_low_u8(bm), vget_high_u8(bm));
                 a_sum = vpadd_u8(a_sum, b_sum);
                 a_sum = vpadd_u8(a_sum, a_sum);
                 mask = vget_lane_u32(vreinterpret_u32_u8(a_sum), 0);
@@ -8924,10 +8922,9 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     __m128i c16 = _mm_set1_epi8(0);
 #elif defined(__ARM_NEON__)
     uint8x16_t c16 = vdupq_n_u8(0);
-    static const uint8x16_t compaction_mask = { 
-        1, 2, 4, 8, 16, 32, 64, 128, 
-        1, 2, 4, 8, 16, 32, 64, 128 
-    };
+    static const uint8x16_t compaction_mask = {
+        1, 2, 4, 8, 16, 32, 64, 128,
+        1, 2, 4, 8, 16, 32, 64, 128};
 #endif
     /* 16 byte alignment */
     KDuintptr ip = (KDuintptr)s;
@@ -8945,11 +8942,11 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         uint8x16_t x = *(const uint8x16_t *)ip;
         uint8x16_t a = vceqq_u8(x, c16);
         uint8x16_t am = vandq_u8(a, compaction_mask);
-        uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+        uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am));
         a_sum = vpadd_u8(a_sum, a_sum);
         a_sum = vpadd_u8(a_sum, a_sum);
         mask = vget_lane_u16(vreinterpret_u16_u8(a_sum), 0);
-        mask = mask >> n;      
+        mask = mask >> n;
 #endif
         if(mask)
         {
@@ -8972,7 +8969,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         if(vget_lane_u64(vreinterpret_u64_u8(xx), 0))
         {
             uint8x16_t am = vandq_u8(a, compaction_mask);
-            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
+            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am));
             a_sum = vpadd_u8(a_sum, a_sum);
             a_sum = vpadd_u8(a_sum, a_sum);
             mask = vget_lane_u16(vreinterpret_u16_u8(a_sum), 0);
@@ -9004,8 +9001,8 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         {
             uint8x16_t am = vandq_u8(a, compaction_mask);
             uint8x16_t bm = vandq_u8(b, compaction_mask);
-            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am)); 
-            uint8x8_t b_sum = vpadd_u8(vget_low_u8(bm), vget_high_u8(bm)); 
+            uint8x8_t a_sum = vpadd_u8(vget_low_u8(am), vget_high_u8(am));
+            uint8x8_t b_sum = vpadd_u8(vget_low_u8(bm), vget_high_u8(bm));
             a_sum = vpadd_u8(a_sum, b_sum);
             a_sum = vpadd_u8(a_sum, a_sum);
             mask = vget_lane_u32(vreinterpret_u32_u8(a_sum), 0);
@@ -9196,7 +9193,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     LARGE_INTEGER tick;
     QueryPerformanceFrequency(&tickspersecond);
     QueryPerformanceCounter(&tick);
-    return (tick.QuadPart/tickspersecond.QuadPart) * 1000000000LL;
+    return (tick.QuadPart / tickspersecond.QuadPart) * 1000000000LL;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
@@ -9505,7 +9502,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     }
     if(mode[1] == '+' || mode[2] == '+')
     {
-        access = O_RDWR | O_CREAT ;
+        access = O_RDWR | O_CREAT;
         create = S_IRUSR | S_IWUSR;
     }
     file->nativefile = open(pathname, access | O_CLOEXEC, create);

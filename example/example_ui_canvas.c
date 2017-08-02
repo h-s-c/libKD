@@ -46,8 +46,8 @@ static KDboolean quit = KD_FALSE;
  *
  * ===============================================================*/
 struct nk_glfw_vertex {
-    float position[2];
-    float uv[2];
+    KDfloat32 position[2];
+    KDfloat32 uv[2];
     nk_byte col[4];
 };
 
@@ -118,9 +118,9 @@ device_init(struct device *dev)
     {
         /* buffer setup */
         GLsizei vs = sizeof(struct nk_glfw_vertex);
-        size_t vp = OFFSETOFF(struct nk_glfw_vertex, position);
-        size_t vt = OFFSETOFF(struct nk_glfw_vertex, uv);
-        size_t vc = OFFSETOFF(struct nk_glfw_vertex, col);
+        KDsize vp = OFFSETOFF(struct nk_glfw_vertex, position);
+        KDsize vt = OFFSETOFF(struct nk_glfw_vertex, uv);
+        KDsize vc = OFFSETOFF(struct nk_glfw_vertex, col);
 
         glGenBuffers(1, &dev->vbo);
         glGenBuffers(1, &dev->ebo);
@@ -148,7 +148,7 @@ device_init(struct device *dev)
 }
 
 static void
-device_upload_atlas(struct device *dev, const void *image, int width, int height)
+device_upload_atlas(struct device *dev, const void *image, KDint width, KDint height)
 {
     glGenTextures(1, &dev->font_tex);
     glBindTexture(GL_TEXTURE_2D, dev->font_tex);
@@ -173,7 +173,7 @@ device_shutdown(struct device *dev)
 }
 
 static void
-device_draw(struct device *dev, struct nk_context *ctx, int width, int height,
+device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint height,
     enum nk_anti_aliasing AA)
 {
     GLfloat ortho[4][4] = {
@@ -209,8 +209,8 @@ device_draw(struct device *dev, struct nk_context *ctx, int width, int height,
         glBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
 
-        glBufferData(GL_ARRAY_BUFFER, MAX_VERTEX_MEMORY, NULL, GL_STREAM_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_ELEMENT_MEMORY, NULL, GL_STREAM_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, MAX_VERTEX_MEMORY, KD_NULL, GL_STREAM_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_ELEMENT_MEMORY, KD_NULL, GL_STREAM_DRAW);
 
         /* load draw vertices & elements directly into vertex + element buffer */
 #ifdef __EMSCRIPTEN__
@@ -376,7 +376,7 @@ struct nk_canvas {
 
 static void
 canvas_begin(struct nk_context *ctx, struct nk_canvas *canvas, nk_flags flags,
-    int x, int y, int width, int height, struct nk_color background_color)
+    KDint x, KDint y, KDint width, KDint height, struct nk_color background_color)
 {
     /* save style properties which will be overwritten */
     canvas->panel_padding = ctx->style.window.padding;
@@ -421,7 +421,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     /* Platform */
     static KDWindow *win;
-    int width = 0, height = 0;
+    KDint width = 0, height = 0;
 
     /* GUI */
     struct device device;
@@ -508,7 +508,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     /* GUI */
     {device_init(&device);
-    {const void *image; int w, h;
+    {const void *image; KDint w, h;
     struct nk_font *font;
     nk_font_atlas_init_default(&atlas);
     nk_font_atlas_begin(&atlas);
@@ -536,7 +536,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             nk_fill_triangle(canvas.painter, 250, 250, 350, 250, 300, 350, nk_rgb(0,255,0));
             nk_fill_arc(canvas.painter, 300, 180, 50, 0, 3.141592654f * 3.0f / 4.0f, nk_rgb(255,255,0));
 
-            {float points[12];
+            {KDfloat32 points[12];
             points[0] = 200; points[1] = 250;
             points[2] = 250; points[3] = 350;
             points[4] = 225; points[5] = 350;
