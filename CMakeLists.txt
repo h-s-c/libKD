@@ -104,7 +104,7 @@ project (KD C)
     endif()
     set(KD_WINDOW_SUPPORTED "On")
     if(ANDROID OR EMSCRIPTEN)
-        #No window
+        # No window
     elseif(WIN32)
         set(KD_WINDOW_WIN32 "On")
     elseif(APPLE)
@@ -160,7 +160,8 @@ project (KD C)
     if(CLANG_TIDY AND CMAKE_MAJOR_VERSION GREATER 2 AND CMAKE_MINOR_VERSION GREATER 5 AND NOT CMAKE_CROSSCOMPILING)
         set_target_properties(KD PROPERTIES C_CLANG_TIDY ${CLANG_TIDY})
     endif()
-    find_program(CPPLINT NAMES cpplint)
+    # pip install --user cpplint
+    find_program(CPPLINT NAMES cpplint PATHS ~/.local/bin)
     if(CPPLINT AND CMAKE_MAJOR_VERSION GREATER 2 AND CMAKE_MINOR_VERSION GREATER 7 AND NOT CMAKE_CROSSCOMPILING)
         set_target_properties(KD PROPERTIES C_CPPLINT ${CPPLINT})
     endif()
@@ -195,7 +196,7 @@ project (KD C)
             elseif(EMSCRIPTEN)
                 set_target_properties(${TEST_NAME} PROPERTIES LINK_FLAGS "${CI_FLAGS} ${EMCC_FLAGS}")
             elseif(CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
-                #TCC does not support -Wl,--export-dynamic
+                # TCC does not support -Wl,--export-dynamic
                 set_target_properties(${TEST_NAME} PROPERTIES ENABLE_EXPORTS "OFF")    
                 set_property(TARGET ${TEST_NAME} APPEND PROPERTY LINK_FLAGS "${CI_FLAGS} -rdynamic")
             endif()

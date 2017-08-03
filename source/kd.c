@@ -2790,14 +2790,13 @@ static int __kdPreMain(int argc, char **argv)
 #if defined(_WIN32)
     WSACleanup();
 #endif
-    kdExit(result);
+    return result;
 }
 
 #ifdef __ANDROID__
 static void *__kdAndroidPreMain(void *arg)
 {
-    __kdPreMain(0, KD_NULL);
-    return 0;
+    return __kdPreMain(0, KD_NULL);
 }
 void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_t savedStateSize)
 {
@@ -10358,7 +10357,7 @@ KD_API KDSocket *KD_APIENTRY kdSocketCreate(KDint type, void *eventuserptr)
 }
 
 /* kdSocketClose: Closes a socket. */
-KD_API KDint KD_APIENTRY kdSocketClose(KD_UNUSED KDSocket *socket)
+KD_API KDint KD_APIENTRY kdSocketClose(KDSocket *socket)
 {
 #if defined(_WIN32)
     closesocket(socket->nativesocket);
@@ -10369,7 +10368,7 @@ KD_API KDint KD_APIENTRY kdSocketClose(KD_UNUSED KDSocket *socket)
 }
 
 /* kdSocketBind: Bind a socket. */
-KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const struct KDSockaddr *addr, KD_UNUSED KDboolean reuse)
+KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const KDSockaddr *addr, KD_UNUSED KDboolean reuse)
 {
     if(addr->family != KD_AF_INET)
     {
@@ -10411,9 +10410,9 @@ KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const struct KDSockaddr 
 }
 
 /* kdSocketGetName: Get the local address of a socket. */
-KD_API KDint KD_APIENTRY kdSocketGetName(KDSocket *socket, struct KDSockaddr *addr)
+KD_API KDint KD_APIENTRY kdSocketGetName(KDSocket *socket, KDSockaddr *addr)
 {
-    kdMemcpy(&addr, &socket->addr, sizeof(socket->addr));
+    kdMemcpy(&addr, &socket->addr, sizeof(KDSockaddr));
     return 0;
 }
 
@@ -10702,7 +10701,7 @@ static KDboolean __kdIsPointerDereferencable(void *p)
     }
 
     /* align addr to page_size */
-    addr &= ~(page_size - 1);
+    addr &= ~(KDuintptr)(page_size - 1);
 
     if(mincore((void *)addr, page_size, &valid) < 0)
     {
