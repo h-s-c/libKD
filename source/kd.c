@@ -10315,7 +10315,11 @@ KD_API void KD_APIENTRY kdNameLookupCancel(KD_UNUSED void *eventuserptr)
 
 /* kdSocketCreate: Creates a socket. */
 struct KDSocket {
+#if defined(_WIN32)
+    SOCKET nativesocket;
+#else
     KDint nativesocket;
+#endif
     KDint type;
     const struct KDSockaddr *addr;
     void *userptr;
@@ -10356,7 +10360,11 @@ KD_API KDSocket *KD_APIENTRY kdSocketCreate(KDint type, void *eventuserptr)
 /* kdSocketClose: Closes a socket. */
 KD_API KDint KD_APIENTRY kdSocketClose(KD_UNUSED KDSocket *socket)
 {
+#if defined(_WIN32)
+    closesocket(socket->nativesocket);
+#else
     close(socket->nativesocket);
+#endif
     return 0;
 }
 
