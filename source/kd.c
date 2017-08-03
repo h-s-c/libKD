@@ -9890,6 +9890,9 @@ KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const struct KDSockaddr 
     struct sockaddr_in address;
     kdMemset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
+#if defined(_WIN32)
+#define s_addr S_un.S_addr
+#endif
     if(addr->data.sin.address == KD_INADDR_ANY)
     {
         address.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -9898,6 +9901,9 @@ KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const struct KDSockaddr 
     {
         address.sin_addr.s_addr = kdHtonl(addr->data.sin.address);
     }
+#if defined(_WIN32)
+#undef s_addr
+#endif
     address.sin_port = kdHtons(addr->data.sin.port);
     bind(socket->nativesocket , (struct sockaddr*)&address, sizeof(address));
 
@@ -9927,6 +9933,9 @@ KD_API KDint KD_APIENTRY kdSocketConnect(KDSocket *socket, const KDSockaddr *add
     struct sockaddr_in address;
     kdMemset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
+#if defined(_WIN32)
+#define s_addr S_un.S_addr
+#endif
     if(addr->data.sin.address == KD_INADDR_ANY)
     {
         address.sin_addr.s_addr = kdHtonl(INADDR_ANY);
@@ -9935,6 +9944,9 @@ KD_API KDint KD_APIENTRY kdSocketConnect(KDSocket *socket, const KDSockaddr *add
     {
         address.sin_addr.s_addr = kdHtonl(addr->data.sin.address);
     }
+#if defined(_WIN32)
+#undef s_addr
+#endif
     address.sin_port = kdHtons(addr->data.sin.port);
     connect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address));
     return 0;
@@ -9943,14 +9955,14 @@ KD_API KDint KD_APIENTRY kdSocketConnect(KDSocket *socket, const KDSockaddr *add
 /* kdSocketListen: Listen on a socket. */
 KD_API KDint KD_APIENTRY kdSocketListen(KD_UNUSED KDSocket *socket, KD_UNUSED KDint backlog)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_ENOSYS);
     return -1;
 }
 
 /* kdSocketAccept: Accept an incoming connection. */
 KD_API KDSocket *KD_APIENTRY kdSocketAccept(KD_UNUSED KDSocket *socket, KD_UNUSED KDSockaddr *addr, KD_UNUSED void *eventuserptr)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return KD_NULL;
 }
 
@@ -9966,7 +9978,10 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
     struct sockaddr_in address;
     kdMemset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    if(addr->data.sin.address == KD_INADDR_ANY)
+#if defined(_WIN32)
+#define s_addr S_un.S_addr
+#endif
+    if(addr->data.sin.address == kdHtonl(KD_INADDR_ANY))
     {
         address.sin_addr.s_addr = kdHtonl(INADDR_ANY);
     }
@@ -9974,22 +9989,44 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
     {
         address.sin_addr.s_addr = kdHtonl(addr->data.sin.address);
     }
+#if defined(_WIN32)
+#undef s_addr
+#endif
     address.sin_port = kdHtons(addr->data.sin.port);
     sendto(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, sizeof(address)); 
     return 0;
 }
 
 /* kdSocketRecv, kdSocketRecvFrom: Receive data from a socket. */
-KD_API KDint KD_APIENTRY kdSocketRecv(KD_UNUSED KDSocket *socket, KD_UNUSED void *buf, KD_UNUSED KDint len)
+KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return -1;
+    recv(socket->nativesocket, buf, len, 0);
+    return 0;
 }
 
-KD_API KDint KD_APIENTRY kdSocketRecvFrom(KD_UNUSED KDSocket *socket, KD_UNUSED void *buf, KD_UNUSED KDint len, KD_UNUSED KDSockaddr *addr)
+KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len, KDSockaddr *addr)
 {
-    kdSetError(KD_EOPNOTSUPP);
-    return -1;
+    struct sockaddr_in address;
+    kdMemset(&address, 0, sizeof(address));
+    socklen_t addresssize = sizeof(address);
+    recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, &addresssize);
+    addr->family = KD_AF_INET;
+#if defined(_WIN32)
+#define s_addr S_un.S_addr
+#endif
+    if(address.sin_addr.s_addr == kdHtonl(INADDR_ANY))
+    {
+        addr->data.sin.address = kdHtonl(KD_INADDR_ANY);
+    }
+    else
+    {
+        addr->data.sin.address = kdHtonl(address.sin_addr.s_addr);
+    }
+#if defined(_WIN32)
+#undef s_addr
+#endif
+    addr->data.sin.port = kdHtons(address.sin_port);
+    return 0;
 }
 
 /* kdHtonl: Convert a 32-bit integer from host to network byte order. */
