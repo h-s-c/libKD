@@ -58,13 +58,7 @@
  * Errors (extensions)
  *******************************************************/
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
-typedef KDuint KDPlatformErrorVEN;
-#else
-typedef KDint KDPlatformErrorVEN;
-#endif
-
-KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint allowed);
+KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDint error, KDint allowed);
 
 /*******************************************************
  * Threads and synchronization (extensions)

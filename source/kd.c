@@ -272,7 +272,7 @@ KD_API void KD_APIENTRY kdSetError(KDint error)
     kdThreadSelf()->lasterror = error;
 }
 
-KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDPlatformErrorVEN error, KDint allowed)
+KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDint error, KDint allowed)
 {
     KDint kderror = 0;
 #if defined(_WIN32)
@@ -9449,7 +9449,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         return KD_NULL;
     }
     file->pathname = pathname;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
@@ -9546,7 +9546,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
     KDint retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     retval = CloseHandle(file->nativefile);
     if(retval == 0)
@@ -9585,7 +9585,7 @@ KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDssize retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
     KDsize length = count * size;
 #if defined(_WIN32)
     BOOL success = ReadFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
@@ -9629,7 +9629,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
 KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDssize retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
     KDsize length = count * size;
 #if defined(_WIN32)
     BOOL success = WriteFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
@@ -9668,7 +9668,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
     KDuint8 byte = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     DWORD byteswritten = 0;
     BOOL success = ReadFile(file->nativefile, &byte, 1, &byteswritten, KD_NULL);
@@ -9701,7 +9701,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
     KDuint8 byte = c & 0xFF;
 #if defined(_WIN32)
     BOOL success = WriteFile(file->nativefile, &byte, 1, (DWORD[]){0}, KD_NULL);
@@ -9795,7 +9795,7 @@ static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SE
 /* kdFseek: Reposition the file position indicator in a file. */
 KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
 {
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
     for(KDuint i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
     {
         if(seekorigins[i].seekorigin_kd == origin)
@@ -9824,7 +9824,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
 KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 {
     KDoff position = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     position = (KDoff)SetFilePointer(file->nativefile, 0, KD_NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
@@ -9846,7 +9846,7 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 {
     KDint retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     retval = CreateDirectoryA(pathname, KD_NULL);
     if(retval == 0)
@@ -9868,7 +9868,7 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 {
     KDint retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     retval = RemoveDirectoryA(pathname);
     if(retval == 0)
@@ -9890,7 +9890,7 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
     KDint retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     retval = MoveFileA(src, dest);
     if(retval == 0)
@@ -9928,7 +9928,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
     KDint retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     retval = DeleteFileA(pathname);
     if(retval == 0)
@@ -9950,7 +9950,7 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
     KDint retval = 0;
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     HANDLE file = FindFirstFileA(pathname, &data);
@@ -9974,7 +9974,7 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
@@ -10049,7 +10049,7 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
@@ -10104,7 +10104,7 @@ struct KDDir {
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
     if(kdStrcmp(pathname, "/") == 0)
     {
         kdSetError(KD_EACCES);
@@ -10167,7 +10167,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 /* kdReadDir: Return the next file in a directory. */
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     if(FindNextFileA(dir->nativedir, &data) != 0)
@@ -10217,7 +10217,7 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 /* kdGetFree: Get free space on a drive. */
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
-    KDPlatformErrorVEN error = 0;
+    KDint error = 0;
     KDoff freespace = 0;
     const KDchar *temp = pathname;
 #if defined(_WIN32)
@@ -10353,11 +10353,41 @@ KD_API KDSocket *KD_APIENTRY kdSocketCreate(KDint type, void *eventuserptr)
     sock->userptr = eventuserptr;
     if(sock->type == KD_SOCK_TCP)
     {
+        KDint error = 0;
+#if defined(_WIN32)
+        sock->nativesocket = WSASocketA(AF_UNIX, SOCK_STREAM, 0, 0, 0, 0);
+        if(sock->nativesocket == INVALID_SOCKET)
+        {
+            error = WSAGetLastError();
+#else
         sock->nativesocket = socket(AF_UNIX, SOCK_STREAM, 0);
+        if(sock->nativesocket == -1)
+        {
+            error = errno;
+#endif
+            kdFree(sock);
+            kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EMFILE | KD_ENOMEM | KD_ENOSYS);
+            return KD_NULL;
+        }
     }
     else if(sock->type == KD_SOCK_UDP)
     {
+        KDint error = 0;
+#if defined(_WIN32)
+        sock->nativesocket = WSASocketA(AF_UNIX, SOCK_DGRAM, 0, 0, 0, 0);
+        if(sock->nativesocket == INVALID_SOCKET)
+        {
+            error = WSAGetLastError();
+#else
         sock->nativesocket = socket(AF_UNIX, SOCK_DGRAM, 0);
+        if(sock->nativesocket == -1)
+        {
+            error = errno;
+#endif
+            kdFree(sock);
+            kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EMFILE | KD_ENOMEM | KD_ENOSYS);
+            return KD_NULL;
+        }
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_SOCKET_READABLE;
         event->userptr = sock->userptr;
@@ -10411,10 +10441,22 @@ KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const KDSockaddr *addr, 
 #undef s_addr
 #endif
     address.sin_port = kdHtons(addr->data.sin.port);
-    bind(socket->nativesocket , (struct sockaddr*)&address, sizeof(address));
+    KDint error = 0;
+    KDint retval = bind(socket->nativesocket , (struct sockaddr*)&address, sizeof(address));
+#if defined(_WIN32)
+    if(retval == SOCKET_ERROR)
+    {
+        error = WSAGetLastError();
+#else
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EADDRINUSE | KD_EADDRNOTAVAIL | KD_EAFNOSUPPORT | KD_EINVAL | KD_EIO | KD_EISCONN | KD_ENOMEM);
+        return -1;
+    }
 
     socket->addr = addr;
-
     if(socket->type == KD_SOCK_TCP)
     {
         KDEvent *event = kdCreateEvent();
@@ -10454,7 +10496,21 @@ KD_API KDint KD_APIENTRY kdSocketConnect(KDSocket *socket, const KDSockaddr *add
 #undef s_addr
 #endif
     address.sin_port = kdHtons(addr->data.sin.port);
-    connect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address));
+    KDint error = 0;
+#if defined(_WIN32)
+    KDint retval = WSAConnect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address), 0, 0, 0, 0);
+    if(retval == SOCKET_ERROR)
+    {
+        error = WSAGetLastError();
+#else
+    KDint retval = connect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address));
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EADDRINUSE | KD_EAFNOSUPPORT | KD_EALREADY | KD_ECONNREFUSED | KD_ECONNRESET | KD_EHOSTUNREACH | KD_EINVAL | KD_EIO | KD_EISCONN | KD_ENOMEM | KD_ETIMEDOUT);
+        return -1;
+    }
     return 0;
 }
 
@@ -10475,7 +10531,26 @@ KD_API KDSocket *KD_APIENTRY kdSocketAccept(KD_UNUSED KDSocket *socket, KD_UNUSE
 /* kdSocketSend, kdSocketSendTo: Send data to a socket. */
 KD_API KDint KD_APIENTRY kdSocketSend(KDSocket *socket, const void *buf, KDint len)
 {
-    send(socket->nativesocket, buf, len, 0); 
+    KDint error = 0;
+#if defined(_WIN32)
+    WSABUF wsabuf;
+    wsabuf.len = len;
+    wsabuf.buf = kdMalloc(len);
+    kdMemcpy(wsabuf.buf, buf, len);
+    KDint retval = WSASend(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, KD_NULL, KD_NULL);
+    kdFree(wsabuf.buf);
+    if(retval == SOCKET_ERROR)
+    {
+        error = WSAGetLastError();
+#else
+    KDint retval = send(socket->nativesocket, buf, len, 0);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+       kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
+        return -1;
+    }
     return 0;
 }
 
@@ -10499,14 +10574,50 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
 #undef s_addr
 #endif
     address.sin_port = kdHtons(addr->data.sin.port);
-    sendto(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, sizeof(address)); 
+    KDint error = 0;
+#if defined(_WIN32)
+    WSABUF wsabuf;
+    wsabuf.len = len;
+    kdMemcpy(wsabuf.buf, buf, len);
+    KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, (const struct sockaddr*)&address, sizeof(address), KD_NULL, KD_NULL); 
+    if(retval == SOCKET_ERROR)
+    {
+        error = WSAGetLastError();
+#else
+    KDint retval = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, sizeof(address)); 
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
+        return -1;
+    }
     return 0;
 }
 
 /* kdSocketRecv, kdSocketRecvFrom: Receive data from a socket. */
 KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
 {
-    recv(socket->nativesocket, buf, len, 0);
+    KDint error = 0;
+#if defined(_WIN32)
+    WSABUF wsabuf;
+    KDint retval = WSARecv(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, KD_NULL, KD_NULL);
+    if(retval == 0)
+    {
+        kdMemcpy(&len, &wsabuf.len, sizeof(u_long));
+        kdMemcpy(buf, wsabuf.buf, wsabuf.len);
+    }
+    else if(retval == SOCKET_ERROR)
+    {
+        error = WSAGetLastError();
+#else
+    KDint retval = recv(socket->nativesocket, buf, len, 0);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);        return -1;
+    }
     return 0;
 }
 
@@ -10515,7 +10626,29 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
     struct sockaddr_in address;
     kdMemset(&address, 0, sizeof(address));
     socklen_t addresssize = sizeof(address);
-    recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, &addresssize);
+
+    KDint error = 0;
+#if defined(_WIN32)
+    WSABUF wsabuf;
+    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, (struct sockaddr*)&address, &addresssize, KD_NULL, KD_NULL);
+    if(retval == 0)
+    {
+        kdMemcpy(&len, &wsabuf.len, sizeof(u_long));
+        kdMemcpy(buf, wsabuf.buf, wsabuf.len);
+    }
+    else if(retval == SOCKET_ERROR)
+    {
+        error = WSAGetLastError();
+#else
+    KDint retval =recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, &addresssize);
+    if(retval == -1)
+    {
+        error = errno;
+#endif
+        kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);
+        return -1;
+    }
+    
     addr->family = KD_AF_INET;
 #if defined(_WIN32)
 #define s_addr S_un.S_addr
