@@ -13,7 +13,7 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...);
         kdExit(-1);\
 }} while (0)
 
-#define TEST_FAIL(void) do {\
+#define TEST_FAIL() do {\
     kdLogMessagefKHR("%s:%d\n", __FILE__, __LINE__);\
     kdExit(-1);\
 } while (0)
