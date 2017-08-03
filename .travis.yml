@@ -1,6 +1,7 @@
 language: c
 
 cache:
+  ccache: true
   directories:
     - ci-tools/cache
 
@@ -14,7 +15,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-7', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['gcc-7', 'ninja-build', 'ccache', valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -25,7 +26,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['gcc-6', 'ninja-build', 'ccache', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -36,7 +37,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['gcc-5', 'ninja-build', 'ccache', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -47,7 +48,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['gcc-4.9', 'ninja-build', 'ccache', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -58,7 +59,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['gcc-4.8', 'ninja-build', 'ccache', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -69,7 +70,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['gcc-4.7', 'ninja-build', 'ccache', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -83,7 +84,7 @@ jobs:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-4.0', 'llvm-4.0', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['clang-4.0', 'llvm-4.0', 'ninja-build', 'ccache', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -97,7 +98,7 @@ jobs:
             - ubuntu-toolchain-r-test
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-3.8', 'llvm-3.8', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['clang-3.8', 'llvm-3.8', 'ninja-build', 'ccache', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -108,7 +109,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.6', 'llvm-3.6', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['clang-3.6', 'llvm-3.6', 'ninja-build', 'ccache', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -119,7 +120,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.5', 'llvm-3.5', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['clang-3.5', 'llvm-3.5', 'ninja-build', 'ccache', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -130,7 +131,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+          packages: ['ninja-build', 'ccache', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: 
         - python ci-tools/install_cmake.py 
         - python ci-tools/install_icc.py
@@ -180,7 +181,7 @@ jobs:
       osx_image: xcode9
       install: 
         - brew update
-        - brew install ninja
+        - brew install ninja ccache
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -193,7 +194,7 @@ jobs:
       osx_image: xcode8.3
       install: 
         - brew update
-        - brew install ninja
+        - brew install ninja ccache
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -206,7 +207,7 @@ jobs:
       osx_image: xcode7.3
       install: 
         - brew update
-        - brew install ninja valgrind
+        - brew install ninja ccache valgrind
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -219,7 +220,7 @@ jobs:
       osx_image: xcode6.4
       install: 
         - brew update
-        - brew install ninja valgrind
+        - brew install ninja ccache valgrind
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
