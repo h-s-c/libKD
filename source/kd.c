@@ -10536,26 +10536,27 @@ KD_API KDSocket *KD_APIENTRY kdSocketAccept(KD_UNUSED KDSocket *socket, KD_UNUSE
 KD_API KDint KD_APIENTRY kdSocketSend(KDSocket *socket, const void *buf, KDint len)
 {
     KDint error = 0;
+    KDint result = 0;
 #if defined(_WIN32)
     WSABUF wsabuf;
     wsabuf.len = len;
     wsabuf.buf = kdMalloc(len);
     kdMemcpy(wsabuf.buf, buf, len);
-    KDint retval = WSASend(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, KD_NULL, KD_NULL);
+    KDint retval = WSASend(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, 0, KD_NULL, KD_NULL);
     kdFree(wsabuf.buf);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    KDint retval = send(socket->nativesocket, buf, len, 0);
-    if(retval == -1)
+    result = send(socket->nativesocket, buf, len, 0);
+    if(result == -1)
     {
         error = errno;
 #endif
        kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
         return -1;
     }
-    return 0;
+    return result;
 }
 
 KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint len, const KDSockaddr *addr)
@@ -10579,52 +10580,51 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
 #endif
     address.sin_port = kdHtons(addr->data.sin.port);
     KDint error = 0;
+    KDint result = 0;
 #if defined(_WIN32)
     WSABUF wsabuf;
     wsabuf.len = len;
     wsabuf.buf = kdMalloc(len);
     kdMemcpy(wsabuf.buf, buf, len);
-    KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, (const struct sockaddr*)&address, sizeof(address), KD_NULL, KD_NULL); 
+    KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, 0, (const struct sockaddr*)&address, sizeof(address), KD_NULL, KD_NULL); 
     kdFree(wsabuf.buf);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    KDint retval = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, sizeof(address)); 
-    if(retval == -1)
+    result = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, sizeof(address)); 
+    if(result == -1)
     {
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
         return -1;
     }
-    return 0;
+    return result;
 }
 
 /* kdSocketRecv, kdSocketRecvFrom: Receive data from a socket. */
 KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
 {
     KDint error = 0;
+    KDint result = 0;
 #if defined(_WIN32)
     WSABUF wsabuf;
-    KDint retval = WSARecv(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, KD_NULL, KD_NULL);
-    if(retval == 0)
-    {
-        kdMemcpy(&len, &wsabuf.len, sizeof(u_long));
-        kdMemcpy(buf, wsabuf.buf, wsabuf.len);
-    }
-    else if(retval == SOCKET_ERROR)
+    wsabuf.len = len;
+    wsabuf.buf = buf;
+    KDint retval = WSARecv(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, KD_NULL, KD_NULL);
+    if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    KDint retval = recv(socket->nativesocket, buf, len, 0);
-    if(retval == -1)
+    result = recv(socket->nativesocket, buf, len, 0);
+    if(result == -1)
     {
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);        return -1;
     }
-    return 0;
+    return result;;
 }
 
 KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len, KDSockaddr *addr)
@@ -10634,20 +10634,18 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
     socklen_t addresssize = sizeof(address);
 
     KDint error = 0;
+    KDint result = 0;
 #if defined(_WIN32)
     WSABUF wsabuf;
-    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, (struct sockaddr*)&address, &addresssize, KD_NULL, KD_NULL);
-    if(retval == 0)
-    {
-        kdMemcpy(&len, &wsabuf.len, sizeof(u_long));
-        kdMemcpy(buf, wsabuf.buf, wsabuf.len);
-    }
-    else if(retval == SOCKET_ERROR)
+    wsabuf.len = len;
+    wsabuf.buf = buf;
+    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, (struct sockaddr*)&address, &addresssize, KD_NULL, KD_NULL);
+    if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    KDint retval =recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, &addresssize);
-    if(retval == -1)
+    result = recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, &addresssize);
+    if(result == -1)
     {
         error = errno;
 #endif
@@ -10972,7 +10970,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
         if(eglQueryNativeDisplayNV)
         {
-            eglQueryNativeDisplayNV(display, &window->nativedisplay);
+            eglQueryNativeDisplayNV(display, (EGLNativeDisplayType*)&window->nativedisplay);
 #if defined(KD_WINDOW_WAYLAND)
             if(__kdIsPointerDereferencable(window->nativedisplay))
             {
