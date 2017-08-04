@@ -51,6 +51,7 @@
 
 #if defined(_MSC_VER)
 #   define _CRT_SECURE_NO_WARNINGS 1
+#   define _WINSOCK_DEPRECATED_NO_WARNINGS 1
 #endif
 
 /******************************************************************************
@@ -1119,7 +1120,6 @@ KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
         return KD_NULL;
     }
 
-    sem->count = value;
     sem->mutex = kdThreadMutexCreate(KD_NULL);
     if(sem->mutex == KD_NULL)
     {
@@ -1127,6 +1127,10 @@ KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
         kdSetError(KD_ENOSPC);
         return KD_NULL;
     }
+    kdThreadMutexLock(sem->mutex);
+    sem->count = value;
+    kdThreadMutexUnlock(sem->mutex);
+
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
     sem->condition = kdThreadCondCreate(KD_NULL);
     if(sem->condition == KD_NULL)
@@ -10578,8 +10582,10 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
 #if defined(_WIN32)
     WSABUF wsabuf;
     wsabuf.len = len;
+    wsabuf.buf = kdMalloc(len);
     kdMemcpy(wsabuf.buf, buf, len);
     KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, (const struct sockaddr*)&address, sizeof(address), KD_NULL, KD_NULL); 
+    kdFree(wsabuf.buf)
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
