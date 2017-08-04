@@ -22,6 +22,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
+#include "test.h"
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
@@ -30,55 +31,73 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     time = 0;
     kdGmtime_r(&time, &tm);
-    if(!(tm.tm_year==70 && tm.tm_mon==0 && tm.tm_mday==1 &&
-        tm.tm_hour==0 && tm.tm_min==0 && tm.tm_sec==0 && 
-        tm.tm_wday==4 && tm.tm_yday==0 && tm.tm_isdst==0))
-    {
-        return 1;
-    }
+    TEST_EQ(tm.tm_year, 70);
+    TEST_EQ(tm.tm_mon, 0);
+    TEST_EQ(tm.tm_mday, 1);
+    TEST_EQ(tm.tm_hour, 0);
+    TEST_EQ(tm.tm_min, 0);
+    TEST_EQ(tm.tm_sec, 0);
+    TEST_EQ(tm.tm_wday, 4);
+    TEST_EQ(tm.tm_yday, 0);
+    TEST_EQ(tm.tm_isdst, 0);
+
     time = 1;
     kdGmtime_r(&time, &tm);
-    if(!(tm.tm_year==70 && tm.tm_mon==0 && tm.tm_mday==1 &&
-        tm.tm_hour==0 && tm.tm_min==0 && tm.tm_sec==1 && 
-        tm.tm_wday==4 && tm.tm_yday==0 && tm.tm_isdst==0))
-    {
-        return 1;
-    }
+    TEST_EQ(tm.tm_year, 70);
+    TEST_EQ(tm.tm_mon, 0);
+    TEST_EQ(tm.tm_mday, 1);
+    TEST_EQ(tm.tm_hour, 0);
+    TEST_EQ(tm.tm_min, 0);
+    TEST_EQ(tm.tm_sec, 1);
+    TEST_EQ(tm.tm_wday, 4);
+    TEST_EQ(tm.tm_yday, 0);
+    TEST_EQ(tm.tm_isdst, 0);
+
     time = 60;
     kdGmtime_r(&time, &tm);
-    if(!(tm.tm_year==70 && tm.tm_mon==0 && tm.tm_mday==1 &&
-        tm.tm_hour==0 && tm.tm_min==1 && tm.tm_sec==0 && 
-        tm.tm_wday==4 && tm.tm_yday==0 && tm.tm_isdst==0))
-    {
-        return 1;
-    }
+    TEST_EQ(tm.tm_year, 70);
+    TEST_EQ(tm.tm_mon, 0);
+    TEST_EQ(tm.tm_mday, 1);
+    TEST_EQ(tm.tm_hour, 0);
+    TEST_EQ(tm.tm_min, 1);
+    TEST_EQ(tm.tm_sec, 0);
+    TEST_EQ(tm.tm_wday, 4);
+    TEST_EQ(tm.tm_yday, 0);
+    TEST_EQ(tm.tm_isdst, 0);
+
     time = 60*60;
     kdGmtime_r(&time, &tm);
-    if(!(tm.tm_year==70 && tm.tm_mon==0 && tm.tm_mday==1 &&
-        tm.tm_hour==1 && tm.tm_min==0 && tm.tm_sec==0 && 
-        tm.tm_wday==4 && tm.tm_yday==0 && tm.tm_isdst==0))
-    {
-        return 1;
-    }
+    TEST_EQ(tm.tm_year, 70);
+    TEST_EQ(tm.tm_mon, 0);
+    TEST_EQ(tm.tm_mday, 1);
+    TEST_EQ(tm.tm_hour, 1);
+    TEST_EQ(tm.tm_min, 0);
+    TEST_EQ(tm.tm_sec, 0);
+    TEST_EQ(tm.tm_wday, 4);
+    TEST_EQ(tm.tm_yday, 0);
+    TEST_EQ(tm.tm_isdst, 0);
+
     time = 60*60*24;
     kdGmtime_r(&time, &tm);
-    if(!(tm.tm_year==70 && tm.tm_mon==0 && tm.tm_mday==2 &&
-        tm.tm_hour==0 && tm.tm_min==0 && tm.tm_sec==0 && 
-        tm.tm_wday==5 && tm.tm_yday==1 && tm.tm_isdst==0))
-    {
-        return 1;
-    }
+    TEST_EQ(tm.tm_year, 70);
+    TEST_EQ(tm.tm_mon, 0);
+    TEST_EQ(tm.tm_mday, 2);
+    TEST_EQ(tm.tm_hour, 0);
+    TEST_EQ(tm.tm_min, 0);
+    TEST_EQ(tm.tm_sec, 0);
+    TEST_EQ(tm.tm_wday, 5);
+    TEST_EQ(tm.tm_yday, 1);
+    TEST_EQ(tm.tm_isdst, 0);
+
     time = 60*60*24*31;
     kdGmtime_r(&time, &tm);
-    if(!(tm.tm_year==70 && tm.tm_mon==1))
-    {
-        return 1;
-    }
+    TEST_EQ(tm.tm_year, 70);
+    TEST_EQ(tm.tm_mon, 1);
+
     time = 60*60*24*31*12;
     kdGmtime_r(&time, &tm);
-    if(!(tm.tm_year==71 && tm.tm_mon==0))
-    {
-        return 1;
-    }
+    TEST_EQ(tm.tm_year, 71);
+    TEST_EQ(tm.tm_mon, 0);
+
     return 0;
 }

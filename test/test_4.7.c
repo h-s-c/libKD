@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2016 Kevin Schmidt
+ * Copyright (c) 2014-2017 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -22,54 +22,35 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include "test.h"
 
-/* Test if we can can communicate properly with event loops in different threads. */
-#define THREAD_COUNT 10
-static void* test_func( void *arg)
+/* Test if the stack is big enough according to the OpenKODE Core spec */
+struct recurse {
+    struct recurse *next;
+    KDint32 value;
+};
+static KDint32 testrecurse(KDint32 count, struct recurse *lastrecurse)
 {
-    for(;;)
+    if (count != 625)
     {
-        const KDEvent *event = kdWaitEvent(-1);
-        if(event)
-        {
-            if(event->type == KD_EVENT_QUIT)
-            {
-                break;
-            }
-            kdDefaultEvent(event);
-        }
+        struct recurse thisrecurse;
+        thisrecurse.value = ++count;
+        thisrecurse.next = lastrecurse;
+        return testrecurse(count, &thisrecurse);
     }
-    return 0;
+    else
+    {
+        KDint32 product = 1;
+        while (lastrecurse)
+        {
+            product = product * lastrecurse->value | 1;
+            lastrecurse = lastrecurse->next;
+        }
+        return product;
+    }
 }
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
-    {
-        threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if(threads[i] == KD_NULL)
-        {
-            if(kdGetError() == KD_ENOSYS)
-            {
-                return 0;
-            }
-            TEST_FAIL();
-        }
-    }
-    for(KDint k = 0 ; k < THREAD_COUNT ;k++)
-    {
-        KDEvent *event = kdCreateEvent();
-        event->type      = KD_EVENT_QUIT;
-        if(kdPostThreadEvent(event, threads[k]) == -1)
-        {
-            TEST_FAIL();
-        }
-    }
-    for(KDint j = 0 ; j < THREAD_COUNT ;j++)
-    {
-        kdThreadJoin(threads[j], KD_NULL);
-    }
+    testrecurse(0, 0);
     return 0;
 }

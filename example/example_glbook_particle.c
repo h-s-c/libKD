@@ -14,7 +14,6 @@
 #include <KD/kd.h>
 #include <KD/kdext.h>
 #include <EGL/egl.h>
-#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 
 #define NUM_PARTICLES 2000
@@ -190,7 +189,7 @@ KDboolean Init(UserData *userData)
 
     if(programObject == 0)
     {
-        return 0;
+        return KD_FALSE;
     }
 
     glAttachShader(programObject, vertexShader);
@@ -222,7 +221,7 @@ KDboolean Init(UserData *userData)
         }
 
         glDeleteProgram(programObject);
-        return 0;
+        return KD_FALSE;
     }
 
     // Store the program object
@@ -273,10 +272,10 @@ KDboolean Init(UserData *userData)
     userData->textureId = LoadTexture("data/smoke.jpg");
     if(userData->textureId <= 0)
     {
-        return 0;
+        return KD_FALSE;
     }
 
-    return 1;
+    return KD_TRUE;
 }
 
 ///

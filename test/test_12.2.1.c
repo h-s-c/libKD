@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2016 Kevin Schmidt
+ * Copyright (c) 2014-2017 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -22,54 +22,23 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include "test.h"
+#include <KD/kdext.h>
 
-/* Test if we can can communicate properly with event loops in different threads. */
-#define THREAD_COUNT 10
-static void* test_func( void *arg)
-{
-    for(;;)
-    {
-        const KDEvent *event = kdWaitEvent(-1);
-        if(event)
-        {
-            if(event->type == KD_EVENT_QUIT)
-            {
-                break;
-            }
-            kdDefaultEvent(event);
-        }
-    }
-    return 0;
-}
-
+/* "" is a valid return if no locale info can be gathered but this shouldn't happen */
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
+    const KDchar *locale = kdGetLocale();
+    if(kdStrcmp(locale, "en") == 0 || kdStrcmp(locale, "en_") == 0 || kdStrcmp(locale, "en_US") == 0)
     {
-        threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if(threads[i] == KD_NULL)
-        {
-            if(kdGetError() == KD_ENOSYS)
-            {
-                return 0;
-            }
-            TEST_FAIL();
-        }
+        return 0;
     }
-    for(KDint k = 0 ; k < THREAD_COUNT ;k++)
+    else if(kdStrlen(locale) == 2 || kdStrlen(locale) == 3 || kdStrlen(locale) == 5)
     {
-        KDEvent *event = kdCreateEvent();
-        event->type      = KD_EVENT_QUIT;
-        if(kdPostThreadEvent(event, threads[k]) == -1)
-        {
-            TEST_FAIL();
-        }
+        return 0;
     }
-    for(KDint j = 0 ; j < THREAD_COUNT ;j++)
+    else
     {
-        kdThreadJoin(threads[j], KD_NULL);
+        return -1;
     }
     return 0;
 }

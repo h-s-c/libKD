@@ -112,6 +112,9 @@
 #elif defined(__TINYC__)
 #   define KD_ATOMIC_MUTEX
 #   define KD_THREAD_POSIX
+#elif defined(__PGIC__)
+#   define KD_ATOMIC_MUTEX
+#   define KD_THREAD_POSIX
 #else
 #   define KD_ATOMIC_MUTEX
 #endif
@@ -170,38 +173,36 @@
     #define kdAssert(c) ((void) 0)
 #else
     #if defined(__GNUC__) || defined(__clang__)
-        #define kdAssert(c) (__builtin_expect((c), 0) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+        #define kdAssert(c) (__builtin_expect((long int)(c), 0) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
     #else
         #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
     #endif
 #endif
 
-#if defined(_MSC_VER)
-    typedef signed   __int16        KDint16;
-    typedef unsigned __int16        KDuint16;
-    typedef signed   __int32        KDint32;
-    typedef unsigned __int32        KDuint32;
-    typedef signed   __int64        KDint64;
-    typedef unsigned __int64        KDuint64;
-#else
-    typedef signed   short          KDint16;
-    typedef unsigned short          KDuint16;
-    typedef signed   int            KDint32;
-    typedef unsigned int            KDuint32;
-    typedef signed   long long      KDint64;
-    typedef unsigned long long      KDuint64;
-#endif
+typedef signed   short          KDint16;
+typedef unsigned short          KDuint16;
+typedef signed   int            KDint32;
+typedef unsigned int            KDuint32;
+typedef signed   long long      KDint64;
+typedef unsigned long long      KDuint64;
 
-#if defined(_MSC_VER) && defined(_WIN64)
-    typedef signed   __int64        KDintptr;
-    typedef unsigned __int64        KDuintptr;
-    typedef signed   __int64        KDssize;
-    typedef unsigned __int64        KDsize;
-#else
-    typedef signed   long           KDintptr;
+#if defined(_WIN64)
+    /* LLP64 */
+    typedef unsigned long long      KDuintptr;
+    typedef signed   long long      KDssize;
+    typedef unsigned long long      KDsize;
+#elif defined(__LP64__) || defined(__x86_64__) ||  defined(__aarch64__) 
+    /* LP64 */
     typedef unsigned long           KDuintptr;
     typedef signed   long           KDssize;
     typedef unsigned long           KDsize;
+#elif defined(__ILP32__) || defined(__i386__) ||  defined(__arm__) || defined(_WIN32)
+    /* ILP32 */
+    typedef unsigned int            KDuintptr;
+    typedef signed   int            KDssize;
+    typedef unsigned int            KDsize;
+#else
+    #error "Unknown data model"
 #endif
 
 #define KDINT_MIN       (-0x7fffffff-1)
@@ -210,10 +211,17 @@
 #define KDINT64_MIN     (-0x8000000000000000-1)
 #define KDINT64_MAX     0x7fffffffffffffff
 #define KDUINT64_MAX    0xffffffffffffffffU
+#if defined(_WIN64) || defined(__LP64__) || defined(_LP64)
 #define KDSSIZE_MIN     KDINT64_MIN
 #define KDSSIZE_MAX     KDINT64_MAX
-#define KDSIZE_MAX      KDUINT_MAX
-#define KDUINTPTR_MAX   KDUINT_MAX
+#define KDSIZE_MAX      KDUINT64_MAX
+#define KDUINTPTR_MAX   KDUINT64_MAX
+#elif defined(__ILP32__) || defined(_ILP32) || defined(_WIN32) || defined(_M_IX86) || defined(__i386__) || defined(__i386)
+#define KDSSIZE_MIN     KDINT_MIN
+#define KDSSIZE_MAX     KDINT_MAX 
+#define KDSIZE_MAX      KDUINT_MAX 
+#define KDUINTPTR_MAX   KDUINT_MAX 
+#endif
 #define KD_INFINITY     0x7f800000
 
 

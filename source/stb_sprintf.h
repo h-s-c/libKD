@@ -689,6 +689,9 @@ STBSP__PUBLICDEF int STB_SPRINTF_DECORATE( vsprintfcb )( STBSP_SPRINTFCB * callb
         pr = sizeof(void*)*2;
         fl &= ~STBSP__LEADINGZERO; // 'p' only prints the pointer with zeros
         // drop through to X
+#if __GNUC__ >= 7
+        __attribute__ ((fallthrough));
+#endif
       
       case 'X': // upper binary
         h = hexu;

@@ -4,8 +4,20 @@ cache:
   directories:
     - ci-tools/cache
 
-matrix:
+jobs:
   include:
+    - stage: Compiler compatibility testing (linux)
+      os: linux
+      compiler: gcc-7
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['gcc-7', 'ninja-build', 'valgrind', 'binutils-gold', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
+      install: python ci-tools/install_cmake.py   
+      script: python ci-tools/run_ctest.py
+
     - os: linux
       compiler: gcc-6
       dist: trusty
@@ -62,20 +74,6 @@ matrix:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: clang-5.0
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-5.0', 'llvm-5.0', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: linux
       compiler: clang-4.0
       dist: trusty
       sudo: required
@@ -86,20 +84,6 @@ matrix:
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-4.0', 'llvm-4.0', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: linux
-      compiler: clang-3.9
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-3.9', 'llvm-3.9', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
       install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -166,6 +150,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=dockcross/browser-asmjs 
+      dist: trusty
       sudo: required
       services: docker
       install:
@@ -176,6 +161,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=dockcross/windows-x64
+      dist: trusty
       sudo: required
       services: docker
       install:
@@ -188,22 +174,13 @@ matrix:
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/android-arm
-      sudo: required
-      services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
-
-    - os: osx
+    - stage: Compiler compatibility testing (macos)
+      os: osx
       compiler: clang
-      osx_image: xcode8.3
+      osx_image: xcode9
       install: 
         - brew update
-        - brew install ninja
+        - brew install ninja ccache
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -213,10 +190,10 @@ matrix:
 
     - os: osx
       compiler: clang
-      osx_image: xcode8
+      osx_image: xcode8.3
       install: 
         - brew update
-        - brew install ninja valgrind
+        - brew install ninja ccache
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -229,7 +206,7 @@ matrix:
       osx_image: xcode7.3
       install: 
         - brew update
-        - brew install ninja valgrind
+        - brew install ninja ccache valgrind
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -242,7 +219,7 @@ matrix:
       osx_image: xcode6.4
       install: 
         - brew update
-        - brew install ninja valgrind
+        - brew install ninja ccache valgrind
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
         - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
@@ -250,7 +227,8 @@ matrix:
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
-    - os: linux
+    - stage: Deployment (coverity)
+      os: linux
       dist: trusty
       sudo: required
       addons:
@@ -270,8 +248,10 @@ matrix:
             curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
           else true; fi;
 
-    - os: linux
+    - stage: Deployment (packagecloud)
+      os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=yakkety
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -299,6 +279,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -326,6 +307,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -353,6 +335,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -380,6 +363,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -407,6 +391,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=25
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -435,6 +420,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=24
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -463,6 +449,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=centos DOCKER_IMAGE_VERSION=7
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -491,6 +478,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=oraclelinux DOCKER_IMAGE_VERSION=7
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -519,6 +507,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.2
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -547,6 +536,7 @@ matrix:
 
     - os: linux
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.1
+      dist: trusty
       sudo: required
       services: docker
       deploy:
@@ -572,8 +562,3 @@ matrix:
               python ci-tools/install_cmake.py;
               python ci-tools/run_cpack.py;"
           else true; fi;
-
-  allow_failures:
-    - compiler: icc # Unstable
-    - compiler: clang-5.0 # Unstable
-    - env: DOCKER_IMAGE=dockcross/android-arm # Testing

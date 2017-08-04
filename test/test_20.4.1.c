@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2016 Kevin Schmidt
+ * Copyright (c) 2014-2017 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -24,17 +24,41 @@
 #include <KD/kd.h>
 #include "test.h"
 
-/* Test if we can can communicate properly with event loops in different threads. */
-#define THREAD_COUNT 10
-static void* test_func( void *arg)
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
+    KDint retval = kdNameLookup(KD_AF_INET, "www.icann.org", (void *)1234);
+    if(retval == -1)
+    {
+        if(kdGetError() == KD_ENOSYS)
+        {
+            return 0;
+        }
+        TEST_FAIL();
+    }
+
     for(;;)
     {
         const KDEvent *event = kdWaitEvent(-1);
         if(event)
         {
-            if(event->type == KD_EVENT_QUIT)
+            if(event->type == KD_EVENT_NAME_LOOKUP_COMPLETE)
             {
+                KDEventNameLookup lookupevent = event->data.namelookup;
+                if(lookupevent.error == KD_EHOST_NOT_FOUND)
+                {
+                    /* No internet. */
+                    break;
+                }
+
+                KDInAddr address;
+                kdMemset(&address, 0, sizeof(address));
+                address.s_addr = ((const KDSockaddr *)lookupevent.result)->data.sin.address;
+                TEST_EQ(kdNtohl(address.s_addr), 3221233671);
+
+                KDchar c_addr[sizeof("255.255.255.255")] = "";
+                kdInetNtop(KD_AF_INET, &address, c_addr, sizeof(c_addr));
+                TEST_STREQ(c_addr, "192.0.32.7");
+
                 break;
             }
             kdDefaultEvent(event);
@@ -43,33 +67,3 @@ static void* test_func( void *arg)
     return 0;
 }
 
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
-{
-    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
-    {
-        threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
-        if(threads[i] == KD_NULL)
-        {
-            if(kdGetError() == KD_ENOSYS)
-            {
-                return 0;
-            }
-            TEST_FAIL();
-        }
-    }
-    for(KDint k = 0 ; k < THREAD_COUNT ;k++)
-    {
-        KDEvent *event = kdCreateEvent();
-        event->type      = KD_EVENT_QUIT;
-        if(kdPostThreadEvent(event, threads[k]) == -1)
-        {
-            TEST_FAIL();
-        }
-    }
-    for(KDint j = 0 ; j < THREAD_COUNT ;j++)
-    {
-        kdThreadJoin(threads[j], KD_NULL);
-    }
-    return 0;
-}
