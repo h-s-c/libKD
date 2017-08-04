@@ -11815,7 +11815,8 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
     WriteFile(out, buf, len, (DWORD[]){0}, KD_NULL);
 #else
-    write(STDOUT_FILENO, buf, len);
+    KDssize result = write(STDOUT_FILENO, buf, len);
+    kdAssert(result == len);
 #endif
     if(len < STB_SPRINTF_MIN)
     {

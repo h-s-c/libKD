@@ -41,12 +41,6 @@ curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh |
 zypper install libkd
 ```
 
-### RHEL/CentOS/Oracle/AWS
-```bash
-curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
-yum install libkd
-```
-
 ## Build from source
 ```bash
 cmake -G Ninja -Bbuild -H.
