@@ -10585,7 +10585,7 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
     wsabuf.buf = kdMalloc(len);
     kdMemcpy(wsabuf.buf, buf, len);
     KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD[]){0}, 0, (const struct sockaddr*)&address, sizeof(address), KD_NULL, KD_NULL); 
-    kdFree(wsabuf.buf)
+    kdFree(wsabuf.buf);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
