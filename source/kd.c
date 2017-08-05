@@ -2800,7 +2800,7 @@ static int __kdPreMain(int argc, char **argv)
 #ifdef __ANDROID__
 static void *__kdAndroidPreMain(void *arg)
 {
-    return __kdPreMain(0, KD_NULL);
+    return (void *)__kdPreMain(0, KD_NULL);
 }
 void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_t savedStateSize)
 {
