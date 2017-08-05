@@ -11010,12 +11010,12 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         const KDuint8 mwm_hints[5] = {2, 0, 0, 0, 0};
         XChangeProperty(window->nativedisplay, (Window)window->nativewindow, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8 *)&mwm_hints, 5);
         Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
-        Atom netwm_hints[3];
+        Atom netwm_hints[4];
         netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FULLSCREEN", False);
         netwm_hints[1] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
         netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
-        XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 3);
+        netwm_hints[3] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
+        XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 4);
     }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
@@ -11089,6 +11089,10 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 #if defined(KD_WINDOW_X11)
         if(window->platform == _EGL_PLATFORM_X11)
         {
+            Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
+            Atom netwm_hints[1];
+            netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_ABOVE", False);
+            XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 1);            
             XMoveResizeWindow(window->nativedisplay, (Window)window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
             XFlush(window->nativedisplay);
             KDEvent *event = kdCreateEvent();

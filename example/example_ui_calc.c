@@ -45,7 +45,7 @@ static KDboolean quit = KD_FALSE;
  *                          DEVICE
  *
  * ===============================================================*/
-struct nk_glfw_vertex {
+struct nk_vertex {
     KDfloat32 position[2];
     KDfloat32 uv[2];
     nk_byte col[4];
@@ -117,10 +117,10 @@ device_init(struct device *dev)
 
     {
         /* buffer setup */
-        GLsizei vs = sizeof(struct nk_glfw_vertex);
-        KDsize vp = OFFSETOFF(struct nk_glfw_vertex, position);
-        KDsize vt = OFFSETOFF(struct nk_glfw_vertex, uv);
-        KDsize vc = OFFSETOFF(struct nk_glfw_vertex, col);
+        GLsizei vs = sizeof(struct nk_vertex);
+        KDsize vp = OFFSETOFF(struct nk_vertex, position);
+        KDsize vt = OFFSETOFF(struct nk_vertex, uv);
+        KDsize vc = OFFSETOFF(struct nk_vertex, col);
 
         glGenBuffers(1, &dev->vbo);
         glGenBuffers(1, &dev->ebo);
@@ -154,8 +154,7 @@ device_upload_atlas(struct device *dev, const void *image, KDint width, KDint he
     glBindTexture(GL_TEXTURE_2D, dev->font_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
 }
 
 static void
@@ -224,15 +223,15 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
             /* fill convert configuration */
             struct nk_convert_config config;
             static const struct nk_draw_vertex_layout_element vertex_layout[] = {
-                {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_glfw_vertex, position)},
-                {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_glfw_vertex, uv)},
-                {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, NK_OFFSETOF(struct nk_glfw_vertex, col)},
+                {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_vertex, position)},
+                {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_vertex, uv)},
+                {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, NK_OFFSETOF(struct nk_vertex, col)},
                 {NK_VERTEX_LAYOUT_END}
             };
             NK_MEMSET(&config, 0, sizeof(config));
             config.vertex_layout = vertex_layout;
-            config.vertex_size = sizeof(struct nk_glfw_vertex);
-            config.vertex_alignment = NK_ALIGNOF(struct nk_glfw_vertex);
+            config.vertex_size = sizeof(struct nk_vertex);
+            config.vertex_alignment = NK_ALIGNOF(struct nk_vertex);
             config.null = dev->null;
             config.circle_segment_count = 22;
             config.curve_segment_count = 22;
@@ -313,7 +312,7 @@ pump_input(struct nk_context *ctx, KDWindow *win)
                         nk_input_motion(ctx, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y);
                         break;
                     }
-                    case(KD_EVENT_INPUT_POINTER):
+                    case(KD_INPUT_POINTER_SELECT):
                     {
                         nk_input_button(ctx, NK_BUTTON_LEFT, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y, event->data.inputpointer.select);
                         break;
@@ -367,49 +366,6 @@ pump_input(struct nk_context *ctx, KDWindow *win)
     nk_input_end(ctx);
 }
 
-struct nk_canvas {
-    struct nk_command_buffer *painter;
-    struct nk_vec2 item_spacing;
-    struct nk_vec2 panel_padding;
-    struct nk_style_item window_background;
-};
-
-static void
-canvas_begin(struct nk_context *ctx, struct nk_canvas *canvas, nk_flags flags,
-    KDint x, KDint y, KDint width, KDint height, struct nk_color background_color)
-{
-    /* save style properties which will be overwritten */
-    canvas->panel_padding = ctx->style.window.padding;
-    canvas->item_spacing = ctx->style.window.spacing;
-    canvas->window_background = ctx->style.window.fixed_background;
-
-    /* use the complete window space and set background */
-    ctx->style.window.spacing = nk_vec2(0,0);
-    ctx->style.window.padding = nk_vec2(0,0);
-    ctx->style.window.fixed_background = nk_style_item_color(background_color);
-
-    /* create/update window and set position + size */
-    flags = flags & ~NK_WINDOW_DYNAMIC;
-    nk_begin(ctx, "Window", nk_rect(x, y, width, height), NK_WINDOW_NO_SCROLLBAR|flags);
-    nk_window_set_bounds(ctx, nk_rect(x, y, width, height));
-
-    /* allocate the complete window space for drawing */
-    {struct nk_rect total_space;
-    total_space = nk_window_get_content_region(ctx);
-    nk_layout_row_dynamic(ctx, total_space.h, 1);
-    nk_widget(&total_space, ctx);
-    canvas->painter = nk_window_get_canvas(ctx);}
-}
-
-static void
-canvas_end(struct nk_context *ctx, struct nk_canvas *canvas)
-{
-    nk_end(ctx);
-    ctx->style.window.spacing = canvas->panel_padding;
-    ctx->style.window.padding = canvas->item_spacing;
-    ctx->style.window.fixed_background = canvas->window_background;
-}
-
 #if defined(GL_KHR_debug)
 static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
@@ -420,7 +376,6 @@ static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenu
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     /* Platform */
-    static KDWindow *win;
     KDint width = 0, height = 0;
 
     /* GUI */
@@ -462,9 +417,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     eglChooseConfig(egl_display, egl_attributes, &egl_config, 1, &egl_num_configs);
     EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
 
-    win = kdCreateWindow(egl_display, egl_config, KD_NULL);
+    KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
     EGLNativeWindowType native_window;
-    kdRealizeWindow(win, &native_window);
+    kdRealizeWindow(kd_window, &native_window);
 
     EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
 
@@ -501,14 +456,14 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     /* OpenGL */
     KDint32 windowsize[2];
-    kdGetWindowPropertyiv(win, KD_WINDOWPROPERTY_SIZE, windowsize);
+    kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
     width = windowsize[0];
     height = windowsize[1];
     glViewport(0, 0, width, height);
 
     /* GUI */
-    {device_init(&device);
-    {const void *image; KDint w, h;
+    device_init(&device);
+    const void *image; KDint w, h;
     struct nk_font *font;
     nk_font_atlas_init_default(&atlas);
     nk_font_atlas_begin(&atlas);
@@ -518,54 +473,134 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     nk_font_atlas_end(&atlas, nk_handle_id((int)device.font_tex), &device.null);
     nk_init_default(&ctx, &font->handle);
 
-
     while (!quit)
     {
         /* input */
-        pump_input(&ctx, win);
+        pump_input(&ctx, kd_window);
 
         /* draw */
-        {struct nk_canvas canvas;
-        canvas_begin(&ctx, &canvas, 0, 0, 0, width, height, nk_rgb(250,250,250));
+        if (nk_begin(&ctx, "Calculator", nk_rect(10, 10, 180, 250),
+            NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR|NK_WINDOW_CLOSABLE))
         {
-            nk_fill_rect(canvas.painter, nk_rect(15,15,210,210), 5, nk_rgb(247, 230, 154));
-            nk_fill_rect(canvas.painter, nk_rect(20,20,200,200), 5, nk_rgb(188, 174, 118));
-            nk_draw_text(canvas.painter, nk_rect(30, 30, 150, 20), "Text to draw", 12, &font->handle, nk_rgb(188,174,118), nk_rgb(0,0,0));
-            nk_fill_rect(canvas.painter, nk_rect(250,20,100,100), 0, nk_rgb(0,0,255));
-            nk_fill_circle(canvas.painter, nk_rect(20,250,100,100), nk_rgb(255,0,0));
-            nk_fill_triangle(canvas.painter, 250, 250, 350, 250, 300, 350, nk_rgb(0,255,0));
-            nk_fill_arc(canvas.painter, 300, 180, 50, 0, 3.141592654f * 3.0f / 4.0f, nk_rgb(255,255,0));
+            static KDint set = 0, prev = 0, op = 0;
+            static const KDchar numbers[] = "789456123";
+            static const KDchar ops[] = "+-*/";
+            static KDfloat64KHR a = 0, b = 0;
+            static KDfloat64KHR *current = &a;
 
-            {KDfloat32 points[12];
-            points[0] = 200; points[1] = 250;
-            points[2] = 250; points[3] = 350;
-            points[4] = 225; points[5] = 350;
-            points[6] = 200; points[7] = 300;
-            points[8] = 175; points[9] = 350;
-            points[10] = 150; points[11] = 350;
-            nk_fill_polygon(canvas.painter, points, 6, nk_rgb(0,0,0));}
+            KDsize i = 0;
+            KDint solve = 0;
+            {KDint len; KDchar buffer[256];
+            nk_layout_row_dynamic(&ctx, 35, 1);
+            len = kdSnprintfKHR(buffer, 256, "%.2f", *current);
+            nk_edit_string(&ctx, NK_EDIT_SIMPLE, buffer, &len, 255, nk_filter_float);
+            buffer[len] = 0;
+            *current = kdStrtodKHR(buffer, KD_NULL);}
 
-            nk_stroke_line(canvas.painter, 15, 10, 200, 10, 2.0f, nk_rgb(189,45,75));
-            nk_stroke_rect(canvas.painter, nk_rect(370, 20, 100, 100), 10, 3, nk_rgb(0,0,255));
-            nk_stroke_curve(canvas.painter, 380, 200, 405, 270, 455, 120, 480, 200, 2, nk_rgb(0,150,220));
-            nk_stroke_circle(canvas.painter, nk_rect(20, 370, 100, 100), 5, nk_rgb(0,255,120));
-            nk_stroke_triangle(canvas.painter, 370, 250, 470, 250, 420, 350, 6, nk_rgb(255,0,143));
+            nk_layout_row_dynamic(&ctx, 35, 4);
+            for (i = 0; i < 16; ++i) {
+                if (i >= 12 && i < 15) {
+                    if (i > 12) continue;
+                    if (nk_button_label(&ctx, "C")) {
+                        a = b = op = 0; current = &a; set = 0;
+                    } if (nk_button_label(&ctx, "0")) {
+                        *current = *current*10.0f; set = 0;
+                    } if (nk_button_label(&ctx, "=")) {
+                        solve = 1; prev = op; op = 0;
+                    }
+                } else if (((i+1) % 4)) {
+                    if (nk_button_text(&ctx, &numbers[(i/4)*3+i%4], 1)) {
+                        *current = *current * 10.0f + numbers[(i/4)*3+i%4] - '0';
+                        set = 0;
+                    }
+                } else if (nk_button_text(&ctx, &ops[i/4], 1)) {
+                    if (!set) {
+                        if (current != &b) {
+                            current = &b;
+                        } else {
+                            prev = op;
+                            solve = 1;
+                        }
+                    }
+                    op = ops[i/4];
+                    set = 1;
+                }
+            }
+            if (solve) {
+                if (prev == '+') a = a + b;
+                if (prev == '-') a = a - b;
+                if (prev == '*') a = a * b;
+                if (prev == '/') a = a / b;
+                current = &a;
+                if (set) current = &b;
+                b = 0; set = 0;
+            }
+        if(nk_item_is_any_active(&ctx))
+        {
+            quit = KD_TRUE;
         }
-        canvas_end(&ctx, &canvas);}
+        }
+        nk_end(&ctx);
 
-        /* Draw */
-        kdGetWindowPropertyiv(win, KD_WINDOWPROPERTY_SIZE, windowsize);
-        width = windowsize[0];
-        height = windowsize[1];
-        glViewport(0, 0, width, height);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-        device_draw(&device, &ctx, width, height, NK_ANTI_ALIASING_ON);
-        eglSwapBuffers(egl_display, egl_surface);
-    }}}
+        if(eglSwapBuffers(egl_display, egl_surface) == EGL_FALSE)
+        {
+            EGLint egl_error = eglGetError();
+            switch(egl_error)
+            {
+                case(EGL_BAD_SURFACE):
+                {
+                    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                    eglDestroySurface(egl_display, egl_surface);
+                    kdRealizeWindow(kd_window, &native_window);
+                    egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
+                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+                    break;
+                }
+                case(EGL_BAD_MATCH):
+                case(EGL_BAD_CONTEXT):
+                case(EGL_CONTEXT_LOST):
+                {
+                    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                    eglDestroyContext(egl_display, egl_context);
+                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
+                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+                    break;
+                }
+                case(EGL_BAD_DISPLAY):
+                case(EGL_NOT_INITIALIZED):
+                case(EGL_BAD_ALLOC):
+                {
+                    kdAssert(0);
+                    break;
+                }
+                default:
+                {
+                    kdAssert(0);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
+            width = windowsize[0];
+            height = windowsize[1];
+            glViewport(0, 0, width, height);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+            device_draw(&device, &ctx, width, height, NK_ANTI_ALIASING_ON);
+            eglSwapBuffers(egl_display, egl_surface);
+        }
+    }
+
     nk_font_atlas_clear(&atlas);
     nk_free(&ctx);
     device_shutdown(&device);
+
+    eglDestroyContext(egl_display, egl_context);
+    eglDestroySurface(egl_display, egl_surface);
+    eglTerminate(egl_display);
+    kdDestroyWindow(kd_window);
     return 0;
 }
 
