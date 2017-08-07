@@ -3414,7 +3414,7 @@ kdMalloc(KDsize size)
     {
         kdSetError(KD_ENOMEM);
         return KD_NULL;
-    }    
+    }
     *(KDsize *)result = size;
     result = (KDchar *)result + sizeof(KDsize);
 #endif
@@ -4562,7 +4562,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
 
 
     __KDFloatShape hx = {x};
-    KDfloat64KHR tx[1], ty[1], fn;
+    KDfloat64KHR tx[1], ty[1];
     KDint32 e0, n;
     KDint32 ix = hx.i & KDINT32_MAX;
     KDboolean sign = hx.i >> 31;
@@ -4571,7 +4571,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        fn = hx.f * KD_2_PI_KHR + 6.7553994410557440e+15;
+        KDfloat64KHR fn = hx.f * KD_2_PI_KHR + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
         *y = hx.f - fn * pio2_1 - fn * pio2_1t;
@@ -4612,9 +4612,9 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
         pio2_3 = 2.02226624871116645580e-21,  /* 0x3BA3198A, 0x2E000000 */
         pio2_3t = 8.47842766036889956997e-32; /* 0x397B839A, 0x252049C1 */
 
-    KDfloat64KHR z, w, t, r, fn;
+    KDfloat64KHR z;
     KDfloat64KHR tx[3], ty[2];
-    KDint32 e0, i, j, nx, n, ix, hx;
+    KDint32 e0, i, nx, n, ix, hx;
     KDuint32 low;
     KDboolean medium = KD_FALSE;
 
@@ -4718,20 +4718,20 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
     if(ix < 0x413921fb || medium)
     { /* |x| ~< 2^20*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        fn = x * invpio2 + 6.7553994410557440e+15;
+        KDfloat64KHR fn = x * invpio2 + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
-        r = x - fn * pio2_1;
-        w = fn * pio2_1t; /* 1st round good to 85 bit */
+        KDfloat64KHR r = x - fn * pio2_1;
+        KDfloat64KHR w = fn * pio2_1t; /* 1st round good to 85 bit */
         {
             KDuint32 high;
-            j = ix >> 20;
+            KDint32 j = ix >> 20;
             y[0] = r - w;
             GET_HIGH_WORD(high, y[0]);
             i = j - ((high >> 20) & 0x7ff);
             if(i > 16)
             { /* 2nd iteration needed, good to 118 */
-                t = r;
+                KDfloat64KHR t = r;
                 w = fn * pio2_2;
                 r = t - w;
                 w = fn * pio2_2t - ((t - r) - w);
@@ -5526,7 +5526,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
 
     volatile KDfloat32 vzero = 0.0;
 
-    KDfloat32 hfsq, f, s, z, R, w, t1, t2, dk;
+    KDfloat32 f, s, z, R, w, t1, t2, dk;
     KDint32 k, ix, i, j;
 
     GET_FLOAT_WORD(ix, x);
@@ -5592,7 +5592,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     R = t2 + t1;
     if(i > 0)
     {
-        hfsq = 0.5f * f * f;
+        KDfloat32 hfsq = 0.5f * f * f;
         if(k == 0)
         {
             return f - (hfsq - s * (hfsq + R));
@@ -5662,8 +5662,8 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         ivln2_h = 1.4426879883e+00f, /* 0x3fb8aa00 =16b 1/ln2*/
         ivln2_l = 7.0526075433e-06f; /* 0x36eca570 =1/ln2 tail*/
 
-    KDfloat32 z, ax, z_h, z_l, p_h, p_l;
-    KDfloat32 y1, t1, t2, r, s, sn, t, u, v, w;
+    KDfloat32 z, ax, p_h, p_l;
+    KDfloat32 y1, t1, t2, r, sn, t, u, v, w;
     KDint32 i, j, k, yisint, n;
     KDint32 hx, hy, ix, iy, is;
     GET_FLOAT_WORD(hx, x);
@@ -5834,7 +5834,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         /* compute s = s_h+s_l = (x-1)/(x+1) or (x-1.5)/(x+1.5) */
         u = ax - bp[k]; /* bp[0]=1.0, bp[1]=1.5 */
         v = 1.0f / (ax + bp[k]);
-        s = u * v;
+        KDfloat32 s = u * v;
         s_h = s;
         GET_FLOAT_WORD(is, s_h);
         SET_FLOAT_WORD(s_h, is & 0xfffff000);
@@ -5860,8 +5860,8 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         GET_FLOAT_WORD(is, p_h);
         SET_FLOAT_WORD(p_h, is & 0xfffff000);
         p_l = v - (p_h - u);
-        z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
-        z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        KDfloat32 z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
+        KDfloat32 z_l = cp_l * p_h + p_l * cp + dp_l[k];
         /* log2(ax) = (s+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         t = (KDfloat32)n;
         t1 = (((z_h + z_l) + dp_h[k]) + t);
@@ -5951,7 +5951,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     const KDfloat32 tiny = 1.0e-30f;
     KDfloat32 z;
     KDint32 sign = (KDint32)0x80000000;
-    KDint32 ix, s, q, m, t, i;
+    KDint32 ix, s, q, m;
     KDuint32 r;
 
     GET_FLOAT_WORD(ix, x);
@@ -5976,7 +5976,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     m = (ix >> 23);
     if(m == 0)
     { /* subnormal x */
-        for(i = 0; (ix & 0x00800000) == 0; i++)
+        for(KDint32 i = 0; (ix & 0x00800000) == 0; i++)
         {
             ix <<= 1;
         }
@@ -5995,7 +5995,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     r = 0x01000000; /* r = moving bit from right to left */
     while(r != 0)
     {
-        t = s + r;
+        KDint32 t = s + r;
         if(t <= ix)
         {
             s = t + r;
@@ -6464,7 +6464,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
         qS3 = -6.88283971605453293030e-01, /* 0xBFE6066C, 0x1B8D0159 */
         qS4 = 7.70381505559019352791e-02;  /* 0x3FB3B8C5, 0xB12E9282 */
 
-    KDfloat64KHR t = 0.0, w, p, q, c, r, s;
+    KDfloat64KHR t = 0.0, w, p, q, s;
     KDint32 hx, ix;
     GET_HIGH_WORD(hx, x);
     ix = hx & 0x7fffffff;
@@ -6510,8 +6510,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
     {
         w = s;
         SET_LOW_WORD(w, 0);
-        c = (t - w * w) / (s + w);
-        r = p / q;
+        KDfloat64KHR c = (t - w * w) / (s + w);
+        KDfloat64KHR r = p / q;
         p = 2.0 * s * r - (pio2_lo - 2.0 * c);
         q = pio4_hi - 2.0 * w;
         t = pio4_hi - (p - q);
@@ -6837,7 +6837,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
 
 KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
 {
-    KDfloat64KHR y[2], z = 0.0;
+    KDfloat64KHR y[2];
     KDint32 n, ix;
 
     /* High word of x. */
@@ -6854,7 +6854,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
                 return 1.0; /* generate inexact */
             }
         }
-        return __kdCosKernel(x, z);
+        return __kdCosKernel(x, 0.0);
     }
 
     /* cos(Inf or NaN) is NaN */
@@ -6914,7 +6914,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
  */
 KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
 {
-    KDfloat64KHR y[2], z = 0.0;
+    KDfloat64KHR y[2];
     KDint32 n, ix;
 
     /* High word of x. */
@@ -6931,7 +6931,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
                 return x;
             }
         } /* generate inexact */
-        return __kdSinKernel(x, z, 0);
+        return __kdSinKernel(x, 0.0, 0);
     }
 
     /* sin(Inf or NaN) is NaN */
@@ -6990,7 +6990,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
  */
 KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
 {
-    KDfloat64KHR y[2], z = 0.0;
+    KDfloat64KHR y[2];
     KDint32 n, ix;
 
     /* High word of x. */
@@ -7007,7 +7007,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
                 return x; /* generate inexact */
             }
         }
-        return __kdTanKernel(x, z, 1);
+        return __kdTanKernel(x, 0.0, 1);
     }
 
     /* tan(Inf or NaN) is NaN */
@@ -7262,7 +7262,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
 
     const KDfloat64KHR zero = 0.0;
     volatile KDfloat64KHR vzero = 0.0;
-    KDfloat64KHR hfsq, f, s, z, R, w, t1, t2, dk;
+    KDfloat64KHR f, s, z, R, w, t1, t2, dk;
     KDint32 k, hx, i, j;
     KDuint32 lx;
 
@@ -7330,7 +7330,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
     R = t2 + t1;
     if(i > 0)
     {
-        hfsq = 0.5 * f * f;
+        KDfloat64KHR hfsq = 0.5 * f * f;
         if(k == 0)
         {
             return f - (hfsq - s * (hfsq + R));
@@ -7435,7 +7435,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         ivln2_h = 1.44269502162933349609e+00, /* 0x3FF71547, 0x60000000 =24b 1/ln2*/
         ivln2_l = 1.92596299112661746887e-08; /* 0x3E54AE0B, 0xF85DDF44 =1/ln2 tail*/
 
-    KDfloat64KHR z, ax, z_h, z_l, p_h, p_l;
+    KDfloat64KHR z, ax, p_h, p_l;
     KDfloat64KHR y1, t1, t2, r, s, t, u, v, w;
     KDint32 i, j, k, yisint, n;
     KDint32 hx, hy, ix, iy;
@@ -7670,8 +7670,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         p_h = u + v;
         SET_LOW_WORD(p_h, 0);
         p_l = v - (p_h - u);
-        z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
-        z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        KDfloat64KHR z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
+        KDfloat64KHR z_l = cp_l * p_h + p_l * cp + dp_l[k];
         /* log2(ax) = (ss+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         t = (KDfloat64KHR)n;
         t1 = (((z_h + z_l) + dp_h[k]) + t);
@@ -7829,7 +7829,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
     KDfloat64KHR z;
     KDint32 sign = (KDint)0x80000000;
     KDint32 ix0, s0, q, m, t, i;
-    KDuint32 r, t1, s1, ix1, q1;
+    KDuint32 r, s1, ix1, q1;
 
     EXTRACT_WORDS(ix0, ix1, x);
 
@@ -7905,7 +7905,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
     r = sign;
     while(r != 0)
     {
-        t1 = s1 + r;
+        KDuint32 t1 = s1 + r;
         t = s0;
         if((t < ix0) || ((t == ix0) && (t1 <= ix1)))
         {
@@ -9188,11 +9188,9 @@ KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *s
 KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 {
     KDchar c, sc;
-    KDsize len;
-
     if((c = *str2++) != '\0')
     {
-        len = kdStrlen(str2);
+        KDsize len = kdStrlen(str2);
         do
         {
             do
@@ -10314,7 +10312,7 @@ KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *ev
 
     KDThread *thread = kdThreadCreate(KD_NULL, __kdNameLookupHandler, &payload);
     if(thread == KD_NULL)
-    {        
+    {
         if(kdGetError() == KD_ENOSYS)
         {
             kdLogMessage("kdNameLookup() needs a threading implementation.\n");
@@ -10446,7 +10444,7 @@ KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const KDSockaddr *addr, 
 #endif
     address.sin_port = kdHtons(addr->data.sin.port);
     KDint error = 0;
-    KDint retval = bind(socket->nativesocket , (struct sockaddr*)&address, sizeof(address));
+    KDint retval = bind(socket->nativesocket, (struct sockaddr *)&address, sizeof(address));
 #if defined(_WIN32)
     if(retval == SOCKET_ERROR)
     {
@@ -10502,12 +10500,12 @@ KD_API KDint KD_APIENTRY kdSocketConnect(KDSocket *socket, const KDSockaddr *add
     address.sin_port = kdHtons(addr->data.sin.port);
     KDint error = 0;
 #if defined(_WIN32)
-    KDint retval = WSAConnect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address), 0, 0, 0, 0);
+    KDint retval = WSAConnect(socket->nativesocket, (struct sockaddr *)&address, sizeof(address), 0, 0, 0, 0);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    KDint retval = connect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address));
+    KDint retval = connect(socket->nativesocket, (struct sockaddr *)&address, sizeof(address));
     if(retval == -1)
     {
         error = errno;
@@ -10553,7 +10551,7 @@ KD_API KDint KD_APIENTRY kdSocketSend(KDSocket *socket, const void *buf, KDint l
     {
         error = errno;
 #endif
-       kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
+        kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
         return -1;
     }
     return result;
@@ -10586,13 +10584,13 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
     wsabuf.len = len;
     wsabuf.buf = kdMalloc(len);
     kdMemcpy(wsabuf.buf, buf, len);
-    KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, 0, (const struct sockaddr*)&address, sizeof(address), KD_NULL, KD_NULL); 
+    KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, 0, (const struct sockaddr *)&address, sizeof(address), KD_NULL, KD_NULL);
     kdFree(wsabuf.buf);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    result = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, sizeof(address)); 
+    result = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr *)&address, sizeof(address));
     if(result == -1)
     {
         error = errno;
@@ -10622,9 +10620,11 @@ KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);        return -1;
+        kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);
+        return -1;
     }
-    return result;;
+    return result;
+    ;
 }
 
 KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len, KDSockaddr *addr)
@@ -10639,12 +10639,12 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
     WSABUF wsabuf;
     wsabuf.len = len;
     wsabuf.buf = buf;
-    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, (struct sockaddr*)&address, &addresssize, KD_NULL, KD_NULL);
+    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, (struct sockaddr *)&address, &addresssize, KD_NULL, KD_NULL);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    result = recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, &addresssize);
+    result = recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr *)&address, &addresssize);
     if(result == -1)
     {
         error = errno;
@@ -10652,7 +10652,7 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
         kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);
         return -1;
     }
-    
+
     addr->family = KD_AF_INET;
 #if defined(_WIN32)
 #define s_addr S_un.S_addr
@@ -10970,7 +10970,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
         if(eglQueryNativeDisplayNV)
         {
-            eglQueryNativeDisplayNV(display, (EGLNativeDisplayType*)&window->nativedisplay);
+            eglQueryNativeDisplayNV(display, (EGLNativeDisplayType *)&window->nativedisplay);
 #if defined(KD_WINDOW_WAYLAND)
             if(__kdIsPointerDereferencable(window->nativedisplay))
             {
@@ -11092,7 +11092,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
             Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
             Atom netwm_hints[1];
             netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_ABOVE", False);
-            XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 1);            
+            XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 1);
             XMoveResizeWindow(window->nativedisplay, (Window)window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
             XFlush(window->nativedisplay);
             KDEvent *event = kdCreateEvent();
@@ -11328,7 +11328,6 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
 
     KDint32 bw = kdMinVEN(w - x, 4);
     KDint32 bh = kdMinVEN(h - y, 4);
-    KDint32 bx, by;
 
     const KDint32 rem[] =
         {
@@ -11339,10 +11338,10 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
 
     for(KDint i = 0; i < 4; ++i)
     {
-        by = rem[(bh - 1) * 4 + i] + y;
+        KDint32 by = rem[(bh - 1) * 4 + i] + y;
         for(KDint j = 0; j < 4; ++j)
         {
-            bx = rem[(bw - 1) * 4 + j] + x;
+            KDint32 bx = rem[(bw - 1) * 4 + j] + x;
             block[(i * 4 * 4) + (j * 4) + 0] = src[(by * (w * 4)) + (bx * 4) + 0];
             block[(i * 4 * 4) + (j * 4) + 1] = src[(by * (w * 4)) + (bx * 4) + 1];
             block[(i * 4 * 4) + (j * 4) + 2] = src[(by * (w * 4)) + (bx * 4) + 2];
@@ -11624,7 +11623,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             kdFree(image);
             kdSetError(KD_EINVAL);
             return KD_NULL;
-            break;
         }
     }
 
@@ -11684,53 +11682,43 @@ KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
         case(KD_IMAGE_WIDTH_ATX):
         {
             return _image->width;
-            break;
         }
         case(KD_IMAGE_HEIGHT_ATX):
         {
             return _image->height;
-            break;
         }
         case(KD_IMAGE_FORMAT_ATX):
         {
             return _image->format;
-            break;
         }
         case(KD_IMAGE_STRIDE_ATX):
         {
             return 0;
-            break;
         }
         case(KD_IMAGE_BITSPERPIXEL_ATX):
         {
             return 8;
-            break;
         }
         case(KD_IMAGE_LEVELS_ATX):
         {
             return _image->levels;
-            break;
         }
         case(KD_IMAGE_DATASIZE_ATX):
         {
             return (KDint)_image->size;
-            break;
         }
         case(KD_IMAGE_BUFFEROFFSET_ATX):
         {
             return 0;
-            break;
         }
         case(KD_IMAGE_ALPHA_ATX):
         {
             return _image->alpha;
-            break;
         }
         default:
         {
             kdSetError(KD_EINVAL);
             return 0;
-            break;
         }
     }
 }
