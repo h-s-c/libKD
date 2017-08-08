@@ -5951,7 +5951,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     const KDfloat32 tiny = 1.0e-30f;
     KDfloat32 z;
     KDint32 sign = (KDint32)0x80000000;
-    KDint32 ix, s, q, m;
+    KDint32 ix, s, q, m, i;
     KDuint32 r;
 
     GET_FLOAT_WORD(ix, x);
@@ -5976,7 +5976,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     m = (ix >> 23);
     if(m == 0)
     { /* subnormal x */
-        for(KDint32 i = 0; (ix & 0x00800000) == 0; i++)
+        for(i = 0; (ix & 0x00800000) == 0; i++)
         {
             ix <<= 1;
         }
