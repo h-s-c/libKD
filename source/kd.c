@@ -11038,6 +11038,9 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
     strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
     emscripten_enter_soft_fullscreen(0, &strategy);
+    KDfloat64KHR width, height;
+    emscripten_get_element_css_size("canvas", &width, &height);
+    emscripten_set_canvas_size((KDint)width, (KDint)height);
 #endif
     __kd_window = window;
     return window;
