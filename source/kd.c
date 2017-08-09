@@ -877,7 +877,7 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
 #if defined(KD_THREAD_WIN32)
-static BOOL CALLBACK call_once_callback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
+static BOOL CALLBACK __kd_WindowsCallOneCallback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
 {
     void (*func)(void) = KD_NULL;
     kdMemcpy(&func, &param, sizeof(param));
@@ -894,7 +894,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #elif defined(KD_THREAD_WIN32)
     void *pfunc = KD_NULL;
     kdMemcpy(&pfunc, &init_routine, sizeof(init_routine));
-    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, pfunc, KD_NULL);
+    InitOnceExecuteOnce((PINIT_ONCE)once_control, __kd_WindowsCallOneCallbac, pfunc, KD_NULL);
 #else
     if(once_control->impl == 0)
     {
@@ -1202,7 +1202,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #endif
 
 #if defined(__EMSCRIPTEN__)
-    emscripten_sleep(timeout / 1000000);
+    emscripten_sleep_with_yield(timeout / 1000000);
 #elif defined(KD_THREAD_C11)
     thrd_sleep(&ts, KD_NULL);
 #elif defined(KD_THREAD_POSIX)
@@ -1372,7 +1372,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 #ifdef KD_WINDOW_SUPPORTED
     KD_UNUSED KDWindow *window = __kd_window;
 #if defined(__EMSCRIPTEN__)
-    emscripten_sleep(1);
+    emscripten_sleep_with_yield(1);
 #elif defined(__ANDROID__)
     AInputEvent *aevent = KD_NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
@@ -2621,7 +2621,7 @@ const char *__kdAppName(KD_UNUSED const char *argv0)
 #endif
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
 /* All Android events are send to the mainthread */
 static KDThread *__kd_androidmainthread = KD_NULL;
 static KDThreadMutex *__kd_androidmainthread_mutex = KD_NULL;
@@ -2720,6 +2720,20 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
     __kd_androidinputqueue = KD_NULL;
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 }
+#elif defined(__EMSCRIPTEN__)
+EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
+{
+    if(type == EMSCRIPTEN_EVENT_MOUSEDOWN)
+    {
+    }
+    else if(type == EMSCRIPTEN_EVENT_MOUSEUP)
+    {
+    }
+    else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
+    {
+    }  
+    return 0;
+}
 #endif
 
 static KDThreadMutex *__kd_tls_mutex = KD_NULL;
@@ -2747,6 +2761,12 @@ static int __kdPreMain(int argc, char **argv)
 #endif
     kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
+
+#if defined(__EMSCRIPTEN__)
+    emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+#endif
 
     KDint result = 0;
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__) || (defined(__MINGW32__) && !defined(__MINGW64__))
@@ -10823,7 +10843,7 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
 #ifdef KD_WINDOW_SUPPORTED
 /* kdCreateWindow: Create a window. */
 #if defined(KD_WINDOW_WIN32)
-LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     switch(msg)
     {
@@ -10867,7 +10887,7 @@ static KDboolean __kdIsPointerDereferencable(void *p)
     return p != KD_NULL;
 #endif
 }
-static void registry_add_object(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
+static void __kdWaylandRegistryAddObject(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
 {
     if(!kdStrcmp(interface, "wl_compositor"))
     {
@@ -10878,25 +10898,25 @@ static void registry_add_object(KD_UNUSED void *data, struct wl_registry *regist
         __kd_wl_shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
     }
 }
-static void registry_remove_object(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
+static void __kdWaylandRegistryRemoveObject(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
 static const KD_UNUSED struct wl_registry_listener registry_listener = {
-    registry_add_object,
-    registry_remove_object};
-static void shell_surface_ping(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
+    __kdWaylandRegistryAddObject,
+    __kdWaylandRegistryRemoveObject};
+static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
 {
     kdLogMessage("wl_shell_surface_pong\n");
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void shell_surface_configure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
+static void __kdWaylandShellSurfaceConfigure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
 {
     struct KDWindow *window = data;
     wl_egl_window_resize(window->nativewindow, width, height, 0, 0);
 }
-static void shell_surface_popup_done(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
-static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
-    &shell_surface_ping,
-    &shell_surface_configure,
-    &shell_surface_popup_done};
+static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
+static KD_UNUSED struct wl_shell_surface_listener __kd_shell_surface_listener = {
+    &__kdWaylandShellSurfacePing,
+    &__kdWaylandShellSurfaceConfigure,
+    &__kdWaylandShellSurfacePopupDone};
 #endif
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
@@ -10934,7 +10954,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     HINSTANCE instance = GetModuleHandle(KD_NULL);
     GetClassInfo(instance, "", &windowclass);
     windowclass.lpszClassName = "OpenKODE";
-    windowclass.lpfnWndProc = windowcallback;
+    windowclass.lpfnWndProc = __kdWindowsWindowCallback;
     windowclass.hInstance = instance;
     windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
     RegisterClass(&windowclass);
@@ -11098,15 +11118,14 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
             XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 1);
             XMoveResizeWindow(window->nativedisplay, (Window)window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
             XFlush(window->nativedisplay);
-            KDEvent *event = kdCreateEvent();
-            event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-            kdPostEvent(event);
-            return 0;
         }
 #elif defined(__EMSCRIPTEN__)
         emscripten_set_canvas_size(param[0], param[1]);
-        return 0;
 #endif
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        kdPostEvent(event);
+        return 0;
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
@@ -11213,7 +11232,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     {
         window->surface = wl_compositor_create_surface(__kd_wl_compositor);
         window->shell_surface = wl_shell_get_shell_surface(__kd_wl_shell, window->surface);
-        wl_shell_surface_add_listener(window->shell_surface, &shell_surface_listener, window);
+        wl_shell_surface_add_listener(window->shell_surface, &__kd_shell_surface_listener, window);
         wl_shell_surface_set_toplevel(window->shell_surface);
         window->nativewindow = wl_egl_window_create(window->surface, 0, 0);
     }

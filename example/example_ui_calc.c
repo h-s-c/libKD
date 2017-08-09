@@ -479,8 +479,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         pump_input(&ctx, kd_window);
 
         /* draw */
-        if (nk_begin(&ctx, "Calculator", nk_rect(10, 10, 180, 250),
-            NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR|NK_WINDOW_CLOSABLE))
+        if (nk_begin(&ctx, "Calculator", nk_rect((width/2)-90, (height/2)-125, 180, 250),
+            NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR))
         {
             static KDint set = 0, prev = 0, op = 0;
             static const KDchar numbers[] = "789456123";
@@ -587,7 +587,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             height = windowsize[1];
             glViewport(0, 0, width, height);
             glClear(GL_COLOR_BUFFER_BIT);
-            glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             device_draw(&device, &ctx, width, height, NK_ANTI_ALIASING_ON);
             eglSwapBuffers(egl_display, egl_surface);
         }
