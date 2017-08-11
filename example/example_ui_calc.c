@@ -288,7 +288,7 @@ pump_input(struct nk_context *ctx, KDWindow *win)
 {
     nk_input_begin(ctx);
 
-    const KDEvent *event = kdWaitEvent(1000);
+    const KDEvent *event = kdWaitEvent(-1);
     while(event)
     {
         switch(event->type)
@@ -300,23 +300,15 @@ pump_input(struct nk_context *ctx, KDWindow *win)
             }
             case(KD_EVENT_INPUT_POINTER):
             {
-                switch(event->data.inputpointer.index)
+                if(event->data.inputpointer.index == KD_INPUT_POINTER_SELECT)
                 {
-                    case(KD_INPUT_POINTER_X):
-                    {
-                        nk_input_motion(ctx, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y);
-                        break;
-                    }
-                    case(KD_INPUT_POINTER_Y):
-                    {
-                        nk_input_motion(ctx, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y);
-                        break;
-                    }
-                    case(KD_INPUT_POINTER_SELECT):
-                    {
-                        nk_input_button(ctx, NK_BUTTON_LEFT, (KDint)event->data.inputpointer.x, (KDint)event->data.inputpointer.y, event->data.inputpointer.select);
-                        break;
-                    }
+                    nk_input_button(ctx, NK_BUTTON_LEFT, event->data.inputpointer.x, event->data.inputpointer.y, event->data.inputpointer.select);
+                    break;
+                }
+                else if(event->data.inputpointer.index == KD_INPUT_POINTER_X || event->data.inputpointer.index == KD_INPUT_POINTER_Y)
+                {
+                    nk_input_motion(ctx, event->data.inputpointer.x, event->data.inputpointer.y);
+                    break;
                 }
             }
             case(KD_EVENT_INPUT_KEY_ATX):
@@ -361,8 +353,9 @@ pump_input(struct nk_context *ctx, KDWindow *win)
                 kdDefaultEvent(event);
             }
         }
-        event = kdWaitEvent(100);
+        event = kdWaitEvent(-1);
     }
+
     nk_input_end(ctx);
 }
 
@@ -535,10 +528,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 if (set) current = &b;
                 b = 0; set = 0;
             }
-        if(nk_item_is_any_active(&ctx))
-        {
-            quit = KD_TRUE;
-        }
         }
         nk_end(&ctx);
 
@@ -589,7 +578,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             glClear(GL_COLOR_BUFFER_BIT);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             device_draw(&device, &ctx, width, height, NK_ANTI_ALIASING_ON);
-            eglSwapBuffers(egl_display, egl_surface);
         }
     }
 

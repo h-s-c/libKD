@@ -143,6 +143,7 @@
 #   if defined(__EMSCRIPTEN__)
 #       include <emscripten/emscripten.h>
 #       include <emscripten/html5.h>
+#       include <emscripten/threading.h>
 #   endif
 #   if defined(KD_WINDOW_X11)
 #       include <X11/Xlib.h>
@@ -743,6 +744,7 @@ static void *__kdThreadRun(void *init)
     {
         __kdThreadFree(thread);
     }
+    kdThreadExit(result);
     return result;
 }
 #endif
@@ -752,6 +754,13 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
     kdSetError(KD_ENOSYS);
     return KD_NULL;
+#endif
+#if defined (__EMSCRIPTEN__)
+    if(!emscripten_has_threading_support())
+    {
+        kdSetError(KD_ENOSYS);
+        return KD_NULL;
+    }
 #endif
 
     KDThread *thread = __kdThreadInit();
@@ -798,6 +807,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     {
         result = *(KDint *)retval;
     }
+
 #if defined(KD_THREAD_C11)
     thrd_exit(result);
 #elif defined(KD_THREAD_POSIX)
@@ -1016,6 +1026,13 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
     kdSetError(KD_ENOSYS);
     return KD_NULL;
 #endif
+#if defined (__EMSCRIPTEN__)
+    if(!emscripten_has_threading_support())
+    {
+        kdSetError(KD_ENOSYS);
+        return KD_NULL;
+    }
+#endif
 
     KDThreadCond *cond = (KDThreadCond *)kdMalloc(sizeof(KDThreadCond));
     if(cond == KD_NULL)
@@ -1202,7 +1219,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #endif
 
 #if defined(__EMSCRIPTEN__)
-    emscripten_sleep_with_yield(timeout / 1000000);
+    emscripten_sleep(timeout / 1000000);
 #elif defined(KD_THREAD_C11)
     thrd_sleep(&ts, KD_NULL);
 #elif defined(KD_THREAD_POSIX)
@@ -1371,9 +1388,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 
 #ifdef KD_WINDOW_SUPPORTED
     KD_UNUSED KDWindow *window = __kd_window;
-#if defined(__EMSCRIPTEN__)
-    emscripten_sleep_with_yield(1);
-#elif defined(__ANDROID__)
+#if defined(KD_WINDOW_EMSCRIPTEN)
+    emscripten_sleep(1);
+#elif defined(KD_WINDOW_ANDROID)
     AInputEvent *aevent = KD_NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     if(__kd_androidinputqueue)
@@ -1472,16 +1489,18 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             event->data.inputpointer.y = raw->data.mouse.lLastY;
                             if(!__kdExecCallback(event))
                             {
+                                for(KDuint i = 0; i < kdQueueSizeVEN(kdThreadSelf()->eventqueue); i++)
+                                {
+                                    KDEvent *xyevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
+                                    if(xyevent && xyevent->type == KD_EVENT_INPUT_POINTER)
+                                    {
+                                        if(xyevent->data.inputpointer.index == KD_INPUT_POINTER_X || xyevent->data.inputpointer.index == KD_INPUT_POINTER_Y)
+                                        {
+                                            kdFreeEvent(xyevent);
+                                        }
+                                    }
+                                }
                                 kdPostEvent(event);
-                            }
-                            KDEvent *event2 = kdCreateEvent();
-                            event2->type = KD_EVENT_INPUT_POINTER;
-                            event2->data.inputpointer.index = KD_INPUT_POINTER_Y;
-                            event2->data.inputpointer.x = raw->data.mouse.lLastX;
-                            event2->data.inputpointer.y = raw->data.mouse.lLastY;
-                            if(!__kdExecCallback(event2))
-                            {
-                                kdPostEvent(event2);
                             }
                         }
                         break;
@@ -2465,16 +2484,18 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     event->data.inputpointer.y = xevent.xmotion.y;
                     if(!__kdExecCallback(event))
                     {
+                        for(KDuint i = 0; i < kdQueueSizeVEN(kdThreadSelf()->eventqueue); i++)
+                        {
+                            KDEvent *xyevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
+                            if(xyevent && xyevent->type == KD_EVENT_INPUT_POINTER)
+                            {
+                                if(xyevent->data.inputpointer.index == KD_INPUT_POINTER_X || xyevent->data.inputpointer.index == KD_INPUT_POINTER_Y)
+                                {
+                                    kdFreeEvent(xyevent);
+                                }
+                            }
+                        }
                         kdPostEvent(event);
-                    }
-                    KDEvent *event2 = kdCreateEvent();
-                    event2->type = KD_EVENT_INPUT_POINTER;
-                    event2->data.inputpointer.index = KD_INPUT_POINTER_Y;
-                    event2->data.inputpointer.x = xevent.xmotion.x;
-                    event2->data.inputpointer.y = xevent.xmotion.y;
-                    if(!__kdExecCallback(event2))
-                    {
-                        kdPostEvent(event2);
                     }
                     break;
                 }
@@ -2587,7 +2608,8 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     KDint error = kdQueuePushVEN(thread->eventqueue, (void *)event);
     if(error == -1)
     {
-        kdAssert(0);
+       kdSetError(KD_ENOMEM);
+       return -1;
     }
     return 0;
 }
@@ -2720,20 +2742,6 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
     __kd_androidinputqueue = KD_NULL;
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 }
-#elif defined(__EMSCRIPTEN__)
-EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
-{
-    if(type == EMSCRIPTEN_EVENT_MOUSEDOWN)
-    {
-    }
-    else if(type == EMSCRIPTEN_EVENT_MOUSEUP)
-    {
-    }
-    else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
-    {
-    }  
-    return 0;
-}
 #endif
 
 static KDThreadMutex *__kd_tls_mutex = KD_NULL;
@@ -2761,12 +2769,6 @@ static int __kdPreMain(int argc, char **argv)
 #endif
     kdThreadOnce(&__kd_threadlocal_once, __kdThreadInitOnce);
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
-
-#if defined(__EMSCRIPTEN__)
-    emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-#endif
 
     KDint result = 0;
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__) || (defined(__MINGW32__) && !defined(__MINGW64__))
@@ -2874,7 +2876,9 @@ int WINAPI mainCRTStartup(void)
 #endif
 KD_API int main(int argc, char **argv)
 {
-    return __kdPreMain(argc, argv);
+    KDint result = __kdPreMain(argc, argv);
+    kdExit(result);
+    return result;
 }
 
 /* kdExit: Exit the application. */
@@ -2888,6 +2892,10 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
     {
         status = EXIT_FAILURE;
     }
+
+#if defined(__EMSCRIPTEN__)
+    emscripten_force_exit(status);
+#endif
 
 #if defined(_WIN32)
     ExitProcess(status);
@@ -10861,6 +10869,42 @@ static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wp
     }
     return 0;
 }
+#elif defined(KD_WINDOW_EMSCRIPTEN)
+EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
+{
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->type = KD_EVENT_INPUT_POINTER;
+    if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
+    {
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+        kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
+    }
+    else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
+    {
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+    }
+    kdevent->data.inputpointer.x = event->canvasX;
+    kdevent->data.inputpointer.y = event->canvasY;
+    if(!__kdExecCallback(kdevent))
+    {
+        if(kdevent->data.inputpointer.index == KD_INPUT_POINTER_X)
+        {
+            for(KDuint i = 0; i < kdQueueSizeVEN(kdThreadSelf()->eventqueue); i++)
+            {
+                KDEvent *xyevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
+                if(xyevent && xyevent->type == KD_EVENT_INPUT_POINTER)
+                {
+                    if(xyevent->data.inputpointer.index == KD_INPUT_POINTER_X || xyevent->data.inputpointer.index == KD_INPUT_POINTER_Y)
+                    {
+                        kdFreeEvent(xyevent);
+                    }
+                }
+            }
+        }
+        kdPostEvent(kdevent);
+    }
+    return 0;
+}
 #elif defined(KD_WINDOW_WAYLAND)
 static KDboolean __kdIsPointerDereferencable(void *p)
 {
@@ -10947,7 +10991,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
     window->originthr = kdThreadSelf();
 
-#if defined(__ANDROID__)
+#if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
     WNDCLASS windowclass = {0};
@@ -11051,7 +11095,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         wl_display_roundtrip(window->nativedisplay);
     }
 #endif
-#elif defined(__EMSCRIPTEN__)
+#elif defined(KD_WINDOW_EMSCRIPTEN)
     EmscriptenFullscreenStrategy strategy;
     kdMemset(&strategy, 0, sizeof(strategy));
     strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
@@ -11061,6 +11105,9 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     KDfloat64KHR width, height;
     emscripten_get_element_css_size("canvas", &width, &height);
     emscripten_set_canvas_size((KDint)width, (KDint)height);
+    emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
 #endif
     __kd_window = window;
     return window;
@@ -11119,7 +11166,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
             XMoveResizeWindow(window->nativedisplay, (Window)window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
             XFlush(window->nativedisplay);
         }
-#elif defined(__EMSCRIPTEN__)
+#elif defined(KD_WINDOW_EMSCRIPTEN)
         emscripten_set_canvas_size(param[0], param[1]);
 #endif
         KDEvent *event = kdCreateEvent();
@@ -11166,7 +11213,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(__ANDROID__)
+#if defined(KD_WINDOW_ANDROID)
         param[0] = ANativeWindow_getWidth(window->nativewindow);
         param[1] = ANativeWindow_getHeight(window->nativewindow);
         return 0;
@@ -11179,7 +11226,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
             param[1] = attributes.height;
             return 0;
         }
-#elif defined(__EMSCRIPTEN__)
+#elif defined(KD_WINDOW_EMSCRIPTEN)
         emscripten_get_canvas_size(&param[0], &param[1], (KDint[]){0});
         return 0;
 #endif
@@ -11206,7 +11253,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-#if defined(__ANDROID__)
+#if defined(KD_WINDOW_ANDROID)
     for(;;)
     {
         kdThreadMutexLock(__kd_androidwindow_mutex);
@@ -11928,7 +11975,7 @@ struct KDAtomicIntVEN {
 struct KDAtomicPtrVEN {
     atomic_uintptr_t value;
 };
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
 struct KDAtomicIntVEN {
     KDint value;
 #if defined(KD_ATOMIC_MUTEX)
@@ -11953,7 +12000,7 @@ KD_API KDAtomicIntVEN *KD_APIENTRY kdAtomicIntCreateVEN(KDint value)
     }
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
     object->value = value;
 #if defined(KD_ATOMIC_MUTEX)
     object->mutex = kdThreadMutexCreate(KD_NULL);
@@ -11972,7 +12019,7 @@ KD_API KDAtomicPtrVEN *KD_APIENTRY kdAtomicPtrCreateVEN(void *value)
     }
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, (KDuintptr)value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
     object->value = value;
 #if defined(KD_ATOMIC_MUTEX)
     object->mutex = kdThreadMutexCreate(KD_NULL);
@@ -12012,6 +12059,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object)
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_load_u32(&object->value);
 #endif
 }
 
@@ -12028,6 +12077,8 @@ KD_API void *KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return (void*)emscripten_atomic_load_u32(&object->value);
 #endif
 }
 
@@ -12045,6 +12096,8 @@ KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
     kdThreadMutexLock(object->mutex);
     object->value = value;
     kdThreadMutexUnlock(object->mutex);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    emscripten_atomic_store_u32(&object->value, value);
 #endif
 }
 
@@ -12064,6 +12117,8 @@ KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void *value)
     kdThreadMutexLock(object->mutex);
     object->value = value;
     kdThreadMutexUnlock(object->mutex);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    emscripten_atomic_store_u32(&object->value, (KDuint32)value);
 #endif
 }
 
@@ -12083,6 +12138,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint va
     object->value = object->value + value;
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_add_u32(&object->value, value);
 #endif
 }
 
@@ -12103,6 +12160,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint va
     object->value = object->value - value;
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_sub_u32(&object->value, value);
 #endif
 }
 
@@ -12126,6 +12185,8 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
     }
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_cas_u32(&object->value, expected, desired);
 #endif
 }
 
@@ -12151,6 +12212,8 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
     }
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_cas_u32(&object->value, (KDuint32)expected, (KDuint32)desired);
 #endif
 }
 

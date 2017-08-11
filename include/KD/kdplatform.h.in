@@ -30,6 +30,8 @@
  * Implementation defined
  ******************************************************************************/
 
+#cmakedefine KD_WINDOW_ANDROID
+#cmakedefine KD_WINDOW_EMSCRIPTEN
 #cmakedefine KD_WINDOW_X11
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_WIN32
@@ -58,7 +60,11 @@
 #   define KD_DEPRECATED
 #endif
 
-#if defined(_WIN32)
+#if defined(__EMSCRIPTEN__)
+#   define KD_ATOMIC_MUTEX
+//#   define KD_THREAD_EMSCRIPTEN
+//#   define KD_THREAD_POSIX
+#elif defined(_WIN32)
 #   define KD_ATOMIC_WIN32
 #   define KD_THREAD_WIN32
 #elif defined(__INTEL_COMPILER)
@@ -117,12 +123,6 @@
 #   define KD_THREAD_POSIX
 #else
 #   define KD_ATOMIC_MUTEX
-#endif
-
-#if defined(__EMSCRIPTEN__)
-/* Deactivate threading on this platform for now. */
-#undef KD_THREAD_POSIX
-#undef KD_THREAD_C11
 #endif
 
 /******************************************************************************

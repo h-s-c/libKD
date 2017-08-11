@@ -149,17 +149,6 @@ jobs:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      env: DOCKER_IMAGE=dockcross/browser-asmjs 
-      dist: trusty
-      sudo: required
-      services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
-
-    - os: linux
       env: DOCKER_IMAGE=dockcross/windows-x64
       dist: trusty
       sudo: required
