@@ -2025,7 +2025,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case KeyPress:
                 {
                     KeySym keysym;
-                    XLookupString(&xevent.xkey, KD_NULL, 25, &keysym, KD_NULL);
+                    XLookupString(&xevent.xkey, KD_NULL, 0, &keysym, KD_NULL);
                     event->type = KD_EVENT_INPUT_KEY_ATX;
                     KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
 
@@ -10903,7 +10903,432 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
         }
         kdPostEvent(kdevent);
     }
-    return 0;
+    return 1;
+}
+EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
+{
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
+
+    /* Press or release */
+    if(type == EMSCRIPTEN_EVENT_KEYDOWN)
+    {
+        keyevent->flags = KD_KEY_PRESS_ATX;
+    }
+    else if(type == EMSCRIPTEN_EVENT_KEYUP)
+    {
+        keyevent->flags = 0;
+    }
+
+    switch(event->which)
+    {
+        case(30):
+        {
+            keyevent->keycode = KD_KEY_ACCEPT_ATX;
+            break;
+        }
+        /* KD_KEY_AGAIN_ATX */
+        /* KD_KEY_ALLCANDIDATES_ATX */
+        /* KD_KEY_ALPHANUMERIC_ATX */
+        case(93):
+        {
+            keyevent->keycode = KD_KEY_ALT_ATX;
+            break;
+        }
+        /* KD_KEY_ALTGRAPH_ATX */
+        /* KD_KEY_APPS_ATX */
+        case(240):
+        case(246):
+        {
+            keyevent->keycode = KD_KEY_ATTN_ATX;
+            break;
+        }
+        /* KD_KEY_BROWSERBACK_ATX
+           KD_KEY_BROWSERFAVORITES_ATX
+           KD_KEY_BROWSERFORWARD_ATX
+           KD_KEY_BROWSERHOME_ATX
+           KD_KEY_BROWSERREFRESH_ATX
+           KD_KEY_BROWSERSEARCH_ATX
+           KD_KEY_BROWSERSTOP_ATX */
+        case(20):
+        {
+            keyevent->keycode = KD_KEY_CAPSLOCK_ATX;
+            break;
+        }
+        case(12):
+        case(230):
+        case(254):
+        {
+            keyevent->keycode = KD_KEY_CLEAR_ATX;
+            break;
+        }
+        /* KD_KEY_CODEINPUT_ATX
+           KD_KEY_COMPOSE_ATX */
+        case(17):
+        {
+            keyevent->keycode = KD_KEY_CONTROL_ATX;
+            break;
+        }
+        case(247):
+        {
+            keyevent->keycode = KD_KEY_CRSEL_ATX;
+            break;
+        }
+        case(28):
+        {
+            keyevent->keycode = KD_KEY_CONVERT_ATX;
+            break;
+        }
+        case(242):
+        {
+            keyevent->keycode = KD_KEY_COPY_ATX;
+            break;
+        }
+        /* KD_KEY_CUT_ATX */
+        case(40):
+        {
+            keyevent->keycode = KD_KEY_DOWN_ATX;
+            break;
+        }
+        case(35):
+        {
+            keyevent->keycode = KD_KEY_END_ATX;
+            break;
+        }
+        case(13):
+        {
+            keyevent->keycode = KD_KEY_ENTER_ATX;
+            break;
+        }
+        case(249):
+        {
+            keyevent->keycode = KD_KEY_ERASEEOF_ATX;
+            break;
+        }
+        case(43):
+        {
+            keyevent->keycode = KD_KEY_EXECUTE_ATX;
+            break;
+        }
+        case(248):
+        {
+            keyevent->keycode = KD_KEY_EXSEL_ATX;
+            break;
+        }
+        case(112):
+        {
+            keyevent->keycode = KD_KEY_F1_ATX;
+            break;
+        }
+        case(113):
+        {
+            keyevent->keycode = KD_KEY_F2_ATX;
+            break;
+        }
+        case(114):
+        {
+            keyevent->keycode = KD_KEY_F3_ATX;
+            break;
+        }
+        case(115):
+        {
+            keyevent->keycode = KD_KEY_F4_ATX;
+            break;
+        }
+        case(116):
+        {
+            keyevent->keycode = KD_KEY_F5_ATX;
+            break;
+        }
+        case(117):
+        {
+            keyevent->keycode = KD_KEY_F6_ATX;
+            break;
+        }
+        case(118):
+        {
+            keyevent->keycode = KD_KEY_F7_ATX;
+            break;
+        }
+        case(119):
+        {
+            keyevent->keycode = KD_KEY_F8_ATX;
+            break;
+        }
+        case(120):
+        {
+            keyevent->keycode = KD_KEY_F9_ATX;
+            break;
+        }
+        case(121):
+        {
+            keyevent->keycode = KD_KEY_F10_ATX;
+            break;
+        }
+        case(122):
+        {
+            keyevent->keycode = KD_KEY_F11_ATX;
+            break;
+        }
+        case(123):
+        {
+            keyevent->keycode = KD_KEY_F12_ATX;
+            break;
+        }
+        case(124):
+        {
+            keyevent->keycode = KD_KEY_F13_ATX;
+            break;
+        }
+        case(125):
+        {
+            keyevent->keycode = KD_KEY_F14_ATX;
+            break;
+        }
+        case(126):
+        {
+            keyevent->keycode = KD_KEY_F15_ATX;
+            break;
+        }
+        case(127):
+        {
+            keyevent->keycode = KD_KEY_F16_ATX;
+            break;
+        }
+        case(128):
+        {
+            keyevent->keycode = KD_KEY_F17_ATX;
+            break;
+        }
+        case(129):
+        {
+            keyevent->keycode = KD_KEY_F18_ATX;
+            break;
+        }
+        case(130):
+        {
+            keyevent->keycode = KD_KEY_F19_ATX;
+            break;
+        }
+        case(131):
+        {
+            keyevent->keycode = KD_KEY_F20_ATX;
+            break;
+        }
+        case(132):
+        {
+            keyevent->keycode = KD_KEY_F21_ATX;
+            break;
+        }
+        case(133):
+        {
+            keyevent->keycode = KD_KEY_F22_ATX;
+            break;
+        }
+        case(134):
+        {
+            keyevent->keycode = KD_KEY_F23_ATX;
+            break;
+        }
+        case(135):
+        {
+            keyevent->keycode = KD_KEY_F24_ATX;
+            break;
+        }
+        case(24):
+        {
+            keyevent->keycode = KD_KEY_FINALMODE_ATX;
+            break;
+        }
+        /* KD_KEY_FIND_ATX
+           KD_KEY_FULLWIDTH_ATX
+           KD_KEY_HALFWIDTH_ATX */
+        case(21):
+        {
+            keyevent->keycode = KD_KEY_HANGULMODE_ATX;
+            break;
+        }
+        case(25):
+        {
+            keyevent->keycode = KD_KEY_HANJAMODE_ATX;
+            break;
+        }
+        case(6):
+        {
+            keyevent->keycode = KD_KEY_HELP_ATX;
+            break;
+        }
+        /* KD_KEY_HIRAGANA_ATX */
+        case(36):
+        {
+            keyevent->keycode = KD_KEY_HOME_ATX;
+            break;
+        }
+        case(45):
+        {
+            keyevent->keycode = KD_KEY_INSERT_ATX;
+            break;
+        }
+        /* KD_KEY_JAPANESEHIRAGANA_ATX
+           KD_KEY_JAPANESEKATAKANA_ATX
+           KD_KEY_JAPANESEROMAJI_ATX
+           KD_KEY_JUNJAMODE_ATX
+           KD_KEY_KANAMODE_ATX
+           KD_KEY_KANJIMODE_ATX
+           KD_KEY_KATAKANA_ATX */
+        /* KD_KEY_LAUNCHAPPLICATION1_ATX
+           KD_KEY_LAUNCHAPPLICATION2_ATX
+           KD_KEY_LAUNCHMAIL_ATX*/
+        case(37):
+        {
+            keyevent->keycode = KD_KEY_LEFT_ATX;
+            break;
+        }
+        case(224):
+        {
+            keyevent->keycode = KD_KEY_META_ATX;
+            break;
+        }
+        /* KD_KEY_MEDIANEXTTRACK_ATX;
+           KD_KEY_MEDIAPLAYPAUSE_ATX
+           KD_KEY_MEDIAPREVIOUSTRACK_ATX
+           KD_KEY_MEDIASTOP_ATX */
+        case(31):
+        {
+            keyevent->keycode = KD_KEY_MODECHANGE_ATX;
+            break;
+        }
+        case(29):
+        {
+            keyevent->keycode = KD_KEY_NONCONVERT_ATX;
+            break;
+        }
+        case(144):
+        {
+            keyevent->keycode = KD_KEY_NUMLOCK_ATX;
+            break;
+        }
+        case(34):
+        {
+            keyevent->keycode = KD_KEY_PAGEDOWN_ATX;
+            break;
+        }
+        case(33):
+        {
+            keyevent->keycode = KD_KEY_PAGEUP_ATX;
+            break;
+        }
+        case(19):
+        {
+            keyevent->keycode = KD_KEY_PAUSE_ATX;
+            break;
+        }
+        case(250):
+        {
+            keyevent->keycode = KD_KEY_PLAY_ATX;
+            break;
+        }
+        /* KD_KEY_PREVIOUSCANDIDATE_ATX */
+        case(42):
+        {
+            keyevent->keycode = KD_KEY_PRINTSCREEN_ATX;
+            break;
+        }
+        /* KD_KEY_PROCESS_ATX */
+        /* KD_KEY_PROPS_ATX */
+        case(39):
+        {
+            keyevent->keycode = KD_KEY_RIGHT_ATX;
+            break;
+        }
+        /* KD_KEY_ROMANCHARACTERS_ATX */
+        case(145):
+        {
+            keyevent->keycode = KD_KEY_SCROLL_ATX;
+            break;
+        }
+        case(41):
+        {
+            keyevent->keycode = KD_KEY_SELECT_ATX;
+            break;
+        }
+        /* KD_KEY_SELECTMEDIA_ATX */
+        case(16):
+        {
+            keyevent->keycode = KD_KEY_SHIFT_ATX;
+            break;
+        }
+        case(3):
+        {
+            keyevent->keycode = KD_KEY_STOP_ATX;
+            break;
+        }
+        case(38):
+        {
+            keyevent->keycode = KD_KEY_UP_ATX;
+            break;
+        }
+        /* KD_KEY_UNDO_ATX */
+        case(182):
+        {
+            keyevent->keycode = KD_KEY_VOLUMEDOWN_ATX;
+            break;
+        }
+        case(181):
+        {
+            keyevent->keycode = KD_KEY_VOLUMEMUTE_ATX;
+            break;
+        }
+        case(183):
+        {
+            keyevent->keycode = KD_KEY_VOLUMEUP_ATX;
+            break;
+        }
+        case(91):
+        {
+            keyevent->keycode = KD_KEY_WIN_ATX;
+            break;
+        }
+        case(251):
+        {
+            keyevent->keycode = KD_KEY_ZOOM_ATX;
+            break;
+        }
+        default:
+        {
+            kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+            keycharevent->character = (KDint32)event->which;
+            break;
+        }
+    }
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+    return 1;
+}
+EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event, void *user)
+{
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+
+    if(type == EMSCRIPTEN_EVENT_FOCUSIN)
+    {
+        kdevent->data.windowfocus.focusstate = 1;
+    }
+    else if(type == EMSCRIPTEN_EVENT_FOCUSOUT)
+    {
+        kdevent->data.windowfocus.focusstate = 0;
+    }
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+    return 1;
 }
 #elif defined(KD_WINDOW_WAYLAND)
 static KDboolean __kdIsPointerDereferencable(void *p)
@@ -11108,6 +11533,10 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_keydown_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_keyup_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
 #endif
     __kd_window = window;
     return window;

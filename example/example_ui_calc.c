@@ -256,7 +256,7 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
         glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
 #endif
 
-      /* iterate over and execute each draw command */
+        /* iterate over and execute each draw command */
         nk_draw_foreach(cmd, ctx, &dev->cmds)
         {
             if (!cmd->elem_count) continue;
@@ -346,6 +346,12 @@ pump_input(struct nk_context *ctx, KDWindow *win)
                         break;
                     }
                 }
+                break;
+            }
+            case(KD_EVENT_INPUT_KEYCHAR_ATX):
+            {
+                KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
+                nk_input_char(ctx, (KDchar)keycharevent->character);
                 break;
             }
             default:
