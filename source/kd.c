@@ -904,7 +904,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #elif defined(KD_THREAD_WIN32)
     void *pfunc = KD_NULL;
     kdMemcpy(&pfunc, &init_routine, sizeof(init_routine));
-    InitOnceExecuteOnce((PINIT_ONCE)once_control, __kd_WindowsCallOneCallbac, pfunc, KD_NULL);
+    InitOnceExecuteOnce((PINIT_ONCE)once_control, __kd_WindowsCallOneCallback, pfunc, KD_NULL);
 #else
     if(once_control->impl == 0)
     {
