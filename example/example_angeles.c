@@ -63,14 +63,20 @@ typedef struct {
      * used by the ground plane, so when its pointer is NULL then normal
      * array usage is disabled.
      *
-     * Vertex array is supposed to use GL_FLOAT datatype and stride 0
+     * Vertex array is supposed to use GL_FIXED datatype and stride 0
      * (i.e. tightly packed array). Color array is supposed to have 4
      * components per color with GL_UNSIGNED_BYTE datatype and stride 0.
-     * Normal array is supposed to use GL_FLOAT datatype and stride 0.
+     * Normal array is supposed to use GL_FIXED datatype and stride 0.
      */
     GLfloat *vertexArray;
+    GLint vertexArraySize;
+    GLintptr vertexArrayOffset;
     GLubyte *colorArray;
+    GLint colorArraySize;
+    GLintptr colorArrayOffset;
     GLfloat *normalArray;
+    GLint normalArraySize;
+    GLintptr normalArrayOffset;
     GLint vertexComponents;
     GLsizei count;
 } GLOBJECT;
@@ -85,7 +91,9 @@ static KDust sNextCamTrackStartTick = 0x7fffffff;
 
 static GLOBJECT *sSuperShapeObjects[SUPERSHAPE_COUNT] = { KD_NULL };
 static GLOBJECT *sGroundPlane = KD_NULL;
+static GLOBJECT *sFadeQuad = KD_NULL;
 
+static GLuint sVBO = 0;
 
 typedef struct {
     KDfloat32 x, y, z;
@@ -96,15 +104,17 @@ static void freeGLObject(GLOBJECT *object)
 {
     if (object == KD_NULL)
         return;
+
     kdFree(object->normalArray);
     kdFree(object->colorArray);
     kdFree(object->vertexArray);
+
     kdFree(object);
 }
 
 
 static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
-                              KDint useNormalArray)
+                              KDint useColorArray, KDint useNormalArray)
 {
     GLOBJECT *result;
     result = (GLOBJECT *)kdMalloc(sizeof(GLOBJECT));
@@ -112,18 +122,35 @@ static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
         return KD_NULL;
     result->count = vertices;
     result->vertexComponents = vertexComponents;
-    result->vertexArray = (GLfloat *)kdMalloc(vertices * vertexComponents *
-                                            sizeof(GLfloat));
-    result->colorArray = (GLubyte *)kdMalloc(vertices * 4 * sizeof(GLubyte));
-    if (useNormalArray)
+    result->vertexArraySize = vertices * vertexComponents * sizeof(GLfloat);
+    result->vertexArray = kdMalloc(result->vertexArraySize);
+    result->vertexArrayOffset = 0;
+    if (useColorArray)
     {
-        result->normalArray = (GLfloat *)kdMalloc(vertices * 3 *
-                                                sizeof(GLfloat));
+        result->colorArraySize = vertices * 4 * sizeof(GLubyte);
+        result->colorArray = kdMalloc(result->colorArraySize);
     }
     else
+    {
+        result->colorArraySize = 0;
+        result->colorArray = KD_NULL;
+    }
+    result->colorArrayOffset = result->vertexArrayOffset +
+                               result->vertexArraySize;
+    if (useNormalArray)
+    {
+        result->normalArraySize = vertices * 3 * sizeof(GLfloat);
+        result->normalArray = kdMalloc(result->normalArraySize);
+    }
+    else
+    {
+        result->normalArraySize = 0;
         result->normalArray = KD_NULL;
+    }
+    result->normalArrayOffset = result->colorArrayOffset +
+                                result->colorArraySize;
     if (result->vertexArray == KD_NULL ||
-        result->colorArray == KD_NULL ||
+        (useColorArray && result->colorArray == KD_NULL) ||
         (useNormalArray && result->normalArray == KD_NULL))
     {
         freeGLObject(result);
@@ -133,17 +160,76 @@ static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
 }
 
 
+static void appendObjectVBO(GLOBJECT *object, GLint *offset)
+{
+    kdAssert(object != KD_NULL);
+
+    object->vertexArrayOffset += *offset;
+    object->colorArrayOffset += *offset;
+    object->normalArrayOffset += *offset;
+    *offset += object->vertexArraySize + object->colorArraySize +
+               object->normalArraySize;
+
+    glBufferSubData(GL_ARRAY_BUFFER, object->vertexArrayOffset,
+                    object->vertexArraySize, object->vertexArray);
+    if (object->colorArray)
+        glBufferSubData(GL_ARRAY_BUFFER, object->colorArrayOffset,
+                        object->colorArraySize, object->colorArray);
+    if (object->normalArray)
+        glBufferSubData(GL_ARRAY_BUFFER, object->normalArrayOffset,
+                        object->normalArraySize, object->normalArray);
+
+    kdFree(object->normalArray);
+    object->normalArray = KD_NULL;
+    kdFree(object->colorArray);
+    object->colorArray = KD_NULL;
+    kdFree(object->vertexArray);
+    object->vertexArray = KD_NULL;
+}
+
+
+static GLuint createVBO(GLOBJECT **superShapes, KDint superShapeCount,
+                        GLOBJECT *groundPlane, GLOBJECT *fadeQuad)
+{
+    GLuint vbo;
+    GLint totalSize = 0;
+    KDint a;
+    for (a = 0; a < superShapeCount; ++a)
+    {
+        kdAssert(superShapes[a] != KD_NULL);
+        totalSize += superShapes[a]->vertexArraySize +
+                     superShapes[a]->colorArraySize +
+                     superShapes[a]->normalArraySize;
+    }
+    totalSize += groundPlane->vertexArraySize +
+                 groundPlane->colorArraySize +
+                 groundPlane->normalArraySize;
+    totalSize += fadeQuad->vertexArraySize +
+                 fadeQuad->colorArraySize +
+                 fadeQuad->normalArraySize;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, totalSize, 0, GL_STATIC_DRAW);
+    GLint offset = 0;
+    for (a = 0; a < superShapeCount; ++a)
+        appendObjectVBO(superShapes[a], &offset);
+    appendObjectVBO(groundPlane, &offset);
+    appendObjectVBO(fadeQuad, &offset);
+    kdAssert(offset == totalSize);
+    return vbo;
+}
+
+
 static void drawGLObject(GLOBJECT *object)
 {
     kdAssert(object != KD_NULL);
 
-    glVertexPointer(object->vertexComponents, GL_FLOAT,
-                    0, object->vertexArray);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 0, object->colorArray);
-
-    if (object->normalArray)
+    glVertexPointer(object->vertexComponents, GL_FLOAT, 0,
+                    (GLvoid *)object->vertexArrayOffset);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 0, (GLvoid *)object->colorArrayOffset);
+    if (object->normalArraySize > 0)
     {
-        glNormalPointer(GL_FLOAT, 0, object->normalArray);
+        glNormalPointer(GL_FLOAT, 0, (GLvoid *)object->normalArrayOffset);
         glEnableClientState(GL_NORMAL_ARRAY);
     }
     else
@@ -196,7 +282,7 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
     KDint a, longitude, latitude;
     KDint64 currentVertex, currentQuad;
 
-    result = newGLObject(vertices, 3, 1);
+    result = newGLObject(vertices, 3, 1, 1);
     if (result == KD_NULL)
         return KD_NULL;
 
@@ -339,7 +425,7 @@ static GLOBJECT * createGroundPlane()
     KDint x, y;
     KDint64 currentVertex, currentQuad;
 
-    result = newGLObject(vertices, 2, 0);
+    result = newGLObject(vertices, 2, 1, 0);
     if (result == KD_NULL)
         return KD_NULL;
 
@@ -396,29 +482,45 @@ static void drawGroundPlane()
 }
 
 
-static void drawFadeQuad()
+static GLOBJECT * createFadeQuad()
 {
     static const GLfloat quadVertices[] = {
-        FLOAT(-0x10000),    FLOAT(-0x10000),
-        FLOAT(0x10000),     FLOAT(-0x10000),
-        FLOAT(-0x10000),    FLOAT(0x10000),
-        FLOAT(0x10000),     FLOAT(-0x10000),
-        FLOAT(0x10000),     FLOAT(0x10000),
-        FLOAT(-0x10000),    FLOAT(0x10000)
+        -1, -1,
+         1, -1,
+        -1,  1,
+         1, -1,
+         1,  1,
+        -1,  1
     };
 
+    GLOBJECT *result;
+    KDint i;
+
+    result = newGLObject(6, 2, 0, 0);
+    if (result == KD_NULL)
+        return KD_NULL;
+
+    for (i = 0; i < 12; ++i)
+        result->vertexArray[i] = quadVertices[i];
+
+    return result;
+}
+
+
+static void drawFadeQuad()
+{
     const KDint beginFade = sTick - sCurrentCamTrackStartTick;
     const KDint endFade = sNextCamTrackStartTick - sTick;
     const KDint minFade = beginFade < endFade ? beginFade : endFade;
 
     if (minFade < 1024)
     {
-        const GLfloat fadeColor = FLOAT((minFade << 6));
-        glColor4f(fadeColor, fadeColor, fadeColor, 0);
-
+        const GLfloat fadeColor = minFade / 1024.f;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+        glColor4f(fadeColor, fadeColor, fadeColor, 0);
+
         glDisable(GL_LIGHTING);
 
         glMatrixMode(GL_MODELVIEW);
@@ -429,7 +531,8 @@ static void drawFadeQuad()
 
         glDisableClientState(GL_COLOR_ARRAY);
         glDisableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(2, GL_FLOAT, 0, quadVertices);
+        glVertexPointer(2, GL_FLOAT, 0, (GLvoid *)sFadeQuad->vertexArrayOffset);
+
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glEnableClientState(GL_COLOR_ARRAY);
@@ -444,14 +547,18 @@ static void drawFadeQuad()
 
 
 // Called from the app framework.
-void appInit()
+int appInit()
 {
     KDint a;
+    static GLfloat light0Diffuse[] = { 1.f, 0.4f, 0, 1.f };
+    static GLfloat light1Diffuse[] = { 0.07f, 0.14f, 0.35f, 1.f };
+    static GLfloat light2Diffuse[] = { 0.07f, 0.17f, 0.14f, 1.f };
+    static GLfloat materialSpecular[] = { 1.f, 1.f, 1.f, 1.f };
 
-    glEnable(GL_NORMALIZE);
-    glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_FLAT);
+    glEnable(GL_NORMALIZE);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -460,7 +567,6 @@ void appInit()
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
-
     seedRandom(15);
 
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
@@ -470,6 +576,18 @@ void appInit()
     }
     sGroundPlane = createGroundPlane();
     kdAssert(sGroundPlane != KD_NULL);
+    sFadeQuad = createFadeQuad();
+    kdAssert(sFadeQuad != KD_NULL);
+    sVBO = createVBO(sSuperShapeObjects, SUPERSHAPE_COUNT,
+                     sGroundPlane, sFadeQuad);
+
+    // setup non-changing lighting parameters
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light0Diffuse);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, light1Diffuse);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, light2Diffuse);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 60);
+    return 1;
 }
 
 
@@ -480,15 +598,16 @@ void appDeinit()
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
         freeGLObject(sSuperShapeObjects[a]);
     freeGLObject(sGroundPlane);
+    freeGLObject(sFadeQuad);
+    glDeleteBuffers(1, &sVBO);
 }
-
 
 static void gluPerspective(GLfloat fovy, GLfloat aspect,
                            GLfloat zNear, GLfloat zFar)
 {
     GLfloat xmin, xmax, ymin, ymax;
 
-    ymax = zNear * (GLfloat)kdTanf(fovy * KD_PI_F / 360);
+    ymax = zNear * kdTanf(fovy * KD_PI_F / 360);
     ymin = -ymax;
     xmin = ymin * aspect;
     xmax = ymax * aspect;
@@ -496,12 +615,11 @@ static void gluPerspective(GLfloat fovy, GLfloat aspect,
     glFrustumf(xmin, xmax, ymin, ymax, zNear, zFar);
 }
 
-
 static void prepareFrame(KDint width, KDint height)
 {
     glViewport(0, 0, width, height);
 
-    glClearColor(0.1f, 0.2f, 0.3f, FLOAT(0x10000));
+    glClearColor(0.1f, 0.2f, 0.3f, 1.f);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
     glMatrixMode(GL_PROJECTION);
@@ -509,30 +627,20 @@ static void prepareFrame(KDint width, KDint height)
     gluPerspective(45, (KDfloat32)width / height, 0.5f, 150);
 
     glMatrixMode(GL_MODELVIEW);
-
     glLoadIdentity();
 }
 
 
 static void configureLightAndMaterial()
 {
-    static GLfloat light0Position[] = { FLOAT(-0x40000), FLOAT(0x10000), FLOAT(0x10000), 0.0f };
-    static GLfloat light0Diffuse[] = { FLOAT(0x10000), FLOAT(0x6666), 0.0f, FLOAT(0x10000) };
-    static GLfloat light1Position[] = { FLOAT(0x10000), FLOAT(-0x20000), -0x10000, 0.0f };
-    static GLfloat light1Diffuse[] = { FLOAT(0x11eb), FLOAT(0x23d7), FLOAT(0x5999), FLOAT(0x10000) };
-    static GLfloat light2Position[] = { FLOAT(-0x10000), 0.0f, FLOAT(-0x40000), 0.0f };
-    static GLfloat light2Diffuse[] = { FLOAT(0x11eb), FLOAT(0x2b85), FLOAT(0x23d7), FLOAT(0x10000)};
-    static GLfloat materialSpecular[] = { FLOAT(0x10000), FLOAT(0x10000), FLOAT(0x10000), FLOAT(0x10000) };
+    GLfloat light0Position[] = { -4.f, 1.f, 1.f, 0 };
+    GLfloat light1Position[] = { 1.f, -2.f, -1.f, 0 };
+    GLfloat light2Position[] = { -1.f, 0, -4.f, 0 };
 
     glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light0Diffuse);
     glLightfv(GL_LIGHT1, GL_POSITION, light1Position);
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, light1Diffuse);
     glLightfv(GL_LIGHT2, GL_POSITION, light2Position);
-    glLightfv(GL_LIGHT2, GL_DIFFUSE, light2Diffuse);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
-    
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, (GLfloat[]){60.0f});
+
     glEnable(GL_COLOR_MATERIAL);
 }
 
@@ -544,7 +652,7 @@ static void drawModels(KDfloat32 zScale)
 
     seedRandom(9);
 
-    glScalef(1.0f, 1.0f, zScale);
+    glScalef(1.f, 1.f, zScale);
 
     for (y = -5; y <= 5; ++y)
     {
@@ -554,10 +662,9 @@ static void drawModels(KDfloat32 zScale)
 
             KDint curShape = randomUInt() % SUPERSHAPE_COUNT;
             buildingScale = sSuperShapeParams[curShape][SUPERSHAPE_PARAMS - 1];
-
             glPushMatrix();
-            glTranslatef((x * translationScale), (y * translationScale), 0.0f);
-            glRotatef((GLfloat)(randomUInt() % 360), 0.0f, 0.0f, 1.0f);
+            glTranslatef(x * translationScale, y * translationScale, 0);
+            glRotatef(randomUInt() % 360, 0, 0, 1.f);
             glScalef(buildingScale, buildingScale, buildingScale);
 
             drawGLObject(sSuperShapeObjects[curShape]);
@@ -571,17 +678,16 @@ static void drawModels(KDfloat32 zScale)
         const KDint offs100 = x * shipScale100 + (sTick % shipScale100);
         KDfloat32 offs = offs100 * 0.01f;
         glPushMatrix();
-        glTranslatef(offs, -4.0f, 2.0f);
+        glTranslatef(offs, -4.f, 2.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
         glPopMatrix();
         glPushMatrix();
-        glTranslatef(-4.0f, offs, 4.0f);
-        glRotatef(90.0f, 0, 0, 1.0f);
+        glTranslatef(-4.f, offs, 4.f);
+        glRotatef(90.f, 0, 0, 1.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
         glPopMatrix();
     }
 }
-
 
 /* Following gluLookAt implementation is adapted from the
  * Mesa 3D Graphics library. http://www.mesa3d.org
@@ -641,7 +747,7 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
         y[2] /= mag;
     }
 
-#define M(row,col)  m[col*4+row]
+#define M(row, col)  m[col*4 + row]
     M(0, 0) = x[0];
     M(0, 1) = x[1];
     M(0, 2) = x[2];
@@ -659,15 +765,12 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
     M(3, 2) = 0.0;
     M(3, 3) = 1.0;
 #undef M
-    {
-        KDint a;
-        glMultMatrixf(m);
-    }
+
+    glMultMatrixf(m);
 
     /* Translate Eye to Origin */
     glTranslatef(-eyex, -eyey, -eyez);
 }
-
 
 static void camTrack()
 {
@@ -720,7 +823,7 @@ static KDint gAppAlive = 1;
 /* The tick is current time in milliseconds, width and height
  * are the image dimensions to be rendered.
  */
-void appRender(KDust tick, int width, int height)
+void appRender(KDust tick, KDint width, KDint height)
 {
     if (sStartTick == 0)
         sStartTick = tick;
