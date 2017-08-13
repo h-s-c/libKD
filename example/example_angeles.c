@@ -33,14 +33,13 @@
 #include <EGL/egl.h>
 #include <GLES/gl.h>
 
+#define SUPERSHAPE_HIGH_RES
 #include "angeles/shapes.h"
 #include "angeles/cams.h"
 
 
 // Total run length is 20 * camera track base unit length (see cams.h).
 #define RUN_LENGTH  (20 * CAMTRACK_LEN)
-#define RANDOM_UINT_MAX 65535
-
 
 static KDuint64 sRandomSeed = 0;
 
@@ -55,17 +54,7 @@ static KDuint64 randomUInt()
     return sRandomSeed >> 16;
 }
 
-
-// Capped conversion from float to fixed.
-static KDint64 floatToFixed(KDfloat32 value)
-{
-    if (value < -32768) value = -32768;
-    if (value > 32767) value = 32767;
-    return (KDint64)(value * 65536);
-}
-
-#define FIXED(value) floatToFixed(value)
-
+#define FLOAT(value) (((GLfloat)value) / 65536)
 
 // Definition of one GL object in this demo.
 typedef struct {
@@ -74,14 +63,14 @@ typedef struct {
      * used by the ground plane, so when its pointer is NULL then normal
      * array usage is disabled.
      *
-     * Vertex array is supposed to use GL_FIXED datatype and stride 0
+     * Vertex array is supposed to use GL_FLOAT datatype and stride 0
      * (i.e. tightly packed array). Color array is supposed to have 4
      * components per color with GL_UNSIGNED_BYTE datatype and stride 0.
-     * Normal array is supposed to use GL_FIXED datatype and stride 0.
+     * Normal array is supposed to use GL_FLOAT datatype and stride 0.
      */
-    GLfixed *vertexArray;
+    GLfloat *vertexArray;
     GLubyte *colorArray;
-    GLfixed *normalArray;
+    GLfloat *normalArray;
     GLint vertexComponents;
     GLsizei count;
 } GLOBJECT;
@@ -123,13 +112,13 @@ static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
         return KD_NULL;
     result->count = vertices;
     result->vertexComponents = vertexComponents;
-    result->vertexArray = (GLfixed *)kdMalloc(vertices * vertexComponents *
-                                            sizeof(GLfixed));
+    result->vertexArray = (GLfloat *)kdMalloc(vertices * vertexComponents *
+                                            sizeof(GLfloat));
     result->colorArray = (GLubyte *)kdMalloc(vertices * 4 * sizeof(GLubyte));
     if (useNormalArray)
     {
-        result->normalArray = (GLfixed *)kdMalloc(vertices * 3 *
-                                                sizeof(GLfixed));
+        result->normalArray = (GLfloat *)kdMalloc(vertices * 3 *
+                                                sizeof(GLfloat));
     }
     else
         result->normalArray = KD_NULL;
@@ -148,17 +137,13 @@ static void drawGLObject(GLOBJECT *object)
 {
     kdAssert(object != KD_NULL);
 
-    glVertexPointer(object->vertexComponents, GL_FIXED,
+    glVertexPointer(object->vertexComponents, GL_FLOAT,
                     0, object->vertexArray);
     glColorPointer(4, GL_UNSIGNED_BYTE, 0, object->colorArray);
 
-    // Already done in initialization:
-    //glEnableClientState(GL_VERTEX_ARRAY);
-    //glEnableClientState(GL_COLOR_ARRAY);
-
     if (object->normalArray)
     {
-        glNormalPointer(GL_FIXED, 0, object->normalArray);
+        glNormalPointer(GL_FLOAT, 0, object->normalArray);
         glEnableClientState(GL_NORMAL_ARRAY);
     }
     else
@@ -288,9 +273,9 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
                      i < (currentVertex + 6) * 3;
                      i += 3)
                 {
-                    result->normalArray[i] = FIXED(n.x);
-                    result->normalArray[i + 1] = FIXED(n.y);
-                    result->normalArray[i + 2] = FIXED(n.z);
+                    result->normalArray[i] = n.x;
+                    result->normalArray[i + 1] = n.y;
+                    result->normalArray[i + 2] = n.z;
                 }
                 for (i = currentVertex * 4;
                      i < (currentVertex + 6) * 4;
@@ -307,29 +292,29 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
                     result->colorArray[i + 2] = (GLubyte)color[2];
                     result->colorArray[i + 3] = 0;
                 }
-                result->vertexArray[currentVertex * 3] = FIXED(pa.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pa.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pa.z);
+                result->vertexArray[currentVertex * 3] = pa.x;
+                result->vertexArray[currentVertex * 3 + 1] = pa.y;
+                result->vertexArray[currentVertex * 3 + 2] = pa.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pb.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pb.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pb.z);
+                result->vertexArray[currentVertex * 3] = pb.x;
+                result->vertexArray[currentVertex * 3 + 1] = pb.y;
+                result->vertexArray[currentVertex * 3 + 2] = pb.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pd.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pd.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pd.z);
+                result->vertexArray[currentVertex * 3] = pd.x;
+                result->vertexArray[currentVertex * 3 + 1] = pd.y;
+                result->vertexArray[currentVertex * 3 + 2] = pd.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pb.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pb.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pb.z);
+                result->vertexArray[currentVertex * 3] = pb.x;
+                result->vertexArray[currentVertex * 3 + 1] = pb.y;
+                result->vertexArray[currentVertex * 3 + 2] = pb.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pc.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pc.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pc.z);
+                result->vertexArray[currentVertex * 3] = pc.x;
+                result->vertexArray[currentVertex * 3 + 1] = pc.y;
+                result->vertexArray[currentVertex * 3 + 2] = pc.z;
                 ++currentVertex;
-                result->vertexArray[currentVertex * 3] = FIXED(pd.x);
-                result->vertexArray[currentVertex * 3 + 1] = FIXED(pd.y);
-                result->vertexArray[currentVertex * 3 + 2] = FIXED(pd.z);
+                result->vertexArray[currentVertex * 3] = pd.x;
+                result->vertexArray[currentVertex * 3 + 1] = pd.y;
+                result->vertexArray[currentVertex * 3 + 2] = pd.z;
                 ++currentVertex;
             } // r0 && r1 && r2 && r3
             ++currentQuad;
@@ -384,10 +369,8 @@ static GLOBJECT * createGroundPlane()
                 const KDint xm = x + ((0x1c >> a) & 1);
                 const KDint ym = y + ((0x31 >> a) & 1);
                 const KDfloat32 m = (kdCosf(xm * 2) * kdSinf(ym * 4) * 0.75f);
-                result->vertexArray[currentVertex * 2] =
-                    FIXED(xm * scale + m);
-                result->vertexArray[currentVertex * 2 + 1] =
-                    FIXED(ym * scale + m);
+                result->vertexArray[currentVertex * 2] = xm * scale + m;
+                result->vertexArray[currentVertex * 2 + 1] = ym * scale + m;
                 ++currentVertex;
             }
             ++currentQuad;
@@ -415,13 +398,13 @@ static void drawGroundPlane()
 
 static void drawFadeQuad()
 {
-    static const GLfixed quadVertices[] = {
-        -0x10000, -0x10000,
-         0x10000, -0x10000,
-        -0x10000,  0x10000,
-         0x10000, -0x10000,
-         0x10000,  0x10000,
-        -0x10000,  0x10000
+    static const GLfloat quadVertices[] = {
+        FLOAT(-0x10000),    FLOAT(-0x10000),
+        FLOAT(0x10000),     FLOAT(-0x10000),
+        FLOAT(-0x10000),    FLOAT(0x10000),
+        FLOAT(0x10000),     FLOAT(-0x10000),
+        FLOAT(0x10000),     FLOAT(0x10000),
+        FLOAT(-0x10000),    FLOAT(0x10000)
     };
 
     const KDint beginFade = sTick - sCurrentCamTrackStartTick;
@@ -430,8 +413,8 @@ static void drawFadeQuad()
 
     if (minFade < 1024)
     {
-        const GLfixed fadeColor = minFade << 6;
-        glColor4x(fadeColor, fadeColor, fadeColor, 0);
+        const GLfloat fadeColor = FLOAT((minFade << 6));
+        glColor4f(fadeColor, fadeColor, fadeColor, 0);
 
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
@@ -446,7 +429,7 @@ static void drawFadeQuad()
 
         glDisableClientState(GL_COLOR_ARRAY);
         glDisableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(2, GL_FIXED, 0, quadVertices);
+        glVertexPointer(2, GL_FLOAT, 0, quadVertices);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glEnableClientState(GL_COLOR_ARRAY);
@@ -510,9 +493,7 @@ static void gluPerspective(GLfloat fovy, GLfloat aspect,
     xmin = ymin * aspect;
     xmax = ymax * aspect;
 
-    glFrustumx((GLfixed)(xmin * 65536), (GLfixed)(xmax * 65536),
-               (GLfixed)(ymin * 65536), (GLfixed)(ymax * 65536),
-               (GLfixed)(zNear * 65536), (GLfixed)(zFar * 65536));
+    glFrustumf(xmin, xmax, ymin, ymax, zNear, zFar);
 }
 
 
@@ -520,9 +501,7 @@ static void prepareFrame(KDint width, KDint height)
 {
     glViewport(0, 0, width, height);
 
-    glClearColorx((GLfixed)(0.1f * 65536),
-                  (GLfixed)(0.2f * 65536),
-                  (GLfixed)(0.3f * 65536), 0x10000);
+    glClearColor(0.1f, 0.2f, 0.3f, FLOAT(0x10000));
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
     glMatrixMode(GL_PROJECTION);
@@ -537,23 +516,23 @@ static void prepareFrame(KDint width, KDint height)
 
 static void configureLightAndMaterial()
 {
-    static GLfixed light0Position[] = { -0x40000, 0x10000, 0x10000, 0 };
-    static GLfixed light0Diffuse[] = { 0x10000, 0x6666, 0, 0x10000 };
-    static GLfixed light1Position[] = { 0x10000, -0x20000, -0x10000, 0 };
-    static GLfixed light1Diffuse[] = { 0x11eb, 0x23d7, 0x5999, 0x10000 };
-    static GLfixed light2Position[] = { -0x10000, 0, -0x40000, 0 };
-    static GLfixed light2Diffuse[] = { 0x11eb, 0x2b85, 0x23d7, 0x10000 };
-    static GLfixed materialSpecular[] = { 0x10000, 0x10000, 0x10000, 0x10000 };
+    static GLfloat light0Position[] = { FLOAT(-0x40000), FLOAT(0x10000), FLOAT(0x10000), 0.0f };
+    static GLfloat light0Diffuse[] = { FLOAT(0x10000), FLOAT(0x6666), 0.0f, FLOAT(0x10000) };
+    static GLfloat light1Position[] = { FLOAT(0x10000), FLOAT(-0x20000), -0x10000, 0.0f };
+    static GLfloat light1Diffuse[] = { FLOAT(0x11eb), FLOAT(0x23d7), FLOAT(0x5999), FLOAT(0x10000) };
+    static GLfloat light2Position[] = { FLOAT(-0x10000), 0.0f, FLOAT(-0x40000), 0.0f };
+    static GLfloat light2Diffuse[] = { FLOAT(0x11eb), FLOAT(0x2b85), FLOAT(0x23d7), FLOAT(0x10000)};
+    static GLfloat materialSpecular[] = { FLOAT(0x10000), FLOAT(0x10000), FLOAT(0x10000), FLOAT(0x10000) };
 
-    glLightxv(GL_LIGHT0, GL_POSITION, light0Position);
-    glLightxv(GL_LIGHT0, GL_DIFFUSE, light0Diffuse);
-    glLightxv(GL_LIGHT1, GL_POSITION, light1Position);
-    glLightxv(GL_LIGHT1, GL_DIFFUSE, light1Diffuse);
-    glLightxv(GL_LIGHT2, GL_POSITION, light2Position);
-    glLightxv(GL_LIGHT2, GL_DIFFUSE, light2Diffuse);
-    glMaterialxv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
-
-    glMaterialx(GL_FRONT_AND_BACK, GL_SHININESS, 60 << 16);
+    glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light0Diffuse);
+    glLightfv(GL_LIGHT1, GL_POSITION, light1Position);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, light1Diffuse);
+    glLightfv(GL_LIGHT2, GL_POSITION, light2Position);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, light2Diffuse);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
+    
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, (GLfloat[]){60.0f});
     glEnable(GL_COLOR_MATERIAL);
 }
 
@@ -565,25 +544,21 @@ static void drawModels(KDfloat32 zScale)
 
     seedRandom(9);
 
-    glScalex(1 << 16, 1 << 16, (GLfixed)(zScale * 65536));
+    glScalef(1.0f, 1.0f, zScale);
 
     for (y = -5; y <= 5; ++y)
     {
         for (x = -5; x <= 5; ++x)
         {
             KDfloat32 buildingScale;
-            GLfixed fixedScale;
 
             KDint curShape = randomUInt() % SUPERSHAPE_COUNT;
             buildingScale = sSuperShapeParams[curShape][SUPERSHAPE_PARAMS - 1];
-            fixedScale = (GLfixed)(buildingScale * 65536);
 
             glPushMatrix();
-            glTranslatex((x * translationScale) * 65536,
-                         (y * translationScale) * 65536,
-                         0);
-            glRotatex((GLfixed)((randomUInt() % 360) << 16), 0, 0, 1 << 16);
-            glScalex(fixedScale, fixedScale, fixedScale);
+            glTranslatef((x * translationScale), (y * translationScale), 0.0f);
+            glRotatef((GLfloat)(randomUInt() % 360), 0.0f, 0.0f, 1.0f);
+            glScalef(buildingScale, buildingScale, buildingScale);
 
             drawGLObject(sSuperShapeObjects[curShape]);
             glPopMatrix();
@@ -595,14 +570,13 @@ static void drawModels(KDfloat32 zScale)
         const KDint shipScale100 = translationScale * 500;
         const KDint offs100 = x * shipScale100 + (sTick % shipScale100);
         KDfloat32 offs = offs100 * 0.01f;
-        GLfixed fixedOffs = (GLfixed)(offs * 65536);
         glPushMatrix();
-        glTranslatex(fixedOffs, -4 * 65536, 2 << 16);
+        glTranslatef(offs, -4.0f, 2.0f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
         glPopMatrix();
         glPushMatrix();
-        glTranslatex(-4 * 65536, fixedOffs, 4 << 16);
-        glRotatex(90 << 16, 0, 0, 1 << 16);
+        glTranslatef(-4.0f, offs, 4.0f);
+        glRotatef(90.0f, 0, 0, 1.0f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
         glPopMatrix();
     }
@@ -687,16 +661,11 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
 #undef M
     {
         KDint a;
-        GLfixed fixedM[16];
-        for (a = 0; a < 16; ++a)
-            fixedM[a] = (GLfixed)(m[a] * 65536);
-        glMultMatrixx(fixedM);
+        glMultMatrixf(m);
     }
 
     /* Translate Eye to Origin */
-    glTranslatex((GLfixed)(-eyex * 65536),
-                 (GLfixed)(-eyey * 65536),
-                 (GLfixed)(-eyez * 65536));
+    glTranslatef(-eyex, -eyey, -eyez);
 }
 
 
