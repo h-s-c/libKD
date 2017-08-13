@@ -1,41 +1,46 @@
 /******************************************************************************
- * San Angeles Observation
- * Copyright 2004-2005 Jetro Lauha
+ * San Angeles Observation OpenGL ES version example
+ * Copyright (c) 2004-2005, Jetro Lauha
  * All rights reserved.
- * Web: http://iki.fi/jetro/
- *
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * 
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of the software product's copyright owner nor
+ *       the names of its contributors may be used to endorse or promote
+ *       products derived from this software without specific prior written
+ *       permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
 #include <KD/kd.h>
+#include <KD/kdext.h>
 #include <EGL/egl.h>
-#include <GLES/gl.h>
+#include <GLES2/gl2.h>
 
-#define SUPERSHAPE_HIGH_RES
-#include "angeles/shapes.h"
 #include "angeles/cams.h"
+#include "angeles/matrixop.h"
+#include "angeles/shader.h"
+#include "angeles/shapes.h"
+#define SUPERSHAPE_HIGH_RES
 
 
 // Total run length is 20 * camera track base unit length (see cams.h).
@@ -79,6 +84,7 @@ typedef struct {
     GLintptr normalArrayOffset;
     GLint vertexComponents;
     GLsizei count;
+    GLuint shaderProgram;
 } GLOBJECT;
 
 
@@ -156,6 +162,7 @@ static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
         freeGLObject(result);
         return KD_NULL;
     }
+    result->shaderProgram = 0;
     return result;
 }
 
@@ -222,19 +229,44 @@ static GLuint createVBO(GLOBJECT **superShapes, KDint superShapeCount,
 
 static void drawGLObject(GLOBJECT *object)
 {
-    kdAssert(object != KD_NULL);
+    int loc_pos = -1;
+    int loc_colorIn = -1;
+    int loc_normal = -1;
 
-    glVertexPointer(object->vertexComponents, GL_FLOAT, 0,
-                    (GLvoid *)object->vertexArrayOffset);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 0, (GLvoid *)object->colorArrayOffset);
-    if (object->normalArraySize > 0)
+    bindShaderProgram(object->shaderProgram);
+    if (object->shaderProgram == sShaderLit.program)
     {
-        glNormalPointer(GL_FLOAT, 0, (GLvoid *)object->normalArrayOffset);
-        glEnableClientState(GL_NORMAL_ARRAY);
+        loc_pos = sShaderLit.pos;
+        loc_colorIn = sShaderLit.colorIn;
+        loc_normal = sShaderLit.normal;
+    }
+    else if (object->shaderProgram == sShaderFlat.program)
+    {
+        loc_pos = sShaderFlat.pos;
+        loc_colorIn = sShaderFlat.colorIn;
     }
     else
-        glDisableClientState(GL_NORMAL_ARRAY);
+    {
+        kdAssert(0);
+    }
+    glVertexAttribPointer(loc_pos, object->vertexComponents, GL_FLOAT,
+                          GL_FALSE, 0, (GLvoid *)object->vertexArrayOffset);
+    glEnableVertexAttribArray(loc_pos);
+    glVertexAttribPointer(loc_colorIn, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0,
+                          (GLvoid *)object->colorArrayOffset);
+    glEnableVertexAttribArray(loc_colorIn);
+    if (object->normalArraySize > 0)
+    {
+        glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, 0,
+                              (GLvoid *)object->normalArrayOffset);
+        glEnableVertexAttribArray(loc_normal);
+    }
     glDrawArrays(GL_TRIANGLES, 0, object->count);
+
+    if (object->normalArraySize > 0)
+        glDisableVertexAttribArray(loc_normal);
+    glDisableVertexAttribArray(loc_colorIn);
+    glDisableVertexAttribArray(loc_pos);
 }
 
 
@@ -409,7 +441,7 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
 
     // Set number of vertices in object to the actual amount created.
     result->count = currentVertex;
-
+    result->shaderProgram = sShaderLit.program;
     return result;
 }
 
@@ -462,6 +494,7 @@ static GLOBJECT * createGroundPlane()
             ++currentQuad;
         }
     }
+    result->shaderProgram = sShaderFlat.program;
     return result;
 }
 
@@ -472,11 +505,9 @@ static void drawGroundPlane()
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-    glDisable(GL_LIGHTING);
 
     drawGLObject(sGroundPlane);
 
-    glEnable(GL_LIGHTING);
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }
@@ -503,6 +534,7 @@ static GLOBJECT * createFadeQuad()
     for (i = 0; i < 12; ++i)
         result->vertexArray[i] = quadVertices[i];
 
+    result->shaderProgram = sShaderFade.program;
     return result;
 }
 
@@ -519,27 +551,14 @@ static void drawFadeQuad()
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-        glColor4f(fadeColor, fadeColor, fadeColor, 0);
-
-        glDisable(GL_LIGHTING);
-
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-
-        glDisableClientState(GL_COLOR_ARRAY);
-        glDisableClientState(GL_NORMAL_ARRAY);
-        glVertexPointer(2, GL_FLOAT, 0, (GLvoid *)sFadeQuad->vertexArrayOffset);
-
+        bindShaderProgram(sShaderFade.program);
+        glUniform1f(sShaderFade.minFade, fadeColor);
+        glVertexAttribPointer(sShaderFade.pos, 2, GL_FLOAT, GL_FALSE, 0,
+                              (GLvoid *)sFadeQuad->vertexArrayOffset);
+        glEnableVertexAttribArray(sShaderFade.pos);
         glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDisableVertexAttribArray(sShaderFade.pos);
 
-        glEnableClientState(GL_COLOR_ARRAY);
-
-        glMatrixMode(GL_MODELVIEW);
-
-        glEnable(GL_LIGHTING);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
@@ -554,19 +573,15 @@ int appInit()
     static GLfloat light1Diffuse[] = { 0.07f, 0.14f, 0.35f, 1.f };
     static GLfloat light2Diffuse[] = { 0.07f, 0.17f, 0.14f, 1.f };
     static GLfloat materialSpecular[] = { 1.f, 1.f, 1.f, 1.f };
+    static GLfloat lightAmbient[] = { 0.2f, 0.2f, 0.2f, 1.f };
 
     glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
-    glShadeModel(GL_FLAT);
-    glEnable(GL_NORMALIZE);
-
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glEnable(GL_LIGHT1);
-    glEnable(GL_LIGHT2);
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
+    if (initShaderPrograms() == 0)
+    {
+        kdLogMessage("Error: initShaderPrograms failed\n");
+        return 0;
+    }
     seedRandom(15);
 
     for (a = 0; a < SUPERSHAPE_COUNT; ++a)
@@ -582,11 +597,13 @@ int appInit()
                      sGroundPlane, sFadeQuad);
 
     // setup non-changing lighting parameters
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light0Diffuse);
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, light1Diffuse);
-    glLightfv(GL_LIGHT2, GL_DIFFUSE, light2Diffuse);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 60);
+    bindShaderProgram(sShaderLit.program);
+    glUniform4fv(sShaderLit.ambient, 1, lightAmbient);
+    glUniform4fv(sShaderLit.light_0_diffuse, 1, light0Diffuse);
+    glUniform4fv(sShaderLit.light_1_diffuse, 1, light1Diffuse);
+    glUniform4fv(sShaderLit.light_2_diffuse, 1, light2Diffuse);
+    glUniform4fv(sShaderLit.light_0_specular, 1, materialSpecular);
+    glUniform1f(sShaderLit.shininess, 60.f);
     return 1;
 }
 
@@ -600,20 +617,9 @@ void appDeinit()
     freeGLObject(sGroundPlane);
     freeGLObject(sFadeQuad);
     glDeleteBuffers(1, &sVBO);
+    deInitShaderPrograms();
 }
 
-static void gluPerspective(GLfloat fovy, GLfloat aspect,
-                           GLfloat zNear, GLfloat zFar)
-{
-    GLfloat xmin, xmax, ymin, ymax;
-
-    ymax = zNear * kdTanf(fovy * KD_PI_F / 360);
-    ymin = -ymax;
-    xmin = ymin * aspect;
-    xmax = ymax * aspect;
-
-    glFrustumf(xmin, xmax, ymin, ymax, zNear, zFar);
-}
 
 static void prepareFrame(KDint width, KDint height)
 {
@@ -622,12 +628,11 @@ static void prepareFrame(KDint width, KDint height)
     glClearColor(0.1f, 0.2f, 0.3f, 1.f);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(45, (KDfloat32)width / height, 0.5f, 150);
+    Matrix4x4_LoadIdentity(sProjection);
+    Matrix4x4_Perspective(sProjection,
+                          45.f, (KDfloat32)width / height, 0.5f, 150);
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    Matrix4x4_LoadIdentity(sModelView);
 }
 
 
@@ -637,11 +642,17 @@ static void configureLightAndMaterial()
     GLfloat light1Position[] = { 1.f, -2.f, -1.f, 0 };
     GLfloat light2Position[] = { -1.f, 0, -4.f, 0 };
 
-    glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
-    glLightfv(GL_LIGHT1, GL_POSITION, light1Position);
-    glLightfv(GL_LIGHT2, GL_POSITION, light2Position);
+    Matrix4x4_Transform(sModelView,
+                        light0Position, light0Position + 1, light0Position + 2);
+    Matrix4x4_Transform(sModelView,
+                        light1Position, light1Position + 1, light1Position + 2);
+    Matrix4x4_Transform(sModelView,
+                        light2Position, light2Position + 1, light2Position + 2);
 
-    glEnable(GL_COLOR_MATERIAL);
+    bindShaderProgram(sShaderLit.program);
+    glUniform3fv(sShaderLit.light_0_direction, 1, light0Position);
+    glUniform3fv(sShaderLit.light_1_direction, 1, light1Position);
+    glUniform3fv(sShaderLit.light_2_direction, 1, light2Position);
 }
 
 
@@ -652,23 +663,26 @@ static void drawModels(KDfloat32 zScale)
 
     seedRandom(9);
 
-    glScalef(1.f, 1.f, zScale);
+    Matrix4x4_Scale(sModelView, 1.f, 1.f, zScale);
 
     for (y = -5; y <= 5; ++y)
     {
         for (x = -5; x <= 5; ++x)
         {
             KDfloat32 buildingScale;
+            Matrix4x4 tmp;
 
             KDint curShape = randomUInt() % SUPERSHAPE_COUNT;
             buildingScale = sSuperShapeParams[curShape][SUPERSHAPE_PARAMS - 1];
-            glPushMatrix();
-            glTranslatef(x * translationScale, y * translationScale, 0);
-            glRotatef(randomUInt() % 360, 0, 0, 1.f);
-            glScalef(buildingScale, buildingScale, buildingScale);
+            Matrix4x4_Copy(tmp, sModelView);
+            Matrix4x4_Translate(sModelView, x * translationScale,
+                                y * translationScale, 0);
+            Matrix4x4_Rotate(sModelView, randomUInt() % 360, 0, 0, 1.f);
+            Matrix4x4_Scale(sModelView,
+                            buildingScale, buildingScale, buildingScale);
 
             drawGLObject(sSuperShapeObjects[curShape]);
-            glPopMatrix();
+            Matrix4x4_Copy(sModelView, tmp);
         }
     }
 
@@ -677,15 +691,15 @@ static void drawModels(KDfloat32 zScale)
         const KDint shipScale100 = translationScale * 500;
         const KDint offs100 = x * shipScale100 + (sTick % shipScale100);
         KDfloat32 offs = offs100 * 0.01f;
-        glPushMatrix();
-        glTranslatef(offs, -4.f, 2.f);
+        Matrix4x4 tmp;
+        Matrix4x4_Copy(tmp, sModelView);
+        Matrix4x4_Translate(sModelView, offs, -4.f, 2.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
-        glPopMatrix();
-        glPushMatrix();
-        glTranslatef(-4.f, offs, 4.f);
-        glRotatef(90.f, 0, 0, 1.f);
+        Matrix4x4_Copy(sModelView, tmp);
+        Matrix4x4_Translate(sModelView, -4.f, offs, 4.f);
+        Matrix4x4_Rotate(sModelView, 90.f, 0, 0, 1.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
-        glPopMatrix();
+        Matrix4x4_Copy(sModelView, tmp);
     }
 }
 
@@ -696,7 +710,7 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
 	              GLfloat centerx, GLfloat centery, GLfloat centerz,
 	              GLfloat upx, GLfloat upy, GLfloat upz)
 {
-    GLfloat m[16];
+    Matrix4x4 m;
     GLfloat x[3], y[3], z[3];
     GLfloat mag;
 
@@ -747,7 +761,7 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
         y[2] /= mag;
     }
 
-#define M(row, col)  m[col*4 + row]
+#define M(row, col) m[col*4 + row]
     M(0, 0) = x[0];
     M(0, 1) = x[1];
     M(0, 2) = x[2];
@@ -766,10 +780,9 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
     M(3, 3) = 1.0;
 #undef M
 
-    glMultMatrixf(m);
+    Matrix4x4_Multiply(sModelView, m, sModelView);
 
-    /* Translate Eye to Origin */
-    glTranslatef(-eyex, -eyey, -eyez);
+    Matrix4x4_Translate(sModelView, -eyex, -eyey, -eyez);
 }
 
 static void camTrack()
@@ -825,6 +838,8 @@ static KDint gAppAlive = 1;
  */
 void appRender(KDust tick, KDint width, KDint height)
 {
+    Matrix4x4 tmp;
+
     if (sStartTick == 0)
         sStartTick = tick;
     if (!gAppAlive)
@@ -850,9 +865,10 @@ void appRender(KDust tick, KDint width, KDint height)
     configureLightAndMaterial();
 
     // Draw the reflection by drawing models with negated Z-axis.
-    glPushMatrix();
+
+    Matrix4x4_Copy(tmp, sModelView);
     drawModels(-1);
-    glPopMatrix();
+    Matrix4x4_Copy(sModelView, tmp);
 
     // Blend the ground plane to the window.
     drawGroundPlane();
@@ -893,7 +909,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     const EGLint egl_attributes[] =
     {
         EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES_BIT,
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
         EGL_RED_SIZE,           8,
         EGL_GREEN_SIZE,         8,
         EGL_BLUE_SIZE,          8,
@@ -901,13 +917,13 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         EGL_DEPTH_SIZE,         16,
         EGL_STENCIL_SIZE,       EGL_DONT_CARE,
         EGL_SAMPLE_BUFFERS,     1,
-        EGL_SAMPLES,            4,
+        EGL_SAMPLES,            2,
         EGL_NONE
     };
 
     const EGLint egl_context_attributes[] =
     {
-        EGL_CONTEXT_CLIENT_VERSION, 1,
+        EGL_CONTEXT_CLIENT_VERSION, 2,
 #if defined(EGL_KHR_create_context)    
         EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
 #endif
