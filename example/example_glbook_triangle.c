@@ -15,6 +15,9 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
+#define EXAMPLE_COMMON_IMPLEMENTATION
+#include "example_common.h"
+
 typedef struct
 {
     // Handle to a program object

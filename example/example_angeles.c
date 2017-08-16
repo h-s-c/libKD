@@ -35,12 +35,20 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+#include <AL/al.h>
+#include <AL/alc.h>
+
+#define EXAMPLE_COMMON_IMPLEMENTATION
+#include "example_common.h"
+#define STB_VORBIS_HEADER_ONLY
+#include "stb_vorbis.c"
 
 #include "angeles/cams.h"
-#include "angeles/matrixop.h"
-#include "angeles/shader.h"
-#include "angeles/shapes.h"
+#include "angeles/shaders.h"
+#if !defined(__EMSCRIPTEN__)
 #define SUPERSHAPE_HIGH_RES
+#endif
+#include "angeles/shapes.h"
 
 
 // Total run length is 20 * camera track base unit length (see cams.h).
@@ -58,8 +66,6 @@ static KDuint64 randomUInt()
     sRandomSeed = sRandomSeed * 0x343fd + 0x269ec3;
     return sRandomSeed >> 16;
 }
-
-#define FLOAT(value) (((GLfloat)value) / 65536)
 
 // Definition of one GL object in this demo.
 typedef struct {
@@ -87,6 +93,71 @@ typedef struct {
     GLuint shaderProgram;
 } GLOBJECT;
 
+typedef struct {
+    // program
+    GLuint program;
+    // attribute
+    GLint pos;
+    GLint normal;
+    GLint colorIn;
+    // uniform
+    GLint mvp;
+    GLint normalMatrix;
+    GLint ambient;
+    GLint shininess;
+    GLint light_0_direction;
+    GLint light_0_diffuse;
+    GLint light_0_specular;
+    GLint light_1_direction;
+    GLint light_1_diffuse;
+    GLint light_2_direction;
+    GLint light_2_diffuse;
+} SHADERLIT;
+
+typedef struct {
+    // program
+    GLuint program;
+    // attribute
+    GLint pos;
+    GLint colorIn;
+    // uniform
+    GLint mvp;
+} SHADERFLAT;
+
+typedef struct {
+    // program
+    GLuint program;
+    // attribute
+    GLint pos;
+    // uniform
+    GLint minFade;
+} SHADERFADE;
+
+typedef struct{
+    ALuint ID;
+
+    stb_vorbis* stream;
+    stb_vorbis_info info;
+
+    ALuint buffers[2];
+    ALuint source;
+    ALenum format;
+
+    KDsize bufferSize;
+
+    KDsize totalSamplesLeft;
+
+    KDboolean shouldLoop;
+} AUDIOSTREAM;
+
+static AUDIOSTREAM sAudioStream;
+
+static SHADERLIT sShaderLit;
+static SHADERFLAT sShaderFlat;
+static SHADERFADE sShaderFade;
+
+static Matrix4x4 sModelView;
+static Matrix4x4 sProjection;
 
 static KDust sStartTick = 0;
 static KDust sTick = 0;
@@ -226,6 +297,122 @@ static GLuint createVBO(GLOBJECT **superShapes, KDint superShapeCount,
     return vbo;
 }
 
+
+static void computeNormalMatrix(Matrix4x4 m, Matrix3x3 normal)
+{
+    KDfloat32 det = m[0*4+0] * (m[1*4+1] * m[2*4+2] - m[2*4+1] * m[1*4+2]) -
+                m[0*4+1] * (m[1*4+0] * m[2*4+2] - m[1*4+2] * m[2*4+0]) +
+                m[0*4+2] * (m[1*4+0] * m[2*4+1] - m[1*4+1] * m[2*4+0]);
+    KDfloat32 invDet = 1.f / det;
+    normal[0*3+0] = invDet * (m[1*4+1] * m[2*4+2] - m[2*4+1] * m[1*4+2]);
+    normal[1*3+0] = invDet * -(m[0*4+1] * m[2*4+2] - m[0*4+2] * m[2*4+1]);
+    normal[2*3+0] = invDet * (m[0*4+1] * m[1*4+2] - m[0*4+2] * m[1*4+1]);
+    normal[0*3+1] = invDet * -(m[1*4+0] * m[2*4+2] - m[1*4+2] * m[2*4+0]);
+    normal[1*3+1] = invDet * (m[0*4+0] * m[2*4+2] - m[0*4+2] * m[2*4+0]);
+    normal[2*3+1] = invDet * -(m[0*4+0] * m[1*4+2] - m[1*4+0] * m[0*4+2]);
+    normal[0*3+2] = invDet * (m[1*4+0] * m[2*4+1] - m[2*4+0] * m[1*4+1]);
+    normal[1*3+2] = invDet * -(m[0*4+0] * m[2*4+1] - m[2*4+0] * m[0*4+1]);
+    normal[2*3+2] = invDet * (m[0*4+0] * m[1*4+1] - m[1*4+0] * m[0*4+1]);
+}
+
+
+static KDint getLocations()
+{
+    KDint rt = 1;
+#define GET_ATTRIBUTE_LOC(programName, varName) \
+        sShader##programName.varName = \
+        glGetAttribLocation(sShader##programName.program, #varName); \
+        if (sShader##programName.varName == -1) rt = 0
+#define GET_UNIFORM_LOC(programName, varName) \
+        sShader##programName.varName = \
+        glGetUniformLocation(sShader##programName.program, #varName); \
+        if (sShader##programName.varName == -1) rt = 0
+    GET_ATTRIBUTE_LOC(Lit, pos);
+    GET_ATTRIBUTE_LOC(Lit, normal);
+    GET_ATTRIBUTE_LOC(Lit, colorIn);
+    GET_UNIFORM_LOC(Lit, mvp);
+    GET_UNIFORM_LOC(Lit, normalMatrix);
+    GET_UNIFORM_LOC(Lit, ambient);
+    GET_UNIFORM_LOC(Lit, shininess);
+    GET_UNIFORM_LOC(Lit, light_0_direction);
+    GET_UNIFORM_LOC(Lit, light_0_diffuse);
+    GET_UNIFORM_LOC(Lit, light_0_specular);
+    GET_UNIFORM_LOC(Lit, light_1_direction);
+    GET_UNIFORM_LOC(Lit, light_1_diffuse);
+    GET_UNIFORM_LOC(Lit, light_2_direction);
+    GET_UNIFORM_LOC(Lit, light_2_diffuse);
+
+    GET_ATTRIBUTE_LOC(Flat, pos);
+    GET_ATTRIBUTE_LOC(Flat, colorIn);
+    GET_UNIFORM_LOC(Flat, mvp);
+
+    GET_ATTRIBUTE_LOC(Fade, pos);
+    GET_UNIFORM_LOC(Fade, minFade);
+#undef GET_ATTRIBUTE_LOC
+#undef GET_UNIFORM_LOC
+    return rt;
+}
+
+
+KDint initShaderPrograms()
+{
+    exampleMatrixIdentity(sModelView);
+    exampleMatrixIdentity(sProjection);
+
+    sShaderFlat.program = exampleCreateProgram(sFlatVertexSource,
+                                        sFlatFragmentSource);
+    sShaderLit.program = exampleCreateProgram(sLitVertexSource,
+                                       sFlatFragmentSource);
+    sShaderFade.program = exampleCreateProgram(sFadeVertexSource,
+                                        sFlatFragmentSource);
+    if (sShaderFlat.program == 0 || sShaderLit.program == 0 ||
+        sShaderFade.program == 0)
+        return 0;
+
+    return getLocations();
+}
+
+
+void deInitShaderPrograms()
+{
+    glDeleteProgram(sShaderFlat.program);
+    glDeleteProgram(sShaderLit.program);
+    glDeleteProgram(sShaderFade.program);
+}
+
+
+void bindShaderProgram(GLuint program)
+{
+    KDint loc_mvp = -1;
+    KDint loc_normalMatrix = -1;
+
+    glUseProgram(program);
+
+    if (program == sShaderLit.program)
+    {
+        loc_mvp = sShaderLit.mvp;
+        loc_normalMatrix = sShaderLit.normalMatrix;
+    }
+    else if (program == sShaderFlat.program)
+    {
+        loc_mvp = sShaderFlat.mvp;
+    }
+
+    if (loc_mvp != -1)
+    {
+        Matrix4x4 mvp;
+        exampleMatrixCopy(mvp, sProjection);
+        exampleMatrixMultiply(mvp, sModelView);
+        glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, (GLfloat *)mvp);
+    }
+    if (loc_normalMatrix != -1)
+    {
+        Matrix3x3 normalMatrix;
+        computeNormalMatrix(sModelView, normalMatrix);
+        glUniformMatrix3fv(loc_normalMatrix, 1, GL_FALSE,
+                           (GLfloat *)normalMatrix);
+    }
+}
 
 static void drawGLObject(GLOBJECT *object)
 {
@@ -628,11 +815,11 @@ static void prepareFrame(KDint width, KDint height)
     glClearColor(0.1f, 0.2f, 0.3f, 1.f);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-    Matrix4x4_LoadIdentity(sProjection);
-    Matrix4x4_Perspective(sProjection,
+    exampleMatrixIdentity(sProjection);
+    exampleMatrixPerspective(sProjection,
                           45.f, (KDfloat32)width / height, 0.5f, 150);
 
-    Matrix4x4_LoadIdentity(sModelView);
+    exampleMatrixIdentity(sModelView);
 }
 
 
@@ -642,11 +829,11 @@ static void configureLightAndMaterial()
     GLfloat light1Position[] = { 1.f, -2.f, -1.f, 0 };
     GLfloat light2Position[] = { -1.f, 0, -4.f, 0 };
 
-    Matrix4x4_Transform(sModelView,
+    exampleMatrixTransform(sModelView,
                         light0Position, light0Position + 1, light0Position + 2);
-    Matrix4x4_Transform(sModelView,
+    exampleMatrixTransform(sModelView,
                         light1Position, light1Position + 1, light1Position + 2);
-    Matrix4x4_Transform(sModelView,
+    exampleMatrixTransform(sModelView,
                         light2Position, light2Position + 1, light2Position + 2);
 
     bindShaderProgram(sShaderLit.program);
@@ -663,7 +850,7 @@ static void drawModels(KDfloat32 zScale)
 
     seedRandom(9);
 
-    Matrix4x4_Scale(sModelView, 1.f, 1.f, zScale);
+    exampleMatrixScale(sModelView, 1.f, 1.f, zScale);
 
     for (y = -5; y <= 5; ++y)
     {
@@ -674,15 +861,15 @@ static void drawModels(KDfloat32 zScale)
 
             KDint curShape = randomUInt() % SUPERSHAPE_COUNT;
             buildingScale = sSuperShapeParams[curShape][SUPERSHAPE_PARAMS - 1];
-            Matrix4x4_Copy(tmp, sModelView);
-            Matrix4x4_Translate(sModelView, x * translationScale,
+            exampleMatrixCopy(tmp, sModelView);
+            exampleMatrixTranslate(sModelView, x * translationScale,
                                 y * translationScale, 0);
-            Matrix4x4_Rotate(sModelView, randomUInt() % 360, 0, 0, 1.f);
-            Matrix4x4_Scale(sModelView,
+            exampleMatrixRotate(sModelView, randomUInt() % 360, 0, 0, 1.f);
+            exampleMatrixScale(sModelView,
                             buildingScale, buildingScale, buildingScale);
 
             drawGLObject(sSuperShapeObjects[curShape]);
-            Matrix4x4_Copy(sModelView, tmp);
+            exampleMatrixCopy(sModelView, tmp);
         }
     }
 
@@ -692,14 +879,14 @@ static void drawModels(KDfloat32 zScale)
         const KDint offs100 = x * shipScale100 + (sTick % shipScale100);
         KDfloat32 offs = offs100 * 0.01f;
         Matrix4x4 tmp;
-        Matrix4x4_Copy(tmp, sModelView);
-        Matrix4x4_Translate(sModelView, offs, -4.f, 2.f);
+        exampleMatrixCopy(tmp, sModelView);
+        exampleMatrixTranslate(sModelView, offs, -4.f, 2.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
-        Matrix4x4_Copy(sModelView, tmp);
-        Matrix4x4_Translate(sModelView, -4.f, offs, 4.f);
-        Matrix4x4_Rotate(sModelView, 90.f, 0, 0, 1.f);
+        exampleMatrixCopy(sModelView, tmp);
+        exampleMatrixTranslate(sModelView, -4.f, offs, 4.f);
+        exampleMatrixRotate(sModelView, 90.f, 0, 0, 1.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
-        Matrix4x4_Copy(sModelView, tmp);
+        exampleMatrixCopy(sModelView, tmp);
     }
 }
 
@@ -780,9 +967,9 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
     M(3, 3) = 1.0;
 #undef M
 
-    Matrix4x4_Multiply(sModelView, m, sModelView);
+    exampleMatrixMultiply(sModelView, m);
 
-    Matrix4x4_Translate(sModelView, -eyex, -eyey, -eyez);
+    exampleMatrixTranslate(sModelView, -eyex, -eyey, -eyez);
 }
 
 static void camTrack()
@@ -866,9 +1053,9 @@ void appRender(KDust tick, KDint width, KDint height)
 
     // Draw the reflection by drawing models with negated Z-axis.
 
-    Matrix4x4_Copy(tmp, sModelView);
+    exampleMatrixCopy(tmp, sModelView);
     drawModels(-1);
-    Matrix4x4_Copy(sModelView, tmp);
+    exampleMatrixCopy(sModelView, tmp);
 
     // Blend the ground plane to the window.
     drawGroundPlane();
@@ -878,6 +1065,93 @@ void appRender(KDust tick, KDint width, KDint height)
 
     // Draw fade quad over whole window (when changing cameras).
     drawFadeQuad();
+}
+
+void AudioStreamInit(AUDIOSTREAM* self)
+{
+    kdMemset(self, 0, sizeof(AUDIOSTREAM));
+    alGenSources(1, & self->source);
+    alGenBuffers(2, self->buffers);
+    self->bufferSize=4096*8;
+    self->shouldLoop=KD_TRUE;//We loop by default
+}
+
+
+void AudioStreamDeinit(AUDIOSTREAM* self){
+    alDeleteSources(1, & self->source);
+    alDeleteBuffers(2, self->buffers);
+    stb_vorbis_close(self->stream);
+    kdMemset(self, 0, sizeof(AUDIOSTREAM));
+}
+
+KDboolean AudioStreamStream(AUDIOSTREAM* self, ALuint buffer)
+{
+    ALshort pcm[self->bufferSize];
+    KDint  size = 0;
+    KDint  result = 0;
+
+    while(size < self->bufferSize)
+    {
+        result = stb_vorbis_get_samples_short_interleaved(self->stream, self->info.channels, pcm+size, self->bufferSize-size);
+        if(result > 0) size += result*self->info.channels;
+        else break;
+    }
+
+    if(size == 0) return KD_FALSE;
+
+    alBufferData(buffer, self->format, pcm, size*sizeof(ALshort), self->info.sample_rate);
+    self->totalSamplesLeft-=size;
+
+    return KD_TRUE;
+}
+
+KDboolean AudioStreamOpen(AUDIOSTREAM* self, const KDchar* filename)
+{
+    self->stream = stb_vorbis_open_filename((KDchar*)filename, KD_NULL, KD_NULL);
+    if(!self->stream) return KD_FALSE;
+    // Get file info
+    self->info = stb_vorbis_get_info(self->stream);
+    if(self->info.channels == 2) self->format = AL_FORMAT_STEREO16;
+    else self->format = AL_FORMAT_MONO16;
+
+    if(!AudioStreamStream(self, self->buffers[0])) return KD_FALSE;
+    if(!AudioStreamStream(self, self->buffers[1])) return KD_FALSE;
+    alSourceQueueBuffers(self->source, 2, self->buffers);
+    alSourcePlay(self->source);
+
+    self->totalSamplesLeft=stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
+
+    return KD_TRUE;
+}
+
+KDboolean AudioStreamUpdate(AUDIOSTREAM* self)
+{
+    ALint processed=0;
+
+    alGetSourcei(self->source, AL_BUFFERS_PROCESSED, &processed);
+
+    while(processed--)
+    {
+        ALuint buffer=0;
+        
+        alSourceUnqueueBuffers(self->source, 1, &buffer);
+
+        if(!AudioStreamStream(self, buffer))
+        {
+            KDboolean shouldExit=KD_TRUE;
+
+            if(self->shouldLoop){
+                stb_vorbis_seek_start(self->stream);
+                self->totalSamplesLeft=stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
+                shouldExit=!AudioStreamStream(self, buffer);
+            }
+
+            if(shouldExit) return KD_FALSE;
+        }
+        alSourceQueueBuffers(self->source, 1, &buffer);
+    }
+
+    return KD_TRUE;
 }
 
 static void KD_APIENTRY kd_callback(const KDEvent *event)
@@ -916,8 +1190,12 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         EGL_ALPHA_SIZE,         EGL_DONT_CARE,
         EGL_DEPTH_SIZE,         16,
         EGL_STENCIL_SIZE,       EGL_DONT_CARE,
+#if defined(__EMSCRIPTEN__)
+        EGL_SAMPLE_BUFFERS,     0,
+#else
         EGL_SAMPLE_BUFFERS,     1,
         EGL_SAMPLES,            4,
+#endif
         EGL_NONE
     };
 
@@ -964,6 +1242,12 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 #endif
 
     kdInstallCallback(&kd_callback, KD_EVENT_WINDOW_CLOSE, KD_NULL);
+
+    ALCdevice *device = alcOpenDevice(KD_NULL);
+    ALCcontext *context = alcCreateContext(device, KD_NULL);
+    kdAssert(alcMakeContextCurrent(context));
+    AudioStreamInit(&sAudioStream);
+    AudioStreamOpen(&sAudioStream, "data/!Cube - San Angeles Observation.ogg");
 
     appInit();
     while(gAppAlive)
@@ -1013,9 +1297,15 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             KDint32 windowsize[2];
             kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
             appRender(kdGetTimeUST() / 1000000 , windowsize[0], windowsize[1]);
+            AudioStreamUpdate(&sAudioStream);
         }
     }
     appDeinit();
+
+    AudioStreamDeinit(&sAudioStream);
+    alcMakeContextCurrent(KD_NULL);
+    alcDestroyContext(context);
+    alcCloseDevice(device);
 
     eglDestroyContext(egl_display, egl_context);
     eglDestroySurface(egl_display, egl_surface);
