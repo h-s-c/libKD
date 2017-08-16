@@ -401,7 +401,7 @@ void bindShaderProgram(GLuint program)
     if (loc_mvp != -1)
     {
         Matrix4x4 mvp;
-        exampleMatrixCopy(mvp, sProjection);
+        kdMemcpy(mvp, sProjection, sizeof(sProjection));
         exampleMatrixMultiply(mvp, sModelView);
         glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, (GLfloat *)mvp);
     }
@@ -812,12 +812,11 @@ static void prepareFrame(KDint width, KDint height)
 {
     glViewport(0, 0, width, height);
 
-    glClearColor(0.1f, 0.2f, 0.3f, 1.f);
+    glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
     exampleMatrixIdentity(sProjection);
-    exampleMatrixPerspective(sProjection,
-                          45.f, (KDfloat32)width / height, 0.5f, 150);
+    exampleMatrixPerspective(sProjection, 45.0f, (KDfloat32)width / height, 0.5f, 150.0f);
 
     exampleMatrixIdentity(sModelView);
 }
@@ -861,15 +860,13 @@ static void drawModels(KDfloat32 zScale)
 
             KDint curShape = randomUInt() % SUPERSHAPE_COUNT;
             buildingScale = sSuperShapeParams[curShape][SUPERSHAPE_PARAMS - 1];
-            exampleMatrixCopy(tmp, sModelView);
-            exampleMatrixTranslate(sModelView, x * translationScale,
-                                y * translationScale, 0);
+            kdMemcpy(tmp, sModelView, sizeof(sModelView));
+            exampleMatrixTranslate(sModelView, x * translationScale, y * translationScale, 0);
             exampleMatrixRotate(sModelView, randomUInt() % 360, 0, 0, 1.f);
-            exampleMatrixScale(sModelView,
-                            buildingScale, buildingScale, buildingScale);
+            exampleMatrixScale(sModelView, buildingScale, buildingScale, buildingScale);
 
             drawGLObject(sSuperShapeObjects[curShape]);
-            exampleMatrixCopy(sModelView, tmp);
+            kdMemcpy(sModelView, tmp, sizeof(tmp));
         }
     }
 
@@ -879,14 +876,14 @@ static void drawModels(KDfloat32 zScale)
         const KDint offs100 = x * shipScale100 + (sTick % shipScale100);
         KDfloat32 offs = offs100 * 0.01f;
         Matrix4x4 tmp;
-        exampleMatrixCopy(tmp, sModelView);
+        kdMemcpy(tmp, sModelView, sizeof(sModelView));
         exampleMatrixTranslate(sModelView, offs, -4.f, 2.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
-        exampleMatrixCopy(sModelView, tmp);
+        kdMemcpy(sModelView, tmp, sizeof(tmp));
         exampleMatrixTranslate(sModelView, -4.f, offs, 4.f);
         exampleMatrixRotate(sModelView, 90.f, 0, 0, 1.f);
         drawGLObject(sSuperShapeObjects[SUPERSHAPE_COUNT - 1]);
-        exampleMatrixCopy(sModelView, tmp);
+        kdMemcpy(sModelView, tmp, sizeof(tmp));
     }
 }
 
@@ -1053,9 +1050,9 @@ void appRender(KDust tick, KDint width, KDint height)
 
     // Draw the reflection by drawing models with negated Z-axis.
 
-    exampleMatrixCopy(tmp, sModelView);
+    kdMemcpy(tmp, sModelView, sizeof(sModelView));
     drawModels(-1);
-    exampleMatrixCopy(sModelView, tmp);
+    kdMemcpy(sModelView, tmp, sizeof(tmp));
 
     // Blend the ground plane to the window.
     drawGroundPlane();

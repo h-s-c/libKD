@@ -32,54 +32,6 @@ typedef struct
     KDWindow *window;
 } UserData;
 
-///
-// Create a shader object, load the shader source, and
-// compile the shader.
-//
-GLuint LoadShader(GLenum type, const KDchar *shaderSrc)
-{
-    GLuint shader;
-    GLint compiled;
-
-    // Create the shader object
-    shader = glCreateShader(type);
-
-    if(shader == 0)
-    {
-        return 0;
-    }
-
-    // Load the shader source
-    glShaderSource(shader, 1, &shaderSrc, KD_NULL);
-
-    // Compile the shader
-    glCompileShader(shader);
-
-    // Check the compile status
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-
-    if(!compiled)
-    {
-        GLint infoLen = 0;
-
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
-
-        if(infoLen > 1)
-        {
-            KDchar *infoLog = kdMalloc(sizeof(KDchar) * infoLen);
-
-            glGetShaderInfoLog(shader, infoLen, KD_NULL, infoLog);
-            kdLogMessage(infoLog);
-
-            kdFree(infoLog);
-        }
-
-        glDeleteShader(shader);
-        return 0;
-    }
-
-    return shader;
-}
 
 ///
 // Initialize the shader and program object
@@ -100,57 +52,11 @@ KDboolean Init(UserData *userData)
         "  gl_FragColor = vec4 ( 1.0, 0.0, 0.0, 1.0 );\n"
         "}                                            \n";
 
-    GLuint vertexShader;
-    GLuint fragmentShader;
-    GLuint programObject;
-    GLint linked;
-
-    // Load the vertex/fragment shaders
-    vertexShader = LoadShader(GL_VERTEX_SHADER, vShaderStr);
-    fragmentShader = LoadShader(GL_FRAGMENT_SHADER, fShaderStr);
-
-    // Create the program object
-    programObject = glCreateProgram();
-
-    if(programObject == 0)
-    {
-        return KD_FALSE;
-    }
-
-    glAttachShader(programObject, vertexShader);
-    glAttachShader(programObject, fragmentShader);
+    // Store the program object
+    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr);
 
     // Bind vPosition to attribute 0
-    glBindAttribLocation(programObject, 0, "vPosition");
-
-    // Link the program
-    glLinkProgram(programObject);
-
-    // Check the link status
-    glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
-
-    if(!linked)
-    {
-        GLint infoLen = 0;
-
-        glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &infoLen);
-
-        if(infoLen > 1)
-        {
-            KDchar *infoLog = kdMalloc(sizeof(char) * infoLen);
-
-            glGetProgramInfoLog(programObject, infoLen, KD_NULL, infoLog);
-            kdLogMessage(infoLog);
-
-            kdFree(infoLog);
-        }
-
-        glDeleteProgram(programObject);
-        return KD_FALSE;
-    }
-
-    // Store the program object
-    userData->programObject = programObject;
+    glBindAttribLocation(userData->programObject, 0, "vPosition");
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     return KD_TRUE;

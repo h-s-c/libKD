@@ -391,7 +391,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         frames++;
         if(totaltime > 2.0f)
         {
-            kdLogMessagefKHR("%4d frames rendered in %1.4f seconds -> FPS=%3.4f\n", frames, totaltime, frames / totaltime);
+            kdLogMessagefKHR("%d frames in %3.1f seconds = %6.3f FPS\n", frames, totaltime, frames / totaltime);
             totaltime -= 2.0f;
             frames = 0;
         }
