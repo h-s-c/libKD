@@ -35,10 +35,10 @@ static KDboolean quit = KD_FALSE;
 #define MAX_ELEMENT_MEMORY 128 * 1024
 
 #define UNUSED(a) (void)a
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
-#define MAX(a,b) ((a) < (b) ? (b) : (a))
-#define LEN(a) (sizeof(a)/sizeof(a)[0])
-#define OFFSETOFF(st, m) ((KDsize)&(((st *)0)->m))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) < (b) ? (b) : (a))
+#define LEN(a) (sizeof(a) / sizeof(a)[0])
+#define OFFSETOFF(st, m) ((KDsize) & (((st *)0)->m))
 
 /* ===============================================================
  *
@@ -134,9 +134,9 @@ device_init(struct device *dev)
         glEnableVertexAttribArray((GLuint)dev->attrib_uv);
         glEnableVertexAttribArray((GLuint)dev->attrib_col);
 
-        glVertexAttribPointer((GLuint)dev->attrib_pos, 2, GL_FLOAT, GL_FALSE, vs, (void*)vp);
-        glVertexAttribPointer((GLuint)dev->attrib_uv, 2, GL_FLOAT, GL_FALSE, vs, (void*)vt);
-        glVertexAttribPointer((GLuint)dev->attrib_col, 4, GL_UNSIGNED_BYTE, GL_TRUE, vs, (void*)vc);
+        glVertexAttribPointer((GLuint)dev->attrib_pos, 2, GL_FLOAT, GL_FALSE, vs, (void *)vp);
+        glVertexAttribPointer((GLuint)dev->attrib_uv, 2, GL_FLOAT, GL_FALSE, vs, (void *)vt);
+        glVertexAttribPointer((GLuint)dev->attrib_col, 4, GL_UNSIGNED_BYTE, GL_TRUE, vs, (void *)vc);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -177,9 +177,9 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
 {
     GLfloat ortho[4][4] = {
         {2.0f, 0.0f, 0.0f, 0.0f},
-        {0.0f,-2.0f, 0.0f, 0.0f},
-        {0.0f, 0.0f,-1.0f, 0.0f},
-        {-1.0f,1.0f, 0.0f, 1.0f},
+        {0.0f, -2.0f, 0.0f, 0.0f},
+        {0.0f, 0.0f, -1.0f, 0.0f},
+        {-1.0f, 1.0f, 0.0f, 1.0f},
     };
     ortho[0][0] /= (GLfloat)width;
     ortho[1][1] /= (GLfloat)height;
@@ -211,7 +211,7 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
         glBufferData(GL_ARRAY_BUFFER, MAX_VERTEX_MEMORY, KD_NULL, GL_STREAM_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_ELEMENT_MEMORY, KD_NULL, GL_STREAM_DRAW);
 
-        /* load draw vertices & elements directly into vertex + element buffer */
+/* load draw vertices & elements directly into vertex + element buffer */
 #ifdef __EMSCRIPTEN__
         vertices = kdMalloc(MAX_VERTEX_MEMORY);
         elements = kdMalloc(MAX_ELEMENT_MEMORY);
@@ -226,8 +226,7 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
                 {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_vertex, position)},
                 {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, NK_OFFSETOF(struct nk_vertex, uv)},
                 {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, NK_OFFSETOF(struct nk_vertex, col)},
-                {NK_VERTEX_LAYOUT_END}
-            };
+                {NK_VERTEX_LAYOUT_END}};
             NK_MEMSET(&config, 0, sizeof(config));
             config.vertex_layout = vertex_layout;
             config.vertex_size = sizeof(struct nk_vertex);
@@ -241,10 +240,12 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
             config.line_AA = AA;
 
             /* setup buffers to load vertices and elements */
-            {struct nk_buffer vbuf, ebuf;
-            nk_buffer_init_fixed(&vbuf, vertices, MAX_VERTEX_MEMORY);
-            nk_buffer_init_fixed(&ebuf, elements, MAX_ELEMENT_MEMORY);
-            nk_convert(ctx, &dev->cmds, &vbuf, &ebuf, &config);}
+            {
+                struct nk_buffer vbuf, ebuf;
+                nk_buffer_init_fixed(&vbuf, vertices, MAX_VERTEX_MEMORY);
+                nk_buffer_init_fixed(&ebuf, elements, MAX_ELEMENT_MEMORY);
+                nk_convert(ctx, &dev->cmds, &vbuf, &ebuf, &config);
+            }
         }
 #ifdef __EMSCRIPTEN__
         glBufferSubData(GL_ARRAY_BUFFER, 0, (KDsize)MAX_VERTEX_MEMORY, vertices);
@@ -259,7 +260,8 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
         /* iterate over and execute each draw command */
         nk_draw_foreach(cmd, ctx, &dev->cmds)
         {
-            if (!cmd->elem_count) continue;
+            if(!cmd->elem_count)
+                continue;
             glBindTexture(GL_TEXTURE_2D, (GLuint)cmd->texture.id);
             glScissor(
                 (GLint)(cmd->clip_rect.x),
@@ -384,24 +386,25 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     /* KD */
     const EGLint egl_attributes[] =
-    {
-        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,           8,
-        EGL_GREEN_SIZE,         8,
-        EGL_BLUE_SIZE,          8,
-        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
-        EGL_DEPTH_SIZE,         EGL_DONT_CARE,
-        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
-        EGL_SAMPLE_BUFFERS,     0,
-        EGL_NONE
-    };
+        {
+            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, EGL_DONT_CARE,
+            EGL_DEPTH_SIZE, EGL_DONT_CARE,
+            EGL_STENCIL_SIZE, EGL_DONT_CARE,
+            EGL_SAMPLE_BUFFERS, 0,
+            EGL_NONE};
 
     const EGLint egl_context_attributes[] =
     {
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-#if defined(EGL_KHR_create_context)    
-        EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
+        EGL_CONTEXT_CLIENT_VERSION,
+        2,
+#if defined(EGL_KHR_create_context)
+        EGL_CONTEXT_FLAGS_KHR,
+        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
 #endif
         EGL_NONE,
     };
@@ -462,7 +465,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     /* GUI */
     device_init(&device);
-    const void *image; KDint w, h;
+    const void *image;
+    KDint w, h;
     struct nk_font *font;
     nk_font_atlas_init_default(&atlas);
     nk_font_atlas_begin(&atlas);
@@ -472,14 +476,14 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     nk_font_atlas_end(&atlas, nk_handle_id((int)device.font_tex), &device.null);
     nk_init_default(&ctx, &font->handle);
 
-    while (!quit)
+    while(!quit)
     {
         /* input */
         pump_input(&ctx, kd_window);
 
         /* draw */
-        if (nk_begin(&ctx, "Calculator", nk_rect((width/2)-90, (height/2)-125, 180, 250),
-            NK_WINDOW_BORDER|NK_WINDOW_NO_SCROLLBAR))
+        if(nk_begin(&ctx, "Calculator", nk_rect((width / 2) - 90, (height / 2) - 125, 180, 250),
+               NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR))
         {
             static KDint set = 0, prev = 0, op = 0;
             static const KDchar numbers[] = "789456123";
@@ -489,50 +493,82 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
             KDsize i = 0;
             KDint solve = 0;
-            {KDint len; KDchar buffer[256];
-            nk_layout_row_dynamic(&ctx, 35, 1);
-            len = kdSnprintfKHR(buffer, 256, "%.2f", *current);
-            nk_edit_string(&ctx, NK_EDIT_SIMPLE, buffer, &len, 255, nk_filter_float);
-            buffer[len] = 0;
-            *current = kdStrtodKHR(buffer, KD_NULL);}
+            {
+                KDint len;
+                KDchar buffer[256];
+                nk_layout_row_dynamic(&ctx, 35, 1);
+                len = kdSnprintfKHR(buffer, 256, "%.2f", *current);
+                nk_edit_string(&ctx, NK_EDIT_SIMPLE, buffer, &len, 255, nk_filter_float);
+                buffer[len] = 0;
+                *current = kdStrtodKHR(buffer, KD_NULL);
+            }
 
             nk_layout_row_dynamic(&ctx, 35, 4);
-            for (i = 0; i < 16; ++i) {
-                if (i >= 12 && i < 15) {
-                    if (i > 12) continue;
-                    if (nk_button_label(&ctx, "C")) {
-                        a = b = op = 0; current = &a; set = 0;
-                    } if (nk_button_label(&ctx, "0")) {
-                        *current = *current*10.0f; set = 0;
-                    } if (nk_button_label(&ctx, "=")) {
-                        solve = 1; prev = op; op = 0;
-                    }
-                } else if (((i+1) % 4)) {
-                    if (nk_button_text(&ctx, &numbers[(i/4)*3+i%4], 1)) {
-                        *current = *current * 10.0f + numbers[(i/4)*3+i%4] - '0';
+            for(i = 0; i < 16; ++i)
+            {
+                if(i >= 12 && i < 15)
+                {
+                    if(i > 12)
+                        continue;
+                    if(nk_button_label(&ctx, "C"))
+                    {
+                        a = b = op = 0;
+                        current = &a;
                         set = 0;
                     }
-                } else if (nk_button_text(&ctx, &ops[i/4], 1)) {
-                    if (!set) {
-                        if (current != &b) {
+                    if(nk_button_label(&ctx, "0"))
+                    {
+                        *current = *current * 10.0f;
+                        set = 0;
+                    }
+                    if(nk_button_label(&ctx, "="))
+                    {
+                        solve = 1;
+                        prev = op;
+                        op = 0;
+                    }
+                }
+                else if(((i + 1) % 4))
+                {
+                    if(nk_button_text(&ctx, &numbers[(i / 4) * 3 + i % 4], 1))
+                    {
+                        *current = *current * 10.0f + numbers[(i / 4) * 3 + i % 4] - '0';
+                        set = 0;
+                    }
+                }
+                else if(nk_button_text(&ctx, &ops[i / 4], 1))
+                {
+                    if(!set)
+                    {
+                        if(current != &b)
+                        {
                             current = &b;
-                        } else {
+                        }
+                        else
+                        {
                             prev = op;
                             solve = 1;
                         }
                     }
-                    op = ops[i/4];
+                    op = ops[i / 4];
                     set = 1;
                 }
             }
-            if (solve) {
-                if (prev == '+') a = a + b;
-                if (prev == '-') a = a - b;
-                if (prev == '*') a = a * b;
-                if (prev == '/') a = a / b;
+            if(solve)
+            {
+                if(prev == '+')
+                    a = a + b;
+                if(prev == '-')
+                    a = a - b;
+                if(prev == '*')
+                    a = a * b;
+                if(prev == '/')
+                    a = a / b;
                 current = &a;
-                if (set) current = &b;
-                b = 0; set = 0;
+                if(set)
+                    current = &b;
+                b = 0;
+                set = 0;
             }
         }
         nk_end(&ctx);
@@ -597,4 +633,3 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     kdDestroyWindow(kd_window);
     return 0;
 }
-

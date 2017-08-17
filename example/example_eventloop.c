@@ -57,24 +57,25 @@ static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenu
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     const EGLint egl_attributes[] =
-    {
-        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,           8,
-        EGL_GREEN_SIZE,         8,
-        EGL_BLUE_SIZE,          8,
-        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
-        EGL_DEPTH_SIZE,         EGL_DONT_CARE,
-        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
-        EGL_SAMPLE_BUFFERS,     0,
-        EGL_NONE
-    };
+        {
+            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, EGL_DONT_CARE,
+            EGL_DEPTH_SIZE, EGL_DONT_CARE,
+            EGL_STENCIL_SIZE, EGL_DONT_CARE,
+            EGL_SAMPLE_BUFFERS, 0,
+            EGL_NONE};
 
     const EGLint egl_context_attributes[] =
     {
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-#if defined(EGL_KHR_create_context)    
-        EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
+        EGL_CONTEXT_CLIENT_VERSION,
+        2,
+#if defined(EGL_KHR_create_context)
+        EGL_CONTEXT_FLAGS_KHR,
+        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
 #endif
         EGL_NONE,
     };

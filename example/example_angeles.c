@@ -52,7 +52,7 @@
 
 
 // Total run length is 20 * camera track base unit length (see cams.h).
-#define RUN_LENGTH  (20 * CAMTRACK_LEN)
+#define RUN_LENGTH (20 * CAMTRACK_LEN)
 
 static KDuint64 sRandomSeed = 0;
 
@@ -133,10 +133,10 @@ typedef struct {
     GLint minFade;
 } SHADERFADE;
 
-typedef struct{
+typedef struct {
     ALuint ID;
 
-    stb_vorbis* stream;
+    stb_vorbis *stream;
     stb_vorbis_info info;
 
     ALuint buffers[2];
@@ -166,7 +166,7 @@ static KDint sCurrentCamTrack = 0;
 static KDust sCurrentCamTrackStartTick = 0;
 static KDust sNextCamTrackStartTick = 0x7fffffff;
 
-static GLOBJECT *sSuperShapeObjects[SUPERSHAPE_COUNT] = { KD_NULL };
+static GLOBJECT *sSuperShapeObjects[SUPERSHAPE_COUNT] = {KD_NULL};
 static GLOBJECT *sGroundPlane = KD_NULL;
 static GLOBJECT *sFadeQuad = KD_NULL;
 
@@ -179,7 +179,7 @@ typedef struct {
 
 static void freeGLObject(GLOBJECT *object)
 {
-    if (object == KD_NULL)
+    if(object == KD_NULL)
         return;
 
     kdFree(object->normalArray);
@@ -190,19 +190,19 @@ static void freeGLObject(GLOBJECT *object)
 }
 
 
-static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
-                              KDint useColorArray, KDint useNormalArray)
+static GLOBJECT *newGLObject(KDint64 vertices, KDint vertexComponents,
+    KDint useColorArray, KDint useNormalArray)
 {
     GLOBJECT *result;
     result = (GLOBJECT *)kdMalloc(sizeof(GLOBJECT));
-    if (result == KD_NULL)
+    if(result == KD_NULL)
         return KD_NULL;
     result->count = vertices;
     result->vertexComponents = vertexComponents;
     result->vertexArraySize = vertices * vertexComponents * sizeof(GLfloat);
     result->vertexArray = kdMalloc(result->vertexArraySize);
     result->vertexArrayOffset = 0;
-    if (useColorArray)
+    if(useColorArray)
     {
         result->colorArraySize = vertices * 4 * sizeof(GLubyte);
         result->colorArray = kdMalloc(result->colorArraySize);
@@ -213,8 +213,8 @@ static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
         result->colorArray = KD_NULL;
     }
     result->colorArrayOffset = result->vertexArrayOffset +
-                               result->vertexArraySize;
-    if (useNormalArray)
+        result->vertexArraySize;
+    if(useNormalArray)
     {
         result->normalArraySize = vertices * 3 * sizeof(GLfloat);
         result->normalArray = kdMalloc(result->normalArraySize);
@@ -225,8 +225,8 @@ static GLOBJECT * newGLObject(KDint64 vertices, KDint vertexComponents,
         result->normalArray = KD_NULL;
     }
     result->normalArrayOffset = result->colorArrayOffset +
-                                result->colorArraySize;
-    if (result->vertexArray == KD_NULL ||
+        result->colorArraySize;
+    if(result->vertexArray == KD_NULL ||
         (useColorArray && result->colorArray == KD_NULL) ||
         (useNormalArray && result->normalArray == KD_NULL))
     {
@@ -246,16 +246,16 @@ static void appendObjectVBO(GLOBJECT *object, GLint *offset)
     object->colorArrayOffset += *offset;
     object->normalArrayOffset += *offset;
     *offset += object->vertexArraySize + object->colorArraySize +
-               object->normalArraySize;
+        object->normalArraySize;
 
     glBufferSubData(GL_ARRAY_BUFFER, object->vertexArrayOffset,
-                    object->vertexArraySize, object->vertexArray);
-    if (object->colorArray)
+        object->vertexArraySize, object->vertexArray);
+    if(object->colorArray)
         glBufferSubData(GL_ARRAY_BUFFER, object->colorArrayOffset,
-                        object->colorArraySize, object->colorArray);
-    if (object->normalArray)
+            object->colorArraySize, object->colorArray);
+    if(object->normalArray)
         glBufferSubData(GL_ARRAY_BUFFER, object->normalArrayOffset,
-                        object->normalArraySize, object->normalArray);
+            object->normalArraySize, object->normalArray);
 
     kdFree(object->normalArray);
     object->normalArray = KD_NULL;
@@ -267,29 +267,29 @@ static void appendObjectVBO(GLOBJECT *object, GLint *offset)
 
 
 static GLuint createVBO(GLOBJECT **superShapes, KDint superShapeCount,
-                        GLOBJECT *groundPlane, GLOBJECT *fadeQuad)
+    GLOBJECT *groundPlane, GLOBJECT *fadeQuad)
 {
     GLuint vbo;
     GLint totalSize = 0;
     KDint a;
-    for (a = 0; a < superShapeCount; ++a)
+    for(a = 0; a < superShapeCount; ++a)
     {
         kdAssert(superShapes[a] != KD_NULL);
         totalSize += superShapes[a]->vertexArraySize +
-                     superShapes[a]->colorArraySize +
-                     superShapes[a]->normalArraySize;
+            superShapes[a]->colorArraySize +
+            superShapes[a]->normalArraySize;
     }
     totalSize += groundPlane->vertexArraySize +
-                 groundPlane->colorArraySize +
-                 groundPlane->normalArraySize;
+        groundPlane->colorArraySize +
+        groundPlane->normalArraySize;
     totalSize += fadeQuad->vertexArraySize +
-                 fadeQuad->colorArraySize +
-                 fadeQuad->normalArraySize;
+        fadeQuad->colorArraySize +
+        fadeQuad->normalArraySize;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, totalSize, 0, GL_STATIC_DRAW);
     GLint offset = 0;
-    for (a = 0; a < superShapeCount; ++a)
+    for(a = 0; a < superShapeCount; ++a)
         appendObjectVBO(superShapes[a], &offset);
     appendObjectVBO(groundPlane, &offset);
     appendObjectVBO(fadeQuad, &offset);
@@ -300,33 +300,35 @@ static GLuint createVBO(GLOBJECT **superShapes, KDint superShapeCount,
 
 static void computeNormalMatrix(Matrix4x4 m, Matrix3x3 normal)
 {
-    KDfloat32 det = m[0*4+0] * (m[1*4+1] * m[2*4+2] - m[2*4+1] * m[1*4+2]) -
-                m[0*4+1] * (m[1*4+0] * m[2*4+2] - m[1*4+2] * m[2*4+0]) +
-                m[0*4+2] * (m[1*4+0] * m[2*4+1] - m[1*4+1] * m[2*4+0]);
+    KDfloat32 det = m[0 * 4 + 0] * (m[1 * 4 + 1] * m[2 * 4 + 2] - m[2 * 4 + 1] * m[1 * 4 + 2]) -
+        m[0 * 4 + 1] * (m[1 * 4 + 0] * m[2 * 4 + 2] - m[1 * 4 + 2] * m[2 * 4 + 0]) +
+        m[0 * 4 + 2] * (m[1 * 4 + 0] * m[2 * 4 + 1] - m[1 * 4 + 1] * m[2 * 4 + 0]);
     KDfloat32 invDet = 1.f / det;
-    normal[0*3+0] = invDet * (m[1*4+1] * m[2*4+2] - m[2*4+1] * m[1*4+2]);
-    normal[1*3+0] = invDet * -(m[0*4+1] * m[2*4+2] - m[0*4+2] * m[2*4+1]);
-    normal[2*3+0] = invDet * (m[0*4+1] * m[1*4+2] - m[0*4+2] * m[1*4+1]);
-    normal[0*3+1] = invDet * -(m[1*4+0] * m[2*4+2] - m[1*4+2] * m[2*4+0]);
-    normal[1*3+1] = invDet * (m[0*4+0] * m[2*4+2] - m[0*4+2] * m[2*4+0]);
-    normal[2*3+1] = invDet * -(m[0*4+0] * m[1*4+2] - m[1*4+0] * m[0*4+2]);
-    normal[0*3+2] = invDet * (m[1*4+0] * m[2*4+1] - m[2*4+0] * m[1*4+1]);
-    normal[1*3+2] = invDet * -(m[0*4+0] * m[2*4+1] - m[2*4+0] * m[0*4+1]);
-    normal[2*3+2] = invDet * (m[0*4+0] * m[1*4+1] - m[1*4+0] * m[0*4+1]);
+    normal[0 * 3 + 0] = invDet * (m[1 * 4 + 1] * m[2 * 4 + 2] - m[2 * 4 + 1] * m[1 * 4 + 2]);
+    normal[1 * 3 + 0] = invDet * -(m[0 * 4 + 1] * m[2 * 4 + 2] - m[0 * 4 + 2] * m[2 * 4 + 1]);
+    normal[2 * 3 + 0] = invDet * (m[0 * 4 + 1] * m[1 * 4 + 2] - m[0 * 4 + 2] * m[1 * 4 + 1]);
+    normal[0 * 3 + 1] = invDet * -(m[1 * 4 + 0] * m[2 * 4 + 2] - m[1 * 4 + 2] * m[2 * 4 + 0]);
+    normal[1 * 3 + 1] = invDet * (m[0 * 4 + 0] * m[2 * 4 + 2] - m[0 * 4 + 2] * m[2 * 4 + 0]);
+    normal[2 * 3 + 1] = invDet * -(m[0 * 4 + 0] * m[1 * 4 + 2] - m[1 * 4 + 0] * m[0 * 4 + 2]);
+    normal[0 * 3 + 2] = invDet * (m[1 * 4 + 0] * m[2 * 4 + 1] - m[2 * 4 + 0] * m[1 * 4 + 1]);
+    normal[1 * 3 + 2] = invDet * -(m[0 * 4 + 0] * m[2 * 4 + 1] - m[2 * 4 + 0] * m[0 * 4 + 1]);
+    normal[2 * 3 + 2] = invDet * (m[0 * 4 + 0] * m[1 * 4 + 1] - m[1 * 4 + 0] * m[0 * 4 + 1]);
 }
 
 
 static KDint getLocations()
 {
     KDint rt = 1;
-#define GET_ATTRIBUTE_LOC(programName, varName) \
-        sShader##programName.varName = \
+#define GET_ATTRIBUTE_LOC(programName, varName)                      \
+    sShader##programName.varName =                                   \
         glGetAttribLocation(sShader##programName.program, #varName); \
-        if (sShader##programName.varName == -1) rt = 0
-#define GET_UNIFORM_LOC(programName, varName) \
-        sShader##programName.varName = \
+    if(sShader##programName.varName == -1)                           \
+    rt = 0
+#define GET_UNIFORM_LOC(programName, varName)                         \
+    sShader##programName.varName =                                    \
         glGetUniformLocation(sShader##programName.program, #varName); \
-        if (sShader##programName.varName == -1) rt = 0
+    if(sShader##programName.varName == -1)                            \
+    rt = 0
     GET_ATTRIBUTE_LOC(Lit, pos);
     GET_ATTRIBUTE_LOC(Lit, normal);
     GET_ATTRIBUTE_LOC(Lit, colorIn);
@@ -360,12 +362,12 @@ KDint initShaderPrograms()
     exampleMatrixIdentity(sProjection);
 
     sShaderFlat.program = exampleCreateProgram(sFlatVertexSource,
-                                        sFlatFragmentSource);
+        sFlatFragmentSource);
     sShaderLit.program = exampleCreateProgram(sLitVertexSource,
-                                       sFlatFragmentSource);
+        sFlatFragmentSource);
     sShaderFade.program = exampleCreateProgram(sFadeVertexSource,
-                                        sFlatFragmentSource);
-    if (sShaderFlat.program == 0 || sShaderLit.program == 0 ||
+        sFlatFragmentSource);
+    if(sShaderFlat.program == 0 || sShaderLit.program == 0 ||
         sShaderFade.program == 0)
         return 0;
 
@@ -388,29 +390,29 @@ void bindShaderProgram(GLuint program)
 
     glUseProgram(program);
 
-    if (program == sShaderLit.program)
+    if(program == sShaderLit.program)
     {
         loc_mvp = sShaderLit.mvp;
         loc_normalMatrix = sShaderLit.normalMatrix;
     }
-    else if (program == sShaderFlat.program)
+    else if(program == sShaderFlat.program)
     {
         loc_mvp = sShaderFlat.mvp;
     }
 
-    if (loc_mvp != -1)
+    if(loc_mvp != -1)
     {
         Matrix4x4 mvp;
         kdMemcpy(mvp, sProjection, sizeof(sProjection));
         exampleMatrixMultiply(mvp, sModelView);
         glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, (GLfloat *)mvp);
     }
-    if (loc_normalMatrix != -1)
+    if(loc_normalMatrix != -1)
     {
         Matrix3x3 normalMatrix;
         computeNormalMatrix(sModelView, normalMatrix);
         glUniformMatrix3fv(loc_normalMatrix, 1, GL_FALSE,
-                           (GLfloat *)normalMatrix);
+            (GLfloat *)normalMatrix);
     }
 }
 
@@ -421,13 +423,13 @@ static void drawGLObject(GLOBJECT *object)
     int loc_normal = -1;
 
     bindShaderProgram(object->shaderProgram);
-    if (object->shaderProgram == sShaderLit.program)
+    if(object->shaderProgram == sShaderLit.program)
     {
         loc_pos = sShaderLit.pos;
         loc_colorIn = sShaderLit.colorIn;
         loc_normal = sShaderLit.normal;
     }
-    else if (object->shaderProgram == sShaderFlat.program)
+    else if(object->shaderProgram == sShaderFlat.program)
     {
         loc_pos = sShaderFlat.pos;
         loc_colorIn = sShaderFlat.colorIn;
@@ -437,20 +439,20 @@ static void drawGLObject(GLOBJECT *object)
         kdAssert(0);
     }
     glVertexAttribPointer(loc_pos, object->vertexComponents, GL_FLOAT,
-                          GL_FALSE, 0, (GLvoid *)object->vertexArrayOffset);
+        GL_FALSE, 0, (GLvoid *)object->vertexArrayOffset);
     glEnableVertexAttribArray(loc_pos);
     glVertexAttribPointer(loc_colorIn, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0,
-                          (GLvoid *)object->colorArrayOffset);
+        (GLvoid *)object->colorArrayOffset);
     glEnableVertexAttribArray(loc_colorIn);
-    if (object->normalArraySize > 0)
+    if(object->normalArraySize > 0)
     {
         glVertexAttribPointer(loc_normal, 3, GL_FLOAT, GL_FALSE, 0,
-                              (GLvoid *)object->normalArrayOffset);
+            (GLvoid *)object->normalArrayOffset);
         glEnableVertexAttribArray(loc_normal);
     }
     glDrawArrays(GL_TRIANGLES, 0, object->count);
 
-    if (object->normalArraySize > 0)
+    if(object->normalArraySize > 0)
         glDisableVertexAttribArray(loc_normal);
     glDisableVertexAttribArray(loc_colorIn);
     glDisableVertexAttribArray(loc_pos);
@@ -477,21 +479,22 @@ static void superShapeMap(VECTOR3 *point, KDfloat32 r1, KDfloat32 r2, KDfloat32 
 static KDfloat32 ssFunc(const KDfloat32 t, const KDfloat32 *p)
 {
     return (kdPowf(kdPowf(kdFabsf(kdCosf(p[0] * t / 4)) / p[1], p[4]) +
-                       kdPowf(kdFabsf(kdSinf(p[0] * t / 4)) / p[2], p[5]), 1 / p[3]));
+            kdPowf(kdFabsf(kdSinf(p[0] * t / 4)) / p[2], p[5]),
+        1 / p[3]));
 }
 
 
 // Creates and returns a supershape object.
 // Based on Paul Bourke's POV-Ray implementation.
 // http://astronomy.swin.edu.au/~pbourke/povray/supershape/
-static GLOBJECT * createSuperShape(const KDfloat32 *params)
+static GLOBJECT *createSuperShape(const KDfloat32 *params)
 {
     const KDint resol1 = (KDint)params[SUPERSHAPE_PARAMS - 3];
     const KDint resol2 = (KDint)params[SUPERSHAPE_PARAMS - 2];
     // latitude 0 to pi/2 for no mirrored bottom
     // (latitudeBegin==0 for -pi/2 to pi/2 originally)
     const KDint latitudeBegin = resol2 / 4;
-    const KDint latitudeEnd = resol2 / 2;    // non-inclusive
+    const KDint latitudeEnd = resol2 / 2;  // non-inclusive
     const KDint longitudeCount = resol1;
     const KDint latitudeCount = latitudeEnd - latitudeBegin;
     const KDint64 triangleCount = longitudeCount * latitudeCount * 2;
@@ -502,21 +505,21 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
     KDint64 currentVertex, currentQuad;
 
     result = newGLObject(vertices, 3, 1, 1);
-    if (result == KD_NULL)
+    if(result == KD_NULL)
         return KD_NULL;
 
-    for (a = 0; a < 3; ++a)
+    for(a = 0; a < 3; ++a)
         baseColor[a] = ((randomUInt() % 155) + 100) / 255.f;
 
     currentQuad = 0;
     currentVertex = 0;
 
     // longitude -pi to pi
-    for (longitude = 0; longitude < longitudeCount; ++longitude)
+    for(longitude = 0; longitude < longitudeCount; ++longitude)
     {
 
         // latitude 0 to pi/2
-        for (latitude = latitudeBegin; latitude < latitudeEnd; ++latitude)
+        for(latitude = latitudeBegin; latitude < latitudeEnd; ++latitude)
         {
             KDfloat32 t1 = -KD_PI_F + longitude * 2 * KD_PI_F / resol1;
             KDfloat32 t2 = -KD_PI_F + (longitude + 1) * 2 * KD_PI_F / resol1;
@@ -529,7 +532,7 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
             r2 = ssFunc(t2, params);
             r3 = ssFunc(p2, &params[6]);
 
-            if (r0 != 0 && r1 != 0 && r2 != 0 && r3 != 0)
+            if(r0 != 0 && r1 != 0 && r2 != 0 && r3 != 0)
             {
                 VECTOR3 pa, pb, pc, pd;
                 VECTOR3 v1, v2, n;
@@ -543,7 +546,7 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
                 superShapeMap(&pd, r0, r3, t1, p2);
 
                 // kludge to set lower edge of the object to fixed level
-                if (latitude == latitudeBegin + 1)
+                if(latitude == latitudeBegin + 1)
                     pa.z = pb.z = 0;
 
                 vector3Sub(&v1, &pb, &pa);
@@ -574,23 +577,24 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
 
                 ca = pa.z + 0.5f;
 
-                for (i = currentVertex * 3;
-                     i < (currentVertex + 6) * 3;
-                     i += 3)
+                for(i = currentVertex * 3;
+                    i < (currentVertex + 6) * 3;
+                    i += 3)
                 {
                     result->normalArray[i] = n.x;
                     result->normalArray[i + 1] = n.y;
                     result->normalArray[i + 2] = n.z;
                 }
-                for (i = currentVertex * 4;
-                     i < (currentVertex + 6) * 4;
-                     i += 4)
+                for(i = currentVertex * 4;
+                    i < (currentVertex + 6) * 4;
+                    i += 4)
                 {
                     KDint a, color[3];
-                    for (a = 0; a < 3; ++a)
+                    for(a = 0; a < 3; ++a)
                     {
                         color[a] = (KDint)(ca * baseColor[a] * 255);
-                        if (color[a] > 255) color[a] = 255;
+                        if(color[a] > 255)
+                            color[a] = 255;
                     }
                     result->colorArray[i] = (GLubyte)color[0];
                     result->colorArray[i + 1] = (GLubyte)color[1];
@@ -621,10 +625,10 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
                 result->vertexArray[currentVertex * 3 + 1] = pd.y;
                 result->vertexArray[currentVertex * 3 + 2] = pd.z;
                 ++currentVertex;
-            } // r0 && r1 && r2 && r3
+            }  // r0 && r1 && r2 && r3
             ++currentQuad;
-        } // latitude
-    } // longitude
+        }  // latitude
+    }      // longitude
 
     // Set number of vertices in object to the actual amount created.
     result->count = currentVertex;
@@ -633,10 +637,10 @@ static GLOBJECT * createSuperShape(const KDfloat32 *params)
 }
 
 
-static GLOBJECT * createGroundPlane()
+static GLOBJECT *createGroundPlane()
 {
     const KDint scale = 4;
-    const KDint yBegin = -15, yEnd = 15;    // ends are non-inclusive
+    const KDint yBegin = -15, yEnd = 15;  // ends are non-inclusive
     const KDint xBegin = -15, xEnd = 15;
     const KDint64 triangleCount = (yEnd - yBegin) * (xEnd - xBegin) * 2;
     const KDint64 vertices = triangleCount * 3;
@@ -645,20 +649,20 @@ static GLOBJECT * createGroundPlane()
     KDint64 currentVertex, currentQuad;
 
     result = newGLObject(vertices, 2, 1, 0);
-    if (result == KD_NULL)
+    if(result == KD_NULL)
         return KD_NULL;
 
     currentQuad = 0;
     currentVertex = 0;
 
-    for (y = yBegin; y < yEnd; ++y)
+    for(y = yBegin; y < yEnd; ++y)
     {
-        for (x = xBegin; x < xEnd; ++x)
+        for(x = xBegin; x < xEnd; ++x)
         {
             GLubyte color;
             KDint i, a;
             color = (GLubyte)((randomUInt() & 0x5f) + 81);  // 101 1111
-            for (i = currentVertex * 4; i < (currentVertex + 6) * 4; i += 4)
+            for(i = currentVertex * 4; i < (currentVertex + 6) * 4; i += 4)
             {
                 result->colorArray[i] = color;
                 result->colorArray[i + 1] = color;
@@ -669,7 +673,7 @@ static GLOBJECT * createGroundPlane()
             // Axis bits for quad triangles:
             // x: 011100 (0x1c), y: 110001 (0x31)  (clockwise)
             // x: 001110 (0x0e), y: 100011 (0x23)  (counter-clockwise)
-            for (a = 0; a < 6; ++a)
+            for(a = 0; a < 6; ++a)
             {
                 const KDint xm = x + ((0x1c >> a) & 1);
                 const KDint ym = y + ((0x31 >> a) & 1);
@@ -700,25 +704,24 @@ static void drawGroundPlane()
 }
 
 
-static GLOBJECT * createFadeQuad()
+static GLOBJECT *createFadeQuad()
 {
     static const GLfloat quadVertices[] = {
         -1, -1,
-         1, -1,
-        -1,  1,
-         1, -1,
-         1,  1,
-        -1,  1
-    };
+        1, -1,
+        -1, 1,
+        1, -1,
+        1, 1,
+        -1, 1};
 
     GLOBJECT *result;
     KDint i;
 
     result = newGLObject(6, 2, 0, 0);
-    if (result == KD_NULL)
+    if(result == KD_NULL)
         return KD_NULL;
 
-    for (i = 0; i < 12; ++i)
+    for(i = 0; i < 12; ++i)
         result->vertexArray[i] = quadVertices[i];
 
     result->shaderProgram = sShaderFade.program;
@@ -732,7 +735,7 @@ static void drawFadeQuad()
     const KDint endFade = sNextCamTrackStartTick - sTick;
     const KDint minFade = beginFade < endFade ? beginFade : endFade;
 
-    if (minFade < 1024)
+    if(minFade < 1024)
     {
         const GLfloat fadeColor = minFade / 1024.f;
         glDisable(GL_DEPTH_TEST);
@@ -741,7 +744,7 @@ static void drawFadeQuad()
         bindShaderProgram(sShaderFade.program);
         glUniform1f(sShaderFade.minFade, fadeColor);
         glVertexAttribPointer(sShaderFade.pos, 2, GL_FLOAT, GL_FALSE, 0,
-                              (GLvoid *)sFadeQuad->vertexArrayOffset);
+            (GLvoid *)sFadeQuad->vertexArrayOffset);
         glEnableVertexAttribArray(sShaderFade.pos);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(sShaderFade.pos);
@@ -756,22 +759,22 @@ static void drawFadeQuad()
 int appInit()
 {
     KDint a;
-    static GLfloat light0Diffuse[] = { 1.f, 0.4f, 0, 1.f };
-    static GLfloat light1Diffuse[] = { 0.07f, 0.14f, 0.35f, 1.f };
-    static GLfloat light2Diffuse[] = { 0.07f, 0.17f, 0.14f, 1.f };
-    static GLfloat materialSpecular[] = { 1.f, 1.f, 1.f, 1.f };
-    static GLfloat lightAmbient[] = { 0.2f, 0.2f, 0.2f, 1.f };
+    static GLfloat light0Diffuse[] = {1.f, 0.4f, 0, 1.f};
+    static GLfloat light1Diffuse[] = {0.07f, 0.14f, 0.35f, 1.f};
+    static GLfloat light2Diffuse[] = {0.07f, 0.17f, 0.14f, 1.f};
+    static GLfloat materialSpecular[] = {1.f, 1.f, 1.f, 1.f};
+    static GLfloat lightAmbient[] = {0.2f, 0.2f, 0.2f, 1.f};
 
     glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
-    if (initShaderPrograms() == 0)
+    if(initShaderPrograms() == 0)
     {
         kdLogMessage("Error: initShaderPrograms failed\n");
         return 0;
     }
     seedRandom(15);
 
-    for (a = 0; a < SUPERSHAPE_COUNT; ++a)
+    for(a = 0; a < SUPERSHAPE_COUNT; ++a)
     {
         sSuperShapeObjects[a] = createSuperShape(sSuperShapeParams[a]);
         kdAssert(sSuperShapeObjects[a] != KD_NULL);
@@ -781,7 +784,7 @@ int appInit()
     sFadeQuad = createFadeQuad();
     kdAssert(sFadeQuad != KD_NULL);
     sVBO = createVBO(sSuperShapeObjects, SUPERSHAPE_COUNT,
-                     sGroundPlane, sFadeQuad);
+        sGroundPlane, sFadeQuad);
 
     // setup non-changing lighting parameters
     bindShaderProgram(sShaderLit.program);
@@ -799,7 +802,7 @@ int appInit()
 void appDeinit()
 {
     KDint a;
-    for (a = 0; a < SUPERSHAPE_COUNT; ++a)
+    for(a = 0; a < SUPERSHAPE_COUNT; ++a)
         freeGLObject(sSuperShapeObjects[a]);
     freeGLObject(sGroundPlane);
     freeGLObject(sFadeQuad);
@@ -824,16 +827,16 @@ static void prepareFrame(KDint width, KDint height)
 
 static void configureLightAndMaterial()
 {
-    GLfloat light0Position[] = { -4.f, 1.f, 1.f, 0 };
-    GLfloat light1Position[] = { 1.f, -2.f, -1.f, 0 };
-    GLfloat light2Position[] = { -1.f, 0, -4.f, 0 };
+    GLfloat light0Position[] = {-4.f, 1.f, 1.f, 0};
+    GLfloat light1Position[] = {1.f, -2.f, -1.f, 0};
+    GLfloat light2Position[] = {-1.f, 0, -4.f, 0};
 
     exampleMatrixTransform(sModelView,
-                        light0Position, light0Position + 1, light0Position + 2);
+        light0Position, light0Position + 1, light0Position + 2);
     exampleMatrixTransform(sModelView,
-                        light1Position, light1Position + 1, light1Position + 2);
+        light1Position, light1Position + 1, light1Position + 2);
     exampleMatrixTransform(sModelView,
-                        light2Position, light2Position + 1, light2Position + 2);
+        light2Position, light2Position + 1, light2Position + 2);
 
     bindShaderProgram(sShaderLit.program);
     glUniform3fv(sShaderLit.light_0_direction, 1, light0Position);
@@ -851,9 +854,9 @@ static void drawModels(KDfloat32 zScale)
 
     exampleMatrixScale(sModelView, 1.f, 1.f, zScale);
 
-    for (y = -5; y <= 5; ++y)
+    for(y = -5; y <= 5; ++y)
     {
-        for (x = -5; x <= 5; ++x)
+        for(x = -5; x <= 5; ++x)
         {
             KDfloat32 buildingScale;
             Matrix4x4 tmp;
@@ -870,7 +873,7 @@ static void drawModels(KDfloat32 zScale)
         }
     }
 
-    for (x = -2; x <= 2; ++x)
+    for(x = -2; x <= 2; ++x)
     {
         const KDint shipScale100 = translationScale * 500;
         const KDint offs100 = x * shipScale100 + (sTick % shipScale100);
@@ -891,8 +894,8 @@ static void drawModels(KDfloat32 zScale)
  * Mesa 3D Graphics library. http://www.mesa3d.org
  */
 static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
-	              GLfloat centerx, GLfloat centery, GLfloat centerz,
-	              GLfloat upx, GLfloat upy, GLfloat upz)
+    GLfloat centerx, GLfloat centery, GLfloat centerz,
+    GLfloat upx, GLfloat upy, GLfloat upz)
 {
     Matrix4x4 m;
     GLfloat x[3], y[3], z[3];
@@ -905,7 +908,8 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
     z[1] = eyey - centery;
     z[2] = eyez - centerz;
     mag = kdSqrtf(z[0] * z[0] + z[1] * z[1] + z[2] * z[2]);
-    if (mag) {			/* mpichler, 19950515 */
+    if(mag)
+    { /* mpichler, 19950515 */
         z[0] /= mag;
         z[1] /= mag;
         z[2] /= mag;
@@ -932,20 +936,22 @@ static void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
      */
 
     mag = kdSqrtf(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-    if (mag) {
+    if(mag)
+    {
         x[0] /= mag;
         x[1] /= mag;
         x[2] /= mag;
     }
 
     mag = kdSqrtf(y[0] * y[0] + y[1] * y[1] + y[2] * y[2]);
-    if (mag) {
+    if(mag)
+    {
         y[0] /= mag;
         y[1] /= mag;
         y[2] /= mag;
     }
 
-#define M(row, col) m[col*4 + row]
+#define M(row, col) m[col * 4 + row]
     M(0, 0) = x[0];
     M(0, 1) = x[1];
     M(0, 2) = x[2];
@@ -978,22 +984,22 @@ static void camTrack()
     KDust currentCamTick;
     KDint a;
 
-    if (sNextCamTrackStartTick <= sTick)
+    if(sNextCamTrackStartTick <= sTick)
     {
         ++sCurrentCamTrack;
         sCurrentCamTrackStartTick = sNextCamTrackStartTick;
     }
     sNextCamTrackStartTick = sCurrentCamTrackStartTick +
-                             sCamTracks[sCurrentCamTrack].len * CAMTRACK_LEN;
+        sCamTracks[sCurrentCamTrack].len * CAMTRACK_LEN;
 
     cam = &sCamTracks[sCurrentCamTrack];
     currentCamTick = sTick - sCurrentCamTrackStartTick;
     trackPos = (KDfloat32)currentCamTick / (CAMTRACK_LEN * cam->len);
 
-    for (a = 0; a < 5; ++a)
+    for(a = 0; a < 5; ++a)
         lerp[a] = (cam->src[a] + cam->dest[a] * trackPos) * 0.01f;
 
-    if (cam->dist)
+    if(cam->dist)
     {
         KDfloat32 dist = cam->dist * 0.1f;
         cX = lerp[0];
@@ -1024,16 +1030,16 @@ void appRender(KDust tick, KDint width, KDint height)
 {
     Matrix4x4 tmp;
 
-    if (sStartTick == 0)
+    if(sStartTick == 0)
         sStartTick = tick;
-    if (!gAppAlive)
+    if(!gAppAlive)
         return;
 
     // Actual tick value is "blurred" a little bit.
     sTick = (sTick + tick - sStartTick) >> 1;
 
     // Terminate application after running through the demonstration once.
-    if (sTick >= RUN_LENGTH)
+    if(sTick >= RUN_LENGTH)
     {
         gAppAlive = 0;
         return;
@@ -1064,86 +1070,97 @@ void appRender(KDust tick, KDint width, KDint height)
     drawFadeQuad();
 }
 
-void AudioStreamInit(AUDIOSTREAM* self)
+void AudioStreamInit(AUDIOSTREAM *self)
 {
     kdMemset(self, 0, sizeof(AUDIOSTREAM));
-    alGenSources(1, & self->source);
+    alGenSources(1, &self->source);
     alGenBuffers(2, self->buffers);
-    self->bufferSize=4096*8;
-    self->shouldLoop=KD_TRUE;//We loop by default
+    self->bufferSize = 4096 * 8;
+    self->shouldLoop = KD_TRUE;  //We loop by default
 }
 
 
-void AudioStreamDeinit(AUDIOSTREAM* self){
-    alDeleteSources(1, & self->source);
+void AudioStreamDeinit(AUDIOSTREAM *self)
+{
+    alDeleteSources(1, &self->source);
     alDeleteBuffers(2, self->buffers);
     stb_vorbis_close(self->stream);
     kdMemset(self, 0, sizeof(AUDIOSTREAM));
 }
 
-KDboolean AudioStreamStream(AUDIOSTREAM* self, ALuint buffer)
+KDboolean AudioStreamStream(AUDIOSTREAM *self, ALuint buffer)
 {
     ALshort pcm[self->bufferSize];
-    KDint  size = 0;
-    KDint  result = 0;
+    KDint size = 0;
+    KDint result = 0;
 
     while(size < self->bufferSize)
     {
-        result = stb_vorbis_get_samples_short_interleaved(self->stream, self->info.channels, pcm+size, self->bufferSize-size);
-        if(result > 0) size += result*self->info.channels;
-        else break;
+        result = stb_vorbis_get_samples_short_interleaved(self->stream, self->info.channels, pcm + size, self->bufferSize - size);
+        if(result > 0)
+            size += result * self->info.channels;
+        else
+            break;
     }
 
-    if(size == 0) return KD_FALSE;
+    if(size == 0)
+        return KD_FALSE;
 
-    alBufferData(buffer, self->format, pcm, size*sizeof(ALshort), self->info.sample_rate);
-    self->totalSamplesLeft-=size;
+    alBufferData(buffer, self->format, pcm, size * sizeof(ALshort), self->info.sample_rate);
+    self->totalSamplesLeft -= size;
 
     return KD_TRUE;
 }
 
-KDboolean AudioStreamOpen(AUDIOSTREAM* self, const KDchar* filename)
+KDboolean AudioStreamOpen(AUDIOSTREAM *self, const KDchar *filename)
 {
-    self->stream = stb_vorbis_open_filename((KDchar*)filename, KD_NULL, KD_NULL);
-    if(!self->stream) return KD_FALSE;
+    self->stream = stb_vorbis_open_filename((KDchar *)filename, KD_NULL, KD_NULL);
+    if(!self->stream)
+        return KD_FALSE;
     // Get file info
     self->info = stb_vorbis_get_info(self->stream);
-    if(self->info.channels == 2) self->format = AL_FORMAT_STEREO16;
-    else self->format = AL_FORMAT_MONO16;
+    if(self->info.channels == 2)
+        self->format = AL_FORMAT_STEREO16;
+    else
+        self->format = AL_FORMAT_MONO16;
 
-    if(!AudioStreamStream(self, self->buffers[0])) return KD_FALSE;
-    if(!AudioStreamStream(self, self->buffers[1])) return KD_FALSE;
+    if(!AudioStreamStream(self, self->buffers[0]))
+        return KD_FALSE;
+    if(!AudioStreamStream(self, self->buffers[1]))
+        return KD_FALSE;
     alSourceQueueBuffers(self->source, 2, self->buffers);
     alSourcePlay(self->source);
 
-    self->totalSamplesLeft=stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
+    self->totalSamplesLeft = stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
 
     return KD_TRUE;
 }
 
-KDboolean AudioStreamUpdate(AUDIOSTREAM* self)
+KDboolean AudioStreamUpdate(AUDIOSTREAM *self)
 {
-    ALint processed=0;
+    ALint processed = 0;
 
     alGetSourcei(self->source, AL_BUFFERS_PROCESSED, &processed);
 
     while(processed--)
     {
-        ALuint buffer=0;
-        
+        ALuint buffer = 0;
+
         alSourceUnqueueBuffers(self->source, 1, &buffer);
 
         if(!AudioStreamStream(self, buffer))
         {
-            KDboolean shouldExit=KD_TRUE;
+            KDboolean shouldExit = KD_TRUE;
 
-            if(self->shouldLoop){
+            if(self->shouldLoop)
+            {
                 stb_vorbis_seek_start(self->stream);
-                self->totalSamplesLeft=stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
-                shouldExit=!AudioStreamStream(self, buffer);
+                self->totalSamplesLeft = stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
+                shouldExit = !AudioStreamStream(self, buffer);
             }
 
-            if(shouldExit) return KD_FALSE;
+            if(shouldExit)
+                return KD_FALSE;
         }
         alSourceQueueBuffers(self->source, 1, &buffer);
     }
@@ -1151,59 +1168,44 @@ KDboolean AudioStreamUpdate(AUDIOSTREAM* self)
     return KD_TRUE;
 }
 
-static void KD_APIENTRY kd_callback(const KDEvent *event)
-{
-    switch(event->type)
-    {
-        case(KD_EVENT_WINDOW_CLOSE):
-        {
-            gAppAlive = 0;
-            break;
-        }
-        default:
-        {
-            kdDefaultEvent(event);
-            break;
-        }
-    }
-}
-
-#if defined(GL_KHR_debug)
-static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
-{
-    kdLogMessage(message);
-}
-#endif
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     const EGLint egl_attributes[] =
     {
-        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,           8,
-        EGL_GREEN_SIZE,         8,
-        EGL_BLUE_SIZE,          8,
-        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
-        EGL_DEPTH_SIZE,         16,
-        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
+        EGL_SURFACE_TYPE,
+        EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE,
+        EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE,
+        8,
+        EGL_GREEN_SIZE,
+        8,
+        EGL_BLUE_SIZE,
+        8,
+        EGL_ALPHA_SIZE,
+        EGL_DONT_CARE,
+        EGL_DEPTH_SIZE,
+        16,
+        EGL_STENCIL_SIZE,
+        EGL_DONT_CARE,
 #if defined(__EMSCRIPTEN__)
-        EGL_SAMPLE_BUFFERS,     0,
+        EGL_SAMPLE_BUFFERS,
+        0,
 #else
-        EGL_SAMPLE_BUFFERS,     1,
-        EGL_SAMPLES,            4,
+        EGL_SAMPLE_BUFFERS,
+        1,
+        EGL_SAMPLES,
+        4,
 #endif
         EGL_NONE
     };
 
     const EGLint egl_context_attributes[] =
-    {
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-#if defined(EGL_KHR_create_context)    
-        EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
-#endif
-        EGL_NONE,
-    };
+        {
+            EGL_CONTEXT_CLIENT_VERSION, 2,
+            EGL_NONE,
+        };
 
     EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 
@@ -1228,18 +1230,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         kdAssert(0);
     }
 
-#if defined(GL_KHR_debug)
-    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
-    {
-        glEnable(GL_DEBUG_OUTPUT_KHR);
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-        PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
-        glDebugMessageCallback(&gl_callback, KD_NULL);
-    }
-#endif
-
-    kdInstallCallback(&kd_callback, KD_EVENT_WINDOW_CLOSE, KD_NULL);
-
     ALCdevice *device = alcOpenDevice(KD_NULL);
     ALCcontext *context = alcCreateContext(device, KD_NULL);
     kdAssert(alcMakeContextCurrent(context));
@@ -1249,53 +1239,29 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     appInit();
     while(gAppAlive)
     {
-        kdPumpEvents();
-
-        if(eglSwapBuffers(egl_display, egl_surface) == EGL_FALSE)
+        const KDEvent *event = kdWaitEvent(-1);
+        if(event)
         {
-            EGLint egl_error = eglGetError();
-            switch(egl_error)
+            switch(event->type)
             {
-                case(EGL_BAD_SURFACE):
+                case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-                    eglDestroySurface(egl_display, egl_surface);
-                    kdRealizeWindow(kd_window, &native_window);
-                    egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
-                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-                    break;
-                }
-                case(EGL_BAD_MATCH):
-                case(EGL_BAD_CONTEXT):
-                case(EGL_CONTEXT_LOST):
-                {
-                    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-                    eglDestroyContext(egl_display, egl_context);
-                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
-                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-                    break;
-                }
-                case(EGL_BAD_DISPLAY):
-                case(EGL_NOT_INITIALIZED):
-                case(EGL_BAD_ALLOC):
-                {
-                    kdAssert(0);
+                    gAppAlive = 0;
                     break;
                 }
                 default:
                 {
-                    kdAssert(0);
+                    kdDefaultEvent(event);
                     break;
                 }
             }
         }
-        else
-        {
-            KDint32 windowsize[2];
-            kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
-            appRender(kdGetTimeUST() / 1000000 , windowsize[0], windowsize[1]);
-            AudioStreamUpdate(&sAudioStream);
-        }
+
+        KDint32 windowsize[2];
+        kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
+        appRender(kdGetTimeUST() / 1000000, windowsize[0], windowsize[1]);
+        eglSwapBuffers(egl_display, egl_surface);
+        AudioStreamUpdate(&sAudioStream);
     }
     appDeinit();
 

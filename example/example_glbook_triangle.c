@@ -70,8 +70,7 @@ void Draw(UserData *userData)
     GLfloat vVertices[] = {
         0.0f, 0.5f, 0.0f,
         -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f
-    };
+        0.5f, -0.5f, 0.0f};
 
     // No clientside arrays, so do this in a webgl-friendly manner
     GLuint vertexPosObject;
@@ -97,7 +96,7 @@ void Draw(UserData *userData)
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    eglSwapBuffers ( userData->eglDisplay, userData->eglSurface );
+    eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
 }
 
 ///
@@ -151,18 +150,17 @@ EGLBoolean InitEGLContext(UserData *userData,
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     EGLint attribList[] =
-    {
-        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,           8,
-        EGL_GREEN_SIZE,         8,
-        EGL_BLUE_SIZE,          8,
-        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
-        EGL_DEPTH_SIZE,         EGL_DONT_CARE,
-        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
-        EGL_SAMPLE_BUFFERS,     0,
-        EGL_NONE
-    };
+        {
+            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, EGL_DONT_CARE,
+            EGL_DEPTH_SIZE, EGL_DONT_CARE,
+            EGL_STENCIL_SIZE, EGL_DONT_CARE,
+            EGL_SAMPLE_BUFFERS, 0,
+            EGL_NONE};
 
     EGLint majorVersion, minorVersion;
     UserData userData;
