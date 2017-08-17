@@ -97,6 +97,7 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
  * Windowing (extensions)
  *******************************************************/
 #ifdef KD_WINDOW_SUPPORTED
+/* kdGetPlatformDisplayVEN: Wayland only. */
 KD_API void *KD_APIENTRY kdGetPlatformDisplayVEN(void);
 #endif
 
