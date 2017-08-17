@@ -78,7 +78,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout);
 KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b);
 
 /* kdGetEnvVEN: Get an environment variable. */
-KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KDsize buflen);
+KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env);
 
 /*******************************************************
  * Memory allocation      
@@ -97,7 +97,7 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
  * Windowing (extensions)
  *******************************************************/
 #ifdef KD_WINDOW_SUPPORTED
-KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow);
+KD_API void *KD_APIENTRY kdGetPlatformDisplayVEN(void);
 #endif
 
 #endif /* __kdext_h_ */

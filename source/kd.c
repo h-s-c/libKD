@@ -505,6 +505,15 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
         return "Windows";
 #elif defined(__ANDROID__)
         return "Android";
+#elif defined(__linux__) && defined(KD_WINDOW_SUPPORTED)
+        if(kdStrstrVEN(kdGetEnvVEN("XDG_SESSION_TYPE"), "wayland"))
+        {
+            return "Linux (Wayland)";
+        }
+        else
+        {
+            return "Linux (X11)";
+        }
 #elif defined(__linux__)
         return "Linux";
 #elif defined(__APPLE__) && TARGET_OS_IPHONE
@@ -1344,6 +1353,7 @@ static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 static struct wl_compositor *__kd_wl_compositor;
 static struct wl_shell *__kd_wl_shell;
 static struct wl_registry *__kd_wl_registry;
+static struct wl_display *__kd_wl_display;
 #endif
 
 #if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
@@ -3375,13 +3385,14 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 }
 
 /* kdGetEnvVEN: Get an environment variable. */
-KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KD_UNUSED KDsize buflen)
+KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env)
 {
 #if defined(_WIN32)
-    return GetEnvironmentVariableA(env, buf, (DWORD)buflen);
+    const DWORD buflen = 32767;
+    static KDchar buf[buflen];
+    return GetEnvironmentVariableA(env, (KDchar *)buf, buflen);
 #else
-    buf = getenv(env);
-    return kdStrlen(buf);
+    return getenv(env);
 #endif
 }
 
@@ -10815,37 +10826,6 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
 
 /******************************************************************************
  * Windowing
- *
- * Notes:
- * - __kdIsPointerDereferencable based on Mesa (https://mesa3d.org)
- ******************************************************************************/
-/******************************************************************************
- *
- * Copyright 2008 VMware, Inc.
- * Copyright 2009-2010 Chia-I Wu <olvaffe@gmail.com>
- * Copyright 2010-2011 LunarG, Inc.
- * All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sub license, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice (including the
- * next paragraph) shall be included in all copies or substantial portions
- * of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
- *
  ******************************************************************************/
 
 #ifdef KD_WINDOW_SUPPORTED
@@ -11331,31 +11311,6 @@ EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event
     return 1;
 }
 #elif defined(KD_WINDOW_WAYLAND)
-static KDboolean __kdIsPointerDereferencable(void *p)
-{
-#if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 19)
-    KDuintptr addr = (KDuintptr)p;
-    KDuint8 valid = 0;
-    const KDint page_size = sysconf(_SC_PAGESIZE);
-
-    if(p == KD_NULL)
-    {
-        return KD_FALSE;
-    }
-
-    /* align addr to page_size */
-    addr &= ~(KDuintptr)(page_size - 1);
-
-    if(mincore((void *)addr, page_size, &valid) < 0)
-    {
-        return KD_FALSE;
-    }
-
-    return (valid & 0x01) == 0x01;
-#else
-    return p != KD_NULL;
-#endif
-}
 static void __kdWaylandRegistryAddObject(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
 {
     if(!kdStrcmp(interface, "wl_compositor"))
@@ -11373,7 +11328,6 @@ static const KD_UNUSED struct wl_registry_listener registry_listener = {
     __kdWaylandRegistryRemoveObject};
 static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
 {
-    kdLogMessage("wl_shell_surface_pong\n");
     wl_shell_surface_pong(shell_surface, serial);
 }
 static void __kdWaylandShellSurfaceConfigure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
@@ -11387,6 +11341,21 @@ static KD_UNUSED struct wl_shell_surface_listener __kd_shell_surface_listener = 
     &__kdWaylandShellSurfaceConfigure,
     &__kdWaylandShellSurfacePopupDone};
 #endif
+
+KD_API void *KD_APIENTRY kdGetPlatformDisplayVEN(void)
+{
+#if defined(KD_WINDOW_WAYLAND)
+    if(kdStrstrVEN(kdGetEnvVEN("XDG_SESSION_TYPE"), "wayland"))
+    {
+        __kd_wl_display = wl_display_connect(KD_NULL);
+        __kd_wl_registry = wl_display_get_registry(__kd_wl_display);
+        wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
+        wl_display_roundtrip(__kd_wl_display);
+        return __kd_wl_display;
+    }
+#endif
+    return (void *)EGL_DEFAULT_DISPLAY;
+}
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
@@ -11445,32 +11414,10 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
 #elif defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 
-    /* HACK: Poke into Mesa EGLDisplay */
-    if(kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
-    {
-        /* EGLDisplay is a pointer underneath */
-        _EGLDisplay *_display = (_EGLDisplay *)display;
-        window->platform = _display->Platform;
-    }
-
-#if defined(EGL_NV_native_query)
-    if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_native_query"))
-    {
-        PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
-        if(eglQueryNativeDisplayNV)
-        {
-            eglQueryNativeDisplayNV(display, (EGLNativeDisplayType *)&window->nativedisplay);
 #if defined(KD_WINDOW_WAYLAND)
-            if(__kdIsPointerDereferencable(window->nativedisplay))
-            {
-                void *first_pointer = *(void **)window->nativedisplay;
-                if(first_pointer == &wl_display_interface)
-                {
-                    window->platform = _EGL_PLATFORM_WAYLAND;
-                }
-            }
-#endif
-        }
+    if(__kd_wl_display)
+    {
+        window->platform = _EGL_PLATFORM_WAYLAND;
     }
 #endif
 
@@ -11484,7 +11431,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     {
         if(!window->nativedisplay)
         {
-            window->nativedisplay = XOpenDisplay(NULL);
+            window->nativedisplay = XOpenDisplay(KD_NULL);
         }
         window->nativewindow = (void *)XCreateSimpleWindow(window->nativedisplay,
             XRootWindow(window->nativedisplay, XDefaultScreen(window->nativedisplay)), 0, 0,
@@ -11510,14 +11457,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
-        if(!window->nativedisplay)
-        {
-            kdLogMessage("Wayland support depends on EGL_NV_native_query.\n");
-            kdAssert(0);
-        }
-        __kd_wl_registry = wl_display_get_registry(window->nativedisplay);
-        wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
-        wl_display_roundtrip(window->nativedisplay);
+        window->nativedisplay = __kd_wl_display;
     }
 #endif
 #elif defined(KD_WINDOW_EMSCRIPTEN)
@@ -11709,8 +11649,14 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
         window->surface = wl_compositor_create_surface(__kd_wl_compositor);
         window->shell_surface = wl_shell_get_shell_surface(__kd_wl_shell, window->surface);
         wl_shell_surface_add_listener(window->shell_surface, &__kd_shell_surface_listener, window);
-        wl_shell_surface_set_toplevel(window->shell_surface);
-        window->nativewindow = wl_egl_window_create(window->surface, 0, 0);
+        wl_shell_surface_set_fullscreen(window->shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);
+
+        /* HACK */
+        Display *xdisplay = XOpenDisplay(KD_NULL);
+        window->nativewindow = wl_egl_window_create(window->surface, 
+            XWidthOfScreen(XDefaultScreenOfDisplay(xdisplay)), 
+            XHeightOfScreen(XDefaultScreenOfDisplay(xdisplay)));
+        XCloseDisplay(xdisplay);
     }
 #endif
 #endif
@@ -11721,12 +11667,6 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     return 0;
 }
 
-KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow)
-{
-    kdRealizeWindow(window, KD_NULL);
-    *nativewindow = &window->nativewindow;
-    return 0;
-}
 #endif
 
 /******************************************************************************
