@@ -1033,8 +1033,8 @@ static void stbir__calculate_sample_range_upsample(int n, float out_filter_radiu
     float in_pixel_influence_upperbound = (out_pixel_influence_upperbound + out_shift) / scale_ratio;
 
     *in_center_of_out = (out_pixel_center + out_shift) / scale_ratio;
-    *in_first_pixel = (int)(floor(in_pixel_influence_lowerbound + 0.5));
-    *in_last_pixel = (int)(floor(in_pixel_influence_upperbound - 0.5));
+    *in_first_pixel = (int)(STBIR_FLOOR(in_pixel_influence_lowerbound + 0.5));
+    *in_last_pixel = (int)(STBIR_FLOOR(in_pixel_influence_upperbound - 0.5));
 }
 
 // What output pixels does this input pixel contribute to?
@@ -1048,8 +1048,8 @@ static void stbir__calculate_sample_range_downsample(int n, float in_pixels_radi
     float out_pixel_influence_upperbound = in_pixel_influence_upperbound * scale_ratio - out_shift;
 
     *out_center_of_in = in_pixel_center * scale_ratio - out_shift;
-    *out_first_pixel = (int)(floor(out_pixel_influence_lowerbound + 0.5));
-    *out_last_pixel = (int)(floor(out_pixel_influence_upperbound - 0.5));
+    *out_first_pixel = (int)(STBIR_FLOOR(out_pixel_influence_lowerbound + 0.5));
+    *out_last_pixel = (int)(STBIR_FLOOR(out_pixel_influence_upperbound - 0.5));
 }
 
 static void stbir__calculate_coefficients_upsample(stbir_filter filter, float scale, int in_first_pixel, int in_last_pixel, float in_center_of_out, stbir__contributors* contributor, float* coefficient_group)

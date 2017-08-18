@@ -3390,7 +3390,12 @@ KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env)
 #if defined(_WIN32)
     const DWORD buflen = 32767;
     static KDchar buf[buflen];
-    return GetEnvironmentVariableA(env, (KDchar *)buf, buflen);
+    DWORD result = GetEnvironmentVariableA(env, (KDchar *)buf, buflen);
+    if(result == 0)
+    {
+        return KD_NULL;
+    }
+    return (KDchar *)buf;
 #else
     return getenv(env);
 #endif
