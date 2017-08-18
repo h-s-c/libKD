@@ -11342,7 +11342,7 @@ static KD_UNUSED struct wl_shell_surface_listener __kd_shell_surface_listener = 
     &__kdWaylandShellSurfacePopupDone};
 #endif
 
-KD_API void *KD_APIENTRY kdGetPlatformDisplayVEN(void)
+KD_API NativeDisplayType KD_APIENTRY kdGetPlatformDisplayVEN(void)
 {
 #if defined(KD_WINDOW_WAYLAND)
     if(kdStrstrVEN(kdGetEnvVEN("XDG_SESSION_TYPE"), "wayland"))
@@ -11351,10 +11351,10 @@ KD_API void *KD_APIENTRY kdGetPlatformDisplayVEN(void)
         __kd_wl_registry = wl_display_get_registry(__kd_wl_display);
         wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
         wl_display_roundtrip(__kd_wl_display);
-        return __kd_wl_display;
+        return (NativeDisplayType)__kd_wl_display;
     }
 #endif
-    return (void *)EGL_DEFAULT_DISPLAY;
+    return (NativeDisplayType)EGL_DEFAULT_DISPLAY;
 }
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)

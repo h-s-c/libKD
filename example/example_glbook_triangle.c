@@ -79,9 +79,11 @@ void Draw(UserData *userData)
     glBufferData(GL_ARRAY_BUFFER, 9 * 4, vVertices, GL_STATIC_DRAW);
 
     // Set the viewport
-    KDint32 windowsize[2];
-    kdGetWindowPropertyiv(userData->window, KD_WINDOWPROPERTY_SIZE, windowsize);
-    glViewport(0, 0, windowsize[0], windowsize[1]);
+    EGLint width = 0; 
+    EGLint height = 0;
+    eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_WIDTH, &width);
+    eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_HEIGHT, &height);
+    glViewport(0, 0, width, height);
 
     // Clear the color buffer
     glClear(GL_COLOR_BUFFER_BIT);
@@ -167,7 +169,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLint numConfigs;
     EGLConfig config;
 
-    userData.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    userData.eglDisplay = eglGetDisplay(kdGetPlatformDisplayVEN());
 
     // Initialize EGL
     if(!eglInitialize(userData.eglDisplay, &majorVersion, &minorVersion))

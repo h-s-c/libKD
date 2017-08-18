@@ -98,7 +98,7 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
  *******************************************************/
 #ifdef KD_WINDOW_SUPPORTED
 /* kdGetPlatformDisplayVEN: Wayland only. */
-KD_API void *KD_APIENTRY kdGetPlatformDisplayVEN(void);
+KD_API NativeDisplayType KD_APIENTRY kdGetPlatformDisplayVEN(void);
 #endif
 
 #endif /* __kdext_h_ */

@@ -409,7 +409,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         EGL_NONE,
     };
 
-    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLDisplay egl_display = eglGetDisplay(kdGetPlatformDisplayVEN());
 
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
@@ -457,10 +457,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 #endif
 
     /* OpenGL */
-    KDint32 windowsize[2];
-    kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
-    width = windowsize[0];
-    height = windowsize[1];
+    eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
+    eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
     glViewport(0, 0, width, height);
 
     /* GUI */
@@ -613,9 +611,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         }
         else
         {
-            kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
-            width = windowsize[0];
-            height = windowsize[1];
+            eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
+            eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
             glViewport(0, 0, width, height);
             glClear(GL_COLOR_BUFFER_BIT);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

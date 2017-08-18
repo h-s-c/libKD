@@ -490,10 +490,10 @@ gears_draw(GLfloat angle)
  * @param height the window height
  */
 static void
-gears_reshape(int width, int height)
+gears_reshape(KDint width, KDint height)
 {
     /* Update the projection matrix */
-    perspective(ProjectionMatrix, 60.0, (float)width / height, 1.0, 1024.0);
+    perspective(ProjectionMatrix, 60.0, (KDfloat32)width / height, 1.0, 1024.0);
 
     /* Set the viewport */
     glViewport(0, 0, (GLint)width, (GLint)height);
@@ -633,7 +633,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             EGL_NONE,
         };
 
-    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLDisplay egl_display = eglGetDisplay(kdGetPlatformDisplayVEN());
 
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
@@ -684,9 +684,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             }
         }
 
-        KDint32 windowsize[2];
-        kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
-        gears_reshape(windowsize[0], windowsize[1]);
+        EGLint width = 0; 
+        EGLint height = 0;
+        eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
+        eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
+        gears_reshape(width, height);
 
         KDust t2 = kdGetTimeUST();
         deltatime = (KDfloat32)((t2 - t1) * 1e-9);
@@ -699,6 +701,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             angle -= 3600.0;
         }
         gears_draw(angle);
+        eglSwapBuffers(egl_display, egl_surface);
 
         /* Benchmark */
         totaltime += deltatime;

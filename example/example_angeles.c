@@ -1207,7 +1207,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             EGL_NONE,
         };
 
-    EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLDisplay egl_display = eglGetDisplay(kdGetPlatformDisplayVEN());
 
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
@@ -1230,13 +1230,14 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         kdAssert(0);
     }
 
+    appInit();
+
     ALCdevice *device = alcOpenDevice(KD_NULL);
     ALCcontext *context = alcCreateContext(device, KD_NULL);
     kdAssert(alcMakeContextCurrent(context));
     AudioStreamInit(&sAudioStream);
     AudioStreamOpen(&sAudioStream, "data/!Cube - San Angeles Observation.ogg");
 
-    appInit();
     while(gAppAlive)
     {
         const KDEvent *event = kdWaitEvent(-1);
@@ -1257,18 +1258,21 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             }
         }
 
-        KDint32 windowsize[2];
-        kdGetWindowPropertyiv(kd_window, KD_WINDOWPROPERTY_SIZE, windowsize);
-        appRender(kdGetTimeUST() / 1000000, windowsize[0], windowsize[1]);
+        EGLint width = 0; 
+        EGLint height = 0;
+        eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
+        eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
+        appRender(kdGetTimeUST() / 1000000, width, height);
         eglSwapBuffers(egl_display, egl_surface);
         AudioStreamUpdate(&sAudioStream);
     }
-    appDeinit();
 
     AudioStreamDeinit(&sAudioStream);
     alcMakeContextCurrent(KD_NULL);
     alcDestroyContext(context);
     alcCloseDevice(device);
+
+    appDeinit();
 
     eglDestroyContext(egl_display, egl_context);
     eglDestroySurface(egl_display, egl_surface);
