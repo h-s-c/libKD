@@ -3388,9 +3388,8 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env)
 {
 #if defined(_WIN32)
-    const DWORD buflen = 32767;
-    static KDchar buf[buflen];
-    DWORD result = GetEnvironmentVariableA(env, (KDchar *)buf, buflen);
+    static KDchar buf[32767];
+    DWORD result = GetEnvironmentVariableA(env, (KDchar *)buf, 32767);
     if(result == 0)
     {
         return KD_NULL;
