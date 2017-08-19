@@ -6,7 +6,8 @@ image:
 - Visual Studio 2013
 
 before_build:
-  - cinst cmake ninja wget opencppcoverage
+  - cinst ninja wget opencppcoverage
+  - cinst cmake --installargs 'ADD_CMAKE_TO_PATH=""User""'
   - refreshenv
   - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
   - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
