@@ -753,7 +753,6 @@ static void *__kdThreadRun(void *init)
     {
         __kdThreadFree(thread);
     }
-    kdThreadExit(result);
     return result;
 }
 #endif
@@ -2887,7 +2886,6 @@ int WINAPI mainCRTStartup(void)
 KD_API int main(int argc, char **argv)
 {
     KDint result = __kdPreMain(argc, argv);
-    kdExit(result);
     return result;
 }
 
