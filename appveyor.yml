@@ -6,7 +6,7 @@ image:
 - Visual Studio 2013
 
 before_build:
-  - cinst ninja wget opencppcoverage
+  - cinst cmake ninja wget opencppcoverage
   - refreshenv
   - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
   - wget --no-check-certificate -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
