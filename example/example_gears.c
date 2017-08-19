@@ -633,7 +633,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             EGL_NONE,
         };
 
-    EGLDisplay egl_display = eglGetDisplay(kdGetPlatformDisplayVEN());
+    EGLDisplay egl_display = eglGetDisplay(kdGetDisplayVEN());
 
     eglInitialize(egl_display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);

@@ -11344,15 +11344,19 @@ static KD_UNUSED struct wl_shell_surface_listener __kd_shell_surface_listener = 
     &__kdWaylandShellSurfacePopupDone};
 #endif
 
-KD_API NativeDisplayType KD_APIENTRY kdGetPlatformDisplayVEN(void)
+KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
 {
+    KDchar *sessiontype = kdGetEnvVEN("XDG_SESSION_TYPE");
+#if defined(KD_WINDOW_X11)
+    if(kdStrstrVEN(sessiontype, "x11"))
+    {
+        return (NativeDisplayType)XOpenDisplay(KD_NULL);;
+    }
+#endif
 #if defined(KD_WINDOW_WAYLAND)
-    if(kdStrstrVEN(kdGetEnvVEN("XDG_SESSION_TYPE"), "wayland"))
+    if(kdStrstrVEN(sessiontype, "wayland"))
     {
         __kd_wl_display = wl_display_connect(KD_NULL);
-        __kd_wl_registry = wl_display_get_registry(__kd_wl_display);
-        wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
-        wl_display_roundtrip(__kd_wl_display);
         return (NativeDisplayType)__kd_wl_display;
     }
 #endif
@@ -11460,6 +11464,9 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
         window->nativedisplay = __kd_wl_display;
+        __kd_wl_registry = wl_display_get_registry(window->nativedisplay);
+        wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
+        wl_display_roundtrip(window->nativedisplay);
     }
 #endif
 #elif defined(KD_WINDOW_EMSCRIPTEN)

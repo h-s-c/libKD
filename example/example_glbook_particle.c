@@ -322,7 +322,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     EGLint numConfigs;
     EGLConfig config;
 
-    userData.eglDisplay = eglGetDisplay(kdGetPlatformDisplayVEN());
+    userData.eglDisplay = eglGetDisplay(kdGetDisplayVEN());
 
     // Initialize EGL
     if(!eglInitialize(userData.eglDisplay, &majorVersion, &minorVersion))
