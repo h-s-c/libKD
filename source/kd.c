@@ -10323,7 +10323,7 @@ static void *__kdNameLookupHandler(void *arg)
 #if defined(_WIN32)
 #undef s_addr
 #endif
-        lookupevent.resultlen = sizeof(addr);
+        lookupevent.resultlen = 1;
         lookupevent.result = &addr;
         freeaddrinfo(result);
     }
