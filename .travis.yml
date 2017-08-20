@@ -228,7 +228,6 @@ jobs:
           organization: "h-s-c-github"
           token:
             secure: "oiJDye/8tc0ZKf/6u69CLHjPz99mOHgD1+q9zFkqStsIe+qzo+JWgP/xSDWPkTpL5osMAMKLIMzo/DFYmiZwrCS3AfwaHFOogNoY5FwuEj7CF9z3yPcWzU4mNTNVG9PSIAFskwMs6AwYikQkxVYqmPcS8Pzs5sWgTkxYODBgAzM="
-          branches: develop
       install: python ci-tools/install_cmake.py
       script:
         - build-wrapper-linux-x86-64 --out-dir bw-output python ci-tools/run_ctest.py
