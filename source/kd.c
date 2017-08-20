@@ -3406,7 +3406,7 @@ KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env)
 KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 {
     /* TODO: Add ISO 3166-1 part.*/
-    static KDchar localestore[2] = "";
+    static KDchar localestore[5] = "";
     kdMemset(&localestore, 0, sizeof(localestore));
 #if defined(_WIN32)
     KDint localesize = GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, KD_NULL, 0);
