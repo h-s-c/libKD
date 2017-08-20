@@ -11346,7 +11346,9 @@ static KD_UNUSED struct wl_shell_surface_listener __kd_shell_surface_listener = 
 
 KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
 {
+#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
     KDchar *sessiontype = kdGetEnvVEN("XDG_SESSION_TYPE");
+#endif
 #if defined(KD_WINDOW_X11)
     if(kdStrstrVEN(sessiontype, "x11"))
     {
