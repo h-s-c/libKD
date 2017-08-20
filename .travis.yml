@@ -2,7 +2,8 @@ language: c
 
 cache:
   directories:
-    - ci-tools/cache
+    - 'ci-tools/cache'
+    - '$HOME/.sonar/cache'
 
 jobs:
   include:
@@ -215,6 +216,23 @@ jobs:
         - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
+
+    - stage: Deployment (sonarqube)
+      os: linux
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages: ['ninja-build', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev', 'ca-certificates']
+        sonarcloud:
+          organization: "h-s-c-github"
+          token:
+            secure: "oiJDye/8tc0ZKf/6u69CLHjPz99mOHgD1+q9zFkqStsIe+qzo+JWgP/xSDWPkTpL5osMAMKLIMzo/DFYmiZwrCS3AfwaHFOogNoY5FwuEj7CF9z3yPcWzU4mNTNVG9PSIAFskwMs6AwYikQkxVYqmPcS8Pzs5sWgTkxYODBgAzM="
+          branches: develop
+      install: python ci-tools/install_cmake.py
+      script:
+        - build-wrapper-linux-x86-64 --out-dir bw-output python ci-tools/run_ctest.py
+        - sonar-scanner
 
     - stage: Deployment (coverity)
       os: linux
