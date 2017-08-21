@@ -10833,28 +10833,23 @@ static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wp
 #elif defined(KD_WINDOW_EMSCRIPTEN)
 EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
 {
-    static KDfloat64KHR lasttime = 0;
-    if((lasttime + 15) < time)
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->type = KD_EVENT_INPUT_POINTER;
+    if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
     {
-        KDEvent *kdevent = kdCreateEvent();
-        kdevent->type = KD_EVENT_INPUT_POINTER;
-        if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
-        {
-            kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-            kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
-        }
-        else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
-        {
-            kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
-        }
-        kdevent->data.inputpointer.x = event->canvasX;
-        kdevent->data.inputpointer.y = event->canvasY;
-        if(!__kdExecCallback(kdevent))
-        {
-            kdPostEvent(kdevent);
-        }
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+        kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
     }
-    lasttime = time;
+    else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
+    {
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+    }
+    kdevent->data.inputpointer.x = event->canvasX;
+    kdevent->data.inputpointer.y = event->canvasY;
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
     return 1;
 }
 EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
