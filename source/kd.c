@@ -2420,14 +2420,21 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             {
                 case(AINPUT_EVENT_TYPE_KEY):
                 {
-                    switch(AKeyEvent_getKeyCode(aevent))
+                    event->type = KD_EVENT_INPUT_KEY_ATX;
+                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+
+                    KDint32 keysym = AKeyEvent_getKeyCode(aevent);
+                    keyevent->keycode = __KDKeysymLookup(keysym);
+                    if(!keyevent->keycode)
                     {
-                        case(AKEYCODE_BACK):
-                        default:
-                        {
-                            kdFreeEvent(event);
-                            break;
-                        }
+                        event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
+                        keycharevent->character = keysym;
+                    }
+
+                    if(!__kdExecCallback(event))
+                    {
+                        kdPostEvent(event);
                     }
                     break;
                 }
