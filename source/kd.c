@@ -1340,6 +1340,9 @@ struct KDWindow {
 #if defined(KD_WINDOW_WAYLAND)
     struct wl_surface *surface;
     struct wl_shell_surface *shell_surface;
+    struct wl_registry *registry;
+    KDint32 pointerx;
+    KDint32 pointery;
 #endif
 };
 
@@ -1349,9 +1352,6 @@ static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 #endif
 
 #if defined(KD_WINDOW_WAYLAND)
-static struct wl_compositor *__kd_wl_compositor;
-static struct wl_shell *__kd_wl_shell;
-static struct wl_registry *__kd_wl_registry;
 static struct wl_display *__kd_wl_display;
 #endif
 
@@ -1498,17 +1498,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             event->data.inputpointer.y = raw->data.mouse.lLastY;
                             if(!__kdExecCallback(event))
                             {
-                                for(KDuint i = 0; i < kdQueueSizeVEN(kdThreadSelf()->eventqueue); i++)
-                                {
-                                    KDEvent *xyevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
-                                    if(xyevent && xyevent->type == KD_EVENT_INPUT_POINTER)
-                                    {
-                                        if(xyevent->data.inputpointer.index == KD_INPUT_POINTER_X || xyevent->data.inputpointer.index == KD_INPUT_POINTER_Y)
-                                        {
-                                            kdFreeEvent(xyevent);
-                                        }
-                                    }
-                                }
                                 kdPostEvent(event);
                             }
                         }
@@ -2493,17 +2482,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     event->data.inputpointer.y = xevent.xmotion.y;
                     if(!__kdExecCallback(event))
                     {
-                        for(KDuint i = 0; i < kdQueueSizeVEN(kdThreadSelf()->eventqueue); i++)
-                        {
-                            KDEvent *xyevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
-                            if(xyevent && xyevent->type == KD_EVENT_INPUT_POINTER)
-                            {
-                                if(xyevent->data.inputpointer.index == KD_INPUT_POINTER_X || xyevent->data.inputpointer.index == KD_INPUT_POINTER_Y)
-                                {
-                                    kdFreeEvent(xyevent);
-                                }
-                            }
-                        }
                         kdPostEvent(event);
                     }
                     break;
@@ -10855,37 +10833,28 @@ static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wp
 #elif defined(KD_WINDOW_EMSCRIPTEN)
 EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
 {
-    KDEvent *kdevent = kdCreateEvent();
-    kdevent->type = KD_EVENT_INPUT_POINTER;
-    if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
+    static KDfloat64KHR lasttime = 0;
+    if((lasttime + 15) < time)
     {
-        kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-        kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
-    }
-    else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
-    {
-        kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
-    }
-    kdevent->data.inputpointer.x = event->canvasX;
-    kdevent->data.inputpointer.y = event->canvasY;
-    if(!__kdExecCallback(kdevent))
-    {
-        if(kdevent->data.inputpointer.index == KD_INPUT_POINTER_X)
+        KDEvent *kdevent = kdCreateEvent();
+        kdevent->type = KD_EVENT_INPUT_POINTER;
+        if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
         {
-            for(KDuint i = 0; i < kdQueueSizeVEN(kdThreadSelf()->eventqueue); i++)
-            {
-                KDEvent *xyevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
-                if(xyevent && xyevent->type == KD_EVENT_INPUT_POINTER)
-                {
-                    if(xyevent->data.inputpointer.index == KD_INPUT_POINTER_X || xyevent->data.inputpointer.index == KD_INPUT_POINTER_Y)
-                    {
-                        kdFreeEvent(xyevent);
-                    }
-                }
-            }
+            kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+            kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
         }
-        kdPostEvent(kdevent);
+        else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
+        {
+            kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+        }
+        kdevent->data.inputpointer.x = event->canvasX;
+        kdevent->data.inputpointer.y = event->canvasY;
+        if(!__kdExecCallback(kdevent))
+        {
+            kdPostEvent(kdevent);
+        }
     }
+    lasttime = time;
     return 1;
 }
 EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
@@ -11314,19 +11283,86 @@ EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event
     return 1;
 }
 #elif defined(KD_WINDOW_WAYLAND)
-static void __kdWaylandRegistryAddObject(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
+
+static void __kdWaylandPointerHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) {}
+static void __kdWaylandPointerHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) {}
+static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
 {
+    static KDuint32 lasttime = 0;
+    if((lasttime + 15) < time)
+    {
+        struct KDWindow *window = data;
+        window->pointerx = wl_fixed_to_int(sx);
+        window->pointery = wl_fixed_to_int(sy);
+
+        KDEvent *kdevent = kdCreateEvent();
+        kdevent->type = KD_EVENT_INPUT_POINTER;
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+        kdevent->data.inputpointer.x = window->pointerx;
+        kdevent->data.inputpointer.y = window->pointery;
+        if(!__kdExecCallback(kdevent))
+        {
+            kdPostEvent(kdevent);
+        }
+    }
+    lasttime = time;
+}
+
+static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_pointer *wl_pointer, KD_UNUSED uint32_t serial, KD_UNUSED uint32_t time, KD_UNUSED uint32_t button, uint32_t state)
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->type = KD_EVENT_INPUT_POINTER;
+    kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+    kdevent->data.inputpointer.select = state;
+    kdevent->data.inputpointer.x = window->pointerx;
+    kdevent->data.inputpointer.y = window->pointery;
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
+
+static void __kdWaylandPointerHandleAxis(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *wl_pointer, KD_UNUSED uint32_t time, KD_UNUSED uint32_t axis, KD_UNUSED wl_fixed_t value) {}
+static const struct wl_pointer_listener __kd_wl_pointer_listener = {
+    __kdWaylandPointerHandleEnter,
+    __kdWaylandPointerHandleLeave,
+    __kdWaylandPointerHandleMotion,
+    __kdWaylandPointerHandleButton,
+    __kdWaylandPointerHandleAxis,
+};
+static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, enum wl_seat_capability caps)
+{
+    struct KDWindow *window = data;
+    if(caps & WL_SEAT_CAPABILITY_POINTER) 
+    {
+        struct wl_pointer *pointer = wl_seat_get_pointer(seat);
+        wl_pointer_add_listener(pointer, &__kd_wl_pointer_listener, window);
+    } 
+}
+static const KD_UNUSED struct wl_seat_listener __kd_wl_seat_listener = {
+    __kdWaylandSeatHandleCapabilities};
+static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
+{
+    struct KDWindow *window = data;
     if(!kdStrcmp(interface, "wl_compositor"))
     {
-        __kd_wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+        struct wl_compositor *compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+        window->surface = wl_compositor_create_surface(compositor);
     }
     else if(!kdStrcmp(interface, "wl_shell"))
     {
-        __kd_wl_shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
+        struct wl_shell *shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
+        window->shell_surface = wl_shell_get_shell_surface(shell, window->surface);
+    }
+    else if(!kdStrcmp(interface, "wl_seat"))
+    {
+        struct wl_seat *seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
+        wl_seat_add_listener(seat, &__kd_wl_seat_listener, window);
     }
 }
 static void __kdWaylandRegistryRemoveObject(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
-static const KD_UNUSED struct wl_registry_listener registry_listener = {
+static const KD_UNUSED struct wl_registry_listener __kd_wl_registry_listener = {
     __kdWaylandRegistryAddObject,
     __kdWaylandRegistryRemoveObject};
 static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
@@ -11339,7 +11375,7 @@ static void __kdWaylandShellSurfaceConfigure(void *data, KD_UNUSED struct wl_she
     wl_egl_window_resize(window->nativewindow, width, height, 0, 0);
 }
 static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
-static KD_UNUSED struct wl_shell_surface_listener __kd_shell_surface_listener = {
+static KD_UNUSED struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     &__kdWaylandShellSurfacePing,
     &__kdWaylandShellSurfaceConfigure,
     &__kdWaylandShellSurfacePopupDone};
@@ -11467,8 +11503,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
         window->nativedisplay = __kd_wl_display;
-        __kd_wl_registry = wl_display_get_registry(window->nativedisplay);
-        wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
+        window->registry = wl_display_get_registry(window->nativedisplay);
+        wl_registry_add_listener(window->registry, &__kd_wl_registry_listener, window);
         wl_display_roundtrip(window->nativedisplay);
     }
 #endif
@@ -11517,7 +11553,7 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
         wl_egl_window_destroy(window->nativewindow);
         wl_shell_surface_destroy(window->shell_surface);
         wl_surface_destroy(window->surface);
-        wl_registry_destroy(__kd_wl_registry);
+        wl_registry_destroy(window->registry);
         wl_display_disconnect(window->nativedisplay);
     }
 #endif
@@ -11658,9 +11694,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == _EGL_PLATFORM_WAYLAND)
     {
-        window->surface = wl_compositor_create_surface(__kd_wl_compositor);
-        window->shell_surface = wl_shell_get_shell_surface(__kd_wl_shell, window->surface);
-        wl_shell_surface_add_listener(window->shell_surface, &__kd_shell_surface_listener, window);
+        wl_shell_surface_add_listener(window->shell_surface, &__kd_wl_shell_surface_listener, window);
         wl_shell_surface_set_fullscreen(window->shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);
 
         /* HACK */
