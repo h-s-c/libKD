@@ -320,27 +320,27 @@ pump_input(struct nk_context *ctx, KDWindow *win)
                 {
                     case(KD_KEY_ENTER_ATX):
                     {
-                        nk_input_key(ctx, NK_KEY_ENTER, keyevent->flags == KD_KEY_PRESS_ATX);
+                        nk_input_key(ctx, NK_KEY_ENTER, keyevent->flags & KD_KEY_PRESS_ATX);
                         break;
                     }
                     case(KD_KEY_LEFT_ATX):
                     {
-                        nk_input_key(ctx, NK_KEY_LEFT, keyevent->flags == KD_KEY_PRESS_ATX);
+                        nk_input_key(ctx, NK_KEY_LEFT, keyevent->flags & KD_KEY_PRESS_ATX);
                         break;
                     }
                     case(KD_KEY_RIGHT_ATX):
                     {
-                        nk_input_key(ctx, NK_KEY_RIGHT, keyevent->flags == KD_KEY_PRESS_ATX);
+                        nk_input_key(ctx, NK_KEY_RIGHT, keyevent->flags & KD_KEY_PRESS_ATX);
                         break;
                     }
                     case(KD_KEY_UP_ATX):
                     {
-                        nk_input_key(ctx, NK_KEY_UP, keyevent->flags == KD_KEY_PRESS_ATX);
+                        nk_input_key(ctx, NK_KEY_UP, keyevent->flags & KD_KEY_PRESS_ATX);
                         break;
                     }
                     case(KD_KEY_DOWN_ATX):
                     {
-                        nk_input_key(ctx, NK_KEY_DOWN, keyevent->flags == KD_KEY_PRESS_ATX);
+                        nk_input_key(ctx, NK_KEY_DOWN, keyevent->flags & KD_KEY_PRESS_ATX);
                         break;
                     }
                     default:
@@ -353,7 +353,7 @@ pump_input(struct nk_context *ctx, KDWindow *win)
             case(KD_EVENT_INPUT_KEYCHAR_ATX):
             {
                 KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
-                nk_input_char(ctx, (KDchar)keycharevent->character);
+                nk_input_char(ctx, keycharevent->character);
                 break;
             }
             default:

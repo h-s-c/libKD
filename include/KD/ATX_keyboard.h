@@ -17,7 +17,6 @@ extern "C" {
 #endif
     #define KD_EVENT_INPUT_KEY_ATX 176
 
-
     #define KD_KEY_PRESS_ATX 1
     #define KD_KEY_LOCATION_LEFT_ATX 2
     #define KD_KEY_LOCATION_RIGHT_ATX 4
@@ -145,7 +144,6 @@ extern "C" {
     #define KD_INPUT_KEYBOARD_KEYCODE_ATX  (KD_IOGROUP_KEYBOARD_ATX + 3)
     #define KD_INPUT_KEYBOARD_CHARFLAGS_ATX  (KD_IOGROUP_KEYBOARD_ATX + 4)
 
-// linux variant defined these in platform, I don't think they belong there.
 typedef struct KDEventInputKeyATX {
     KDuint32 flags;
     KDint32 keycode;
