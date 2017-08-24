@@ -2002,7 +2002,7 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
         /* KD_KEY_AGAIN_ATX */
         /* KD_KEY_ALLCANDIDATES_ATX */
         /* KD_KEY_ALPHANUMERIC_ATX */
-        case(93):
+        case(18):
         {
             return KD_KEY_ALT_ATX;
         }
@@ -2934,6 +2934,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE) > 0)
                             {
                                 keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
+                            }
+                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0)
+                            {
+                                keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
                             }
                             keyevent->keycode = keycode;
                         }
@@ -11552,6 +11556,10 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
             if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE) > 0)
             {
                 keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
+            }
+            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0)
+            {
+                keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
             }
 
             keyevent->keycode = keycode;
