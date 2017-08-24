@@ -1387,18 +1387,6 @@ static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 static struct wl_display *__kd_wl_display;
 #endif
 
-static KDint32 __KDCharacterLookup(KDint32 character)
-{
-#if defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
-    /* Printable ASCII range. */
-    if(character >= 20 && character <= 126)
-    {
-        return character;
-    }
-#endif
-    return 0;
-}
-
 static KDint32 __KDKeycodeLookup(KDint32 keycode)
 {
     switch(keycode)
@@ -2908,7 +2896,12 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         {
                             flags |= KD_KEY_AUTOREPEAT_ATX;
                         }
-                        character = __KDCharacterLookup(keysym);
+
+                        /* Printable ASCII range. */
+                        if((keysym >= 20) && (keysym <= 126))
+                        {
+                            character = keysym;
+                        }
                     }
                     lastpress = press;
 
@@ -11349,28 +11342,76 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
     }
     return 1;
 }
+
 EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
-    kdevent->type = KD_EVENT_INPUT_KEY_ATX;
-    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
 
-    /* Press or release */
-    if(type == EMSCRIPTEN_EVENT_KEYDOWN)
+    KDint32 keycode = __KDKeycodeLookup(event->keyCode);
+    if(keycode)
     {
-        keyevent->flags = KD_KEY_PRESS_ATX;
-    }
-    else if(type == EMSCRIPTEN_EVENT_KEYUP)
-    {
-        keyevent->flags = 0;
-    }
+        kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
 
-    keyevent->keycode = __KDKeycodeLookup(event->which);
-    if(!keycode)
+        if(type == EMSCRIPTEN_EVENT_KEYDOWN)
+        {
+            keyevent->flags |= KD_KEY_PRESS_ATX;
+        }
+        if(event->location == DOM_KEY_LOCATION_LEFT)
+        {
+            keyevent->flags |= KD_KEY_LOCATION_LEFT_ATX;
+        }
+        if(event->location == DOM_KEY_LOCATION_RIGHT)
+        {
+            keyevent->flags |= KD_KEY_LOCATION_RIGHT_ATX;
+        }
+        if(event->location == DOM_KEY_LOCATION_NUMPAD)
+        {
+            keyevent->flags |= KD_KEY_LOCATION_NUMPAD_ATX;
+        }
+        if(event->shiftKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_SHIFT_ATX;
+        }
+        if(event->ctrlKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_CTRL_ATX;
+        }
+        if(event->altKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
+        }
+        if(event->metaKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
+        }
+
+        keyevent->keycode = keycode;
+    }
+    else if(type == EMSCRIPTEN_EVENT_KEYDOWN)
     {
-        kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
-        keycharevent->character = (KDint32)event->which;
+        KDint32 character = 0;
+        /* Printable ASCII range. */
+        if((event->key[0] >= 20) && (event->key[0] <= 126))
+        {
+            character = event->key[0];
+        }
+
+        if(character)
+        {
+            kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+            if(event->repeat)
+            {
+                keycharevent->flags |= KD_KEY_AUTOREPEAT_ATX;
+            }
+            keycharevent->character = character;
+        }
+        else
+        {
+            kdFreeEvent(kdevent);
+            return 1;
+        }
     }
 
     if(!__kdExecCallback(kdevent))
@@ -11379,6 +11420,7 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
     }
     return 1;
 }
+
 EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event, void *user)
 {
     KDEvent *kdevent = kdCreateEvent();
@@ -11400,10 +11442,7 @@ EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event
     return 1;
 }
 #elif defined(KD_WINDOW_WAYLAND)
-
-static void __kdWaylandPointerHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy)
-{
-}
+static void __kdWaylandPointerHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) {}
 static void __kdWaylandPointerHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) {}
 static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
 {
@@ -11470,22 +11509,24 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
 {
     struct KDWindow *window = data;
 
-    KDEvent *event = kdCreateEvent();
+    KDEvent *kdevent = kdCreateEvent();
 
     xkb_keysym_t keysym = xkb_state_key_get_one_sym(window->xkb.state, key + 8);
 
-    KDuint32 flags = 0;
     KDint32 character = 0;
     if(state == WL_KEYBOARD_KEY_STATE_PRESSED)
     {
-        character = __KDCharacterLookup(keysym);
+        /* Printable ASCII range. */
+        if((keysym >= 20) && (keysym <= 126))
+        {
+            character = keysym;
+        }
     }
 
     if(character)
     {
-        event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
-        keycharevent->flags = flags;
+        kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
         keycharevent->character = character;
     }
     else
@@ -11493,8 +11534,8 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
         KDint32 keycode = __KDKeycodeLookup(keysym);
         if(keycode)
         {
-            event->type = KD_EVENT_INPUT_KEY_ATX;
-            KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+            kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+            KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
 
             if(state == WL_KEYBOARD_KEY_STATE_PRESSED)
             {
@@ -11517,14 +11558,14 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
         }
         else
         {
-            kdFreeEvent(event);
+            kdFreeEvent(kdevent);
             return;
         }
     }
 
-    if(!__kdExecCallback(event))
+    if(!__kdExecCallback(kdevent))
     {
-        kdPostEvent(event);
+        kdPostEvent(kdevent);
     }
 }
 static void __kdWaylandKeyboardHandleModifiers(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group)
