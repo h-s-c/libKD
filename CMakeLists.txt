@@ -219,7 +219,10 @@ project (KD C)
     # Examples
     add_library(stb_vorbis SHARED ${CMAKE_SOURCE_DIR}/example/stb_vorbis.c)
     target_link_libraries(stb_vorbis PRIVATE m)
-    target_compile_definitions(KD PRIVATE "_CRT_SECURE_NO_WARNINGS")
+    target_compile_definitions(stb_vorbis PRIVATE "_CRT_SECURE_NO_WARNINGS")
+    if(EMSCRIPTEN)
+        set_target_properties(stb_vorbis PROPERTIES SUFFIX ".bc")
+    endif()
 
     if(NOT DEFINED ENV{CI} AND KD_BUILD_EXAMPLES)
         find_package(EGL REQUIRED)
