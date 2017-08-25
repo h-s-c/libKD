@@ -27,8 +27,6 @@
 /******************************************************************************
  * Implementation notes
  *
- * - Only one window is supported
- * - Networking is not supported
  * - To receive orientation changes AndroidManifest.xml should include
  *   android:configChanges="orientation|keyboardHidden|screenSize"
  *
@@ -274,6 +272,8 @@ struct KDThread {
     KDint lasterror;
     KDuint callbackindex;
     __KDCallback **callbacks;
+    KDuint windowindex;
+    KDWindow **windows;
     void *tlsptr;
 };
 
@@ -674,11 +674,29 @@ static KDThread *__kdThreadInit(void)
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
+    thread->windowindex = 0;
+    thread->windows = (KDWindow **)kdMalloc(sizeof(KDWindow *));
+    if(thread->windows == KD_NULL)
+    {
+        kdFree(thread->callbacks);
+        kdQueueFreeVEN(thread->eventqueue);
+        kdFree(thread);
+        kdSetError(KD_EAGAIN);
+        return KD_NULL;
+    }
     return thread;
 }
 
 static void __kdThreadFree(KDThread *thread)
 {
+    for(KDsize i = 0; i < thread->windowindex; i++)
+    {
+        if(thread->windows[i])
+        {
+            kdDestroyWindow(thread->windows[i]);
+        }
+    }
+    kdFree(thread->windows);
     for(KDsize i = 0; i < thread->callbackindex; i++)
     {
         kdFree(thread->callbacks[i]);
@@ -1352,6 +1370,7 @@ struct KDWindow {
     EGLint format;
     void *eventuserptr;
     KDThread *originthr;
+    KDchar *caption;
 #if defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
     struct
     {
@@ -2656,9 +2675,8 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
         }
     }
 }
-
-static KDWindow *__kd_window = KD_NULL;
 #endif
+
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
@@ -2676,7 +2694,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
 
 #ifdef KD_WINDOW_SUPPORTED
-    KD_UNUSED KDWindow *window = __kd_window;
 #if defined(KD_WINDOW_ANDROID)
     AInputEvent *aevent = KD_NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
@@ -2728,12 +2745,21 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 #elif defined(KD_WINDOW_WIN32)
-    if(window)
+    KDuint windowindex = kdThreadSelf()->windowindex;
+    __KDCallback **windows = kdThreadSelf()->windows;
+    for(KDuint i = 0; i < windowindex; i++)
     {
+        KDWindow *window = windows[i];
+        if(!window)
+        {
+            break;
+        }
+
         MSG msg = {0};
         while(PeekMessage(&msg, window->nativewindow, 0, 0, PM_REMOVE) != 0)
         {
             KDEvent *kdevent = kdCreateEvent();
+            kdevent->userptr = window->eventuserptr;
             switch(msg.message)
             {
                 case WM_CLOSE:
@@ -2855,178 +2881,202 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
 #elif defined(KD_WINDOW_EMSCRIPTEN)
     emscripten_sleep(1);
-#else
-#if defined(KD_WINDOW_X11)
-    if(window && window->platform == EGL_PLATFORM_X11_KHR)
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+    KDuint windowindex = kdThreadSelf()->windowindex;
+    KDWindow **windows = kdThreadSelf()->windows;
+    for(KDuint i = 0; i < windowindex; i++)
     {
-        xcb_generic_event_t *event;
-        while((event = xcb_poll_for_event(window->nativedisplay)))
+        KDWindow *window = windows[i];
+        if(!window)
         {
-            KDEvent *kdevent = kdCreateEvent();
-            KDuint type = event->response_type & ~0x80;
-            switch(type)
+            break;
+        }
+
+#if defined(KD_WINDOW_X11)
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            xcb_generic_event_t *event;
+            while((event = xcb_poll_for_event(window->nativedisplay)))
             {
-                case XCB_BUTTON_PRESS:
-                case XCB_BUTTON_RELEASE:
+                KDEvent *kdevent = kdCreateEvent();
+                kdevent->userptr = window->eventuserptr;
+                KDuint type = event->response_type & ~0x80;
+                switch(type)
                 {
-                    xcb_button_press_event_t *press = (xcb_button_press_event_t *)event;
-                    kdevent->type = KD_EVENT_INPUT_POINTER;
-                    kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                    kdevent->data.inputpointer.select = (type == XCB_BUTTON_PRESS) ? 1 : 0;
-                    kdevent->data.inputpointer.x = press->event_x;
-                    kdevent->data.inputpointer.y = press->event_y;
-                    if(!__kdExecCallback(kdevent))
+                    case XCB_BUTTON_PRESS:
+                    case XCB_BUTTON_RELEASE:
                     {
-                        kdPostEvent(kdevent);
-                    }
-                    break;
-                }
-                case XCB_KEY_PRESS:
-                case XCB_KEY_RELEASE:
-                {
-                    xcb_key_press_event_t *press = (xcb_key_press_event_t *)event;
-                    xkb_keysym_t keysym = xkb_state_key_get_one_sym(window->xkb.state, press->detail);
-
-                    KDuint32 flags = 0;
-                    KDint32 character = 0;
-                    static xcb_key_press_event_t *lastpress = KD_NULL;
-                    if(type == XCB_KEY_PRESS)
-                    {
-                        if(lastpress && ((lastpress->response_type & ~0x80) == XCB_KEY_RELEASE) && (lastpress->detail == press->detail) && (lastpress->time == press->time))
-                        {
-                            flags |= KD_KEY_AUTOREPEAT_ATX;
-                        }
-
-                        /* Printable ASCII range. */
-                        if((keysym >= 20) && (keysym <= 126))
-                        {
-                            character = keysym;
-                        }
-                    }
-                    lastpress = press;
-
-                    if(character)
-                    {
-                        kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-                        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
-                        keycharevent->flags = flags;
-                        keycharevent->character = character;
-                    }
-                    else
-                    {
-                        KDint32 keycode = __KDKeycodeLookup(keysym);
-                        if(keycode)
-                        {
-                            kdevent->type = KD_EVENT_INPUT_KEY_ATX;
-                            KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
-                            if(type == XCB_KEY_PRESS)
-                            {
-                                keyevent->flags |= KD_KEY_PRESS_ATX;
-                            }
-                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0)
-                            {
-                                keyevent->flags |= KD_KEY_MODIFIER_SHIFT_ATX;
-                            }
-                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE) > 0)
-                            {
-                                keyevent->flags |= KD_KEY_MODIFIER_CTRL_ATX;
-                            }
-                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE) > 0)
-                            {
-                                keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
-                            }
-                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0)
-                            {
-                                keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
-                            }
-                            keyevent->keycode = keycode;
-                        }
-                        else
-                        {
-                            kdFreeEvent(kdevent);
-                            break;
-                        }
-                    }
-
-                    if(!__kdExecCallback(kdevent))
-                    {
-                        kdPostEvent(kdevent);
-                    }
-                    break;
-                }
-                case XCB_MOTION_NOTIFY:
-                {
-                    xcb_motion_notify_event_t *motion = (xcb_motion_notify_event_t *)event;
-                    kdevent->type = KD_EVENT_INPUT_POINTER;
-                    kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
-                    kdevent->data.inputpointer.select = 0;
-                    kdevent->data.inputpointer.x = motion->event_x;
-                    kdevent->data.inputpointer.y = motion->event_y;
-                    if(!__kdExecCallback(kdevent))
-                    {
-                        kdPostEvent(kdevent);
-                    }
-                    break;
-                }
-                case XCB_CLIENT_MESSAGE:
-                {
-                    xcb_intern_atom_cookie_t delcookie = xcb_intern_atom(window->nativedisplay, 0, 16, "WM_DELETE_WINDOW");
-                    xcb_intern_atom_reply_t *delreply = xcb_intern_atom_reply(window->nativedisplay, delcookie, 0);
-                    if((*(xcb_client_message_event_t *)event).data.data32[0] == (*delreply).atom)
-                    {
-                        kdevent->type = KD_EVENT_WINDOW_CLOSE;
+                        xcb_button_press_event_t *press = (xcb_button_press_event_t *)event;
+                        kdevent->type = KD_EVENT_INPUT_POINTER;
+                        kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+                        kdevent->data.inputpointer.select = (type == XCB_BUTTON_PRESS) ? 1 : 0;
+                        kdevent->data.inputpointer.x = press->event_x;
+                        kdevent->data.inputpointer.y = press->event_y;
                         if(!__kdExecCallback(kdevent))
                         {
                             kdPostEvent(kdevent);
                         }
                         break;
                     }
-                    kdFreeEvent(kdevent);
-                    break;
-                }
-                default:
-                {
-                    if(type == window->xkb.firstevent)
+                    case XCB_KEY_PRESS:
+                    case XCB_KEY_RELEASE:
                     {
-                        switch(event->pad0)
+                        xcb_key_press_event_t *press = (xcb_key_press_event_t *)event;
+                        xkb_keysym_t keysym = xkb_state_key_get_one_sym(window->xkb.state, press->detail);
+
+                        KDuint32 flags = 0;
+                        KDint32 character = 0;
+                        static xcb_key_press_event_t *lastpress = KD_NULL;
+                        if(type == XCB_KEY_PRESS)
                         {
-                            case XCB_XKB_NEW_KEYBOARD_NOTIFY:
-                            case XCB_XKB_MAP_NOTIFY:
+                            if(lastpress && ((lastpress->response_type & ~0x80) == XCB_KEY_RELEASE) && (lastpress->detail == press->detail) && (lastpress->time == press->time))
                             {
-                                KDint32 device = xkb_x11_get_core_keyboard_device_id(window->nativedisplay);
-                                xkb_keymap_unref(window->xkb.keymap);
-                                window->xkb.keymap = xkb_x11_keymap_new_from_device(window->xkb.context, window->nativedisplay, device, XKB_KEYMAP_COMPILE_NO_FLAGS);
-                                xkb_state_unref(window->xkb.state);
-                                window->xkb.state = xkb_x11_state_new_from_device(window->xkb.keymap, window->nativedisplay, device);
-                                break;
+                                flags |= KD_KEY_AUTOREPEAT_ATX;
                             }
-                            case XCB_XKB_STATE_NOTIFY:
+
+                            /* Printable ASCII range. */
+                            if((keysym >= 20) && (keysym <= 126))
                             {
-                                xcb_xkb_state_notify_event_t *statenotify = (xcb_xkb_state_notify_event_t *)event;
-                                xkb_state_update_mask(window->xkb.state,
-                                    statenotify->baseMods, statenotify->latchedMods, statenotify->lockedMods,
-                                    statenotify->baseGroup, statenotify->latchedGroup, statenotify->lockedGroup);
-                                break;
+                                character = keysym;
                             }
-                            default:
+                        }
+                        lastpress = press;
+
+                        if(character)
+                        {
+                            kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+                            keycharevent->flags = flags;
+                            keycharevent->character = character;
+                        }
+                        else
+                        {
+                            KDint32 keycode = __KDKeycodeLookup(keysym);
+                            if(keycode)
                             {
+                                kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+                                KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
+                                if(type == XCB_KEY_PRESS)
+                                {
+                                    keyevent->flags |= KD_KEY_PRESS_ATX;
+                                }
+                                if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0)
+                                {
+                                    keyevent->flags |= KD_KEY_MODIFIER_SHIFT_ATX;
+                                }
+                                if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE) > 0)
+                                {
+                                    keyevent->flags |= KD_KEY_MODIFIER_CTRL_ATX;
+                                }
+                                if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE) > 0)
+                                {
+                                    keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
+                                }
+                                if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0)
+                                {
+                                    keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
+                                }
+                                keyevent->keycode = keycode;
+                            }
+                            else
+                            {
+                                kdFreeEvent(kdevent);
                                 break;
                             }
                         }
+
+                        if(!__kdExecCallback(kdevent))
+                        {
+                            kdPostEvent(kdevent);
+                        }
+                        break;
                     }
-                    kdFreeEvent(kdevent);
-                    break;
+                    case XCB_MOTION_NOTIFY:
+                    {
+                        xcb_motion_notify_event_t *motion = (xcb_motion_notify_event_t *)event;
+                        kdevent->type = KD_EVENT_INPUT_POINTER;
+                        kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+                        kdevent->data.inputpointer.select = 0;
+                        kdevent->data.inputpointer.x = motion->event_x;
+                        kdevent->data.inputpointer.y = motion->event_y;
+                        if(!__kdExecCallback(kdevent))
+                        {
+                            kdPostEvent(kdevent);
+                        }
+                        break;
+                    }
+                    case XCB_ENTER_NOTIFY:
+                    case XCB_LEAVE_NOTIFY:
+                    {
+                        kdevent->type = KD_EVENT_WINDOW_FOCUS;
+                        kdevent->data.windowfocus.focusstate = (type == XCB_ENTER_NOTIFY) ? 1 : 0;
+
+                        if(!__kdExecCallback(kdevent))
+                        {
+                            kdPostEvent(kdevent);
+                        }
+                        break;
+                    }
+                    case XCB_CLIENT_MESSAGE:
+                    {
+                        xcb_intern_atom_cookie_t delcookie = xcb_intern_atom(window->nativedisplay, 0, 16, "WM_DELETE_WINDOW");
+                        xcb_intern_atom_reply_t *delreply = xcb_intern_atom_reply(window->nativedisplay, delcookie, 0);
+                        if((*(xcb_client_message_event_t *)event).data.data32[0] == (*delreply).atom)
+                        {
+                            kdevent->type = KD_EVENT_WINDOW_CLOSE;
+                            if(!__kdExecCallback(kdevent))
+                            {
+                                kdPostEvent(kdevent);
+                            }
+                            break;
+                        }
+                        kdFreeEvent(kdevent);
+                        break;
+                    }
+                    default:
+                    {
+                        if(type == window->xkb.firstevent)
+                        {
+                            switch(event->pad0)
+                            {
+                                case XCB_XKB_NEW_KEYBOARD_NOTIFY:
+                                case XCB_XKB_MAP_NOTIFY:
+                                {
+                                    KDint32 device = xkb_x11_get_core_keyboard_device_id(window->nativedisplay);
+                                    xkb_keymap_unref(window->xkb.keymap);
+                                    window->xkb.keymap = xkb_x11_keymap_new_from_device(window->xkb.context, window->nativedisplay, device, XKB_KEYMAP_COMPILE_NO_FLAGS);
+                                    xkb_state_unref(window->xkb.state);
+                                    window->xkb.state = xkb_x11_state_new_from_device(window->xkb.keymap, window->nativedisplay, device);
+                                    break;
+                                }
+                                case XCB_XKB_STATE_NOTIFY:
+                                {
+                                    xcb_xkb_state_notify_event_t *statenotify = (xcb_xkb_state_notify_event_t *)event;
+                                    xkb_state_update_mask(window->xkb.state,
+                                        statenotify->baseMods, statenotify->latchedMods, statenotify->lockedMods,
+                                        statenotify->baseGroup, statenotify->latchedGroup, statenotify->lockedGroup);
+                                    break;
+                                }
+                                default:
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        kdFreeEvent(kdevent);
+                        break;
+                    }
                 }
             }
         }
-    }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-    if(window && window->platform == EGL_PLATFORM_WAYLAND_KHR)
-    {
-        wl_display_dispatch_pending(window->nativedisplay);
-    }
+        if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            wl_display_dispatch_pending(window->nativedisplay);
+        }
 #endif
+    }
 #endif
 #endif
     return 0;
@@ -11267,8 +11317,21 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *
  * Input/output
  ******************************************************************************/
 /* kdStateGeti, kdStateGetl, kdStateGetf: get state value(s) */
-KD_API KDint KD_APIENTRY kdStateGeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KD_UNUSED KDuint numidxs, KDint32 *buffer)
 {
+#if defined(KD_WINDOW_SUPPORTED)
+    /* If we have a window assume basic input support. */
+    if(startidx == KD_STATE_POINTER_AVAILABILITY)
+    {
+        buffer[0] = 7;
+        return 0;
+    }
+    else if(startidx == KD_STATE_KEYBOARD_AVAILABILITY_ATX)
+    {
+        buffer[0] = 15;
+        return 0;
+    }
+#endif
     kdSetError(KD_EIO);
     return -1;
 }
@@ -11328,6 +11391,7 @@ static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wp
 EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = kdThreadSelf()->windows[0]->eventuserptr;
     kdevent->type = KD_EVENT_INPUT_POINTER;
     if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
     {
@@ -11350,6 +11414,7 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
 EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = kdThreadSelf()->windows[0]->eventuserptr;
 
     KDint32 keycode = __KDKeycodeLookup(event->keyCode);
     if(keycode)
@@ -11428,6 +11493,7 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
 EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event, void *user)
 {
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = kdThreadSelf()->windows[0]->eventuserptr;
     kdevent->type = KD_EVENT_WINDOW_FOCUS;
 
     if(type == EMSCRIPTEN_EVENT_FOCUSIN)
@@ -11446,8 +11512,32 @@ EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event
     return 1;
 }
 #elif defined(KD_WINDOW_WAYLAND)
-static void __kdWaylandPointerHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) {}
-static void __kdWaylandPointerHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) {}
+static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) 
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = 1;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
+static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) 
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = 0;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
 static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
 {
     static KDuint32 lasttime = 0;
@@ -11458,6 +11548,7 @@ static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_point
         window->wayland.pointery = wl_fixed_to_int(sy);
 
         KDEvent *kdevent = kdCreateEvent();
+        kdevent->userptr = window->eventuserptr;
         kdevent->type = KD_EVENT_INPUT_POINTER;
         kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
         kdevent->data.inputpointer.x = window->wayland.pointerx;
@@ -11474,6 +11565,7 @@ static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_point
 {
     struct KDWindow *window = data;
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
     kdevent->type = KD_EVENT_INPUT_POINTER;
     kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
     kdevent->data.inputpointer.select = state;
@@ -11514,6 +11606,7 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
     struct KDWindow *window = data;
 
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
 
     xkb_keysym_t keysym = xkb_state_key_get_one_sym(window->xkb.state, key + 8);
 
@@ -11603,7 +11696,7 @@ static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, 
         wl_keyboard_add_listener(window->wayland.keyboard, &__kd_wl_keyboard_listener, window);
     }
 }
-static const KD_UNUSED struct wl_seat_listener __kd_wl_seat_listener = {
+static const struct wl_seat_listener __kd_wl_seat_listener = {
     __kdWaylandSeatHandleCapabilities};
 
 static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
@@ -11626,7 +11719,7 @@ static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registr
     }
 }
 static void __kdWaylandRegistryRemoveObject(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
-static const KD_UNUSED struct wl_registry_listener __kd_wl_registry_listener = {
+static const struct wl_registry_listener __kd_wl_registry_listener = {
     __kdWaylandRegistryAddObject,
     __kdWaylandRegistryRemoveObject};
 
@@ -11634,13 +11727,9 @@ static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_su
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void __kdWaylandShellSurfaceConfigure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
-{
-    struct KDWindow *window = data;
-    wl_egl_window_resize(window->nativewindow, width, height, 0, 0);
-}
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height) {}
 static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
-static KD_UNUSED struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
+static struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     &__kdWaylandShellSurfacePing,
     &__kdWaylandShellSurfaceConfigure,
     &__kdWaylandShellSurfacePopupDone};
@@ -11669,12 +11758,14 @@ KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
 
 KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
 {
-    if(__kd_window)
+#if defined(KD_WINDOW_ANDROID) || defined(KD_WINDOW_EMSCRIPTEN)
+    if(kdThreadSelf()->windowindex)
     {
-        /* One window only */
-        kdSetError(KD_EPERM);
+        /* One window only */ 
+        kdSetError(KD_EPERM); 
         return KD_NULL;
     }
+#endif
 
     KDWindow *window = (KDWindow *)kdMalloc(sizeof(KDWindow));
     if(window == KD_NULL)
@@ -11758,7 +11849,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         KDuint32 mask = XCB_CW_EVENT_MASK;
         KDuint32 values[1] = {XCB_EVENT_MASK_POINTER_MOTION |
             XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
-            XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE};
+            XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+            XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW};
 
         xcb_create_window(window->nativedisplay, screen->root_depth, (KDuintptr)window->nativewindow,
             screen->root, 0, 0, screen->width_in_pixels, screen->height_in_pixels, 0,
@@ -11816,7 +11908,19 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
 #endif
 #endif
-    __kd_window = window;
+
+    KDuint windowindex = kdThreadSelf()->windowindex;
+    KDWindow **windows = kdThreadSelf()->windows;
+    windows[windowindex] = (KDWindow *)kdMalloc(sizeof(KDWindow));
+    if(windows[windowindex] == KD_NULL)
+    {
+        kdFree(window);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    windows[windowindex] = window;
+    kdThreadSelf()->windowindex++;
+
     return window;
 }
 
@@ -11872,8 +11976,16 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
     }
 #endif
 #endif
-    kdFree(window);
-    __kd_window = KD_NULL;
+    KDuint windowindex = kdThreadSelf()->windowindex;
+    KDWindow **windows = kdThreadSelf()->windows;
+    for(KDuint i = 0; i < windowindex; i++)
+    {
+        if(window == windows[i])
+        {
+            kdFree(window);
+            windows[i] = KD_NULL;
+        }
+    }
     return 0;
 }
 
@@ -11883,6 +11995,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UN
     kdSetError(KD_EOPNOTSUPP);
     return -1;
 }
+
 KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
@@ -11895,33 +12008,39 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
         kdPostEvent(event);
         return 0;
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDchar *param)
+
+KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, const KDchar *param)
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
+        kdMemcpy(window->caption, param, kdStrlen(param));
+#if defined(KD_WINDOW_WIN32)
+        SetWindowTextA(window->nativewindow, window->caption) 
+#else
 #if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
         {
-            wl_shell_surface_set_title(window->wayland.shell_surface, param);
+            wl_shell_surface_set_title(window->wayland.shell_surface, window->caption);
         }
 #endif
 #if defined(KD_WINDOW_X11)
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
             xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
-                XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, kdStrlen(param), param);
+                XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, kdStrlen(window->caption), window->caption);
             xcb_flush(window->nativedisplay);
         }
+#endif
 #endif
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
         kdPostEvent(event);
         return 0;
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
 
@@ -11942,16 +12061,24 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint
 #elif defined(KD_WINDOW_EMSCRIPTEN)
         emscripten_get_canvas_size(&param[0], &param[1], (KDint[]){0});
         return 0;
+#else
+#if defined(KD_WINDOW_X11)
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            xcb_get_geometry_cookie_t geomcookie = xcb_get_geometry(window->nativedisplay, (KDuintptr)window->nativewindow);
+            xcb_get_geometry_reply_t *geom = xcb_get_geometry_reply(window->nativedisplay, geomcookie, KD_NULL);
+            param[0] = geom->width;
+            param[1] = geom->height;
+            return 0;
+        }
+#endif
 #endif
     }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED KDchar *param, KD_UNUSED KDsize *size)
+KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED KDchar *param, KD_UNUSED KDsize *size)
 {
-    if(pname == KD_WINDOWPROPERTY_CAPTION)
-    {
-    }
     kdSetError(KD_EOPNOTSUPP);
     return -1;
 }
@@ -11993,7 +12120,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
-        wl_shell_surface_add_listener(window->wayland.shell_surface, &__kd_wl_shell_surface_listener, window);
+        wl_shell_surface_add_listener(window->wayland.shell_surface, &__kd_wl_shell_surface_listener, KD_NULL);
         wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);
 
         xcb_connection_t *connection = xcb_connect(KD_NULL, KD_NULL);
