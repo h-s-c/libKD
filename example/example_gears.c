@@ -671,6 +671,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         {
             switch(event->type)
             {
+                case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
                     quit = KD_TRUE;

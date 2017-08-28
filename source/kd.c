@@ -11289,23 +11289,57 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *
  * Input/output
  ******************************************************************************/
 /* kdStateGeti, kdStateGetl, kdStateGetf: get state value(s) */
-KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KD_UNUSED KDuint numidxs, KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *buffer)
 {
+    KDint idx = startidx;
+    for(KDuint i = 0; i != numidxs; i++)
+    {
+        switch(idx)
+        {
 #if defined(KD_WINDOW_SUPPORTED)
-    /* If we have a window assume basic input support. */
-    if(startidx == KD_STATE_POINTER_AVAILABILITY)
-    {
-        buffer[0] = 7;
-        return 0;
-    }
-    else if(startidx == KD_STATE_KEYBOARD_AVAILABILITY_ATX)
-    {
-        buffer[0] = 15;
-        return 0;
-    }
+            /* If we have a window assume basic input support. */
+            case KD_STATE_POINTER_AVAILABILITY:
+            {
+                buffer[i] = 7;
+                break;
+            }
+            case KD_STATE_KEYBOARD_AVAILABILITY_ATX:
+            {
+                buffer[i] = 15;
+                break;
+            }
 #endif
-    kdSetError(KD_EIO);
-    return -1;
+            case KD_STATE_EVENT_USING_BATTERY:
+            {
+#if defined(_WIN32)
+                SYSTEM_POWER_STATUS status;
+                GetSystemPowerStatus(&status);
+                buffer[i] = (status.ACLineStatus == 0);
+#else
+                buffer[i] = 0;
+#endif
+                break;
+            }
+            case KD_STATE_EVENT_LOW_BATTERY:
+            {
+#if defined(_WIN32)
+                SYSTEM_POWER_STATUS status;
+                GetSystemPowerStatus(&status);
+                buffer[i] = (status.BatteryFlag == 2) || (status.BatteryFlag == 4);
+#else
+                buffer[i] = 0;
+#endif
+                break;
+            }
+            default:
+            {
+                kdSetError(KD_EIO);
+                return -1;
+            }
+        }
+        idx++;
+    }
+    return 0;
 }
 
 KD_API KDint KD_APIENTRY kdStateGetl(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint64 *buffer)
@@ -12145,6 +12179,17 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 #endif
     window->properties.focused = 1;
     window->properties.visible = 1;
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+    kdevent->data.windowproperty.pname = KD_EVENT_WINDOW_REDRAW;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+
     if(nativewindow)
     {
         *nativewindow = (EGLNativeWindowType)window->nativewindow;
@@ -12380,7 +12425,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, fd, 0);
     if(filedata == MAP_FAILED)
-#elif(_WIN32)
+#elif defined(_WIN32)
     HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
     if(fm)
     {
@@ -12391,7 +12436,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     {
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
         close(fd);
-#elif(_WIN32)
+#elif defined(_WIN32)
         CloseHandle(fd);
 #endif
         kdFree(image);
@@ -12437,7 +12482,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     munmap(filedata, image->size);
     close(fd);
-#elif(_WIN32)
+#elif defined(_WIN32)
     UnmapViewOfFile(filedata);
     CloseHandle(fd);
 #endif

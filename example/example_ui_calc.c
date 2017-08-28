@@ -295,6 +295,7 @@ pump_input(struct nk_context *ctx, KDWindow *win)
     {
         switch(event->type)
         {
+            case(KD_EVENT_QUIT):
             case(KD_EVENT_WINDOW_CLOSE):
             {
                 quit = KD_TRUE;
