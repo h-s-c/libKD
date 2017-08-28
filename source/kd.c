@@ -11727,7 +11727,7 @@ static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_su
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height) {}
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, KD_UNUSED int32_t width, KD_UNUSED int32_t height) {}
 static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
 static struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     &__kdWaylandShellSurfacePing,
