@@ -1360,6 +1360,24 @@ struct KDWindow {
         KDint32 width;
         KDint32 height;
     } properties;
+    struct
+    {
+        struct 
+        {
+            KDint32 availability;
+            KDint32 select;
+            KDint32 x;
+            KDint32 y;
+        } pointer;
+        struct 
+        {
+            KDint32 availability;
+            KDint32 flags;
+            KDint32 character;
+            KDint32 keycode;
+            KDint32 charflags;
+        } keyboard;
+    } states;
 #if defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
     struct
     {
@@ -1380,8 +1398,6 @@ struct KDWindow {
         struct wl_seat *seat;
         struct wl_keyboard *keyboard;
         struct wl_pointer *pointer;
-        KDint32 pointerx;
-        KDint32 pointery;
     } wayland;
 #endif
 };
@@ -2774,6 +2790,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             kdevent->data.inputpointer.select = 1;
                             kdevent->data.inputpointer.x = raw->data.mouse.lLastX;
                             kdevent->data.inputpointer.y = raw->data.mouse.lLastY;
+
+                            window->states.pointer.select = kdevent->data.inputpointer.select;
+                            window->states.pointer.x = kdevent->data.inputpointer.x;
+                            window->states.pointer.y = kdevent->data.inputpointer.y;
                         }
                         else if(raw->data.mouse.usButtonFlags == RI_MOUSE_LEFT_BUTTON_UP ||
                             raw->data.mouse.usButtonFlags == RI_MOUSE_RIGHT_BUTTON_UP ||
@@ -2784,6 +2804,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             kdevent->data.inputpointer.select = 0;
                             kdevent->data.inputpointer.x = raw->data.mouse.lLastX;
                             kdevent->data.inputpointer.y = raw->data.mouse.lLastY;
+
+                            window->states.pointer.select = kdevent->data.inputpointer.select;
+                            window->states.pointer.x = kdevent->data.inputpointer.x;
+                            window->states.pointer.y = kdevent->data.inputpointer.y;
                         }
                         else if(raw->data.keyboard.Flags & MOUSE_MOVE_ABSOLUTE)
                         {
@@ -2791,6 +2815,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
                             kdevent->data.inputpointer.x = raw->data.mouse.lLastX;
                             kdevent->data.inputpointer.y = raw->data.mouse.lLastY;
+
+                            window->states.pointer.x = kdevent->data.inputpointer.x;
+                            window->states.pointer.y = kdevent->data.inputpointer.y;
                         }
                     }
                     else if(raw->header.dwType == RIM_TYPEKEYBOARD)
@@ -2817,6 +2844,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
                             keycharevent->flags = 0;
                             keycharevent->character = character;
+
+                            window->states.keyboard.charflags = keycharevent->flags;
+                            window->states.keyboard.character = keycharevent->character;
                         }
                         else
                         {
@@ -2826,6 +2856,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 kdevent->type = KD_EVENT_INPUT_KEY_ATX;
                                 KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
 
+                                keyevent->flags = 0;
 #if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 6313)
@@ -2837,8 +2868,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 {
                                     keyevent->flags |= KD_KEY_PRESS_ATX;
                                 }
-
                                 keyevent->keycode = keycode;
+
+                                window->states.keyboard.flags = keyevent->flags;
+                                window->states.keyboard.keycode = keyevent->keycode;
                             }
                             else
                             {
@@ -2904,7 +2937,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     {
                         if(lastpress && ((lastpress->response_type & ~0x80) == XCB_KEY_RELEASE) && (lastpress->detail == press->detail) && (lastpress->time == press->time))
                         {
-                            flags |= KD_KEY_AUTOREPEAT_ATX;
+                            flags = KD_KEY_AUTOREPEAT_ATX;
                         }
 
                         /* Printable ASCII range. */
@@ -2921,6 +2954,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
                         keycharevent->flags = flags;
                         keycharevent->character = character;
+
+                        window->states.keyboard.charflags = keycharevent->flags;
+                        window->states.keyboard.character = keycharevent->character;
                     }
                     else
                     {
@@ -2929,6 +2965,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         {
                             kdevent->type = KD_EVENT_INPUT_KEY_ATX;
                             KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
+                            keyevent->flags = 0;
                             if(type == XCB_KEY_PRESS)
                             {
                                 keyevent->flags |= KD_KEY_PRESS_ATX;
@@ -2950,6 +2987,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
                             }
                             keyevent->keycode = keycode;
+
+                            window->states.keyboard.flags = keyevent->flags;
+                            window->states.keyboard.keycode = keyevent->keycode;
                         }
                         else
                         {
@@ -2972,6 +3012,11 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     kdevent->data.inputpointer.select = 0;
                     kdevent->data.inputpointer.x = motion->event_x;
                     kdevent->data.inputpointer.y = motion->event_y;
+
+                    window->states.pointer.select = kdevent->data.inputpointer.select;
+                    window->states.pointer.x = kdevent->data.inputpointer.x;
+                    window->states.pointer.y = kdevent->data.inputpointer.y;
+
                     if(!__kdExecCallback(kdevent))
                     {
                         kdPostEvent(kdevent);
@@ -11297,15 +11342,49 @@ KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *bu
         switch(idx)
         {
 #if defined(KD_WINDOW_SUPPORTED)
-            /* If we have a window assume basic input support. */
             case KD_STATE_POINTER_AVAILABILITY:
             {
-                buffer[i] = 7;
+                buffer[i] = __kd_window->states.pointer.availability;;
+                break;
+            }
+            case KD_INPUT_POINTER_X:
+            {
+                buffer[i] = __kd_window->states.pointer.x;
+                break;
+            }
+            case KD_INPUT_POINTER_Y:
+            {
+                buffer[i] = __kd_window->states.pointer.y;
+                break;
+            }
+            case KD_INPUT_POINTER_SELECT:
+            {
+                buffer[i] = __kd_window->states.pointer.select;
                 break;
             }
             case KD_STATE_KEYBOARD_AVAILABILITY_ATX:
             {
-                buffer[i] = 15;
+                buffer[i] = __kd_window->states.keyboard.availability;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_FLAGS_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.flags;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_CHAR_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.character;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_KEYCODE_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.keycode;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_CHARFLAGS_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.charflags;
                 break;
             }
 #endif
@@ -11403,6 +11482,8 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
     {
         kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
         kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
+
+        window->states.pointer.select = kdevent->data.inputpointer.select;
     }
     else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
     {
@@ -11410,6 +11491,10 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
     }
     kdevent->data.inputpointer.x = event->canvasX;
     kdevent->data.inputpointer.y = event->canvasY;
+
+    window->states.pointer.x = kdevent->data.inputpointer.x;
+    window->states.pointer.y = kdevent->data.inputpointer.y;
+
     if(!__kdExecCallback(kdevent))
     {
         kdPostEvent(kdevent);
@@ -11428,6 +11513,7 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
         kdevent->type = KD_EVENT_INPUT_KEY_ATX;
         KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
 
+        keyevent->flags = 0;
         if(type == EMSCRIPTEN_EVENT_KEYDOWN)
         {
             keyevent->flags |= KD_KEY_PRESS_ATX;
@@ -11460,8 +11546,10 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
         {
             keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
         }
-
         keyevent->keycode = keycode;
+
+        __kd_window->states.keyboard.flags = keyevent->flags;
+        __kd_window->states.keyboard.keycode = keyevent->keycode;
     }
     else if(type == EMSCRIPTEN_EVENT_KEYDOWN)
     {
@@ -11476,11 +11564,15 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
         {
             kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
             KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+            keycharevent->flags = 0;
             if(event->repeat)
             {
-                keycharevent->flags |= KD_KEY_AUTOREPEAT_ATX;
+                keycharevent->flags = KD_KEY_AUTOREPEAT_ATX;
             }
             keycharevent->character = character;
+
+            __kd_window->states.keyboard.charflags = keycharevent->flags;
+            __kd_window->states.keyboard.character = keycharevent->character;
         }
         else
         {
@@ -11568,15 +11660,17 @@ static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_point
     if((lasttime + 15) < time)
     {
         struct KDWindow *window = data;
-        window->wayland.pointerx = wl_fixed_to_int(sx);
-        window->wayland.pointery = wl_fixed_to_int(sy);
 
         KDEvent *kdevent = kdCreateEvent();
         kdevent->userptr = window->eventuserptr;
         kdevent->type = KD_EVENT_INPUT_POINTER;
         kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
-        kdevent->data.inputpointer.x = window->wayland.pointerx;
-        kdevent->data.inputpointer.y = window->wayland.pointery;
+        kdevent->data.inputpointer.x = wl_fixed_to_int(sx);
+        kdevent->data.inputpointer.y = wl_fixed_to_int(sy);
+
+        window->states.pointer.x = kdevent->data.inputpointer.x;
+        window->states.pointer.y = kdevent->data.inputpointer.y;
+
         if(!__kdExecCallback(kdevent))
         {
             kdPostEvent(kdevent);
@@ -11593,8 +11687,11 @@ static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_point
     kdevent->type = KD_EVENT_INPUT_POINTER;
     kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
     kdevent->data.inputpointer.select = state;
-    kdevent->data.inputpointer.x = window->wayland.pointerx;
-    kdevent->data.inputpointer.y = window->wayland.pointery;
+    kdevent->data.inputpointer.x = window->states.pointer.x;
+    kdevent->data.inputpointer.y = window->states.pointer.y;
+
+    window->states.pointer.select = kdevent->data.inputpointer.select;
+
     if(!__kdExecCallback(kdevent))
     {
         kdPostEvent(kdevent);
@@ -11649,6 +11746,9 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
         kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
         KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
         keycharevent->character = character;
+
+        __kd_window->states.keyboard.charflags = 0;
+        __kd_window->states.keyboard.character = keycharevent->character;
     }
     else
     {
@@ -11680,6 +11780,9 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
             }
 
             keyevent->keycode = keycode;
+
+            __kd_window->states.keyboard.flags = keyevent->flags;
+            __kd_window->states.keyboard.keycode = keyevent->keycode;
         }
         else
         {
@@ -11826,12 +11929,16 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
     window->originthr = kdThreadSelf();
 
+    kdMemset(&window->properties, 0, sizeof(window->properties));
+    kdMemset(&window->states.pointer, 0, sizeof(window->states.pointer));
+    kdMemset(&window->states.keyboard, 0, sizeof(window->states.keyboard));
+
+    /* If we have a window assume basic input support. */
+    window->states.pointer.availability = 7;
+    window->states.keyboard.availability = 15;
+
     const KDchar *caption = "OpenKODE";
     kdMemcpy(window->properties.caption, caption, kdStrlen(caption));
-    window->properties.focused = 0;
-    window->properties.visible = 0;
-    window->properties.width = 0;
-    window->properties.height = 0;
 
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
