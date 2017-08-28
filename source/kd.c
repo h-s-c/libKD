@@ -1331,8 +1331,8 @@ static KDboolean __kdExecCallback(KDEvent *event)
     {
         if(callbacks[i]->func)
         {
-            KDboolean typematch = callbacks[i]->eventtype == event->type || callbacks[i]->eventtype == 0;
-            KDboolean userptrmatch = callbacks[i]->eventuserptr == event->userptr;
+            KDboolean typematch = (callbacks[i]->eventtype == event->type) || (callbacks[i]->eventtype == 0);
+            KDboolean userptrmatch = (callbacks[i]->eventuserptr == event->userptr);
             if(typematch && userptrmatch)
             {
                 callbacks[i]->func(event);
@@ -1352,6 +1352,14 @@ struct KDWindow {
     EGLint format;
     void *eventuserptr;
     KDThread *originthr;
+    struct
+    {
+        KDchar caption[256];
+        KDboolean focused;
+        KDboolean visible;
+        KDint32 width;
+        KDint32 height;
+    } properties;
 #if defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
     struct
     {
@@ -2656,9 +2664,9 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
         }
     }
 }
+#endif
 
 static KDWindow *__kd_window = KD_NULL;
-#endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
@@ -2734,6 +2742,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         while(PeekMessage(&msg, window->nativewindow, 0, 0, PM_REMOVE) != 0)
         {
             KDEvent *kdevent = kdCreateEvent();
+            kdevent->userptr = window->eventuserptr;
             switch(msg.message)
             {
                 case WM_CLOSE:
@@ -2855,7 +2864,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
 #elif defined(KD_WINDOW_EMSCRIPTEN)
     emscripten_sleep(1);
-#else
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_X11)
     if(window && window->platform == EGL_PLATFORM_X11_KHR)
     {
@@ -2863,6 +2872,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         while((event = xcb_poll_for_event(window->nativedisplay)))
         {
             KDEvent *kdevent = kdCreateEvent();
+            kdevent->userptr = window->eventuserptr;
             KDuint type = event->response_type & ~0x80;
             switch(type)
             {
@@ -2962,6 +2972,18 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     kdevent->data.inputpointer.select = 0;
                     kdevent->data.inputpointer.x = motion->event_x;
                     kdevent->data.inputpointer.y = motion->event_y;
+                    if(!__kdExecCallback(kdevent))
+                    {
+                        kdPostEvent(kdevent);
+                    }
+                    break;
+                }
+                case XCB_ENTER_NOTIFY:
+                case XCB_LEAVE_NOTIFY:
+                {
+                    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+                    kdevent->data.windowfocus.focusstate = (type == XCB_ENTER_NOTIFY) ? 1 : 0;
+
                     if(!__kdExecCallback(kdevent))
                     {
                         kdPostEvent(kdevent);
@@ -11267,8 +11289,21 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *
  * Input/output
  ******************************************************************************/
 /* kdStateGeti, kdStateGetl, kdStateGetf: get state value(s) */
-KD_API KDint KD_APIENTRY kdStateGeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KD_UNUSED KDuint numidxs, KDint32 *buffer)
 {
+#if defined(KD_WINDOW_SUPPORTED)
+    /* If we have a window assume basic input support. */
+    if(startidx == KD_STATE_POINTER_AVAILABILITY)
+    {
+        buffer[0] = 7;
+        return 0;
+    }
+    else if(startidx == KD_STATE_KEYBOARD_AVAILABILITY_ATX)
+    {
+        buffer[0] = 15;
+        return 0;
+    }
+#endif
     kdSetError(KD_EIO);
     return -1;
 }
@@ -11328,6 +11363,7 @@ static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wp
 EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = __kd_window->eventuserptr;
     kdevent->type = KD_EVENT_INPUT_POINTER;
     if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
     {
@@ -11350,6 +11386,7 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
 EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr =__kd_window->eventuserptr;
 
     KDint32 keycode = __KDKeycodeLookup(event->keyCode);
     if(keycode)
@@ -11427,17 +11464,19 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
 
 EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event, void *user)
 {
-    KDEvent *kdevent = kdCreateEvent();
-    kdevent->type = KD_EVENT_WINDOW_FOCUS;
-
     if(type == EMSCRIPTEN_EVENT_FOCUSIN)
     {
-        kdevent->data.windowfocus.focusstate = 1;
+        __kd_window->properties.focused = 1;
     }
     else if(type == EMSCRIPTEN_EVENT_FOCUSOUT)
     {
-        kdevent->data.windowfocus.focusstate = 0;
+        __kd_window->properties.focused = 0;
     }
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = __kd_window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = __kd_window->properties.focused;
 
     if(!__kdExecCallback(kdevent))
     {
@@ -11445,9 +11484,50 @@ EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event
     }
     return 1;
 }
+
+EM_BOOL __kd_EmscriptenVisibilityCallback(int type, const EmscriptenVisibilityChangeEvent *event, void *user)
+{
+    __kd_window->properties.visible = !event->hidden;
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = __kd_window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+    kdevent->data.windowproperty.pname = KD_WINDOWPROPERTY_VISIBILITY;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+    return 1;
+}
+
 #elif defined(KD_WINDOW_WAYLAND)
-static void __kdWaylandPointerHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) {}
-static void __kdWaylandPointerHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) {}
+static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) 
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = 1;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
+static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) 
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = 0;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
 static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
 {
     static KDuint32 lasttime = 0;
@@ -11458,6 +11538,7 @@ static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_point
         window->wayland.pointery = wl_fixed_to_int(sy);
 
         KDEvent *kdevent = kdCreateEvent();
+        kdevent->userptr = window->eventuserptr;
         kdevent->type = KD_EVENT_INPUT_POINTER;
         kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
         kdevent->data.inputpointer.x = window->wayland.pointerx;
@@ -11474,6 +11555,7 @@ static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_point
 {
     struct KDWindow *window = data;
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
     kdevent->type = KD_EVENT_INPUT_POINTER;
     kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
     kdevent->data.inputpointer.select = state;
@@ -11514,6 +11596,7 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
     struct KDWindow *window = data;
 
     KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
 
     xkb_keysym_t keysym = xkb_state_key_get_one_sym(window->xkb.state, key + 8);
 
@@ -11603,7 +11686,7 @@ static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, 
         wl_keyboard_add_listener(window->wayland.keyboard, &__kd_wl_keyboard_listener, window);
     }
 }
-static const KD_UNUSED struct wl_seat_listener __kd_wl_seat_listener = {
+static const struct wl_seat_listener __kd_wl_seat_listener = {
     __kdWaylandSeatHandleCapabilities};
 
 static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
@@ -11626,7 +11709,7 @@ static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registr
     }
 }
 static void __kdWaylandRegistryRemoveObject(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
-static const KD_UNUSED struct wl_registry_listener __kd_wl_registry_listener = {
+static const struct wl_registry_listener __kd_wl_registry_listener = {
     __kdWaylandRegistryAddObject,
     __kdWaylandRegistryRemoveObject};
 
@@ -11637,10 +11720,24 @@ static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_su
 static void __kdWaylandShellSurfaceConfigure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
 {
     struct KDWindow *window = data;
-    wl_egl_window_resize(window->nativewindow, width, height, 0, 0);
+    window->properties.width = width;
+    window->properties.height = height;
+    
+    wl_egl_window_resize(window->nativewindow, window->properties.width, window->properties.height, 0, 0);
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+    kdevent->data.windowproperty.pname = KD_WINDOWPROPERTY_SIZE;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+
 }
 static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
-static KD_UNUSED struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
+static struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     &__kdWaylandShellSurfacePing,
     &__kdWaylandShellSurfaceConfigure,
     &__kdWaylandShellSurfacePopupDone};
@@ -11695,18 +11792,25 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
     window->originthr = kdThreadSelf();
 
+    const KDchar *caption = "OpenKODE";
+    kdMemcpy(window->properties.caption, caption, kdStrlen(caption));
+    window->properties.focused = 0;
+    window->properties.visible = 0;
+    window->properties.width = 0;
+    window->properties.height = 0;
+
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
     WNDCLASS windowclass = {0};
     HINSTANCE instance = GetModuleHandle(KD_NULL);
     GetClassInfo(instance, "", &windowclass);
-    windowclass.lpszClassName = "OpenKODE";
+    windowclass.lpszClassName = window->properties.caption;
     windowclass.lpfnWndProc = __kdWindowsWindowCallback;
     windowclass.hInstance = instance;
     windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
     RegisterClass(&windowclass);
-    window->nativewindow = CreateWindow("OpenKODE", "OpenKODE", WS_POPUP | WS_VISIBLE, 0, 0,
+    window->nativewindow = CreateWindow(window->properties.caption, window->properties.caption, WS_POPUP | WS_VISIBLE, 0, 0,
         GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
         KD_NULL, KD_NULL, instance, KD_NULL);
     /* Activate raw input */
@@ -11736,6 +11840,12 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         window->wayland.registry = wl_display_get_registry(window->nativedisplay);
         wl_registry_add_listener(window->wayland.registry, &__kd_wl_registry_listener, window);
         wl_display_roundtrip(window->nativedisplay);
+
+        xcb_connection_t *connection = xcb_connect(KD_NULL, KD_NULL);
+        xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data;
+        window->properties.width = screen->width_in_pixels;
+        window->properties.height = screen->height_in_pixels;
+        xcb_disconnect(connection);
     }
 #endif
 
@@ -11752,16 +11862,19 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
             window->nativedisplay = xcb_connect(KD_NULL, KD_NULL);
         }
         xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(window->nativedisplay)).data;
+        window->properties.width = screen->width_in_pixels;
+        window->properties.height = screen->height_in_pixels;
 
         window->nativewindow = (void *)(KDuintptr)xcb_generate_id(window->nativedisplay);
 
         KDuint32 mask = XCB_CW_EVENT_MASK;
         KDuint32 values[1] = {XCB_EVENT_MASK_POINTER_MOTION |
             XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
-            XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE};
+            XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+            XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW};
 
         xcb_create_window(window->nativedisplay, screen->root_depth, (KDuintptr)window->nativewindow,
-            screen->root, 0, 0, screen->width_in_pixels, screen->height_in_pixels, 0,
+            screen->root, 0, 0, window->properties.width, window->properties.height, 0,
             XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
 
         xcb_ewmh_connection_t ewmh;
@@ -11880,28 +11993,41 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 /* kdSetWindowPropertybv, kdSetWindowPropertyiv, kdSetWindowPropertycv: Set a window property to request a change in the on-screen representation of the window. */
 KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED const KDboolean *param)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
+
 KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
+
 #if defined(KD_WINDOW_EMSCRIPTEN)
         emscripten_set_canvas_size(param[0], param[1]);
+#else
+        kdSetError(KD_EINVAL);
+        return -1;
 #endif
+        window->properties.width = param[0];
+        window->properties.height = param[1];
+
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        event->data.windowproperty.pname = KD_WINDOWPROPERTY_SIZE;
         kdPostEvent(event);
         return 0;
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDchar *param)
+
+KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, const KDchar *param)
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
+#if defined(KD_WINDOW_WIN32)
+        SetWindowTextA(window->nativewindow, param) 
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
         {
@@ -11916,43 +12042,54 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint
             xcb_flush(window->nativedisplay);
         }
 #endif
+#else
+        kdSetError(KD_EINVAL);
+        return -1;
+#endif
+        kdMemcpy(window->properties.caption, param, kdStrlen(param));
+
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        event->data.windowproperty.pname = KD_WINDOWPROPERTY_CAPTION;
         kdPostEvent(event);
         return 0;
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
 
 /* kdGetWindowPropertybv, kdGetWindowPropertyiv, kdGetWindowPropertycv: Get the current value of a window property. */
-KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED KDboolean *param)
+KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KDWindow *window, KDint pname, KDboolean *param)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    if(pname == KD_WINDOWPROPERTY_FOCUS)
+    {
+        param[0] = window->properties.focused;
+    }
+    else if(pname == KD_WINDOWPROPERTY_VISIBILITY)
+    {
+        param[0] = window->properties.visible;
+    }
+    kdSetError(KD_EINVAL);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED KDint32 *param)
+KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(KD_WINDOW_ANDROID)
-        param[0] = ANativeWindow_getWidth(window->nativewindow);
-        param[1] = ANativeWindow_getHeight(window->nativewindow);
-        return 0;
-#elif defined(KD_WINDOW_EMSCRIPTEN)
-        emscripten_get_canvas_size(&param[0], &param[1], (KDint[]){0});
-        return 0;
-#endif
+        param[0] = window->properties.width;
+        param[1] = window->properties.height;
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED KDchar *param, KD_UNUSED KDsize *size)
+KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KDchar *param, KDsize *size)
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
-    {
+    {   
+        *size = kdStrlen(window->properties.caption);
+        kdMemcpy(param, window->properties.caption, *size);
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
 
@@ -11979,9 +12116,8 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
     strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
     emscripten_enter_soft_fullscreen(0, &strategy);
-    KDfloat64KHR width, height;
-    emscripten_get_element_css_size("canvas", &width, &height);
-    emscripten_set_canvas_size((KDint)width, (KDint)height);
+    emscripten_get_element_css_size("canvas", (KDfloat64KHR*)&window->properties.width, (KDfloat64KHR*)&window->properties.height);
+    emscripten_set_canvas_size(window->properties.width, window->properties.height);
     emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
@@ -11989,17 +12125,14 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     emscripten_set_keyup_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
     emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
     emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_visibilitychange_callback(0, 0, 1, __kd_EmscriptenVisibilityCallback);
 #else
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
         wl_shell_surface_add_listener(window->wayland.shell_surface, &__kd_wl_shell_surface_listener, window);
         wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);
-
-        xcb_connection_t *connection = xcb_connect(KD_NULL, KD_NULL);
-        xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data;
-        window->nativewindow = wl_egl_window_create(window->wayland.surface, screen->width_in_pixels, screen->height_in_pixels);
-        xcb_disconnect(connection);
+        window->nativewindow = wl_egl_window_create(window->wayland.surface, window->properties.width, window->properties.height);
     }
 #endif
 #if defined(KD_WINDOW_X11)
@@ -12010,6 +12143,8 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
 #endif
 #endif
+    window->properties.focused = 1;
+    window->properties.visible = 1;
     if(nativewindow)
     {
         *nativewindow = (EGLNativeWindowType)window->nativewindow;
