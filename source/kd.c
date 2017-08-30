@@ -157,6 +157,7 @@
 #   endif
 #   if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 #       include <xcb/xcb.h>
+#       include <xcb/randr.h>
 #       include <xkbcommon/xkbcommon.h>
 #   endif
 #   if defined(KD_WINDOW_WAYLAND)
@@ -165,6 +166,7 @@
 #   endif
 #   if defined(KD_WINDOW_X11) 
 #       include <xcb/xcb_ewmh.h>
+#       include <xcb/xcb_icccm.h>
 #       include <xcb/xcb_util.h>
 #       include <xcb/xkb.h>
 #       include <xkbcommon/xkbcommon-x11.h>
@@ -1352,6 +1354,10 @@ struct KDWindow {
     EGLint format;
     void *eventuserptr;
     KDThread *originthr;
+    struct {
+        KDint32 width;
+        KDint32 height; 
+    } screen;
     struct
     {
         KDchar caption[256];
@@ -1399,6 +1405,12 @@ struct KDWindow {
         struct wl_keyboard *keyboard;
         struct wl_pointer *pointer;
     } wayland;
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+    struct
+    {
+        xcb_ewmh_connection_t ewmh;
+    } xcb;
 #endif
 };
 
@@ -11854,25 +11866,7 @@ static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_su
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void __kdWaylandShellSurfaceConfigure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
-{
-    struct KDWindow *window = data;
-    window->properties.width = width;
-    window->properties.height = height;
-    
-    wl_egl_window_resize(window->nativewindow, window->properties.width, window->properties.height, 0, 0);
-
-    KDEvent *kdevent = kdCreateEvent();
-    kdevent->userptr = window->eventuserptr;
-    kdevent->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-    kdevent->data.windowproperty.pname = KD_WINDOWPROPERTY_SIZE;
-
-    if(!__kdExecCallback(kdevent))
-    {
-        kdPostEvent(kdevent);
-    }
-
-}
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, KD_UNUSED int32_t width, KD_UNUSED int32_t height) {}
 static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
 static struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     &__kdWaylandShellSurfacePing,
@@ -11943,6 +11937,11 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
+    window->screen.width = GetSystemMetrics(SM_CXSCREEN);
+    window->screen.height = GetSystemMetrics(SM_CYSCREEN);
+    window->properties.width = window->screen.width;
+    window->properties.height = window->screen.height;
+
     WNDCLASS windowclass = {0};
     HINSTANCE instance = GetModuleHandle(KD_NULL);
     GetClassInfo(instance, "", &windowclass);
@@ -11952,7 +11951,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
     RegisterClass(&windowclass);
     window->nativewindow = CreateWindow(window->properties.caption, window->properties.caption, WS_POPUP | WS_VISIBLE, 0, 0,
-        GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+        window->properties.width, window->properties.height,
         KD_NULL, KD_NULL, instance, KD_NULL);
     /* Activate raw input */
     RAWINPUTDEVICE device[2];
@@ -11970,6 +11969,23 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
     window->xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
+    /* Determine size of primary display. */
+    xcb_connection_t* dummyconnection = xcb_connect(KD_NULL, KD_NULL);
+    xcb_screen_t* dummyscreen = xcb_setup_roots_iterator(xcb_get_setup(dummyconnection)).data;
+    xcb_window_t dummywindow = xcb_generate_id(dummyconnection);
+    xcb_create_window(dummyconnection, 0, dummywindow, dummyscreen->root, 0, 0, 1, 1, 0, 0, 0, 0, 0);
+    xcb_flush(dummyconnection);
+    xcb_randr_get_screen_resources_cookie_t dummyscreencookie = xcb_randr_get_screen_resources(dummyconnection, dummywindow);
+    xcb_randr_get_screen_resources_reply_t* dummyscreenreply = xcb_randr_get_screen_resources_reply(dummyconnection, dummyscreencookie, 0);
+    xcb_randr_crtc_t* crtc = xcb_randr_get_screen_resources_crtcs(dummyscreenreply);
+    xcb_randr_get_crtc_info_cookie_t crtccookie = xcb_randr_get_crtc_info(dummyconnection, crtc[0], 0);
+    xcb_randr_get_crtc_info_reply_t* crtcreply = xcb_randr_get_crtc_info_reply(dummyconnection, crtccookie, NULL);
+    window->screen.width = crtcreply->width;
+    window->screen.height = crtcreply->height;
+    window->properties.width = window->screen.width;
+    window->properties.height = window->screen.height;
+    xcb_disconnect(dummyconnection);
+
 #if defined(KD_WINDOW_WAYLAND)
     if(__kd_wl_display)
     {
@@ -11981,12 +11997,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         window->wayland.registry = wl_display_get_registry(window->nativedisplay);
         wl_registry_add_listener(window->wayland.registry, &__kd_wl_registry_listener, window);
         wl_display_roundtrip(window->nativedisplay);
-
-        xcb_connection_t *connection = xcb_connect(KD_NULL, KD_NULL);
-        xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data;
-        window->properties.width = screen->width_in_pixels;
-        window->properties.height = screen->height_in_pixels;
-        xcb_disconnect(connection);
+        wl_shell_surface_add_listener(window->wayland.shell_surface, &__kd_wl_shell_surface_listener, window);
     }
 #endif
 
@@ -12003,9 +12014,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
             window->nativedisplay = xcb_connect(KD_NULL, KD_NULL);
         }
         xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(window->nativedisplay)).data;
-        window->properties.width = screen->width_in_pixels;
-        window->properties.height = screen->height_in_pixels;
-
         window->nativewindow = (void *)(KDuintptr)xcb_generate_id(window->nativedisplay);
 
         KDuint32 mask = XCB_CW_EVENT_MASK;
@@ -12015,14 +12023,10 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
             XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW};
 
         xcb_create_window(window->nativedisplay, screen->root_depth, (KDuintptr)window->nativewindow,
-            screen->root, 0, 0, window->properties.width, window->properties.height, 0,
-            XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
+            screen->root, 0, 0, window->properties.width, window->properties.height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
 
-        xcb_ewmh_connection_t ewmh;
-        xcb_intern_atom_cookie_t *ewmhcookie = xcb_ewmh_init_atoms(window->nativedisplay, &ewmh);
-        xcb_ewmh_init_atoms_replies(&ewmh, ewmhcookie, KD_NULL);
-        xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
-            ewmh._NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, &(ewmh._NET_WM_STATE_FULLSCREEN));
+        xcb_intern_atom_cookie_t *ewmhcookie = xcb_ewmh_init_atoms(window->nativedisplay, &window->xcb.ewmh);
+        xcb_ewmh_init_atoms_replies(&window->xcb.ewmh, ewmhcookie, KD_NULL);
 
         xcb_intern_atom_cookie_t protcookie = xcb_intern_atom(window->nativedisplay, 1, 12, "WM_PROTOCOLS");
         xcb_intern_atom_reply_t *protreply = xcb_intern_atom_reply(window->nativedisplay, protcookie, 0);
@@ -12138,13 +12142,54 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UN
     return -1;
 }
 
-KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDint32 *param)
+KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, const KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-
 #if defined(KD_WINDOW_EMSCRIPTEN)
         emscripten_set_canvas_size(param[0], param[1]);
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+        KDboolean fullscreen = (param[0] == window->screen.width) && (param[1] == window->screen.height);
+
+#if defined(KD_WINDOW_WAYLAND)   
+        if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            if(fullscreen)
+            {
+                wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);  
+            }
+            else
+            {
+                wl_shell_surface_set_toplevel(window->wayland.shell_surface);
+            }
+            if(window->nativewindow)
+            {
+                wl_egl_window_resize(window->nativewindow, param[0], param[1], 0, 0);
+            }
+        }
+#endif
+#if defined(KD_WINDOW_X11)
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            xcb_size_hints_t hints;
+            kdMemset(&hints, 0, sizeof(hints));
+            xcb_icccm_size_hints_set_min_size(&hints, param[0], param[1]);
+            xcb_icccm_size_hints_set_base_size(&hints, param[0], param[1]);
+            xcb_icccm_size_hints_set_max_size(&hints, param[0], param[1]);
+            xcb_icccm_size_hints_set_size(&hints, 0, param[0], param[1]);
+            xcb_icccm_size_hints_set_position(&hints, 0, 0, 0);
+            xcb_icccm_set_wm_size_hints(window->nativedisplay, (KDuintptr)window->nativewindow, XCB_ATOM_WM_NORMAL_HINTS, &hints);  
+            xcb_flush(window->nativedisplay);
+
+            if(fullscreen)
+            {
+                xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
+                    window->xcb.ewmh._NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, &(window->xcb.ewmh._NET_WM_STATE_FULLSCREEN));
+                xcb_flush(window->nativedisplay);
+            }
+
+        }
+#endif   
 #else
         kdSetError(KD_EINVAL);
         return -1;
@@ -12178,8 +12223,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 #if defined(KD_WINDOW_X11)
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
-                XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, kdStrlen(param), param);
+            xcb_icccm_set_wm_name(window->nativedisplay, (KDuintptr)window->nativewindow, XCB_ATOM_STRING, 8, kdStrlen(window->properties.caption), window->properties.caption);
             xcb_flush(window->nativedisplay);
         }
 #endif
@@ -12237,6 +12281,11 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
+    kdSetWindowPropertyiv(window, KD_WINDOWPROPERTY_SIZE, (const KDint32[2]){window->properties.width, window->properties.height});
+    kdSetWindowPropertycv(window, KD_WINDOWPROPERTY_CAPTION, window->properties.caption);
+    window->properties.focused = 1;
+    window->properties.visible = 1;
+
 #if defined(KD_WINDOW_ANDROID)
     for(;;)
     {
@@ -12267,12 +12316,10 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
     emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
     emscripten_set_visibilitychange_callback(0, 0, 1, __kd_EmscriptenVisibilityCallback);
-#else
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
-        wl_shell_surface_add_listener(window->wayland.shell_surface, &__kd_wl_shell_surface_listener, window);
-        wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);
         window->nativewindow = wl_egl_window_create(window->wayland.surface, window->properties.width, window->properties.height);
     }
 #endif
@@ -12284,8 +12331,6 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
 #endif
 #endif
-    window->properties.focused = 1;
-    window->properties.visible = 1;
 
     KDEvent *kdevent = kdCreateEvent();
     kdevent->userptr = window->eventuserptr;
