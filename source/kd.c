@@ -1414,6 +1414,8 @@ struct KDWindow {
 #endif
 };
 
+static KDWindow *__kd_window = KD_NULL;
+
 #ifdef __ANDROID__
 static AInputQueue *__kd_androidinputqueue = KD_NULL;
 static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
@@ -2694,7 +2696,6 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
 }
 #endif
 
-static KDWindow *__kd_window = KD_NULL;
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
@@ -12212,7 +12213,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
     if(pname == KD_WINDOWPROPERTY_CAPTION)
     {
 #if defined(KD_WINDOW_WIN32)
-        SetWindowTextA(window->nativewindow, param) 
+        SetWindowTextA(window->nativewindow, param);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
