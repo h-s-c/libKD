@@ -2836,8 +2836,6 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     else if(raw->header.dwType == RIM_TYPEKEYBOARD)
                     {
                         kdevent->type = KD_EVENT_INPUT_KEY_ATX;
-                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
-
                         KDint32 character = 0;
 #if defined(_MSC_VER)
 #pragma warning(push)
