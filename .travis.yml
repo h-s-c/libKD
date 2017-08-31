@@ -3,11 +3,10 @@ language: c
 cache:
   directories:
     - 'ci-tools/cache'
-    - '$HOME/.sonar/cache'
 
 jobs:
   include:
-    - stage: Compiler compatibility testing (linux)
+    - stage: Testing (linux)
       os: linux
       compiler: gcc-7
       dist: trusty
@@ -164,7 +163,7 @@ jobs:
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - stage: Compiler compatibility testing (macos)
+    - stage: Testing (macos)
       os: osx
       compiler: clang
       osx_image: xcode9
@@ -217,23 +216,7 @@ jobs:
         - python ci-tools/install_cmake.py  
       script: python ci-tools/run_ctest.py
 
-    - stage: Deployment (sonarqube)
-      os: linux
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          packages: ['ninja-build', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev', 'ca-certificates']
-        sonarcloud:
-          organization: "h-s-c-github"
-          token:
-            secure: "oiJDye/8tc0ZKf/6u69CLHjPz99mOHgD1+q9zFkqStsIe+qzo+JWgP/xSDWPkTpL5osMAMKLIMzo/DFYmiZwrCS3AfwaHFOogNoY5FwuEj7CF9z3yPcWzU4mNTNVG9PSIAFskwMs6AwYikQkxVYqmPcS8Pzs5sWgTkxYODBgAzM="
-      install: python ci-tools/install_cmake.py
-      script:
-        - build-wrapper-linux-x86-64 --out-dir bw-output python ci-tools/run_ctest.py
-        - sonar-scanner
-
-    - stage: Deployment (coverity)
+    - stage: Testing (coverity)
       os: linux
       dist: trusty
       sudo: required
