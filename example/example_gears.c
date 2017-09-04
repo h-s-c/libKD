@@ -286,30 +286,6 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 }
 
 /** 
- * Rotates a 4x4 matrix.
- * 
- * @param[in,out] m the matrix to rotate
- * @param angle the angle to rotate
- * @param x the x component of the direction to rotate to
- * @param y the y component of the direction to rotate to
- * @param z the z component of the direction to rotate to
- */
-static void
-rotate(GLfloat *m, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
-{
-    KDfloat64KHR s = kdSinKHR(angle);
-    KDfloat64KHR c = kdCosKHR(angle);
-
-    GLfloat r[16] = {
-        x * x * (1 - c) + c, y * x * (1 - c) + z * s, x * z * (1 - c) - y * s, 0,
-        x * y * (1 - c) - z * s, y * y * (1 - c) + c, y * z * (1 - c) + x * s, 0,
-        x * z * (1 - c) + y * s, y * z * (1 - c) - x * s, z * z * (1 - c) + c, 0,
-        0, 0, 0, 1};
-
-    exampleMatrixMultiply(m, r);
-}
-
-/** 
  * Transposes a 4x4 matrix.
  *
  * @param m the matrix to transpose
@@ -412,7 +388,7 @@ draw_gear(struct gear *gear, GLfloat *transform,
     /* Translate and rotate the gear */
     kdMemcpy(model_view, transform, sizeof(model_view));
     exampleMatrixTranslate(model_view, x, y, 0);
-    rotate(model_view, 2 * KD_PI_F * angle / 360.0, 0, 0, 1);
+    exampleMatrixRotate(model_view, angle, 0, 0, 1);
 
     /* Create and set the ModelViewProjectionMatrix */
     kdMemcpy(model_view_projection, ProjectionMatrix, sizeof(model_view_projection));
@@ -473,9 +449,9 @@ gears_draw(GLfloat angle)
 
     /* Translate and rotate the view */
     exampleMatrixTranslate(transform, 0, 0, -20);
-    rotate(transform, 2 * KD_PI_F * view_rot[0] / 360.0, 1, 0, 0);
-    rotate(transform, 2 * KD_PI_F * view_rot[1] / 360.0, 0, 1, 0);
-    rotate(transform, 2 * KD_PI_F * view_rot[2] / 360.0, 0, 0, 1);
+    exampleMatrixRotate(transform, view_rot[0], 1, 0, 0);
+    exampleMatrixRotate(transform, view_rot[1], 0, 1, 0);
+    exampleMatrixRotate(transform, view_rot[2], 0, 0, 1);
 
     /* Draw the gears */
     draw_gear(gear1, transform, -3.0, -2.0, angle, red);
@@ -493,35 +469,12 @@ static void
 gears_reshape(KDint width, KDint height)
 {
     /* Update the projection matrix */
-    perspective(ProjectionMatrix, 60.0, (KDfloat32)width / height, 1.0, 1024.0);
+    exampleMatrixIdentity(ProjectionMatrix);
+    exampleMatrixPerspective(ProjectionMatrix, 60.0, (KDfloat32)width / height, 1.0, 1024.0);
 
     /* Set the viewport */
     glViewport(0, 0, (GLint)width, (GLint)height);
 }
-
-/** 
- * Handles special glut events.
- * 
- * @param special the event to handle.
- */
-/*static void
-gears_special(int special, int crap, int morecrap)
-{
-   switch (special) {
-      case GLUT_KEY_LEFT:
-         view_rot[1] += 5.0;
-         break;
-      case GLUT_KEY_RIGHT:
-         view_rot[1] -= 5.0;
-         break;
-      case GLUT_KEY_UP:
-         view_rot[0] += 5.0;
-         break;
-      case GLUT_KEY_DOWN:
-         view_rot[0] -= 5.0;
-         break;
-   }
-}*/
 
 static const char vertex_shader[] =
     "attribute vec3 position;\n"
@@ -617,6 +570,33 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 {
                     run = KD_FALSE;
                     break;
+                }
+                case(KD_EVENT_INPUT_KEY_ATX):
+                {
+                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                    switch(keyevent->keycode) 
+                    {
+                        case(KD_KEY_LEFT_ATX):
+                        { 
+                            view_rot[1] += 5.0;
+                            break;
+                        }
+                        case(KD_KEY_RIGHT_ATX):
+                        { 
+                            view_rot[1] -= 5.0;
+                            break;
+                        }
+                        case(KD_KEY_UP_ATX):
+                        {
+                            view_rot[0] += 5.0;
+                            break;
+                        }
+                        case(KD_KEY_DOWN_ATX):
+                        {
+                            view_rot[0] -= 5.0;
+                            break;
+                        }
+                    }
                 }
                 default:
                 {

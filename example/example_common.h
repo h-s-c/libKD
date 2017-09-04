@@ -484,19 +484,7 @@ void exampleMatrixRotate(Matrix4x4 m, KDfloat32 angle, KDfloat32 x, KDfloat32 y,
     KDfloat32 c = kdCosf(r);
     KDfloat32 one_c = 1.0f - c;
     KDfloat32 xx, yy, zz, xy, yz, xz, xs, ys, zs;
-    KDfloat32 norm = kdSqrtf(x * x + y * y + z * z);
-    if (norm > 0)
-    {
-        x /= norm;
-        y /= norm;
-        z /= norm;
-    }
-
-    if (norm == 0 || angle == 0)
-    {
-        return;
-    }
-
+    
     xx = x * x;
     yy = y * y;
     zz = z * z;
