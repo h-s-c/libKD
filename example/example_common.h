@@ -34,6 +34,32 @@ extern "C" {
 #endif
 
 /****************************************************************************** 
+ * General
+ ******************************************************************************/
+
+typedef struct Example {
+    KDboolean run;
+    void *userptr;
+    struct
+    {
+        EGLDisplay display;
+        EGLConfig config;
+        EGLSurface surface;
+        EGLContext context;
+        EGLint *attrib_list;
+        EGLNativeWindowType window;
+    } egl;
+    struct
+    {
+        KDWindow *window;
+    } kd;
+} Example;
+
+Example *exampleInit(void);
+KDboolean exampleRun(Example *example);
+KDint exampleDestroy(Example *example);
+
+/****************************************************************************** 
  * OpenGL ES 2.0 
  ******************************************************************************/
 
@@ -62,6 +88,184 @@ static void exampleMatrixTranslate(Matrix4x4 m, KDfloat32 x, KDfloat32 y, KDfloa
 #endif
 
 #ifdef EXAMPLE_COMMON_IMPLEMENTATION
+
+/****************************************************************************** 
+ * General
+ ******************************************************************************/
+
+static void KD_APIENTRY exampleCallbackKD(const KDEvent *event)
+{
+    switch(event->type)
+    {
+        case(KD_EVENT_QUIT):
+        {
+            Example *example = event->userptr;
+            example->run = KD_FALSE;
+            break;
+        }
+        default:
+        {
+            kdDefaultEvent(event);
+            break;
+        }
+    }
+}
+
+#if defined(GL_KHR_debug)
+static void GL_APIENTRY exampleCallbackGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+    kdLogMessage(message);
+}
+#endif
+
+Example *exampleInit(void)
+{
+    Example *example = (Example *)kdMalloc(sizeof (Example));
+
+    const EGLint egl_attributes[] =
+    {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, EGL_DONT_CARE,
+        EGL_DEPTH_SIZE, 16,
+        EGL_STENCIL_SIZE, EGL_DONT_CARE,
+#if defined(__EMSCRIPTEN__) 
+        EGL_SAMPLE_BUFFERS, 0, 
+#else 
+        EGL_SAMPLE_BUFFERS, 1, 
+        EGL_SAMPLES, 4, 
+#endif 
+        EGL_NONE
+    };
+
+    EGLint context_attributes[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION,
+        2,
+#if defined(EGL_KHR_create_context)
+        EGL_CONTEXT_FLAGS_KHR,
+        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
+#endif
+        EGL_NONE,
+    };
+    
+    example->egl.attrib_list = kdMalloc(sizeof(context_attributes));
+    kdMemcpy(example->egl.attrib_list, context_attributes, sizeof(context_attributes));
+
+    example->egl.display = eglGetDisplay(kdGetDisplayVEN());
+
+    eglInitialize(example->egl.display, 0, 0);
+    eglBindAPI(EGL_OPENGL_ES_API);
+
+    EGLint egl_num_configs = 0;
+    eglChooseConfig(example->egl.display, egl_attributes, &example->egl.config, 1, &egl_num_configs);
+
+    example->kd.window = kdCreateWindow(example->egl.display, example->egl.config, KD_NULL);
+    kdRealizeWindow(example->kd.window, &example->egl.window);
+
+    example->egl.surface = eglCreateWindowSurface(example->egl.display, example->egl.config, example->egl.window, KD_NULL);
+    example->egl.context = eglCreateContext(example->egl.display, example->egl.config, EGL_NO_CONTEXT, example->egl.attrib_list);
+
+    eglMakeCurrent(example->egl.display, example->egl.surface, example->egl.surface, example->egl.context);
+
+    if(eglGetError() != EGL_SUCCESS)
+    {
+        kdAssert(0);
+    }
+
+#if defined(GL_KHR_debug)
+    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
+    {
+        glEnable(GL_DEBUG_OUTPUT_KHR);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+        PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
+        glDebugMessageCallback(&exampleCallbackGL, KD_NULL);
+    }
+#endif
+
+    /* Debug message */
+    kdLogMessage("-----KD-----\n");
+    kdLogMessagefKHR("Vendor: %s\n", kdQueryAttribcv(KD_ATTRIB_VENDOR));
+    kdLogMessagefKHR("Version: %s\n", kdQueryAttribcv(KD_ATTRIB_VERSION));
+    kdLogMessagefKHR("Platform: %s\n", kdQueryAttribcv(KD_ATTRIB_PLATFORM));
+    kdLogMessage("-----EGL-----\n");
+    kdLogMessagefKHR("Vendor: %s\n", eglQueryString(example->egl.display, EGL_VENDOR));
+    kdLogMessagefKHR("Version: %s\n", eglQueryString(example->egl.display, EGL_VERSION));
+    kdLogMessagefKHR("Client APIs: %s\n", eglQueryString(example->egl.display, EGL_CLIENT_APIS));
+    kdLogMessagefKHR("Extensions: %s\n", eglQueryString(example->egl.display, EGL_EXTENSIONS));
+    kdLogMessage("-----GLES2-----\n");
+    kdLogMessagefKHR("Vendor: %s\n", (const KDchar *)glGetString(GL_VENDOR));
+    kdLogMessagefKHR("Version: %s\n", (const KDchar *)glGetString(GL_VERSION));
+    kdLogMessagefKHR("Renderer: %s\n", (const KDchar *)glGetString(GL_RENDERER));
+    kdLogMessagefKHR("Extensions: %s\n", (const KDchar *)glGetString(GL_EXTENSIONS));
+    kdLogMessage("---------------\n");
+
+    kdInstallCallback(&exampleCallbackKD, KD_EVENT_QUIT, example);
+
+    return example;
+}
+
+KDboolean exampleRun(Example *example)
+{
+    if(eglSwapBuffers(example->egl.display, example->egl.surface) == EGL_FALSE)
+    {
+        EGLint egl_error = eglGetError();
+        switch(egl_error)
+        {
+            case(EGL_BAD_SURFACE):
+            {
+                eglMakeCurrent(example->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglDestroySurface(example->egl.display, example->egl.surface);
+                kdRealizeWindow(example->kd.window, &example->egl.window);
+                example->egl.surface = eglCreateWindowSurface(example->egl.display, example->egl.config, example->egl.window, KD_NULL);
+                eglMakeCurrent(example->egl.display, example->egl.surface, example->egl.surface, example->egl.context);
+                break;
+            }
+            case(EGL_BAD_MATCH):
+            case(EGL_BAD_CONTEXT):
+            case(EGL_CONTEXT_LOST):
+            {
+                eglMakeCurrent(example->egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglDestroyContext(example->egl.display, example->egl.context);
+                example->egl.context = eglCreateContext(example->egl.display, example->egl.config, EGL_NO_CONTEXT, example->egl.attrib_list);
+                eglMakeCurrent(example->egl.display, example->egl.surface, example->egl.surface, example->egl.context);
+                break;
+            }
+            case(EGL_BAD_DISPLAY):
+            case(EGL_NOT_INITIALIZED):
+            case(EGL_BAD_ALLOC):
+            {
+                kdAssert(0);
+                break;
+            }
+            default:
+            {
+                kdAssert(0);
+                break;
+            }
+        }
+        return KD_FALSE;
+    }
+    else
+    {
+        return KD_TRUE;
+    }
+}
+
+KDint exampleDestroy(Example *example)
+{
+    eglMakeCurrent(KD_NULL, KD_NULL, KD_NULL, KD_NULL);
+    eglDestroyContext(example->egl.display, example->egl.context);
+    eglDestroySurface(example->egl.display, example->egl.surface);
+    eglTerminate(example->egl.display);
+    kdDestroyWindow(example->kd.window);
+    kdFree(example->egl.attrib_list);
+    kdFree(example);
+    return 0;
+}
 
 /****************************************************************************** 
  * OpenGL ES 2.0 

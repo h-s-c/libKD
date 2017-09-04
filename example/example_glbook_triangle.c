@@ -22,22 +22,15 @@ typedef struct
 {
     // Handle to a program object
     GLuint programObject;
-
-    // EGL handles
-    EGLDisplay eglDisplay;
-    EGLContext eglContext;
-    EGLSurface eglSurface;
-
-    //KD handles
-    KDWindow *window;
 } UserData;
-
 
 ///
 // Initialize the shader and program object
 //
-KDboolean Init(UserData *userData)
+KDboolean Init(Example *example)
 {
+    UserData *userData = (UserData *)example->userptr;
+
     const KDchar *vShaderStr =
         "attribute vec4 vPosition;    \n"
         "void main()                  \n"
@@ -65,8 +58,10 @@ KDboolean Init(UserData *userData)
 ///
 // Draw a triangle using the shader pair created in Init()
 //
-void Draw(UserData *userData)
+void Draw(Example *example)
 {
+    UserData *userData = (UserData *)example->userptr;
+
     GLfloat vVertices[] = {
         0.0f, 0.5f, 0.0f,
         -0.5f, -0.5f, 0.0f,
@@ -81,8 +76,8 @@ void Draw(UserData *userData)
     // Set the viewport
     EGLint width = 0; 
     EGLint height = 0;
-    eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_WIDTH, &width);
-    eglQuerySurface(userData->eglDisplay, userData->eglSurface, EGL_HEIGHT, &height);
+    eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
+    eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
     glViewport(0, 0, width, height);
 
     // Clear the color buffer
@@ -97,52 +92,8 @@ void Draw(UserData *userData)
     glEnableVertexAttribArray(0);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
 }
 
-///
-// InitEGLContext()
-//
-//    Initialize an EGL rendering context and all associated elements
-//
-EGLBoolean InitEGLContext(UserData *userData,
-    EGLConfig config)
-{
-    EGLContext context;
-    EGLSurface surface;
-    EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE};
-
-    // Get native window handle
-    EGLNativeWindowType hWnd;
-    if(kdRealizeWindow(userData->window, &hWnd) != 0)
-    {
-        return EGL_FALSE;
-    }
-    surface = eglCreateWindowSurface(userData->eglDisplay, config, hWnd, KD_NULL);
-    if(surface == EGL_NO_SURFACE)
-    {
-        return EGL_FALSE;
-    }
-
-    // Create a GL context
-    context = eglCreateContext(userData->eglDisplay, config, EGL_NO_CONTEXT, contextAttribs);
-    if(context == EGL_NO_CONTEXT)
-    {
-        return EGL_FALSE;
-    }
-
-    // Make the context current
-    if(!eglMakeCurrent(userData->eglDisplay, surface, surface, context))
-    {
-        return EGL_FALSE;
-    }
-
-    userData->eglContext = context;
-    userData->eglSurface = surface;
-
-    return EGL_TRUE;
-}
 
 ///
 // kdMain()
@@ -151,86 +102,39 @@ EGLBoolean InitEGLContext(UserData *userData,
 //
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    EGLint attribList[] =
-        {
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL_RED_SIZE, 8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE, 8,
-            EGL_ALPHA_SIZE, EGL_DONT_CARE,
-            EGL_DEPTH_SIZE, EGL_DONT_CARE,
-            EGL_STENCIL_SIZE, EGL_DONT_CARE,
-            EGL_SAMPLE_BUFFERS, 0,
-            EGL_NONE};
+    Example *example = exampleInit();
 
-    EGLint majorVersion, minorVersion;
     UserData userData;
-    EGLint numConfigs;
-    EGLConfig config;
-
-    userData.eglDisplay = eglGetDisplay(kdGetDisplayVEN());
-
-    // Initialize EGL
-    if(!eglInitialize(userData.eglDisplay, &majorVersion, &minorVersion))
-    {
-        return EGL_FALSE;
-    }
-
-    // Get configs
-    if(!eglGetConfigs(userData.eglDisplay, KD_NULL, 0, &numConfigs))
-    {
-        return EGL_FALSE;
-    }
-
-    // Choose config
-    if(!eglChooseConfig(userData.eglDisplay, attribList, &config, 1, &numConfigs))
-    {
-        return EGL_FALSE;
-    }
-
-    // Use OpenKODE to create a Window
-    userData.window = kdCreateWindow(userData.eglDisplay, config, KD_NULL);
-    if(!userData.window)
-    {
-        kdExit(0);
-    }
-
-    if(!InitEGLContext(&userData, config))
-    {
-        kdExit(0);
-    }
-
-    if(!Init(&userData))
-    {
-        kdExit(0);
-    }
+    example->userptr = &userData;
+    Init(example);
 
     // Main Loop
-    while(1)
+    KDboolean run = KD_TRUE;
+    while(run)
     {
-        // Wait for an event
-        const KDEvent *evt = kdWaitEvent(0);
-        if(evt)
+        const KDEvent *event = kdWaitEvent(-1);
+        if(event)
         {
-            // Exit app
-            if(evt->type == KD_EVENT_QUIT || evt->type == KD_EVENT_WINDOW_CLOSE)
+            switch(event->type)
             {
-                break;
+                case(KD_EVENT_QUIT):
+                case(KD_EVENT_WINDOW_CLOSE):
+                {
+                    run = KD_FALSE;
+                    break;
+                }
+                default:
+                {
+                    kdDefaultEvent(event);
+                    break;
+                }
             }
         }
 
         // Draw frame
-        Draw(&userData);
+        Draw(example);
+        run = run ? exampleRun(example) : KD_FALSE;
     }
 
-    // EGL clean up
-    eglMakeCurrent(0, 0, 0, 0);
-    eglDestroySurface(userData.eglDisplay, userData.eglSurface);
-    eglDestroyContext(userData.eglDisplay, userData.eglContext);
-
-    // Destroy the window
-    kdDestroyWindow(userData.window);
-
-    return 0;
+    return exampleDestroy(example);
 }

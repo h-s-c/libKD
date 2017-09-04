@@ -1171,64 +1171,7 @@ KDboolean AudioStreamUpdate(AUDIOSTREAM *self)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    const EGLint egl_attributes[] =
-    {
-        EGL_SURFACE_TYPE,
-        EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,
-        EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,
-        8,
-        EGL_GREEN_SIZE,
-        8,
-        EGL_BLUE_SIZE,
-        8,
-        EGL_ALPHA_SIZE,
-        EGL_DONT_CARE,
-        EGL_DEPTH_SIZE,
-        16,
-        EGL_STENCIL_SIZE,
-        EGL_DONT_CARE,
-#if defined(__EMSCRIPTEN__)
-        EGL_SAMPLE_BUFFERS,
-        0,
-#else
-        EGL_SAMPLE_BUFFERS,
-        1,
-        EGL_SAMPLES,
-        4,
-#endif
-        EGL_NONE
-    };
-
-    const EGLint egl_context_attributes[] =
-        {
-            EGL_CONTEXT_CLIENT_VERSION, 2,
-            EGL_NONE,
-        };
-
-    EGLDisplay egl_display = eglGetDisplay(kdGetDisplayVEN());
-
-    eglInitialize(egl_display, 0, 0);
-    eglBindAPI(EGL_OPENGL_ES_API);
-
-    EGLint egl_num_configs = 0;
-    EGLConfig egl_config;
-    eglChooseConfig(egl_display, egl_attributes, &egl_config, 1, &egl_num_configs);
-    EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
-
-    KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
-    EGLNativeWindowType native_window;
-    kdRealizeWindow(kd_window, &native_window);
-
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
-
-    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-
-    if(eglGetError() != EGL_SUCCESS)
-    {
-        kdAssert(0);
-    }
+    Example *example = exampleInit();
 
     appInit();
 
@@ -1261,11 +1204,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
         EGLint width = 0; 
         EGLint height = 0;
-        eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
-        eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
+        eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
+        eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
         appRender(kdGetTimeUST() / 1000000, width, height);
-        eglSwapBuffers(egl_display, egl_surface);
         AudioStreamUpdate(&sAudioStream);
+        gAppAlive = gAppAlive ? exampleRun(example) : 0;
     }
 
     AudioStreamDeinit(&sAudioStream);
@@ -1275,11 +1218,5 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     appDeinit();
 
-    eglDestroyContext(egl_display, egl_context);
-    eglDestroySurface(egl_display, egl_surface);
-    eglTerminate(egl_display);
-
-    kdDestroyWindow(kd_window);
-
-    return 0;
+    return exampleDestroy(example);
 }

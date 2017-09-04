@@ -570,29 +570,10 @@ gears_init(void)
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    /* Compile the vertex shader */
-    p = vertex_shader;
-    v = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(v, 1, &p, KD_NULL);
-    glCompileShader(v);
-    glGetShaderInfoLog(v, sizeof msg, KD_NULL, msg);
-
-    /* Compile the fragment shader */
-    p = fragment_shader;
-    f = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(f, 1, &p, KD_NULL);
-    glCompileShader(f);
-    glGetShaderInfoLog(f, sizeof msg, KD_NULL, msg);
-
     /* Create and link the shader program */
-    program = glCreateProgram();
-    glAttachShader(program, v);
-    glAttachShader(program, f);
+    program = exampleCreateProgram(vertex_shader, fragment_shader);
     glBindAttribLocation(program, 0, "position");
     glBindAttribLocation(program, 1, "normal");
-
-    glLinkProgram(program);
-    glGetProgramInfoLog(program, sizeof msg, KD_NULL, msg);
 
     /* Enable the shaders */
     glUseProgram(program);
@@ -614,47 +595,7 @@ gears_init(void)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    const EGLint egl_attributes[] =
-        {
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL_RED_SIZE, 8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE, 8,
-            EGL_ALPHA_SIZE, EGL_DONT_CARE,
-            EGL_DEPTH_SIZE, 16,
-            EGL_STENCIL_SIZE, EGL_DONT_CARE,
-            EGL_SAMPLE_BUFFERS, 0,
-            EGL_NONE};
-
-    const EGLint egl_context_attributes[] =
-        {
-            EGL_CONTEXT_CLIENT_VERSION, 2,
-            EGL_NONE,
-        };
-
-    EGLDisplay egl_display = eglGetDisplay(kdGetDisplayVEN());
-
-    eglInitialize(egl_display, 0, 0);
-    eglBindAPI(EGL_OPENGL_ES_API);
-
-    EGLint egl_num_configs = 0;
-    EGLConfig egl_config;
-    eglChooseConfig(egl_display, egl_attributes, &egl_config, 1, &egl_num_configs);
-    EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
-
-    KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
-    EGLNativeWindowType native_window;
-    kdRealizeWindow(kd_window, &native_window);
-
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
-
-    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-
-    if(eglGetError() != EGL_SUCCESS)
-    {
-        kdAssert(0);
-    }
+    Example *example = exampleInit();
 
     KDust t1 = kdGetTimeUST();
     KDfloat32 deltatime;
@@ -663,8 +604,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     GLfloat angle = 0.0f;
 
     gears_init();
-    KDboolean quit = KD_FALSE;
-    while(!quit)
+    KDboolean run = KD_TRUE;
+    while(run)
     {
         const KDEvent *event = kdWaitEvent(-1);
         if(event)
@@ -674,7 +615,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    quit = KD_TRUE;
+                    run = KD_FALSE;
                     break;
                 }
                 default:
@@ -687,8 +628,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
         EGLint width = 0; 
         EGLint height = 0;
-        eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
-        eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
+        eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
+        eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
         gears_reshape(width, height);
 
         KDust t2 = kdGetTimeUST();
@@ -702,7 +643,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             angle -= 3600.0;
         }
         gears_draw(angle);
-        eglSwapBuffers(egl_display, egl_surface);
+        run = run ? exampleRun(example) : KD_FALSE;
 
         /* Benchmark */
         totaltime += deltatime;
@@ -710,16 +651,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         if(totaltime > 5.0f)
         {
             kdLogMessagefKHR("%d frames in %3.1f seconds = %6.3f FPS\n", frames, totaltime, frames / totaltime);
-            totaltime -= 2.0f;
+            totaltime -= 5.0f;
             frames = 0;
         }
     }
 
-    eglDestroyContext(egl_display, egl_context);
-    eglDestroySurface(egl_display, egl_surface);
-    eglTerminate(egl_display);
-
-    kdDestroyWindow(kd_window);
-
-    return 0;
+    return exampleDestroy(example);
 }
