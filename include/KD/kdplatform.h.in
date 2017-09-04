@@ -60,6 +60,14 @@
 #   define KD_DEPRECATED
 #endif
 
+#if defined(__SANITIZE_ADDRESS__)
+#   define KD_ASAN
+#elif defined(__has_feature)
+#   if __has_feature(address_sanitizer)
+#       define KD_ASAN
+#   endif
+#endif
+
 #if defined(__EMSCRIPTEN__)
 #   define KD_ATOMIC_MUTEX
 //#   define KD_THREAD_EMSCRIPTEN
