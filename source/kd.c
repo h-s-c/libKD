@@ -9438,7 +9438,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
     {
         return 0;
     }
-#if defined(__SSE4_2__)
+#if defined(__SSE4_2__) && !defined(__SANITIZE_ADDRESS__)
     __m128i *ptr1 = (__m128i *)(KDchar *)str1;
     __m128i *ptr2 = (__m128i *)(KDchar *)str2;
 
@@ -9494,7 +9494,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
     const KDchar *s = str;
-#if defined(__SSE4_2__)
+#if defined(__SSE4_2__) && !defined(__SANITIZE_ADDRESS__)
     KDsize result = 0;
     const __m128i zeros = _mm_setzero_si128();
     __m128i *mem = (__m128i *)(KDchar *)s;
@@ -9518,7 +9518,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
             return result + idx;
         }
     }
-#elif defined(__SSE4_1__)
+#elif defined(__SSE4_1__) && !defined(__SANITIZE_ADDRESS__)
     KDsize result = 0;
     const __m128i zeros = _mm_setzero_si128();
     __m128i *mem = (__m128i *)(KDchar *)s;
@@ -9537,7 +9537,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 
     kdAssert(0);
     return 0;
-#elif defined(__SSE2__) || defined(__ARM_NEON__)
+#elif (defined(__SSE2__) && !defined(__SANITIZE_ADDRESS__)) || defined(__ARM_NEON__)
 #if defined(__SSE2__)
     __m128i c16 = _mm_set1_epi8(0);
 #elif defined(__ARM_NEON__)
