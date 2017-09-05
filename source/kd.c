@@ -3995,21 +3995,14 @@ kdMalloc(KDsize size)
     void *result = KD_NULL;
 #if defined(_WIN32)
     result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
 #else
-    result = mmap(0, size + sizeof(KDsize), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    result = malloc(size);
+#endif
     if(result == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    *(KDsize *)result = size;
-    result = (KDchar *)result + sizeof(KDsize);
-#endif
     return result;
 }
 
@@ -4021,9 +4014,7 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 #if defined(_WIN32)
         HeapFree(GetProcessHeap(), 0, ptr);
 #else
-        ptr = (KDchar *)ptr - sizeof(KDsize);
-        KDsize size = *(KDsize *)ptr;
-        munmap(ptr, size + sizeof(KDsize));
+        free(ptr);
 #endif
     }
 }
@@ -4038,46 +4029,15 @@ kdRealloc(void *ptr, KDsize size)
     void *result = KD_NULL;
 #if defined(_WIN32)
     result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-#elif defined(__APPLE__)
-    /* HACK */
-    ptr = (KDchar *)ptr - sizeof(KDsize);
-    KDsize oldsize = *(KDsize *)ptr;
-    result = kdMalloc(size);
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    kdMemcpy(result, (KDchar *)ptr + sizeof(KDsize), oldsize);
-    kdFree(ptr);
 #else
-    ptr = (KDchar *)ptr - sizeof(KDsize);
-    KDsize oldsize = *(KDsize *)ptr;
-    result = mremap(ptr, oldsize + sizeof(KDsize), size + sizeof(KDsize), MREMAP_MAYMOVE);
+    result = realloc(ptr, size);
+#endif
     if(result == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    *(KDsize *)result = size;
-    result = (KDchar *)result + sizeof(KDsize);
-#endif
     return result;
-}
-
-KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
-{
-#if defined(_WIN32)
-    return HeapSize(GetProcessHeap(), 0, ptr);
-#else
-    ptr = (KDchar *)ptr - sizeof(KDsize);
-    return *(KDsize *)ptr;
-#endif
 }
 
 /******************************************************************************
@@ -12404,6 +12364,7 @@ typedef struct _KDImageATX {
     KDint width;
     KDint height;
     KDint levels;
+    KDint bpp;
     KDint format;
     KDboolean alpha;
 } _KDImageATX;
@@ -12417,6 +12378,17 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressImageATX(KDImageATX image, KDint32 co
         kdSetError(KD_EINVAL);
         return KD_NULL;
     }
+
+    /* Determine max mipmap levels */
+    KDint width = _image->width;
+    KDint height = _image->height;
+    while((width > 1) && (height > 1))
+    {
+        width >>= 1;
+        height >>= 1;
+        _image->levels++;
+    }
+
     return kdDXTCompressBufferATX(_image->buffer, _image->width, _image->height, comptype, _image->levels);
 }
 
@@ -12469,7 +12441,7 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
     }
 }
 
-KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32 width, KDint32 height, KDint32 comptype, KD_UNUSED KDint32 levels)
+KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32 width, KDint32 height, KDint32 comptype, KDint32 levels)
 {
     _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
     if(image == KD_NULL)
@@ -12477,7 +12449,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    image->levels = 0;
+    image->levels = levels;
     image->width = width;
     image->height = height;
 
@@ -12514,8 +12486,18 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
             return KD_NULL;
         }
     }
+    image->bpp = image->alpha ? 16 : 8;
+    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->bpp/8);
 
-    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->alpha ? 2 : 1);
+    KDint _width = image->width;
+    KDint _height = image->height;
+    for(KDint i = 0; i < image->levels; i++)
+    {
+        _width >>= 1;
+        _height >>= 1;
+        image->size += (KDsize)_width * (KDsize)_height * (KDsize)(image->bpp/8);
+    }
+    
     image->buffer = kdMalloc(image->size);
     if(image->buffer == KD_NULL)
     {
@@ -12524,15 +12506,34 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         return KD_NULL;
     }
 
-    KDuint8 block[64];
-    for(KDint y = 0; y < image->height; y += 4)
+    _width = image->width;
+    _height = image->height;
+    KDint channels = (image->alpha ? 4 : 3);
+    for(KDint i = 0; i <= image->levels; i++)
     {
-        for(KDint x = 0; x < image->width; x += 4)
+        KDsize size = (KDsize)_width * (KDsize)_height * (KDsize)channels;
+        void *tmp = kdMalloc(size);
+        if((_width == image->width) && (_height == image->height))
         {
-            __kdExtractBlock(buffer, x, y, image->width, image->height, block);
-            stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
-            image->buffer += image->alpha ? 16 : 8;
+            kdMemcpy(tmp, buffer, size);
         }
+        else
+        {
+            stbir_resize_uint8(buffer, image->width, image->height, 0, tmp, _width, _height, 0, channels);
+        }
+        for(KDint y = 0; y < _height; y += 4)
+        {
+            for(KDint x = 0; x < _width; x += 4)
+            {
+                KDuint8 block[64];
+                __kdExtractBlock(tmp, x, y, _width, _height, block);
+                stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
+                image->buffer += image->bpp;
+            }
+        }
+        kdFree(tmp);
+        _width >>= 1;
+        _height >>= 1;
     }
 
     return image;
@@ -12677,6 +12678,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
     image->levels = 0;
+    image->bpp= 8;
 
     KDStat st;
     if(kdFstat(file, &st) == -1)
@@ -12763,7 +12765,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     }
     kdFree(filedata);
 
-    image->size = kdMallocSizeVEN(image->buffer);
+    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
     return image;
 }
 
@@ -12816,7 +12818,7 @@ KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
         }
         case(KD_IMAGE_BITSPERPIXEL_ATX):
         {
-            return 8;
+            return _image->bpp;
         }
         case(KD_IMAGE_LEVELS_ATX):
         {
@@ -12824,6 +12826,8 @@ KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
         }
         case(KD_IMAGE_DATASIZE_ATX):
         {
+            /* Specbug: Int is too small... */
+            kdAssert(0);
             return (KDint)_image->size;
         }
         case(KD_IMAGE_BUFFEROFFSET_ATX):
