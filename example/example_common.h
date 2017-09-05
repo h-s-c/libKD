@@ -114,7 +114,7 @@ static void KD_APIENTRY exampleCallbackKD(const KDEvent *event)
 #if defined(GL_KHR_debug)
 static void GL_APIENTRY exampleCallbackGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
-    kdLogMessage(message);
+    kdLogMessagefKHR("%s\n", message);
 }
 #endif
 
