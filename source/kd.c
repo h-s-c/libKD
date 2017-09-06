@@ -3167,6 +3167,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     KDint error = kdQueuePushVEN(thread->eventqueue, (void *)event);
     if(error == -1)
     {
+        kdFreeEvent(event);
         kdSetError(KD_ENOMEM);
         return -1;
     }
