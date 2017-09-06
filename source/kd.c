@@ -11455,7 +11455,7 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
         kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
         kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
 
-        window->states.pointer.select = kdevent->data.inputpointer.select;
+        __kd_window->states.pointer.select = kdevent->data.inputpointer.select;
     }
     else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
     {
