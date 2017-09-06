@@ -1021,18 +1021,17 @@ static void camTrack()
     gluLookAt(eX, eY, eZ, cX, cY, cZ, 0, 0, 1);
 }
 
-static KDint gAppAlive = 1;
 // Called from the app framework.
 /* The tick is current time in milliseconds, width and height
  * are the image dimensions to be rendered.
  */
-void appRender(KDust tick, KDint width, KDint height)
+void appRender(Example *example, KDust tick, KDint width, KDint height)
 {
     Matrix4x4 tmp;
 
     if(sStartTick == 0)
         sStartTick = tick;
-    if(!gAppAlive)
+    if(!example->run)
         return;
 
     // Actual tick value is "blurred" a little bit.
@@ -1041,7 +1040,7 @@ void appRender(KDust tick, KDint width, KDint height)
     // Terminate application after running through the demonstration once.
     if(sTick >= RUN_LENGTH)
     {
-        gAppAlive = 0;
+        example->run = KD_FALSE;
         return;
     }
 
@@ -1181,7 +1180,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     AudioStreamInit(&sAudioStream);
     AudioStreamOpen(&sAudioStream, "data/!Cube - San Angeles Observation.ogg");
 
-    while(gAppAlive)
+    while(example->run)
     {
         const KDEvent *event = kdWaitEvent(-1);
         if(event)
@@ -1191,7 +1190,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    gAppAlive = 0;
+                    example->run = 0;
                     break;
                 }
                 default:
@@ -1206,9 +1205,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         EGLint height = 0;
         eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
         eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
-        appRender(kdGetTimeUST() / 1000000, width, height);
+        appRender(example, kdGetTimeUST() / 1000000, width, height);
         AudioStreamUpdate(&sAudioStream);
-        gAppAlive = gAppAlive ? exampleRun(example) : 0;
+        exampleRun(example);
     }
 
     AudioStreamDeinit(&sAudioStream);

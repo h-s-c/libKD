@@ -56,7 +56,7 @@ typedef struct Example {
 } Example;
 
 Example *exampleInit(void);
-KDboolean exampleRun(Example *example);
+void exampleRun(Example *example);
 KDint exampleDestroy(Example *example);
 
 /****************************************************************************** 
@@ -205,10 +205,11 @@ Example *exampleInit(void)
 
     kdInstallCallback(&exampleCallbackKD, KD_EVENT_QUIT, example);
 
+    example->run = KD_TRUE;
     return example;
 }
 
-KDboolean exampleRun(Example *example)
+void exampleRun(Example *example)
 {
     if(eglSwapBuffers(example->egl.display, example->egl.surface) == EGL_FALSE)
     {
@@ -247,11 +248,11 @@ KDboolean exampleRun(Example *example)
                 break;
             }
         }
-        return KD_FALSE;
+        example->run = KD_FALSE;
     }
     else
     {
-        return KD_TRUE;
+        example->run = KD_TRUE;
     }
 }
 

@@ -274,7 +274,7 @@ struct KDThread {
     KDQueueVEN *eventqueue;
     KDEvent *lastevent;
     KDint lasterror;
-    KDuint callbackindex;
+    KDint callbackindex;
     __KDCallback **callbacks;
     void *tlsptr;
 };
@@ -681,7 +681,7 @@ static KDThread *__kdThreadInit(void)
 
 static void __kdThreadFree(KDThread *thread)
 {
-    for(KDsize i = 0; i < thread->callbackindex; i++)
+    for(KDint i = 0; i < thread->callbackindex; i++)
     {
         kdFree(thread->callbacks[i]);
     }
@@ -1326,10 +1326,10 @@ struct __KDCallback {
     void *eventuserptr;
 };
 static KDboolean __kdExecCallback(KDEvent *event)
-{
-    KDuint callbackindex = kdThreadSelf()->callbackindex;
+{   
+    KDint callbackindex = kdThreadSelf()->callbackindex;
     __KDCallback **callbacks = kdThreadSelf()->callbacks;
-    for(KDuint i = 0; i < callbackindex; i++)
+    for(KDint i = 0; i < callbackindex; i++)
     {
         if(callbacks[i]->func)
         {
@@ -3113,9 +3113,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 /* kdInstallCallback: Install or remove a callback function for event processing. */
 KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype, void *eventuserptr)
 {
-    KDuint callbackindex = kdThreadSelf()->callbackindex;
+    KDint callbackindex = kdThreadSelf()->callbackindex;
     __KDCallback **callbacks = kdThreadSelf()->callbacks;
-    for(KDuint i = 0; i < callbackindex; i++)
+    for(KDint i = 0; i < callbackindex; i++)
     {
         KDboolean typematch = callbacks[i]->eventtype == eventtype || callbacks[i]->eventtype == 0;
         KDboolean userptrmatch = callbacks[i]->eventuserptr == eventuserptr;
@@ -11464,8 +11464,8 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
     kdevent->data.inputpointer.x = event->canvasX;
     kdevent->data.inputpointer.y = event->canvasY;
 
-    window->states.pointer.x = kdevent->data.inputpointer.x;
-    window->states.pointer.y = kdevent->data.inputpointer.y;
+    __kd_window->states.pointer.x = kdevent->data.inputpointer.x;
+    __kd_window->states.pointer.y = kdevent->data.inputpointer.y;
 
     if(!__kdExecCallback(kdevent))
     {
@@ -11551,6 +11551,11 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
             kdFreeEvent(kdevent);
             return 1;
         }
+    }
+    else
+    {
+        kdFreeEvent(kdevent);
+        return 1;
     }
 
     if(!__kdExecCallback(kdevent))
@@ -11855,7 +11860,7 @@ KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
     return (NativeDisplayType)EGL_DEFAULT_DISPLAY;
 }
 
-KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
+KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, void *eventuserptr)
 {
     if(__kd_window)
     {

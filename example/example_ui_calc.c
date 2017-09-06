@@ -14,9 +14,9 @@ PFNGLUNMAPBUFFEROESPROC glUnmapBuffer;
 PFNGLGENVERTEXARRAYSOESPROC glGenVertexArrays;
 PFNGLBINDVERTEXARRAYOESPROC glBindVertexArray;
 #endif
-#if defined(GL_KHR_debug)
-PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback;
-#endif
+
+#define EXAMPLE_COMMON_IMPLEMENTATION
+#include "example_common.h"
 
 #define NK_PRIVATE
 #define NK_ASSERT kdAssert
@@ -286,7 +286,7 @@ device_draw(struct device *dev, struct nk_context *ctx, KDint width, KDint heigh
 }
 
 static void
-pump_input(struct nk_context *ctx, KDWindow *win)
+pump_input(struct nk_context *ctx, Example *example)
 {
     nk_input_begin(ctx);
 
@@ -298,7 +298,7 @@ pump_input(struct nk_context *ctx, KDWindow *win)
             case(KD_EVENT_QUIT):
             case(KD_EVENT_WINDOW_CLOSE):
             {
-                quit = KD_TRUE;
+                example->run = KD_FALSE;
                 break;
             }
             case(KD_EVENT_INPUT_POINTER):
@@ -362,104 +362,24 @@ pump_input(struct nk_context *ctx, KDWindow *win)
                 kdDefaultEvent(event);
             }
         }
-        event = kdWaitEvent(-1);
     }
 
     nk_input_end(ctx);
 }
 
-#if defined(GL_KHR_debug)
-static void GL_APIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
-{
-    kdLogMessage(message);
-}
-#endif
-
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    /* Platform */
-    KDint width = 0, height = 0;
+    Example *example = exampleInit();
 
     /* GUI */
     struct device device;
     struct nk_font_atlas atlas;
     struct nk_context ctx;
 
-    /* KD */
-    const EGLint egl_attributes[] =
-        {
-            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-            EGL_RED_SIZE, 8,
-            EGL_GREEN_SIZE, 8,
-            EGL_BLUE_SIZE, 8,
-            EGL_ALPHA_SIZE, EGL_DONT_CARE,
-            EGL_DEPTH_SIZE, EGL_DONT_CARE,
-            EGL_STENCIL_SIZE, EGL_DONT_CARE,
-            EGL_SAMPLE_BUFFERS, 0,
-            EGL_NONE};
-
-    const EGLint egl_context_attributes[] =
-    {
-        EGL_CONTEXT_CLIENT_VERSION,
-        2,
-#if defined(EGL_KHR_create_context)
-        EGL_CONTEXT_FLAGS_KHR,
-        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
-#endif
-        EGL_NONE,
-    };
-
-    EGLDisplay egl_display = eglGetDisplay(kdGetDisplayVEN());
-
-    eglInitialize(egl_display, 0, 0);
-    eglBindAPI(EGL_OPENGL_ES_API);
-
-    EGLint egl_num_configs = 0;
-    EGLConfig egl_config;
-    eglChooseConfig(egl_display, egl_attributes, &egl_config, 1, &egl_num_configs);
-    EGLContext egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
-
-    KDWindow *kd_window = kdCreateWindow(egl_display, egl_config, KD_NULL);
-    EGLNativeWindowType native_window;
-    kdRealizeWindow(kd_window, &native_window);
-
-    EGLSurface egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
-
-    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-
-    if(eglGetError() != EGL_SUCCESS)
-    {
-        kdAssert(0);
-    }
-
-#if defined(GL_OES_mapbuffer)
-    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_mapbuffer"))
-    {
-        glMapBuffer = (PFNGLMAPBUFFEROESPROC)eglGetProcAddress("glMapBufferOES");
-        glUnmapBuffer = (PFNGLUNMAPBUFFEROESPROC)eglGetProcAddress("glUnmapBufferOES");
-    }
-#endif
-#if defined(GL_OES_vertex_array_object)
-    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_vertex_array_object"))
-    {
-        glGenVertexArrays = (PFNGLGENVERTEXARRAYSOESPROC)eglGetProcAddress("glGenVertexArraysOES");
-        glBindVertexArray = (PFNGLBINDVERTEXARRAYOESPROC)eglGetProcAddress("glBindVertexArrayOES");
-    }
-#endif
-#if defined(GL_KHR_debug)
-    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
-    {
-        glEnable(GL_DEBUG_OUTPUT_KHR);
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-        glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
-        glDebugMessageCallback(&gl_callback, KD_NULL);
-    }
-#endif
-
     /* OpenGL */
-    eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
-    eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
+    KDint width = 0, height = 0;
+    eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
+    eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
     glViewport(0, 0, width, height);
 
     /* GUI */
@@ -475,10 +395,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     nk_font_atlas_end(&atlas, nk_handle_id((int)device.font_tex), &device.null);
     nk_init_default(&ctx, &font->handle);
 
-    while(!quit)
+    while(example->run)
     {
         /* input */
-        pump_input(&ctx, kd_window);
+        pump_input(&ctx, example);
 
         /* draw */
         if(nk_begin(&ctx, "Calculator", nk_rect((width / 2) - 90, (height / 2) - 125, 180, 250),
@@ -572,62 +492,18 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         }
         nk_end(&ctx);
 
-        if(eglSwapBuffers(egl_display, egl_surface) == EGL_FALSE)
-        {
-            EGLint egl_error = eglGetError();
-            switch(egl_error)
-            {
-                case(EGL_BAD_SURFACE):
-                {
-                    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-                    eglDestroySurface(egl_display, egl_surface);
-                    kdRealizeWindow(kd_window, &native_window);
-                    egl_surface = eglCreateWindowSurface(egl_display, egl_config, native_window, KD_NULL);
-                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-                    break;
-                }
-                case(EGL_BAD_MATCH):
-                case(EGL_BAD_CONTEXT):
-                case(EGL_CONTEXT_LOST):
-                {
-                    eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-                    eglDestroyContext(egl_display, egl_context);
-                    egl_context = eglCreateContext(egl_display, egl_config, EGL_NO_CONTEXT, egl_context_attributes);
-                    eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-                    break;
-                }
-                case(EGL_BAD_DISPLAY):
-                case(EGL_NOT_INITIALIZED):
-                case(EGL_BAD_ALLOC):
-                {
-                    kdAssert(0);
-                    break;
-                }
-                default:
-                {
-                    kdAssert(0);
-                    break;
-                }
-            }
-        }
-        else
-        {
-            eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &width);
-            eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &height);
-            glViewport(0, 0, width, height);
-            glClear(GL_COLOR_BUFFER_BIT);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            device_draw(&device, &ctx, width, height, NK_ANTI_ALIASING_ON);
-        }
+        eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
+        eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
+        glViewport(0, 0, width, height);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        device_draw(&device, &ctx, width, height, NK_ANTI_ALIASING_ON);
+        exampleRun(example);
     }
 
     nk_font_atlas_clear(&atlas);
     nk_free(&ctx);
     device_shutdown(&device);
 
-    eglDestroyContext(egl_display, egl_context);
-    eglDestroySurface(egl_display, egl_surface);
-    eglTerminate(egl_display);
-    kdDestroyWindow(kd_window);
-    return 0;
+    return exampleDestroy(example);
 }

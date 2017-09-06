@@ -35,8 +35,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     KDfloat32 g = 1.0f;
     KDfloat32 b = 0.0f;
 
-    KDboolean run = KD_TRUE;
-    while(run)
+    while(example->run)
     {
         const KDEvent *event = kdWaitEvent(-1);
         if(event)
@@ -55,7 +54,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    run = KD_FALSE;
+                    example->run = KD_FALSE;
                 }
                 default:
                 {
@@ -65,9 +64,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         }
 
         glClearColor(r, g, b, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-        run = run ? exampleRun(example) : KD_FALSE;
+        glClear(GL_COLOR_BUFFER_BIT);
+        exampleRun(example);
     }
 
     return exampleDestroy(example);

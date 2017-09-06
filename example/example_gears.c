@@ -557,8 +557,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     GLfloat angle = 0.0f;
 
     gears_init();
-    KDboolean run = KD_TRUE;
-    while(run)
+    while(example->run)
     {
         const KDEvent *event = kdWaitEvent(-1);
         if(event)
@@ -568,7 +567,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    run = KD_FALSE;
+                    example->run = KD_FALSE;
                     break;
                 }
                 case(KD_EVENT_INPUT_KEY_ATX):
@@ -623,7 +622,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             angle -= 3600.0;
         }
         gears_draw(angle);
-        run = run ? exampleRun(example) : KD_FALSE;
+        exampleRun(example);
 
         /* Benchmark */
         totaltime += deltatime;

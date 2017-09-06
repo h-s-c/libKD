@@ -273,8 +273,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     KDuint frames = 0;
 
     // Main Loop
-    KDboolean run = KD_TRUE;
-    while(run)
+    while(example->run)
     {
         const KDEvent *event = kdWaitEvent(-1);
         if(event)
@@ -284,7 +283,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    run = KD_FALSE;
+                    example->run = KD_FALSE;
                     break;
                 }
                 default:
@@ -302,7 +301,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
         // Draw frame
         Draw(example);
-        run = run ? exampleRun(example) : KD_FALSE;
+        exampleRun(example);
 
         // Benchmark
         totaltime += deltatime;
