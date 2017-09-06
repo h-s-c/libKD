@@ -12112,7 +12112,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
 #if defined(KD_WINDOW_EMSCRIPTEN)
-        emscripten_set_canvas_size(param[0], param[1]);
+        emscripten_set_canvas_element_size("#canvas",param[0], param[1]);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
         KDboolean fullscreen = (param[0] == window->screen.width) && (param[1] == window->screen.height);
 
@@ -12271,8 +12271,10 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
     strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
     emscripten_enter_soft_fullscreen(0, &strategy);
-    emscripten_get_element_css_size("canvas", (KDfloat64KHR*)&window->properties.width, (KDfloat64KHR*)&window->properties.height);
-    emscripten_set_canvas_size(window->properties.width, window->properties.height);
+    window->properties.width = 800;
+    window->properties.height = 600;
+    //emscripten_get_element_css_size("#canvas", (KDfloat64KHR*)&window->properties.width, (KDfloat64KHR*)&window->properties.height); 
+    emscripten_set_canvas_element_size("#canvas", window->properties.width, window->properties.height);
     emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
@@ -12280,7 +12282,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     emscripten_set_keyup_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
     emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
     emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
-    emscripten_set_visibilitychange_callback(0, 0, 1, __kd_EmscriptenVisibilityCallback);
+    emscripten_set_visibilitychange_callback(0, 1, __kd_EmscriptenVisibilityCallback);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -12961,6 +12963,9 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
 
 #if defined(__ANDROID__)
     result = __android_log_vprint(ANDROID_LOG_INFO, __kdAppName(KD_NULL), format, ap);
+#elif defined(__EMSCRIPTEN__)
+    KDchar buf[256];
+    result = vsprintf (buf, format, ap);
 #else
     KDchar buf[STB_SPRINTF_MIN];
     result = stbsp_vsprintfcb(&__kdLogMessagefCallback, KD_NULL, buf, format, ap);
