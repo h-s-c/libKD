@@ -12111,7 +12111,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(KD_WINDOW_EMSCRIPTEN)
+#if defined(KD_WINDOW_WIN32)
+        SetWindowPos(window->nativewindow, 0, 0, 0, param[0], param[1], 0);
+#elif defined(KD_WINDOW_EMSCRIPTEN)
         emscripten_set_canvas_element_size("#canvas",param[0], param[1]);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
         KDboolean fullscreen = (param[0] == window->screen.width) && (param[1] == window->screen.height);
