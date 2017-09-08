@@ -568,10 +568,17 @@ enum STBVorbisError
 #include <limits.h>
 
 #ifdef __MINGW32__
-    #define __forceinline
-#endif
-
-#ifndef __forceinline
+   // eff you mingw:
+   //     "fixed":
+   //         http://sourceforge.net/p/mingw-w64/mailman/message/32882927/
+   //     "no that broke the build, reverted, who cares about C":
+   //         http://sourceforge.net/p/mingw-w64/mailman/message/32890381/
+   #ifdef __forceinline
+   #undef __forceinline
+   #endif
+   #define __forceinline
+   #define alloca __builtin_alloca
+#elif !defined(_MSC_VER)
    #if __GNUC__
       #define __forceinline inline
    #else
