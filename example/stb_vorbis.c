@@ -567,6 +567,10 @@ enum STBVorbisError
 
 #include <limits.h>
 
+#ifdef __MINGW32__
+    #define __forceinline
+#endif
+
 #ifndef __forceinline
    #if __GNUC__
       #define __forceinline inline

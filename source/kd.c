@@ -12246,7 +12246,10 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-    kdSetWindowPropertyiv(window, KD_WINDOWPROPERTY_SIZE, (const KDint32[2]){window->properties.width, window->properties.height});
+    KDint32 windowsize[2];
+    windowsize[0] = window->properties.width;
+    windowsize[1] = window->properties.height;
+    kdSetWindowPropertyiv(window, KD_WINDOWPROPERTY_SIZE, windowsize);
     kdSetWindowPropertycv(window, KD_WINDOWPROPERTY_CAPTION, window->properties.caption);
     window->properties.focused = 1;
     window->properties.visible = 1;
