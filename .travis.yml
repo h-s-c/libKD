@@ -102,17 +102,6 @@ jobs:
       script: python ci-tools/run_ctest.py
 
     - os: linux
-      compiler: clang-3.9
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.9', 'llvm-3.9', 'ninja-build', 'valgrind', 'libegl1-mesa-dev', 'libx11-dev', 'libwayland-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: linux
       compiler: clang-3.8
       dist: trusty
       sudo: required
