@@ -27,7 +27,15 @@
 #include <KD/kd.h>
 #include <KD/kdext.h>
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
+#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+
+#if defined(__MINGW32__)
+#undef near
+#undef far
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,7 +82,7 @@ static GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragme
 typedef KDfloat32 Matrix4x4[16];
 typedef KDfloat32 Matrix3x3[9];
 static void exampleMatrixCopy(Matrix4x4 dst, Matrix4x4 src);
-static void exampleMatrixFrustum(Matrix4x4 m, KDfloat32 left, KDfloat32 right, KDfloat32 bottom, KDfloat32 top, KDfloat32 near, KDfloat32 far);
+static void exampleMatrixFrustum(Matrix4x4 m, KDfloat32 left, KDfloat32 right, KDfloat32 bottom, KDfloat32 top, KDfloat32 _near, KDfloat32 far);
 static void exampleMatrixMultiply(Matrix4x4 m, Matrix4x4 n);
 static void exampleMatrixIdentity(Matrix4x4 m);
 static void exampleMatrixPerspective(Matrix4x4 m, KDfloat32 fovy, KDfloat32 aspect, KDfloat32 nearz, KDfloat32 farz);
@@ -129,19 +137,13 @@ Example *exampleInit(void)
         EGL_RED_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_BLUE_SIZE, 8,
-        EGL_ALPHA_SIZE, EGL_DONT_CARE,
-        EGL_DEPTH_SIZE, 16,
-        EGL_STENCIL_SIZE, EGL_DONT_CARE,
-#if defined(__EMSCRIPTEN__) 
-        EGL_SAMPLE_BUFFERS, 0, 
-#else 
-        EGL_SAMPLE_BUFFERS, 1, 
-        EGL_SAMPLES, 4, 
-#endif 
+        EGL_ALPHA_SIZE, 8,
+        EGL_DEPTH_SIZE, 24,
+        EGL_SAMPLE_BUFFERS, 0,
         EGL_NONE
     };
 
-    EGLint context_attributes[] =
+    const EGLint context_attributes[] =
     {
         EGL_CONTEXT_CLIENT_VERSION,
         2,
@@ -156,6 +158,7 @@ Example *exampleInit(void)
     kdMemcpy(example->egl.attrib_list, context_attributes, sizeof(context_attributes));
 
     example->egl.display = eglGetDisplay(kdGetDisplayVEN());
+    kdAssert(example->egl.display != EGL_NO_DISPLAY);
 
     eglInitialize(example->egl.display, 0, 0);
     eglBindAPI(EGL_OPENGL_ES_API);
@@ -168,13 +171,13 @@ Example *exampleInit(void)
 
     example->egl.surface = eglCreateWindowSurface(example->egl.display, example->egl.config, example->egl.window, KD_NULL);
     example->egl.context = eglCreateContext(example->egl.display, example->egl.config, EGL_NO_CONTEXT, example->egl.attrib_list);
+    kdAssert(example->egl.context != EGL_NO_CONTEXT);
 
     eglMakeCurrent(example->egl.display, example->egl.surface, example->egl.surface, example->egl.context);
 
-    if(eglGetError() != EGL_SUCCESS)
-    {
-        kdAssert(0);
-    }
+    eglSwapInterval(example->egl.display, 0);
+
+    kdAssert(eglGetError() == EGL_SUCCESS);
 
 #if defined(GL_KHR_debug)
     if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))

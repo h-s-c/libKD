@@ -11,9 +11,6 @@
 //    This is a simple example that draws a single triangle with
 //    a minimal vertex/fragment shader using OpenKODE.
 //
-#include <KD/kd.h>
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
 
 #define EXAMPLE_COMMON_IMPLEMENTATION
 #include "example_common.h"

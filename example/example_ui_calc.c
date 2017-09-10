@@ -1,10 +1,7 @@
 /* nuklear - v1.05 - public domain */
-#include <KD/kd.h>
-#include <KD/kdext.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+
+#define EXAMPLE_COMMON_IMPLEMENTATION
+#include "example_common.h"
 
 #if defined(GL_OES_mapbuffer)
 PFNGLMAPBUFFEROESPROC glMapBuffer;
@@ -15,8 +12,6 @@ PFNGLGENVERTEXARRAYSOESPROC glGenVertexArrays;
 PFNGLBINDVERTEXARRAYOESPROC glBindVertexArray;
 #endif
 
-#define EXAMPLE_COMMON_IMPLEMENTATION
-#include "example_common.h"
 
 #define NK_PRIVATE
 #define NK_ASSERT kdAssert

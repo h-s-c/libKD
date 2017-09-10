@@ -35,11 +35,6 @@
  * Jul 13, 2010
  */
 
-#include <KD/kd.h>
-#include <KD/kdext.h>
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
-
 #define EXAMPLE_COMMON_IMPLEMENTATION
 #include "example_common.h"
 

@@ -31,10 +31,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
-#include <KD/kd.h>
-#include <KD/kdext.h>
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
 #include <AL/al.h>
 #include <AL/alc.h>
 

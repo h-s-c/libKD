@@ -11843,7 +11843,6 @@ KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
 {
 #if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
     KDchar *sessiontype = kdGetEnvVEN("XDG_SESSION_TYPE");
-#endif
 #if defined(KD_WINDOW_X11)
     if(kdStrstrVEN(sessiontype, "x11"))
     {
@@ -11856,6 +11855,7 @@ KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
         __kd_wl_display = wl_display_connect(KD_NULL);
         return (NativeDisplayType)__kd_wl_display;
     }
+#endif
 #endif
     return (NativeDisplayType)EGL_DEFAULT_DISPLAY;
 }
@@ -11918,6 +11918,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     window->nativewindow = CreateWindow(window->properties.caption, window->properties.caption, WS_POPUP | WS_VISIBLE, 0, 0,
         window->properties.width, window->properties.height,
         KD_NULL, KD_NULL, instance, KD_NULL);
+
+    window->nativedisplay = GetDC(window->nativewindow);
     /* Activate raw input */
     RAWINPUTDEVICE device[2];
     /* Mouse */
@@ -12052,6 +12054,7 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
         return -1;
     }
 #if defined(KD_WINDOW_WIN32)
+    ReleaseDC(window->nativewindow, window->nativedisplay);
     DestroyWindow(window->nativewindow);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
     xkb_state_unref(window->xkb.state);
