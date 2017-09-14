@@ -1383,6 +1383,24 @@ struct KDWindow {
             KDint32 keycode;
             KDint32 charflags;
         } keyboard;
+        struct 
+        {
+            KDint32 availability;
+            KDint32 up;
+            KDint32 left;
+            KDint32 right;
+            KDint32 down;
+            KDint32 select;
+        } dpad;
+        struct 
+        {
+            KDint32 availability;
+            KDint32 up;
+            KDint32 left;
+            KDint32 right;
+            KDint32 down;
+            KDint32 fire;
+        } gamekeys;
     } states;
 #if defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
     struct
@@ -1424,6 +1442,88 @@ static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 #if defined(KD_WINDOW_WAYLAND)
 static struct wl_display *__kd_wl_display;
 #endif
+
+static void __kdHandleSpecialKeys(KDWindow *window, KDEventInputKeyATX *keyevent)
+{
+    KDEvent *dpadevent = kdCreateEvent();
+    dpadevent->type = KD_EVENT_INPUT;
+    KDEvent *gamekeysevent = kdCreateEvent();
+    gamekeysevent->type = KD_EVENT_INPUT;
+
+    switch(keyevent->keycode) 
+    {
+        case(KD_KEY_UP_ATX): 
+        {
+            window->states.dpad.up = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_UP; 
+            dpadevent->data.input.value.i = window->states.dpad.up;
+
+            window->states.gamekeys.up = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_UP; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.up;
+            break;
+        }
+        case(KD_KEY_LEFT_ATX): 
+        {
+            window->states.dpad.left = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_LEFT; 
+            dpadevent->data.input.value.i = window->states.dpad.left;
+
+            window->states.gamekeys.left = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_LEFT; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.left;
+            break;
+        }
+        case(KD_KEY_RIGHT_ATX): 
+        {
+            window->states.dpad.right = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_RIGHT; 
+            dpadevent->data.input.value.i = window->states.dpad.right;
+
+            window->states.gamekeys.right = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_RIGHT; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.right;
+            break;
+        }
+        case(KD_KEY_DOWN_ATX): 
+        {
+            window->states.dpad.down = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_DOWN; 
+            dpadevent->data.input.value.i = window->states.dpad.down;
+
+            window->states.gamekeys.down = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_DOWN; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.down;
+            break;
+        }
+        case(KD_KEY_ENTER_ATX):
+        {
+            window->states.dpad.select = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_SELECT; 
+            dpadevent->data.input.value.i = window->states.dpad.select;
+
+            window->states.gamekeys.fire = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_FIRE; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.fire;
+            break;
+        }
+        default: 
+        {
+            kdFreeEvent(dpadevent);
+            kdFreeEvent(gamekeysevent);
+            return;
+        }
+    }
+
+    if(!__kdExecCallback(dpadevent)) 
+    { 
+        kdPostEvent(dpadevent); 
+    } 
+    if(!__kdExecCallback(gamekeysevent)) 
+    { 
+        kdPostEvent(gamekeysevent); 
+    }
+}
 
 static KDint32 __KDKeycodeLookup(KDint32 keycode)
 {
@@ -2883,6 +2983,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 
                                 window->states.keyboard.flags = keyevent->flags;
                                 window->states.keyboard.keycode = keyevent->keycode;
+
+                                __kdHandleSpecialKeys(window, keyevent);
                             }
                             else
                             {
@@ -2929,6 +3031,11 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     kdevent->data.inputpointer.select = (type == XCB_BUTTON_PRESS) ? 1 : 0;
                     kdevent->data.inputpointer.x = press->event_x;
                     kdevent->data.inputpointer.y = press->event_y;
+
+                    window->states.pointer.select = kdevent->data.inputpointer.select;
+                    window->states.pointer.x = kdevent->data.inputpointer.x;
+                    window->states.pointer.y = kdevent->data.inputpointer.y;
+
                     if(!__kdExecCallback(kdevent))
                     {
                         kdPostEvent(kdevent);
@@ -3001,6 +3108,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 
                             window->states.keyboard.flags = keyevent->flags;
                             window->states.keyboard.keycode = keyevent->keycode;
+                            
+                            __kdHandleSpecialKeys(window, keyevent);
                         }
                         else
                         {
@@ -11359,6 +11468,71 @@ KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *bu
                 buffer[i] = __kd_window->states.keyboard.charflags;
                 break;
             }
+            case KD_STATE_DPAD_AVAILABILITY:
+            {
+                buffer[i] = __kd_window->states.dpad.availability;
+                break;
+            }
+            case KD_STATE_DPAD_COPY:
+            {
+                buffer[i] = -1;
+                break;
+            }
+            case KD_INPUT_DPAD_UP:
+            {
+                buffer[i] = __kd_window->states.dpad.up;
+                break;
+            }
+            case KD_INPUT_DPAD_LEFT:
+            {
+                buffer[i] = __kd_window->states.dpad.left;
+                break;
+            }
+            case KD_INPUT_DPAD_RIGHT:
+            {
+                buffer[i] = __kd_window->states.dpad.right;
+                break;
+            }
+            case KD_INPUT_DPAD_DOWN:
+            {
+                buffer[i] = __kd_window->states.dpad.down;
+                break;
+            }
+            case KD_INPUT_DPAD_SELECT:
+            {
+                buffer[i] = __kd_window->states.dpad.select;
+                break;
+            }
+            case KD_STATE_GAMEKEYS_AVAILABILITY:
+            {
+                buffer[i] = __kd_window->states.gamekeys.availability;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_UP:
+            {
+                buffer[i] = __kd_window->states.gamekeys.up;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_LEFT:
+            {
+                buffer[i] = __kd_window->states.gamekeys.left;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_RIGHT:
+            {
+                buffer[i] = __kd_window->states.gamekeys.right;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_DOWN:
+            {
+                buffer[i] = __kd_window->states.gamekeys.down;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_FIRE:
+            {
+                buffer[i] = __kd_window->states.gamekeys.fire;
+                break;
+            }
 #endif
             case KD_STATE_EVENT_USING_BATTERY:
             {
@@ -11377,6 +11551,15 @@ KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *bu
                 SYSTEM_POWER_STATUS status;
                 GetSystemPowerStatus(&status);
                 buffer[i] = (status.BatteryFlag == 2) || (status.BatteryFlag == 4);
+#else
+                buffer[i] = 0;
+#endif
+                break;
+            }
+            case KD_STATE_BACKLIGHT_AVAILABILITY:
+            {
+#if defined(_WIN32)
+                buffer[i] = 1;
 #else
                 buffer[i] = 0;
 #endif
@@ -11407,10 +11590,32 @@ KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint 
 
 
 /* kdOutputSeti, kdOutputSetf: set outputs */
-KD_API KDint KD_APIENTRY kdOutputSeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdOutputSeti(KDint startidx, KDuint numidxs, KD_UNUSED const KDint32 *buffer)
 {
-    kdSetError(KD_EIO);
-    return -1;
+    KDint idx = startidx;
+    for(KDuint i = 0; i != numidxs; i++)
+    {
+        switch(idx)
+        {
+#if defined(_WIN32)
+            case KD_OUTPUT_BACKLIGHT_FORCE:
+            {
+                if(buffer[0])
+                {
+                    SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+                }
+                break;
+            }
+#endif
+            default:
+            {
+                kdSetError(KD_EIO);
+                return -1;
+            }
+        }
+        idx++;
+    }
+    return 0;
 }
 
 KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDfloat32 *buffer)
@@ -11522,6 +11727,8 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
 
         __kd_window->states.keyboard.flags = keyevent->flags;
         __kd_window->states.keyboard.keycode = keyevent->keycode;
+        
+        __kdHandleSpecialKeys(__kd_window, keyevent);
     }
     else if(type == EMSCRIPTEN_EVENT_KEYDOWN)
     {
@@ -11760,6 +11967,8 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
 
             __kd_window->states.keyboard.flags = keyevent->flags;
             __kd_window->states.keyboard.keycode = keyevent->keycode;
+            
+            __kdHandleSpecialKeys(__kd_window, keyevent);
         }
         else
         {
@@ -11895,6 +12104,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     /* If we have a window assume basic input support. */
     window->states.pointer.availability = 7;
     window->states.keyboard.availability = 15;
+    window->states.dpad.availability = 31;
+    window->states.gamekeys.availability = 31;
 
     const KDchar *caption = "OpenKODE";
     kdMemcpy(window->properties.caption, caption, kdStrlen(caption));
