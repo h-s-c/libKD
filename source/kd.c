@@ -10788,29 +10788,17 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         return KD_NULL;
     }
 #if defined(_WIN32)
+    KDchar dirpath[MAX_PATH];
     WIN32_FIND_DATA data;
     if(kdStrcmp(pathname, ".") == 0)
     {
-        DWORD curdirsize = GetCurrentDirectoryA(0, KD_NULL);
-        KDchar *curdir = (KDchar *)kdMalloc((KDsize)curdirsize);
-        if(curdir == KD_NULL)
-        {
-            kdFree(dir->dirent);
-            kdFree(dir);
-            kdSetError(KD_ENOMEM);
-            return KD_NULL;
-        }
-        GetCurrentDirectoryA(curdirsize, curdir);
+        GetCurrentDirectoryA(MAX_PATH, dirpath);
+    }
+    kdStrncat_s(dirpath, MAX_PATH, "\\*", 2);
 #if defined(_MSC_VER)
 #pragma warning(suppress : 6102)
 #endif
-        dir->nativedir = FindFirstFileA((const KDchar *)curdir, &data);
-        kdFree(curdir);
-    }
-    else
-    {
-        dir->nativedir = FindFirstFileA(pathname, &data);
-    }
+    dir->nativedir = FindFirstFileA((const KDchar *)dirpath, &data);
     if(dir->nativedir == INVALID_HANDLE_VALUE)
     {
         error = GetLastError();
@@ -10834,6 +10822,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+
     if(FindNextFileA(dir->nativedir, &data) != 0)
     {
         dir->dirent->d_name = data.cFileName;
