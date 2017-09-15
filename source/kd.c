@@ -12050,21 +12050,13 @@ static struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
 
 KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
 {
-#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
-    KDchar *sessiontype = kdGetEnvVEN("XDG_SESSION_TYPE");
-#if defined(KD_WINDOW_X11)
-    if(kdStrstrVEN(sessiontype, "x11"))
-    {
-        return (NativeDisplayType)xcb_connect(KD_NULL, KD_NULL);
-    }
-#endif
 #if defined(KD_WINDOW_WAYLAND)
+    KDchar *sessiontype = kdGetEnvVEN("XDG_SESSION_TYPE");
     if(kdStrstrVEN(sessiontype, "wayland"))
     {
         __kd_wl_display = wl_display_connect(KD_NULL);
         return (NativeDisplayType)__kd_wl_display;
     }
-#endif
 #endif
     return (NativeDisplayType)EGL_DEFAULT_DISPLAY;
 }
