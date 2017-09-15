@@ -9881,7 +9881,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     LARGE_INTEGER tick;
     QueryPerformanceFrequency(&tickspersecond);
     QueryPerformanceCounter(&tick);
-    return ((tick.QuadPart * 1000000000LL) / tickspersecond.QuadPart);
+    return (tick.QuadPart * 1000000000LL) / tickspersecond.QuadPart;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
@@ -9898,13 +9898,13 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
         PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
         if(eglGetSystemTimeNV && eglGetSystemTimeFrequencyNV)
         {
-            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000LL;
+            return (eglGetSystemTimeNV() * 1000000000LL) / eglGetSystemTimeFrequencyNV();
         }
     }
 #elif defined(__EMSCRIPTEN__)
     return emscripten_get_now() * 1000000LL;
 #else
-    return (clock() / CLOCKS_PER_SEC) * 1000000000LL;
+    return (clock() * 1000000000LL) / CLOCKS_PER_SEC;
 #endif
 }
 
