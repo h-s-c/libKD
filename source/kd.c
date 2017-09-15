@@ -9881,7 +9881,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     LARGE_INTEGER tick;
     QueryPerformanceFrequency(&tickspersecond);
     QueryPerformanceCounter(&tick);
-    return (tick.QuadPart / tickspersecond.QuadPart) * 1000000000LL;
+    return ((tick.QuadPart * 1000000000LL) / tickspersecond.QuadPart);
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
