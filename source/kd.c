@@ -10647,7 +10647,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         {
             buf->st_mode = 0x4000;
         }
-        else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
+        else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL || data.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE)
         {
             buf->st_mode = 0x8000;
         }
