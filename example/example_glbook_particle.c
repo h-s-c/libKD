@@ -11,10 +11,9 @@
 //    This is an example that demonstrates rendering a particle system
 //    using a vertex shader and point sprites.
 //
-#include <KD/kd.h>
-#include <KD/kdext.h>
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
+
+#define EXAMPLE_COMMON_IMPLEMENTATION
+#include "example_common.h"
 
 #define NUM_PARTICLES 2000
 #define PARTICLE_SIZE 7
@@ -45,100 +44,15 @@ typedef struct
     KDfloat32 time;
 
     GLuint vertexObject;
-
-    // EGL handles
-    EGLDisplay eglDisplay;
-    EGLContext eglContext;
-    EGLSurface eglSurface;
-
-    //KD handles
-    KDWindow *window;
 } UserData;
-
-///
-// Load texture from disk
-//
-GLuint LoadTexture(const KDchar *fileName)
-{
-    KDImageATX image = kdGetImageATX(fileName, KD_IMAGE_FORMAT_RGB888_ATX, 0);
-    if(!image)
-    {
-        kdLogMessagefKHR("Error loading (%s) image.\n", fileName);
-        return 0;
-    }
-    KDint width = kdGetImageIntATX(image, KD_IMAGE_WIDTH_ATX);
-    KDint height = kdGetImageIntATX(image, KD_IMAGE_HEIGHT_ATX);
-    KDchar *buffer = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
-    GLuint texId;
-
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, buffer);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    kdFreeImageATX(image);
-
-    return texId;
-}
-
-///
-// Create a shader object, load the shader source, and
-// compile the shader.
-//
-GLuint LoadShader(GLenum type, const char *shaderSrc)
-{
-    GLuint shader;
-    GLint compiled;
-
-    // Create the shader object
-    shader = glCreateShader(type);
-
-    if(shader == 0)
-    {
-        return 0;
-    }
-
-    // Load the shader source
-    glShaderSource(shader, 1, &shaderSrc, KD_NULL);
-
-    // Compile the shader
-    glCompileShader(shader);
-
-    // Check the compile status
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-
-    if(!compiled)
-    {
-        GLint infoLen = 0;
-
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
-
-        if(infoLen > 1)
-        {
-            char *infoLog = kdMalloc(sizeof(char) * infoLen);
-
-            glGetShaderInfoLog(shader, infoLen, KD_NULL, infoLog);
-            kdLogMessage(infoLog);
-
-            kdFree(infoLog);
-        }
-
-        glDeleteShader(shader);
-        return 0;
-    }
-
-    return shader;
-}
 
 ///
 // Initialize the shader and program object
 //
-KDboolean Init(UserData *userData)
+KDboolean Init(Example *example)
 {
+    UserData *userData = (UserData *)example->userptr;
+
     const KDchar *vShaderStr =
         "uniform float u_time;		                           \n"
         "uniform vec3 u_centerPosition;                       \n"
@@ -175,57 +89,8 @@ KDboolean Init(UserData *userData)
         "  gl_FragColor.a *= v_lifetime;                      \n"
         "}                                                    \n";
 
-    GLuint vertexShader;
-    GLuint fragmentShader;
-    GLuint programObject;
-    GLint linked;
-
-    // Load the vertex/fragment shaders
-    vertexShader = LoadShader(GL_VERTEX_SHADER, vShaderStr);
-    fragmentShader = LoadShader(GL_FRAGMENT_SHADER, fShaderStr);
-
-    // Create the program object
-    programObject = glCreateProgram();
-
-    if(programObject == 0)
-    {
-        return KD_FALSE;
-    }
-
-    glAttachShader(programObject, vertexShader);
-    glAttachShader(programObject, fragmentShader);
-
-    // Bind vPosition to attribute 0
-    glBindAttribLocation(programObject, 0, "vPosition");
-
-    // Link the program
-    glLinkProgram(programObject);
-
-    // Check the link status
-    glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
-
-    if(!linked)
-    {
-        GLint infoLen = 0;
-
-        glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &infoLen);
-
-        if(infoLen > 1)
-        {
-            KDchar *infoLog = kdMalloc(sizeof(char) * infoLen);
-
-            glGetProgramInfoLog(programObject, infoLen, KD_NULL, infoLog);
-            kdLogMessage(infoLog);
-
-            kdFree(infoLog);
-        }
-
-        glDeleteProgram(programObject);
-        return KD_FALSE;
-    }
-
     // Store the program object
-    userData->programObject = programObject;
+    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr);
 
     // Get the attribute locations
     userData->lifetimeLoc = glGetAttribLocation(userData->programObject, "a_lifetime");
@@ -269,7 +134,7 @@ KDboolean Init(UserData *userData)
     // Initialize time to cause reset on first update
     userData->time = 1.0f;
 
-    userData->textureId = LoadTexture("data/smoke.jpg");
+    userData->textureId = exampleLoadTexture("data/smoke.jpg");
     if(userData->textureId <= 0)
     {
         return KD_FALSE;
@@ -281,8 +146,10 @@ KDboolean Init(UserData *userData)
 ///
 //  Update time-based variables
 //
-void Update(UserData *userData, KDfloat32 deltaTime)
+void Update(Example *example, KDfloat32 deltaTime)
 {
+    UserData *userData = (UserData *)example->userptr;
+
     userData->time += deltaTime;
 
     if(userData->time >= 1.0f)
@@ -318,12 +185,16 @@ void Update(UserData *userData, KDfloat32 deltaTime)
 ///
 // Draw a triangle using the shader pair created in Init()
 //
-void Draw(UserData *userData)
+void Draw(Example *example)
 {
+    UserData *userData = (UserData *)example->userptr;
+
     // Set the viewport
-    KDint32 windowsize[2];
-    kdGetWindowPropertyiv(userData->window, KD_WINDOWPROPERTY_SIZE, windowsize);
-    glViewport(0, 0, windowsize[0], windowsize[1]);
+    EGLint width = 0; 
+    EGLint height = 0;
+    eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
+    eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
+    glViewport(0, 0, width, height);
 
     // Clear the color buffer
     glClear(GL_COLOR_BUFFER_BIT);
@@ -361,64 +232,23 @@ void Draw(UserData *userData)
     glUniform1i(userData->samplerLoc, 0);
 
     glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
-
-    eglSwapBuffers(userData->eglDisplay, userData->eglSurface);
 }
 
-///
-// InitEGLContext()
-//
-//    Initialize an EGL rendering context and all associated elements
-//
-EGLBoolean InitEGLContext(UserData *userData,
-    EGLConfig config)
-{
-    EGLContext context;
-    EGLSurface surface;
-    EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE};
-
-    // Get native window handle
-    EGLNativeWindowType hWnd;
-    if(kdRealizeWindow(userData->window, &hWnd) != 0)
-    {
-        return EGL_FALSE;
-    }
-    surface = eglCreateWindowSurface(userData->eglDisplay, config, hWnd, KD_NULL);
-    if(surface == EGL_NO_SURFACE)
-    {
-        return EGL_FALSE;
-    }
-
-    // Create a GL context
-    context = eglCreateContext(userData->eglDisplay, config, EGL_NO_CONTEXT, contextAttribs);
-    if(context == EGL_NO_CONTEXT)
-    {
-        return EGL_FALSE;
-    }
-
-    // Make the context current
-    if(!eglMakeCurrent(userData->eglDisplay, surface, surface, context))
-    {
-        return EGL_FALSE;
-    }
-
-    userData->eglContext = context;
-    userData->eglSurface = surface;
-
-    return EGL_TRUE;
-}
 
 ///
 // Cleanup
 //
-void ShutDown(UserData *userData)
+void ShutDown(Example *example)
 {
+    UserData *userData = (UserData *)example->userptr;
+
     // Delete texture object
-    glDeleteTextures (1, &userData->textureId);
+    glDeleteTextures(1, &userData->textureId);
 
     // Delete program object
-    glDeleteProgram (userData->programObject);
+    glDeleteProgram(userData->programObject);
 }
+
 
 ///
 // kdMain()
@@ -427,61 +257,11 @@ void ShutDown(UserData *userData)
 //
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    EGLint attribList[] =
-    {
-        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-        EGL_RED_SIZE,           8,
-        EGL_GREEN_SIZE,         8,
-        EGL_BLUE_SIZE,          8,
-        EGL_ALPHA_SIZE,         EGL_DONT_CARE,
-        EGL_DEPTH_SIZE,         EGL_DONT_CARE,
-        EGL_STENCIL_SIZE,       EGL_DONT_CARE,
-        EGL_SAMPLE_BUFFERS,     0,
-        EGL_NONE
-    };
+    Example *example = exampleInit();
 
-    EGLint majorVersion, minorVersion;
-    UserData userData;
-    EGLint numConfigs;
-    EGLConfig config;
-
-    userData.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-
-    // Initialize EGL
-    if(!eglInitialize(userData.eglDisplay, &majorVersion, &minorVersion))
-    {
-        return EGL_FALSE;
-    }
-
-    // Get configs
-    if(!eglGetConfigs(userData.eglDisplay, KD_NULL, 0, &numConfigs))
-    {
-        return EGL_FALSE;
-    }
-
-    // Choose config
-    if(!eglChooseConfig(userData.eglDisplay, attribList, &config, 1, &numConfigs))
-    {
-        return EGL_FALSE;
-    }
-
-    // Use OpenKODE to create a Window
-    userData.window = kdCreateWindow(userData.eglDisplay, config, KD_NULL);
-    if(!userData.window)
-    {
-        kdExit(0);
-    }
-
-    if(!InitEGLContext(&userData, config))
-    {
-        kdExit(0);
-    }
-
-    if(!Init(&userData))
-    {
-        kdExit(0);
-    }
+    UserData userdata;
+    example->userptr = &userdata;
+    Init(example);
 
     KDust t1 = kdGetTimeUST();
     KDfloat32 deltatime;
@@ -489,48 +269,47 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     KDuint frames = 0;
 
     // Main Loop
-    while(1)
+    while(example->run)
     {
-        // Wait for an event
-        const KDEvent *evt = kdWaitEvent(0);
-        if(evt)
+        const KDEvent *event = kdWaitEvent(-1);
+        if(event)
         {
-            // Exit app
-            if(evt->type == KD_EVENT_WINDOW_CLOSE)
+            switch(event->type)
             {
-                break;
+                case(KD_EVENT_QUIT):
+                case(KD_EVENT_WINDOW_CLOSE):
+                {
+                    example->run = KD_FALSE;
+                    break;
+                }
+                default:
+                {
+                    kdDefaultEvent(event);
+                    break;
+                }
             }
         }
-
         // Update
         KDust t2 = kdGetTimeUST();
         deltatime = (KDfloat32)((t2 - t1) * 1e-9);
         t1 = t2;
-        Update(&userData, deltatime);
+        Update(example, deltatime);
 
         // Draw frame
-        Draw(&userData);
+        Draw(example);
+        exampleRun(example);
 
         // Benchmark
         totaltime += deltatime;
         frames++;
-        if(totaltime > 2.0f)
+        if(totaltime > 5.0f)
         {
-            kdLogMessagefKHR("%4d frames rendered in %1.4f seconds -> FPS=%3.4f\n", frames, totaltime, frames / totaltime);
-            totaltime -= 2.0f;
+            kdLogMessagefKHR("%d frames in %3.1f seconds = %6.3f FPS\n", frames, totaltime, frames / totaltime);
+            totaltime -= 5.0f;
             frames = 0;
         }
     }
 
-    ShutDown(&userData);
-
-    // EGL clean up
-    eglMakeCurrent(0, 0, 0, 0);
-    eglDestroySurface(userData.eglDisplay, userData.eglSurface);
-    eglDestroyContext(userData.eglDisplay, userData.eglContext);
-
-    // Destroy the window
-    kdDestroyWindow(userData.window);
-
-    return 0;
+    ShutDown(example);
+    return exampleDestroy(example);
 }

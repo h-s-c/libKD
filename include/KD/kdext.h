@@ -78,13 +78,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout);
 KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b);
 
 /* kdGetEnvVEN: Get an environment variable. */
-KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KDsize buflen);
-
-/*******************************************************
- * Memory allocation      
- *******************************************************/     
-
-KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr);     
+KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env);
 
 /*******************************************************
  * String and memory functions (extensions)
@@ -97,7 +91,8 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
  * Windowing (extensions)
  *******************************************************/
 #ifdef KD_WINDOW_SUPPORTED
-KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow);
+/* kdGetPlatformDisplayVEN: Wayland only. */
+KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void);
 #endif
 
 #endif /* __kdext_h_ */

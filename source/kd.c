@@ -63,6 +63,15 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+
+#ifndef EGL_PLATFORM_X11_KHR
+#define EGL_PLATFORM_X11_KHR 0x31D5
+#endif 
+
+#ifndef EGL_PLATFORM_WAYLAND_KHR
+#define EGL_PLATFORM_WAYLAND_KHR 0x31D8
+#endif
+
 /******************************************************************************
  * C includes
  ******************************************************************************/
@@ -132,6 +141,7 @@
 #   endif
 #   if defined(__ANDROID__)
 #       include <android/api-level.h>
+#       include <android/keycodes.h>
 #       include <android/log.h>
 #       include <android/native_activity.h>
 #       include <android/native_window.h>
@@ -143,15 +153,23 @@
 #   if defined(__EMSCRIPTEN__)
 #       include <emscripten/emscripten.h>
 #       include <emscripten/html5.h>
+#       include <emscripten/threading.h>
 #   endif
-#   if defined(KD_WINDOW_X11)
-#       include <X11/Xlib.h>
-#       include <X11/Xutil.h>
-#       include <X11/XF86keysym.h>
+#   if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+#       include <xcb/xcb.h>
+#       include <xcb/randr.h>
+#       include <xkbcommon/xkbcommon.h>
 #   endif
 #   if defined(KD_WINDOW_WAYLAND)
 #       include <wayland-client.h>
 #       include <wayland-egl.h>
+#   endif
+#   if defined(KD_WINDOW_X11) 
+#       include <xcb/xcb_ewmh.h>
+#       include <xcb/xcb_icccm.h>
+#       include <xcb/xcb_util.h>
+#       include <xcb/xkb.h>
+#       include <xkbcommon/xkbcommon-x11.h>
 #   endif
 #   undef st_mtime /* OpenKODE uses this */
 #endif
@@ -256,7 +274,7 @@ struct KDThread {
     KDQueueVEN *eventqueue;
     KDEvent *lastevent;
     KDint lasterror;
-    KDuint callbackindex;
+    KDint callbackindex;
     __KDCallback **callbacks;
     void *tlsptr;
 };
@@ -504,6 +522,15 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
         return "Windows";
 #elif defined(__ANDROID__)
         return "Android";
+#elif defined(__linux__) && defined(KD_WINDOW_SUPPORTED)
+        if(kdStrstrVEN(kdGetEnvVEN("XDG_SESSION_TYPE"), "wayland"))
+        {
+            return "Linux (Wayland)";
+        }
+        else
+        {
+            return "Linux (X11)";
+        }
 #elif defined(__linux__)
         return "Linux";
 #elif defined(__APPLE__) && TARGET_OS_IPHONE
@@ -654,7 +681,7 @@ static KDThread *__kdThreadInit(void)
 
 static void __kdThreadFree(KDThread *thread)
 {
-    for(KDsize i = 0; i < thread->callbackindex; i++)
+    for(KDint i = 0; i < thread->callbackindex; i++)
     {
         kdFree(thread->callbacks[i]);
     }
@@ -753,6 +780,13 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     kdSetError(KD_ENOSYS);
     return KD_NULL;
 #endif
+#if defined(__EMSCRIPTEN__)
+    if(!emscripten_has_threading_support())
+    {
+        kdSetError(KD_ENOSYS);
+        return KD_NULL;
+    }
+#endif
 
     KDThread *thread = __kdThreadInit();
     if(thread == KD_NULL)
@@ -798,6 +832,7 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     {
         result = *(KDint *)retval;
     }
+
 #if defined(KD_THREAD_C11)
     thrd_exit(result);
 #elif defined(KD_THREAD_POSIX)
@@ -877,7 +912,7 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void)
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
 #if defined(KD_THREAD_WIN32)
-static BOOL CALLBACK call_once_callback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
+static BOOL CALLBACK __kd_WindowsCallOneCallback(KD_UNUSED PINIT_ONCE flag, PVOID param, KD_UNUSED PVOID *context)
 {
     void (*func)(void) = KD_NULL;
     kdMemcpy(&func, &param, sizeof(param));
@@ -894,7 +929,7 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #elif defined(KD_THREAD_WIN32)
     void *pfunc = KD_NULL;
     kdMemcpy(&pfunc, &init_routine, sizeof(init_routine));
-    InitOnceExecuteOnce((PINIT_ONCE)once_control, call_once_callback, pfunc, KD_NULL);
+    InitOnceExecuteOnce((PINIT_ONCE)once_control, __kd_WindowsCallOneCallback, pfunc, KD_NULL);
 #else
     if(once_control->impl == 0)
     {
@@ -1015,6 +1050,13 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 #if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
     kdSetError(KD_ENOSYS);
     return KD_NULL;
+#endif
+#if defined(__EMSCRIPTEN__)
+    if(!emscripten_has_threading_support())
+    {
+        kdSetError(KD_ENOSYS);
+        return KD_NULL;
+    }
 #endif
 
     KDThreadCond *cond = (KDThreadCond *)kdMalloc(sizeof(KDThreadCond));
@@ -1284,15 +1326,15 @@ struct __KDCallback {
     void *eventuserptr;
 };
 static KDboolean __kdExecCallback(KDEvent *event)
-{
-    KDuint callbackindex = kdThreadSelf()->callbackindex;
+{   
+    KDint callbackindex = kdThreadSelf()->callbackindex;
     __KDCallback **callbacks = kdThreadSelf()->callbacks;
-    for(KDuint i = 0; i < callbackindex; i++)
+    for(KDint i = 0; i < callbackindex; i++)
     {
         if(callbacks[i]->func)
         {
-            KDboolean typematch = callbacks[i]->eventtype == event->type || callbacks[i]->eventtype == 0;
-            KDboolean userptrmatch = callbacks[i]->eventuserptr == event->userptr;
+            KDboolean typematch = (callbacks[i]->eventtype == event->type) || (callbacks[i]->eventtype == 0);
+            KDboolean userptrmatch = (callbacks[i]->eventuserptr == event->userptr);
             if(typematch && userptrmatch)
             {
                 callbacks[i]->func(event);
@@ -1312,11 +1354,85 @@ struct KDWindow {
     EGLint format;
     void *eventuserptr;
     KDThread *originthr;
+    struct {
+        KDint32 width;
+        KDint32 height; 
+    } screen;
+    struct
+    {
+        KDchar caption[256];
+        KDboolean focused;
+        KDboolean visible;
+        KDint32 width;
+        KDint32 height;
+    } properties;
+    struct
+    {
+        struct 
+        {
+            KDint32 availability;
+            KDint32 select;
+            KDint32 x;
+            KDint32 y;
+        } pointer;
+        struct 
+        {
+            KDint32 availability;
+            KDint32 flags;
+            KDint32 character;
+            KDint32 keycode;
+            KDint32 charflags;
+        } keyboard;
+        struct 
+        {
+            KDint32 availability;
+            KDint32 up;
+            KDint32 left;
+            KDint32 right;
+            KDint32 down;
+            KDint32 select;
+        } dpad;
+        struct 
+        {
+            KDint32 availability;
+            KDint32 up;
+            KDint32 left;
+            KDint32 right;
+            KDint32 down;
+            KDint32 fire;
+        } gamekeys;
+    } states;
+#if defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+    struct
+    {
+        struct xkb_context *context;
+        struct xkb_state *state;
+        struct xkb_keymap *keymap;
+        KDuint8 firstevent;
+    } xkb;
+#endif
 #if defined(KD_WINDOW_WAYLAND)
-    struct wl_surface *surface;
-    struct wl_shell_surface *shell_surface;
+    struct
+    {
+        struct wl_surface *surface;
+        struct wl_shell_surface *shell_surface;
+        struct wl_registry *registry;
+        struct wl_compositor *compositor;
+        struct wl_shell *shell;
+        struct wl_seat *seat;
+        struct wl_keyboard *keyboard;
+        struct wl_pointer *pointer;
+    } wayland;
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+    struct
+    {
+        xcb_ewmh_connection_t ewmh;
+    } xcb;
 #endif
 };
+
+static KDWindow *__kd_window = KD_NULL;
 
 #ifdef __ANDROID__
 static AInputQueue *__kd_androidinputqueue = KD_NULL;
@@ -1324,35 +1440,1362 @@ static KDThreadMutex *__kd_androidinputqueue_mutex = KD_NULL;
 #endif
 
 #if defined(KD_WINDOW_WAYLAND)
-static struct wl_compositor *__kd_wl_compositor;
-static struct wl_shell *__kd_wl_shell;
-static struct wl_registry *__kd_wl_registry;
+static struct wl_display *__kd_wl_display;
 #endif
 
-#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
-/* Excerpt from Mesa headers */
-typedef struct _egl_display _EGLDisplay;
-enum _egl_platform_type {
-    _EGL_PLATFORM_X11,
-    _EGL_PLATFORM_WAYLAND,
-    _EGL_PLATFORM_DRM,
-    _EGL_PLATFORM_ANDROID,
-    _EGL_PLATFORM_HAIKU,
-    _EGL_PLATFORM_SURFACELESS,
-    _EGL_NUM_PLATFORMS,
-    _EGL_INVALID_PLATFORM = -1
-};
-typedef enum _egl_platform_type _EGLPlatformType;
-struct _egl_display {
-    _EGLDisplay *Next;
-    pthread_mutex_t Mutex;
-    _EGLPlatformType Platform;
-    void *PlatformDisplay;
-};
+static void __kdHandleSpecialKeys(KDWindow *window, KDEventInputKeyATX *keyevent)
+{
+    KDEvent *dpadevent = kdCreateEvent();
+    dpadevent->type = KD_EVENT_INPUT;
+    KDEvent *gamekeysevent = kdCreateEvent();
+    gamekeysevent->type = KD_EVENT_INPUT;
+
+    switch(keyevent->keycode) 
+    {
+        case(KD_KEY_UP_ATX): 
+        {
+            window->states.dpad.up = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_UP; 
+            dpadevent->data.input.value.i = window->states.dpad.up;
+
+            window->states.gamekeys.up = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_UP; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.up;
+            break;
+        }
+        case(KD_KEY_LEFT_ATX): 
+        {
+            window->states.dpad.left = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_LEFT; 
+            dpadevent->data.input.value.i = window->states.dpad.left;
+
+            window->states.gamekeys.left = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_LEFT; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.left;
+            break;
+        }
+        case(KD_KEY_RIGHT_ATX): 
+        {
+            window->states.dpad.right = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_RIGHT; 
+            dpadevent->data.input.value.i = window->states.dpad.right;
+
+            window->states.gamekeys.right = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_RIGHT; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.right;
+            break;
+        }
+        case(KD_KEY_DOWN_ATX): 
+        {
+            window->states.dpad.down = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_DOWN; 
+            dpadevent->data.input.value.i = window->states.dpad.down;
+
+            window->states.gamekeys.down = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_DOWN; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.down;
+            break;
+        }
+        case(KD_KEY_ENTER_ATX):
+        {
+            window->states.dpad.select = keyevent->flags & KD_KEY_PRESS_ATX;
+            dpadevent->data.input.index = KD_INPUT_DPAD_SELECT; 
+            dpadevent->data.input.value.i = window->states.dpad.select;
+
+            window->states.gamekeys.fire = keyevent->flags & KD_KEY_PRESS_ATX;
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_FIRE; 
+            gamekeysevent->data.input.value.i = window->states.gamekeys.fire;
+            break;
+        }
+        default: 
+        {
+            kdFreeEvent(dpadevent);
+            kdFreeEvent(gamekeysevent);
+            return;
+        }
+    }
+
+    if(!__kdExecCallback(dpadevent)) 
+    { 
+        kdPostEvent(dpadevent); 
+    } 
+    if(!__kdExecCallback(gamekeysevent)) 
+    { 
+        kdPostEvent(gamekeysevent); 
+    }
+}
+
+static KDint32 __KDKeycodeLookup(KDint32 keycode)
+{
+    switch(keycode)
+    {
+#if defined(KD_WINDOW_ANDROID)
+        /* KD_KEY_ACCEPT_ATX */
+        /* KD_KEY_AGAIN_ATX */
+        /* KD_KEY_ALLCANDIDATES_ATX */
+        case(AKEYCODE_EISU):
+        {
+            return KD_KEY_ALPHANUMERIC_ATX;
+        }
+        case(AKEYCODE_ALT_LEFT):
+        case(AKEYCODE_ALT_RIGHT):
+        {
+            return KD_KEY_ALT_ATX;
+        }
+        /* KD_KEY_ALTGRAPH_ATX
+           KD_KEY_APPS_ATX
+           KD_KEY_ATTN_ATX */
+        case(AKEYCODE_BACK):
+        {
+            return KD_KEY_BROWSERBACK_ATX;
+        }
+        /* KD_KEY_BROWSERFAVORITES_ATX
+           KD_KEY_BROWSERFORWARD_ATX
+           KD_KEY_BROWSERHOME_ATX
+           KD_KEY_BROWSERREFRESH_ATX
+           KD_KEY_BROWSERSEARCH_ATX
+           KD_KEY_BROWSERSTOP_ATX */
+        case(AKEYCODE_CAPS_LOCK):
+        {
+            return KD_KEY_CAPSLOCK_ATX;
+        }
+        case(AKEYCODE_CLEAR):
+        {
+            return KD_KEY_CLEAR_ATX;
+        }
+        /* KD_KEY_CODEINPUT_ATX */
+        /* KD_KEY_COMPOSE_ATX */
+        case(AKEYCODE_CTRL_LEFT):
+        case(AKEYCODE_CTRL_RIGHT):
+        {
+            return KD_KEY_CONTROL_ATX;
+        }
+        /* KD_KEY_CRSEL_ATX
+           KD_KEY_CONVERT_ATX */
+        case(AKEYCODE_COPY):
+        {
+            return KD_KEY_COPY_ATX;
+        }
+        case(AKEYCODE_CUT):
+        {
+            return KD_KEY_CUT_ATX;
+        }
+        case(AKEYCODE_DPAD_DOWN):
+        {
+            return KD_KEY_DOWN_ATX;
+        }
+        /* KD_KEY_END_ATX */
+        case(AKEYCODE_ENTER):
+        {
+            return KD_KEY_ENTER_ATX;
+        }
+        /* KD_KEY_ERASEEOF_ATX
+           KD_KEY_EXECUTE_ATX
+           KD_KEY_EXSEL_ATX */
+        case(AKEYCODE_F1):
+        {
+            return KD_KEY_F1_ATX;
+        }
+        case(AKEYCODE_F2):
+        {
+            return KD_KEY_F2_ATX;
+        }
+        case(AKEYCODE_F3):
+        {
+            return KD_KEY_F3_ATX;
+        }
+        case(AKEYCODE_F4):
+        {
+            return KD_KEY_F4_ATX;
+        }
+        case(AKEYCODE_F5):
+        {
+            return KD_KEY_F5_ATX;
+        }
+        case(AKEYCODE_F6):
+        {
+            return KD_KEY_F6_ATX;
+        }
+        case(AKEYCODE_F7):
+        {
+            return KD_KEY_F7_ATX;
+        }
+        case(AKEYCODE_F8):
+        {
+            return KD_KEY_F8_ATX;
+        }
+        case(AKEYCODE_F9):
+        {
+            return KD_KEY_F9_ATX;
+        }
+        case(AKEYCODE_F10):
+        {
+            return KD_KEY_F10_ATX;
+        }
+        case(AKEYCODE_F11):
+        {
+            return KD_KEY_F11_ATX;
+        }
+        case(AKEYCODE_F12):
+        {
+            return KD_KEY_F12_ATX;
+        }
+        /* KD_KEY_F13_ATX
+           KD_KEY_F14_ATX
+           KD_KEY_F15_ATX
+           KD_KEY_F16_ATX
+           KD_KEY_F17_ATX
+           KD_KEY_F18_ATX
+           KD_KEY_F19_ATX
+           KD_KEY_F20_ATX
+           KD_KEY_F21_ATX
+           KD_KEY_F22_ATX
+           KD_KEY_F23_ATX
+           KD_KEY_F24_ATX
+           KD_KEY_FINALMODE_ATX
+           KD_KEY_FIND_ATX
+           KD_KEY_FULLWIDTH_ATX
+           KD_KEY_HALFWIDTH_ATX
+           KD_KEY_HANGULMODE_ATX
+           KD_KEY_HANJAMODE_ATX */
+        case(AKEYCODE_HELP):
+        {
+            return KD_KEY_HELP_ATX;
+        }
+        /* KD_KEY_HIRAGANA_ATX */
+        case(AKEYCODE_HOME):
+        {
+            return KD_KEY_HOME_ATX;
+        }
+        case(AKEYCODE_DEL):
+        {
+            return KD_KEY_INSERT_ATX;
+        }
+        /* KD_KEY_JAPANESEHIRAGANA_ATX
+           KD_KEY_JAPANESEKATAKANA_ATX
+           KD_KEY_JAPANESEROMAJI_ATX
+           KD_KEY_JUNJAMODE_ATX
+           KD_KEY_KANAMODE_ATX
+           KD_KEY_KANJIMODE_ATX
+           KD_KEY_KATAKANA_ATX */
+        /* KD_KEY_LAUNCHAPPLICATION1_ATX
+           KD_KEY_LAUNCHAPPLICATION2_ATX */
+        case(AKEYCODE_ENVELOPE):
+        {
+            return KD_KEY_LAUNCHMAIL_ATX;
+        }
+        case(AKEYCODE_SOFT_LEFT):
+        case(AKEYCODE_DPAD_LEFT):
+        {
+            return KD_KEY_LEFT_ATX;
+        }
+        /* KD_KEY_META_ATX */
+        case(AKEYCODE_MEDIA_NEXT):
+        {
+            return KD_KEY_MEDIANEXTTRACK_ATX;
+        }
+        case(AKEYCODE_MEDIA_PLAY_PAUSE):
+        {
+            return KD_KEY_MEDIAPLAYPAUSE_ATX;
+        }
+        case(AKEYCODE_MEDIA_PREVIOUS):
+        {
+            return KD_KEY_MEDIAPREVIOUSTRACK_ATX;
+        }
+        case(AKEYCODE_MEDIA_STOP):
+        {
+            return KD_KEY_MEDIASTOP_ATX;
+        }
+        /* KD_KEY_MODECHANGE_ATX
+           KD_KEY_NONCONVERT_ATX */
+        case(AKEYCODE_NUM_LOCK):
+        {
+            return KD_KEY_NUMLOCK_ATX;
+        }
+        case(AKEYCODE_PAGE_DOWN):
+        {
+            return KD_KEY_PAGEDOWN_ATX;
+        }
+        case(AKEYCODE_PAGE_UP):
+        {
+            return KD_KEY_PAGEUP_ATX;
+        }
+        case(AKEYCODE_MEDIA_PAUSE):
+        {
+            return KD_KEY_PAUSE_ATX;
+        }
+        case(AKEYCODE_MEDIA_PLAY):
+        {
+            return KD_KEY_PLAY_ATX;
+        }
+        /* KD_KEY_PREVIOUSCANDIDATE_ATX */
+        case(AKEYCODE_SYSRQ):
+        {
+            return KD_KEY_PRINTSCREEN_ATX;
+        }
+        /* KD_KEY_PROCESS_ATX
+           KD_KEY_PROPS_ATX */
+        case(AKEYCODE_SOFT_RIGHT):
+        case(AKEYCODE_DPAD_RIGHT):
+        {
+            return KD_KEY_RIGHT_ATX;
+        }
+        /* KD_KEY_ROMANCHARACTERS_ATX */
+        case(AKEYCODE_MOVE_END):
+        {
+            return KD_KEY_SCROLL_ATX;
+        }
+        case(AKEYCODE_BUTTON_SELECT):
+        {
+            return KD_KEY_SELECT_ATX;
+        }
+        case(AKEYCODE_MEDIA_TOP_MENU):
+        {
+            return KD_KEY_SELECTMEDIA_ATX;
+        }
+        case(AKEYCODE_SHIFT_LEFT):
+        case(AKEYCODE_SHIFT_RIGHT):
+        {
+            return KD_KEY_SHIFT_ATX;
+        }
+        /* KD_KEY_STOP_ATX */
+        case(AKEYCODE_DPAD_UP):
+        {
+            return KD_KEY_UP_ATX;
+        }
+        /* KD_KEY_UNDO_ATX */
+        case(AKEYCODE_VOLUME_DOWN):
+        {
+            return KD_KEY_VOLUMEDOWN_ATX;
+        }
+        case(AKEYCODE_VOLUME_MUTE):
+        {
+            return KD_KEY_VOLUMEMUTE_ATX;
+        }
+        case(AKEYCODE_VOLUME_UP):
+        {
+            return KD_KEY_VOLUMEUP_ATX;
+        }
+        /* KD_KEY_WIN_ATX */
+        case(AKEYCODE_ZOOM_IN):
+        {
+            return KD_KEY_ZOOM_ATX;
+        }
+#elif defined(KD_WINDOW_WIN32)
+        case(VK_ACCEPT):
+        {
+            return KD_KEY_ACCEPT_ATX;
+        }
+        /* KD_KEY_AGAIN_ATX */
+        /* KD_KEY_ALLCANDIDATES_ATX */
+        /* KD_KEY_ALPHANUMERIC_ATX */
+        case(VK_MENU):
+        {
+            return KD_KEY_ALT_ATX;
+        }
+        /* KD_KEY_ALTGRAPH_ATX */
+        case(VK_APPS):
+        {
+            return KD_KEY_APPS_ATX;
+        }
+        case(VK_ATTN):
+        {
+            return KD_KEY_ATTN_ATX;
+        }
+        case(VK_BACK):
+        {
+            return KD_KEY_BROWSERBACK_ATX;
+        }
+        case(VK_BROWSER_FAVORITES):
+        {
+            return KD_KEY_BROWSERFAVORITES_ATX;
+        }
+        case(VK_BROWSER_FORWARD):
+        {
+            return KD_KEY_BROWSERFORWARD_ATX;
+        }
+        case(VK_BROWSER_HOME):
+        {
+            return KD_KEY_BROWSERHOME_ATX;
+        }
+        case(VK_BROWSER_REFRESH):
+        {
+            return KD_KEY_BROWSERREFRESH_ATX;
+        }
+        case(VK_BROWSER_SEARCH):
+        {
+            return KD_KEY_BROWSERSEARCH_ATX;
+        }
+        case(VK_BROWSER_STOP):
+        {
+            return KD_KEY_BROWSERSTOP_ATX;
+        }
+        case(VK_CAPITAL):
+        {
+            return KD_KEY_CAPSLOCK_ATX;
+        }
+        case(VK_CLEAR):
+        case(VK_OEM_CLEAR):
+        {
+            return KD_KEY_CLEAR_ATX;
+        }
+        /* KD_KEY_CODEINPUT_ATX */
+        /* KD_KEY_COMPOSE_ATX */
+        case(VK_CONTROL):
+        {
+            return KD_KEY_CONTROL_ATX;
+        }
+        case(VK_CRSEL):
+        {
+            return KD_KEY_CRSEL_ATX;
+        }
+        case(VK_CONVERT):
+        {
+            return KD_KEY_CONVERT_ATX;
+        }
+        /* KD_KEY_COPY_ATX */
+        /* KD_KEY_CUT_ATX */
+        case(VK_DOWN):
+        {
+            return KD_KEY_DOWN_ATX;
+        }
+        case(VK_END):
+        {
+            return KD_KEY_END_ATX;
+        }
+        case(VK_RETURN):
+        {
+            return KD_KEY_ENTER_ATX;
+        }
+        case(VK_EREOF):
+        {
+            return KD_KEY_ERASEEOF_ATX;
+        }
+        case(VK_EXECUTE):
+        {
+            return KD_KEY_EXECUTE_ATX;
+        }
+        case(VK_EXSEL):
+        {
+            return KD_KEY_EXSEL_ATX;
+        }
+        case(VK_F1):
+        {
+            return KD_KEY_F1_ATX;
+        }
+        case(VK_F2):
+        {
+            return KD_KEY_F2_ATX;
+        }
+        case(VK_F3):
+        {
+            return KD_KEY_F3_ATX;
+        }
+        case(VK_F4):
+        {
+            return KD_KEY_F4_ATX;
+        }
+        case(VK_F5):
+        {
+            return KD_KEY_F5_ATX;
+        }
+        case(VK_F6):
+        {
+            return KD_KEY_F6_ATX;
+        }
+        case(VK_F7):
+        {
+            return KD_KEY_F7_ATX;
+        }
+        case(VK_F8):
+        {
+            return KD_KEY_F8_ATX;
+        }
+        case(VK_F9):
+        {
+            return KD_KEY_F9_ATX;
+        }
+        case(VK_F10):
+        {
+            return KD_KEY_F10_ATX;
+        }
+        case(VK_F11):
+        {
+            return KD_KEY_F11_ATX;
+        }
+        case(VK_F12):
+        {
+            return KD_KEY_F12_ATX;
+        }
+        case(VK_F13):
+        {
+            return KD_KEY_F13_ATX;
+        }
+        case(VK_F14):
+        {
+            return KD_KEY_F14_ATX;
+        }
+        case(VK_F15):
+        {
+            return KD_KEY_F15_ATX;
+        }
+        case(VK_F16):
+        {
+            return KD_KEY_F16_ATX;
+        }
+        case(VK_F17):
+        {
+            return KD_KEY_F17_ATX;
+        }
+        case(VK_F18):
+        {
+            return KD_KEY_F18_ATX;
+        }
+        case(VK_F19):
+        {
+            return KD_KEY_F19_ATX;
+        }
+        case(VK_F20):
+        {
+            return KD_KEY_F20_ATX;
+        }
+        case(VK_F21):
+        {
+            return KD_KEY_F21_ATX;
+        }
+        case(VK_F22):
+        {
+            return KD_KEY_F22_ATX;
+        }
+        case(VK_F23):
+        {
+            return KD_KEY_F23_ATX;
+        }
+        case(VK_F24):
+        {
+            return KD_KEY_F24_ATX;
+        }
+        case(VK_FINAL):
+        {
+            return KD_KEY_FINALMODE_ATX;
+        }
+        /* KD_KEY_FIND_ATX
+           KD_KEY_FULLWIDTH_ATX
+           KD_KEY_HALFWIDTH_ATX */
+        case(VK_HANGUL):
+        {
+            return KD_KEY_HANGULMODE_ATX;
+        }
+        case(VK_HANJA):
+        {
+            return KD_KEY_HANJAMODE_ATX;
+        }
+        case(VK_HELP):
+        {
+            return KD_KEY_HELP_ATX;
+        }
+        /* KD_KEY_HIRAGANA_ATX */
+        case(VK_HOME):
+        {
+            return KD_KEY_HOME_ATX;
+        }
+        case(VK_INSERT):
+        {
+            return KD_KEY_INSERT_ATX;
+        }
+        /* KD_KEY_JAPANESEHIRAGANA_ATX
+           KD_KEY_JAPANESEKATAKANA_ATX
+           KD_KEY_JAPANESEROMAJI_ATX
+           KD_KEY_JUNJAMODE_ATX
+           KD_KEY_KANAMODE_ATX
+           KD_KEY_KANJIMODE_ATX
+           KD_KEY_KATAKANA_ATX */
+        case(VK_LAUNCH_APP1):
+        {
+            return KD_KEY_LAUNCHAPPLICATION1_ATX;
+        }
+        case(VK_LAUNCH_APP2):
+        {
+            return KD_KEY_LAUNCHAPPLICATION2_ATX;
+        }
+        case(VK_LAUNCH_MAIL):
+        {
+            return KD_KEY_LAUNCHMAIL_ATX;
+        }
+        case(VK_LEFT):
+        {
+            return KD_KEY_LEFT_ATX;
+        }
+        /* KD_KEY_META_ATX */
+        case(VK_MEDIA_NEXT_TRACK):
+        {
+            return KD_KEY_MEDIANEXTTRACK_ATX;
+        }
+        case(VK_MEDIA_PLAY_PAUSE):
+        {
+            return KD_KEY_MEDIAPLAYPAUSE_ATX;
+        }
+        case(VK_MEDIA_PREV_TRACK):
+        {
+            return KD_KEY_MEDIAPREVIOUSTRACK_ATX;
+        }
+        case(VK_MEDIA_STOP):
+        {
+            return KD_KEY_MEDIASTOP_ATX;
+        }
+        case(VK_MODECHANGE):
+        {
+            return KD_KEY_MODECHANGE_ATX;
+        }
+        case(VK_NONCONVERT):
+        {
+            return KD_KEY_NONCONVERT_ATX;
+        }
+        case(VK_NUMLOCK):
+        {
+            return KD_KEY_NUMLOCK_ATX;
+        }
+        case(VK_NEXT):
+        {
+            return KD_KEY_PAGEDOWN_ATX;
+        }
+        case(VK_PRIOR):
+        {
+            return KD_KEY_PAGEUP_ATX;
+        }
+        case(VK_PAUSE):
+        {
+            return KD_KEY_PAUSE_ATX;
+        }
+        case(VK_PLAY):
+        {
+            return KD_KEY_PLAY_ATX;
+        }
+        /* KD_KEY_PREVIOUSCANDIDATE_ATX */
+        case(VK_PRINT):
+        {
+            return KD_KEY_PRINTSCREEN_ATX;
+        }
+        case(VK_PROCESSKEY):
+        {
+            return KD_KEY_PROCESS_ATX;
+        }
+        /* KD_KEY_PROPS_ATX */
+        case(VK_RIGHT):
+        {
+            return KD_KEY_RIGHT_ATX;
+        }
+        /* KD_KEY_ROMANCHARACTERS_ATX */
+        case(VK_SCROLL):
+        {
+            return KD_KEY_SCROLL_ATX;
+        }
+        case(VK_SELECT):
+        {
+            return KD_KEY_SELECT_ATX;
+        }
+        case(VK_LAUNCH_MEDIA_SELECT):
+        {
+            return KD_KEY_SELECTMEDIA_ATX;
+        }
+        case(VK_SHIFT):
+        {
+            return KD_KEY_SHIFT_ATX;
+        }
+        case(VK_CANCEL):
+        {
+            return KD_KEY_STOP_ATX;
+        }
+        case(VK_UP):
+        {
+            return KD_KEY_UP_ATX;
+        }
+        /* KD_KEY_UNDO_ATX */
+        case(VK_VOLUME_DOWN):
+        {
+            return KD_KEY_VOLUMEDOWN_ATX;
+        }
+        case(VK_VOLUME_MUTE):
+        {
+            return KD_KEY_VOLUMEMUTE_ATX;
+        }
+        case(VK_VOLUME_UP):
+        {
+            return KD_KEY_VOLUMEUP_ATX;
+        }
+        case(VK_LWIN):
+        case(VK_RWIN):
+        {
+            return KD_KEY_WIN_ATX;
+        }
+        case(VK_ZOOM):
+        {
+            return KD_KEY_ZOOM_ATX;
+        }
+#elif defined(KD_WINDOW_EMSCRIPTEN)
+        case(30):
+        {
+            return KD_KEY_ACCEPT_ATX;
+        }
+        /* KD_KEY_AGAIN_ATX */
+        /* KD_KEY_ALLCANDIDATES_ATX */
+        /* KD_KEY_ALPHANUMERIC_ATX */
+        case(18):
+        {
+            return KD_KEY_ALT_ATX;
+        }
+        /* KD_KEY_ALTGRAPH_ATX */
+        /* KD_KEY_APPS_ATX */
+        case(240):
+        case(246):
+        {
+            return KD_KEY_ATTN_ATX;
+        }
+        /* KD_KEY_BROWSERBACK_ATX
+           KD_KEY_BROWSERFAVORITES_ATX
+           KD_KEY_BROWSERFORWARD_ATX
+           KD_KEY_BROWSERHOME_ATX
+           KD_KEY_BROWSERREFRESH_ATX
+           KD_KEY_BROWSERSEARCH_ATX
+           KD_KEY_BROWSERSTOP_ATX */
+        case(20):
+        {
+            return KD_KEY_CAPSLOCK_ATX;
+        }
+        case(12):
+        case(230):
+        case(254):
+        {
+            return KD_KEY_CLEAR_ATX;
+        }
+        /* KD_KEY_CODEINPUT_ATX
+           KD_KEY_COMPOSE_ATX */
+        case(17):
+        {
+            return KD_KEY_CONTROL_ATX;
+        }
+        case(247):
+        {
+            return KD_KEY_CRSEL_ATX;
+        }
+        case(28):
+        {
+            return KD_KEY_CONVERT_ATX;
+        }
+        case(242):
+        {
+            return KD_KEY_COPY_ATX;
+        }
+        /* KD_KEY_CUT_ATX */
+        case(40):
+        {
+            return KD_KEY_DOWN_ATX;
+        }
+        case(35):
+        {
+            return KD_KEY_END_ATX;
+        }
+        case(13):
+        {
+            return KD_KEY_ENTER_ATX;
+        }
+        case(249):
+        {
+            return KD_KEY_ERASEEOF_ATX;
+        }
+        case(43):
+        {
+            return KD_KEY_EXECUTE_ATX;
+        }
+        case(248):
+        {
+            return KD_KEY_EXSEL_ATX;
+        }
+        case(112):
+        {
+            return KD_KEY_F1_ATX;
+        }
+        case(113):
+        {
+            return KD_KEY_F2_ATX;
+        }
+        case(114):
+        {
+            return KD_KEY_F3_ATX;
+        }
+        case(115):
+        {
+            return KD_KEY_F4_ATX;
+        }
+        case(116):
+        {
+            return KD_KEY_F5_ATX;
+        }
+        case(117):
+        {
+            return KD_KEY_F6_ATX;
+        }
+        case(118):
+        {
+            return KD_KEY_F7_ATX;
+        }
+        case(119):
+        {
+            return KD_KEY_F8_ATX;
+        }
+        case(120):
+        {
+            return KD_KEY_F9_ATX;
+        }
+        case(121):
+        {
+            return KD_KEY_F10_ATX;
+        }
+        case(122):
+        {
+            return KD_KEY_F11_ATX;
+        }
+        case(123):
+        {
+            return KD_KEY_F12_ATX;
+        }
+        case(124):
+        {
+            return KD_KEY_F13_ATX;
+        }
+        case(125):
+        {
+            return KD_KEY_F14_ATX;
+        }
+        case(126):
+        {
+            return KD_KEY_F15_ATX;
+        }
+        case(127):
+        {
+            return KD_KEY_F16_ATX;
+        }
+        case(128):
+        {
+            return KD_KEY_F17_ATX;
+        }
+        case(129):
+        {
+            return KD_KEY_F18_ATX;
+        }
+        case(130):
+        {
+            return KD_KEY_F19_ATX;
+        }
+        case(131):
+        {
+            return KD_KEY_F20_ATX;
+        }
+        case(132):
+        {
+            return KD_KEY_F21_ATX;
+        }
+        case(133):
+        {
+            return KD_KEY_F22_ATX;
+        }
+        case(134):
+        {
+            return KD_KEY_F23_ATX;
+        }
+        case(135):
+        {
+            return KD_KEY_F24_ATX;
+        }
+        case(24):
+        {
+            return KD_KEY_FINALMODE_ATX;
+        }
+        /* KD_KEY_FIND_ATX
+           KD_KEY_FULLWIDTH_ATX
+           KD_KEY_HALFWIDTH_ATX */
+        case(21):
+        {
+            return KD_KEY_HANGULMODE_ATX;
+        }
+        case(25):
+        {
+            return KD_KEY_HANJAMODE_ATX;
+        }
+        case(6):
+        {
+            return KD_KEY_HELP_ATX;
+        }
+        /* KD_KEY_HIRAGANA_ATX */
+        case(36):
+        {
+            return KD_KEY_HOME_ATX;
+        }
+        case(45):
+        {
+            return KD_KEY_INSERT_ATX;
+        }
+        /* KD_KEY_JAPANESEHIRAGANA_ATX
+           KD_KEY_JAPANESEKATAKANA_ATX
+           KD_KEY_JAPANESEROMAJI_ATX
+           KD_KEY_JUNJAMODE_ATX
+           KD_KEY_KANAMODE_ATX
+           KD_KEY_KANJIMODE_ATX
+           KD_KEY_KATAKANA_ATX */
+        /* KD_KEY_LAUNCHAPPLICATION1_ATX
+           KD_KEY_LAUNCHAPPLICATION2_ATX
+           KD_KEY_LAUNCHMAIL_ATX*/
+        case(37):
+        {
+            return KD_KEY_LEFT_ATX;
+        }
+        case(224):
+        {
+            return KD_KEY_META_ATX;
+        }
+        /* KD_KEY_MEDIANEXTTRACK_ATX;
+           KD_KEY_MEDIAPLAYPAUSE_ATX
+           KD_KEY_MEDIAPREVIOUSTRACK_ATX
+           KD_KEY_MEDIASTOP_ATX */
+        case(31):
+        {
+            return KD_KEY_MODECHANGE_ATX;
+        }
+        case(29):
+        {
+            return KD_KEY_NONCONVERT_ATX;
+        }
+        case(144):
+        {
+            return KD_KEY_NUMLOCK_ATX;
+        }
+        case(34):
+        {
+            return KD_KEY_PAGEDOWN_ATX;
+        }
+        case(33):
+        {
+            return KD_KEY_PAGEUP_ATX;
+        }
+        case(19):
+        {
+            return KD_KEY_PAUSE_ATX;
+        }
+        case(250):
+        {
+            return KD_KEY_PLAY_ATX;
+        }
+        /* KD_KEY_PREVIOUSCANDIDATE_ATX */
+        case(42):
+        {
+            return KD_KEY_PRINTSCREEN_ATX;
+        }
+        /* KD_KEY_PROCESS_ATX */
+        /* KD_KEY_PROPS_ATX */
+        case(39):
+        {
+            return KD_KEY_RIGHT_ATX;
+        }
+        /* KD_KEY_ROMANCHARACTERS_ATX */
+        case(145):
+        {
+            return KD_KEY_SCROLL_ATX;
+        }
+        case(41):
+        {
+            return KD_KEY_SELECT_ATX;
+        }
+        /* KD_KEY_SELECTMEDIA_ATX */
+        case(16):
+        {
+            return KD_KEY_SHIFT_ATX;
+        }
+        case(3):
+        {
+            return KD_KEY_STOP_ATX;
+        }
+        case(38):
+        {
+            return KD_KEY_UP_ATX;
+        }
+        /* KD_KEY_UNDO_ATX */
+        case(182):
+        {
+            return KD_KEY_VOLUMEDOWN_ATX;
+        }
+        case(181):
+        {
+            return KD_KEY_VOLUMEMUTE_ATX;
+        }
+        case(183):
+        {
+            return KD_KEY_VOLUMEUP_ATX;
+        }
+        case(91):
+        {
+            return KD_KEY_WIN_ATX;
+        }
+        case(251):
+        {
+            return KD_KEY_ZOOM_ATX;
+        }
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+        /* KD_KEY_ACCEPT_ATX */
+        case(XKB_KEY_Redo):
+        {
+            return KD_KEY_AGAIN_ATX;
+        }
+        /* KD_KEY_ALLCANDIDATES_ATX */
+        /* KD_KEY_ALPHANUMERIC_ATX */
+        case(XKB_KEY_Alt_L):
+        case(XKB_KEY_Alt_R):
+        {
+            return KD_KEY_ALT_ATX;
+        }
+        /* KD_KEY_ALTGRAPH_ATX */
+        /* KD_KEY_APPS_ATX */
+        /* KD_KEY_ATTN_ATX */
+        case(XKB_KEY_XF86Back):
+        {
+            return KD_KEY_BROWSERBACK_ATX;
+        }
+        case(XKB_KEY_XF86Favorites):
+        {
+            return KD_KEY_BROWSERFAVORITES_ATX;
+        }
+        case(XKB_KEY_XF86Forward):
+        {
+            return KD_KEY_BROWSERFORWARD_ATX;
+        }
+        case(XKB_KEY_XF86HomePage):
+        {
+            return KD_KEY_BROWSERHOME_ATX;
+        }
+        case(XKB_KEY_XF86Refresh):
+        {
+            return KD_KEY_BROWSERREFRESH_ATX;
+        }
+        case(XKB_KEY_XF86Search):
+        {
+            return KD_KEY_BROWSERSEARCH_ATX;
+        }
+        case(XKB_KEY_XF86Stop):
+        {
+            return KD_KEY_BROWSERSTOP_ATX;
+        }
+        case(XKB_KEY_Caps_Lock):
+        {
+            return KD_KEY_CAPSLOCK_ATX;
+        }
+        case(XKB_KEY_Clear):
+        {
+            return KD_KEY_CLEAR_ATX;
+        }
+        case(XKB_KEY_Codeinput):
+        {
+            return KD_KEY_CODEINPUT_ATX;
+        }
+        case(XKB_KEY_Multi_key):
+        {
+            return KD_KEY_COMPOSE_ATX;
+        }
+        case(XKB_KEY_Control_L):
+        case(XKB_KEY_Control_R):
+        {
+            return KD_KEY_CONTROL_ATX;
+        }
+        /* KD_KEY_CRSEL_ATX */
+        /* KD_KEY_CONVERT_ATX */
+        case(XKB_KEY_XF86Copy):
+        {
+            return KD_KEY_COPY_ATX;
+        }
+        case(XKB_KEY_XF86Cut):
+        {
+            return KD_KEY_CUT_ATX;
+        }
+        case(XKB_KEY_Down):
+        case(XKB_KEY_KP_Down):
+        {
+            return KD_KEY_DOWN_ATX;
+        }
+        case(XKB_KEY_End):
+        case(XKB_KEY_KP_End):
+        {
+            return KD_KEY_END_ATX;
+        }
+        case(XKB_KEY_Return):
+        case(XKB_KEY_KP_Enter):
+        case(XKB_KEY_ISO_Enter):
+        {
+            return KD_KEY_ENTER_ATX;
+        }
+        /* KD_KEY_ERASEEOF_ATX */
+        case(XKB_KEY_Execute):
+        {
+            return KD_KEY_EXECUTE_ATX;
+        }
+        /* KD_KEY_EXSEL_ATX */
+        case(XKB_KEY_F1):
+        case(XKB_KEY_KP_F1):
+        {
+            return KD_KEY_F1_ATX;
+        }
+        case(XKB_KEY_F2):
+        case(XKB_KEY_KP_F2):
+        {
+            return KD_KEY_F2_ATX;
+        }
+        case(XKB_KEY_F3):
+        case(XKB_KEY_KP_F3):
+        {
+            return KD_KEY_F3_ATX;
+        }
+        case(XKB_KEY_F4):
+        case(XKB_KEY_KP_F4):
+        {
+            return KD_KEY_F4_ATX;
+        }
+        case(XKB_KEY_F5):
+        {
+            return KD_KEY_F5_ATX;
+        }
+        case(XKB_KEY_F6):
+        {
+            return KD_KEY_F6_ATX;
+        }
+        case(XKB_KEY_F7):
+        {
+            return KD_KEY_F7_ATX;
+        }
+        case(XKB_KEY_F8):
+        {
+            return KD_KEY_F8_ATX;
+        }
+        case(XKB_KEY_F9):
+        {
+            return KD_KEY_F9_ATX;
+        }
+        case(XKB_KEY_F10):
+        {
+            return KD_KEY_F10_ATX;
+        }
+        case(XKB_KEY_F11):
+        {
+            return KD_KEY_F11_ATX;
+        }
+        case(XKB_KEY_F12):
+        {
+            return KD_KEY_F12_ATX;
+        }
+        case(XKB_KEY_F13):
+        {
+            return KD_KEY_F13_ATX;
+        }
+        case(XKB_KEY_F14):
+        {
+            return KD_KEY_F14_ATX;
+        }
+        case(XKB_KEY_F15):
+        {
+            return KD_KEY_F15_ATX;
+        }
+        case(XKB_KEY_F16):
+        {
+            return KD_KEY_F16_ATX;
+        }
+        case(XKB_KEY_F17):
+        {
+            return KD_KEY_F17_ATX;
+        }
+        case(XKB_KEY_F18):
+        {
+            return KD_KEY_F18_ATX;
+        }
+        case(XKB_KEY_F19):
+        {
+            return KD_KEY_F19_ATX;
+        }
+        case(XKB_KEY_F20):
+        {
+            return KD_KEY_F20_ATX;
+        }
+        case(XKB_KEY_F21):
+        {
+            return KD_KEY_F21_ATX;
+        }
+        case(XKB_KEY_F22):
+        {
+            return KD_KEY_F22_ATX;
+        }
+        case(XKB_KEY_F23):
+        {
+            return KD_KEY_F23_ATX;
+        }
+        case(XKB_KEY_F24):
+        {
+            return KD_KEY_F24_ATX;
+        }
+        /* KD_KEY_FINALMODE_ATX */
+        case(XKB_KEY_Find):
+        {
+            return KD_KEY_FIND_ATX;
+        }
+        /* KD_KEY_FULLWIDTH_ATX
+           KD_KEY_HALFWIDTH_ATX
+           KD_KEY_HANGULMODE_ATX
+           KD_KEY_HANJAMODE_ATX */
+        case(XKB_KEY_Help):
+        {
+            return KD_KEY_HELP_ATX;
+        }
+        case(XKB_KEY_Hiragana):
+        {
+            return KD_KEY_HIRAGANA_ATX;
+        }
+        case(XKB_KEY_Home):
+        {
+            return KD_KEY_HOME_ATX;
+        }
+        case(XKB_KEY_Insert):
+        {
+            return KD_KEY_INSERT_ATX;
+        }
+        /* KD_KEY_JAPANESEHIRAGANA_ATX
+           KD_KEY_JAPANESEKATAKANA_ATX
+           KD_KEY_JAPANESEROMAJI_ATX
+           KD_KEY_JUNJAMODE_ATX
+           KD_KEY_KANAMODE_ATX
+           KD_KEY_KANJIMODE_ATX
+           KD_KEY_KATAKANA_ATX */
+        case(XKB_KEY_XF86Launch0):
+        {
+            return KD_KEY_LAUNCHAPPLICATION1_ATX;
+        }
+        case(XKB_KEY_XF86Launch1):
+        {
+            return KD_KEY_LAUNCHAPPLICATION2_ATX;
+        }
+        case(XKB_KEY_XF86Mail):
+        {
+            return KD_KEY_LAUNCHMAIL_ATX;
+        }
+        case(XKB_KEY_Left):
+        {
+            return KD_KEY_LEFT_ATX;
+        }
+        case(XKB_KEY_Meta_L):
+        case(XKB_KEY_Meta_R):
+        {
+            return KD_KEY_META_ATX;
+        }
+        case(XKB_KEY_XF86AudioForward):
+        {
+            return KD_KEY_MEDIANEXTTRACK_ATX;
+        }
+        case(XKB_KEY_XF86AudioPlay):
+        case(XKB_KEY_XF86AudioPause):
+        {
+            return KD_KEY_MEDIAPLAYPAUSE_ATX;
+        }
+        case(XKB_KEY_XF86AudioPrev):
+        {
+            return KD_KEY_MEDIAPREVIOUSTRACK_ATX;
+        }
+        case(XKB_KEY_XF86AudioStop):
+        {
+            return KD_KEY_MEDIASTOP_ATX;
+        }
+        case(XKB_KEY_Mode_switch):
+        {
+            return KD_KEY_MODECHANGE_ATX;
+        }
+        /* KD_KEY_NONCONVERT_ATX */
+        case(XKB_KEY_Num_Lock):
+        {
+            return KD_KEY_NUMLOCK_ATX;
+        }
+        case(XKB_KEY_Page_Down):
+        case(XKB_KEY_KP_Page_Down):
+        {
+            return KD_KEY_PAGEDOWN_ATX;
+        }
+        case(XKB_KEY_KP_Up):
+        case(XKB_KEY_KP_Page_Up):
+        {
+            return KD_KEY_PAGEUP_ATX;
+        }
+        case(XKB_KEY_Pause):
+        {
+            return KD_KEY_PAUSE_ATX;
+        }
+        /* KD_KEY_PLAY_ATX */
+        /* KD_KEY_PREVIOUSCANDIDATE_ATX */
+        case(XKB_KEY_Print):
+        {
+            return KD_KEY_PRINTSCREEN_ATX;
+        }
+        /* KD_KEY_PROCESS_ATX */
+        /* KD_KEY_PROPS_ATX */
+        case(XKB_KEY_Right):
+        {
+            return KD_KEY_RIGHT_ATX;
+        }
+        /* KD_KEY_ROMANCHARACTERS_ATX */
+        /* KD_KEY_SCROLL_ATX */
+        case(XKB_KEY_Select):
+        {
+            return KD_KEY_SELECT_ATX;
+            break;
+        }
+        case(XKB_KEY_XF86AudioMedia):
+        {
+            return KD_KEY_SELECTMEDIA_ATX;
+        }
+        case(XKB_KEY_Shift_L):
+        case(XKB_KEY_Shift_R):
+        {
+            return KD_KEY_SHIFT_ATX;
+        }
+        case(XKB_KEY_Cancel):
+        {
+            return KD_KEY_STOP_ATX;
+        }
+        case(XKB_KEY_Up):
+        {
+            return KD_KEY_UP_ATX;
+        }
+        case(XKB_KEY_Undo):
+        {
+            return KD_KEY_UNDO_ATX;
+        }
+        case(XKB_KEY_XF86AudioLowerVolume):
+        {
+            return KD_KEY_VOLUMEDOWN_ATX;
+        }
+        case(XKB_KEY_XF86AudioMute):
+        {
+            return KD_KEY_VOLUMEMUTE_ATX;
+        }
+        case(XKB_KEY_XF86AudioRaiseVolume):
+        {
+            return KD_KEY_VOLUMEUP_ATX;
+        }
+        case(XKB_KEY_Super_L):
+        case(XKB_KEY_Super_R):
+        {
+            return KD_KEY_WIN_ATX;
+        }
+/* KD_KEY_ZOOM_ATX */
+#endif
+        default:
+        {
+            return 0;
+        }
+    }
+}
 #endif
 
-static KDWindow *__kd_window = KD_NULL;
-#endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
@@ -1371,9 +2814,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 
 #ifdef KD_WINDOW_SUPPORTED
     KD_UNUSED KDWindow *window = __kd_window;
-#if defined(__EMSCRIPTEN__)
-    emscripten_sleep(1);
-#elif defined(__ANDROID__)
+#if defined(KD_WINDOW_ANDROID)
     AInputEvent *aevent = KD_NULL;
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     if(__kd_androidinputqueue)
@@ -1386,14 +2827,30 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
             {
                 case(AINPUT_EVENT_TYPE_KEY):
                 {
-                    switch(AKeyEvent_getKeyCode(aevent))
+                    event->type = KD_EVENT_INPUT_KEY_ATX;
+                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+
+                    if(AKeyEvent_getAction(aevent) == AKEY_EVENT_ACTION_DOWN)
                     {
-                        case(AKEYCODE_BACK):
-                        default:
-                        {
-                            kdFreeEvent(event);
-                            break;
-                        }
+                        keyevent->flags = KD_KEY_PRESS_ATX;
+                    }
+                    else
+                    {
+                        keyevent->flags = 0;
+                    }
+
+                    KDint32 keycode = AKeyEvent_getKeyCode(aevent);
+                    keyevent->keycode = __KDKeycodeLookup(keycode);
+                    if(!keyevent->keycode)
+                    {
+                        event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
+                        keycharevent->character = keycode;
+                    }
+
+                    if(!__kdExecCallback(event))
+                    {
+                        kdPostEvent(event);
                     }
                     break;
                 }
@@ -1413,7 +2870,8 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
         MSG msg = {0};
         while(PeekMessage(&msg, window->nativewindow, 0, 0, PM_REMOVE) != 0)
         {
-            KDEvent *event = kdCreateEvent();
+            KDEvent *kdevent = kdCreateEvent();
+            kdevent->userptr = window->eventuserptr;
             switch(msg.message)
             {
                 case WM_CLOSE:
@@ -1421,10 +2879,10 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                 case WM_QUIT:
                 {
                     ShowWindow(window->nativewindow, SW_HIDE);
-                    event->type = KD_EVENT_WINDOW_CLOSE;
-                    if(!__kdExecCallback(event))
+                    kdevent->type = KD_EVENT_WINDOW_CLOSE;
+                    if(!__kdExecCallback(kdevent))
                     {
-                        kdPostEvent(event);
+                        kdPostEvent(kdevent);
                     }
                     break;
                 }
@@ -1440,1079 +2898,310 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                             raw->data.mouse.usButtonFlags == RI_MOUSE_RIGHT_BUTTON_DOWN ||
                             raw->data.mouse.usButtonFlags == RI_MOUSE_MIDDLE_BUTTON_DOWN)
                         {
-                            event->type = KD_EVENT_INPUT_POINTER;
-                            event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                            event->data.inputpointer.select = 1;
-                            event->data.inputpointer.x = raw->data.mouse.lLastX;
-                            event->data.inputpointer.y = raw->data.mouse.lLastY;
-                            if(!__kdExecCallback(event))
-                            {
-                                kdPostEvent(event);
-                            }
+                            kdevent->type = KD_EVENT_INPUT_POINTER;
+                            kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+                            kdevent->data.inputpointer.select = 1;
+                            kdevent->data.inputpointer.x = raw->data.mouse.lLastX;
+                            kdevent->data.inputpointer.y = raw->data.mouse.lLastY;
+
+                            window->states.pointer.select = kdevent->data.inputpointer.select;
+                            window->states.pointer.x = kdevent->data.inputpointer.x;
+                            window->states.pointer.y = kdevent->data.inputpointer.y;
                         }
                         else if(raw->data.mouse.usButtonFlags == RI_MOUSE_LEFT_BUTTON_UP ||
                             raw->data.mouse.usButtonFlags == RI_MOUSE_RIGHT_BUTTON_UP ||
                             raw->data.mouse.usButtonFlags == RI_MOUSE_MIDDLE_BUTTON_UP)
                         {
-                            event->type = KD_EVENT_INPUT_POINTER;
-                            event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                            event->data.inputpointer.select = 0;
-                            event->data.inputpointer.x = raw->data.mouse.lLastX;
-                            event->data.inputpointer.y = raw->data.mouse.lLastY;
-                            if(!__kdExecCallback(event))
-                            {
-                                kdPostEvent(event);
-                            }
+                            kdevent->type = KD_EVENT_INPUT_POINTER;
+                            kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+                            kdevent->data.inputpointer.select = 0;
+                            kdevent->data.inputpointer.x = raw->data.mouse.lLastX;
+                            kdevent->data.inputpointer.y = raw->data.mouse.lLastY;
+
+                            window->states.pointer.select = kdevent->data.inputpointer.select;
+                            window->states.pointer.x = kdevent->data.inputpointer.x;
+                            window->states.pointer.y = kdevent->data.inputpointer.y;
                         }
                         else if(raw->data.keyboard.Flags & MOUSE_MOVE_ABSOLUTE)
                         {
-                            event->type = KD_EVENT_INPUT_POINTER;
-                            event->data.inputpointer.index = KD_INPUT_POINTER_X;
-                            event->data.inputpointer.x = raw->data.mouse.lLastX;
-                            event->data.inputpointer.y = raw->data.mouse.lLastY;
-                            if(!__kdExecCallback(event))
-                            {
-                                kdPostEvent(event);
-                            }
-                            KDEvent *event2 = kdCreateEvent();
-                            event2->type = KD_EVENT_INPUT_POINTER;
-                            event2->data.inputpointer.index = KD_INPUT_POINTER_Y;
-                            event2->data.inputpointer.x = raw->data.mouse.lLastX;
-                            event2->data.inputpointer.y = raw->data.mouse.lLastY;
-                            if(!__kdExecCallback(event2))
-                            {
-                                kdPostEvent(event2);
-                            }
+                            kdevent->type = KD_EVENT_INPUT_POINTER;
+                            kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+                            kdevent->data.inputpointer.x = raw->data.mouse.lLastX;
+                            kdevent->data.inputpointer.y = raw->data.mouse.lLastY;
+
+                            window->states.pointer.x = kdevent->data.inputpointer.x;
+                            window->states.pointer.y = kdevent->data.inputpointer.y;
                         }
-                        break;
                     }
                     else if(raw->header.dwType == RIM_TYPEKEYBOARD)
                     {
-                        event->type = KD_EVENT_INPUT_KEY_ATX;
-                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                        kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+                        KDint32 character = 0;
 #if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 6313)
 #endif
-                        /* Press or release */
                         if(raw->data.keyboard.Flags & RI_KEY_MAKE)
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
                         {
-                            keyevent->flags = KD_KEY_PRESS_ATX;
+                            GetKeyNameText((KDint64)MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (KDchar *)&character, sizeof(KDint32));
+                        }
+
+                        if(character)
+                        {
+                            kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+                            keycharevent->flags = 0;
+                            keycharevent->character = character;
+
+                            window->states.keyboard.charflags = keycharevent->flags;
+                            window->states.keyboard.character = keycharevent->character;
                         }
                         else
                         {
-                            keyevent->flags = 0;
-                        }
+                            KDint32 keycode = __KDKeycodeLookup(raw->data.keyboard.VKey);
+                            if(keycode)
+                            {
+                                kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+                                KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
 
-                        switch(raw->data.keyboard.VKey)
-                        {
-                            case(VK_ACCEPT):
-                            {
-                                keyevent->keycode = KD_KEY_ACCEPT_ATX;
-                                break;
-                            }
-                            /* KD_KEY_AGAIN_ATX */
-                            /* KD_KEY_ALLCANDIDATES_ATX */
-                            /* KD_KEY_ALPHANUMERIC_ATX */
-                            case(VK_MENU):
-                            {
-                                keyevent->keycode = KD_KEY_ALT_ATX;
-                                break;
-                            }
-                            /* KD_KEY_ALTGRAPH_ATX */
-                            case(VK_APPS):
-                            {
-                                keyevent->keycode = KD_KEY_APPS_ATX;
-                                break;
-                            }
-                            case(VK_ATTN):
-                            {
-                                keyevent->keycode = KD_KEY_ATTN_ATX;
-                                break;
-                            }
-                            case(VK_BACK):
-                            {
-                                keyevent->keycode = KD_KEY_BROWSERBACK_ATX;
-                                break;
-                            }
-                            case(VK_BROWSER_FAVORITES):
-                            {
-                                keyevent->keycode = KD_KEY_BROWSERFAVORITES_ATX;
-                                break;
-                            }
-                            case(VK_BROWSER_FORWARD):
-                            {
-                                keyevent->keycode = KD_KEY_BROWSERFORWARD_ATX;
-                                break;
-                            }
-                            case(VK_BROWSER_HOME):
-                            {
-                                keyevent->keycode = KD_KEY_BROWSERHOME_ATX;
-                                break;
-                            }
-                            case(VK_BROWSER_REFRESH):
-                            {
-                                keyevent->keycode = KD_KEY_BROWSERREFRESH_ATX;
-                                break;
-                            }
-                            case(VK_BROWSER_SEARCH):
-                            {
-                                keyevent->keycode = KD_KEY_BROWSERSEARCH_ATX;
-                                break;
-                            }
-                            case(VK_BROWSER_STOP):
-                            {
-                                keyevent->keycode = KD_KEY_BROWSERSTOP_ATX;
-                                break;
-                            }
-                            case(VK_CAPITAL):
-                            {
-                                keyevent->keycode = KD_KEY_CAPSLOCK_ATX;
-                                break;
-                            }
-                            case(VK_CLEAR):
-                            case(VK_OEM_CLEAR):
-                            {
-                                keyevent->keycode = KD_KEY_CLEAR_ATX;
-                                break;
-                            }
-                            /* KD_KEY_CODEINPUT_ATX */
-                            /* KD_KEY_COMPOSE_ATX */
-                            case(VK_CONTROL):
-                            {
-                                keyevent->keycode = KD_KEY_CONTROL_ATX;
-                                break;
-                            }
-                            case(VK_CRSEL):
-                            {
-                                keyevent->keycode = KD_KEY_CRSEL_ATX;
-                                break;
-                            }
-                            case(VK_CONVERT):
-                            {
-                                keyevent->keycode = KD_KEY_CONVERT_ATX;
-                                break;
-                            }
-                            /* KD_KEY_COPY_ATX */
-                            /* KD_KEY_CUT_ATX */
-                            case(VK_DOWN):
-                            {
-                                keyevent->keycode = KD_KEY_DOWN_ATX;
-                                break;
-                            }
-                            case(VK_END):
-                            {
-                                keyevent->keycode = KD_KEY_END_ATX;
-                                break;
-                            }
-                            case(VK_RETURN):
-                            {
-                                keyevent->keycode = KD_KEY_ENTER_ATX;
-                                break;
-                            }
-                            case(VK_EREOF):
-                            {
-                                keyevent->keycode = KD_KEY_ERASEEOF_ATX;
-                                break;
-                            }
-                            case(VK_EXECUTE):
-                            {
-                                keyevent->keycode = KD_KEY_EXECUTE_ATX;
-                                break;
-                            }
-                            case(VK_EXSEL):
-                            {
-                                keyevent->keycode = KD_KEY_EXSEL_ATX;
-                                break;
-                            }
-                            case(VK_F1):
-                            {
-                                keyevent->keycode = KD_KEY_F1_ATX;
-                                break;
-                            }
-                            case(VK_F2):
-                            {
-                                keyevent->keycode = KD_KEY_F2_ATX;
-                                break;
-                            }
-                            case(VK_F3):
-                            {
-                                keyevent->keycode = KD_KEY_F3_ATX;
-                                break;
-                            }
-                            case(VK_F4):
-                            {
-                                keyevent->keycode = KD_KEY_F4_ATX;
-                                break;
-                            }
-                            case(VK_F5):
-                            {
-                                keyevent->keycode = KD_KEY_F5_ATX;
-                                break;
-                            }
-                            case(VK_F6):
-                            {
-                                keyevent->keycode = KD_KEY_F6_ATX;
-                                break;
-                            }
-                            case(VK_F7):
-                            {
-                                keyevent->keycode = KD_KEY_F7_ATX;
-                                break;
-                            }
-                            case(VK_F8):
-                            {
-                                keyevent->keycode = KD_KEY_F8_ATX;
-                                break;
-                            }
-                            case(VK_F9):
-                            {
-                                keyevent->keycode = KD_KEY_F9_ATX;
-                                break;
-                            }
-                            case(VK_F10):
-                            {
-                                keyevent->keycode = KD_KEY_F10_ATX;
-                                break;
-                            }
-                            case(VK_F11):
-                            {
-                                keyevent->keycode = KD_KEY_F11_ATX;
-                                break;
-                            }
-                            case(VK_F12):
-                            {
-                                keyevent->keycode = KD_KEY_F12_ATX;
-                                break;
-                            }
-                            case(VK_F13):
-                            {
-                                keyevent->keycode = KD_KEY_F13_ATX;
-                                break;
-                            }
-                            case(VK_F14):
-                            {
-                                keyevent->keycode = KD_KEY_F14_ATX;
-                                break;
-                            }
-                            case(VK_F15):
-                            {
-                                keyevent->keycode = KD_KEY_F15_ATX;
-                                break;
-                            }
-                            case(VK_F16):
-                            {
-                                keyevent->keycode = KD_KEY_F16_ATX;
-                                break;
-                            }
-                            case(VK_F17):
-                            {
-                                keyevent->keycode = KD_KEY_F17_ATX;
-                                break;
-                            }
-                            case(VK_F18):
-                            {
-                                keyevent->keycode = KD_KEY_F18_ATX;
-                                break;
-                            }
-                            case(VK_F19):
-                            {
-                                keyevent->keycode = KD_KEY_F19_ATX;
-                                break;
-                            }
-                            case(VK_F20):
-                            {
-                                keyevent->keycode = KD_KEY_F20_ATX;
-                                break;
-                            }
-                            case(VK_F21):
-                            {
-                                keyevent->keycode = KD_KEY_F21_ATX;
-                                break;
-                            }
-                            case(VK_F22):
-                            {
-                                keyevent->keycode = KD_KEY_F22_ATX;
-                                break;
-                            }
-                            case(VK_F23):
-                            {
-                                keyevent->keycode = KD_KEY_F23_ATX;
-                                break;
-                            }
-                            case(VK_F24):
-                            {
-                                keyevent->keycode = KD_KEY_F24_ATX;
-                                break;
-                            }
-                            case(VK_FINAL):
-                            {
-                                keyevent->keycode = KD_KEY_FINALMODE_ATX;
-                                break;
-                            }
-                            /* KD_KEY_FIND_ATX
-                               KD_KEY_FULLWIDTH_ATX
-                               KD_KEY_HALFWIDTH_ATX */
-                            case(VK_HANGUL):
-                            {
-                                keyevent->keycode = KD_KEY_HANGULMODE_ATX;
-                                break;
-                            }
-                            case(VK_HANJA):
-                            {
-                                keyevent->keycode = KD_KEY_HANJAMODE_ATX;
-                                break;
-                            }
-                            case(VK_HELP):
-                            {
-                                keyevent->keycode = KD_KEY_HELP_ATX;
-                                break;
-                            }
-                            /* KD_KEY_HIRAGANA_ATX */
-                            case(VK_HOME):
-                            {
-                                keyevent->keycode = KD_KEY_HOME_ATX;
-                                break;
-                            }
-                            case(VK_INSERT):
-                            {
-                                keyevent->keycode = KD_KEY_INSERT_ATX;
-                                break;
-                            }
-                            /* KD_KEY_JAPANESEHIRAGANA_ATX
-                               KD_KEY_JAPANESEKATAKANA_ATX
-                               KD_KEY_JAPANESEROMAJI_ATX
-                               KD_KEY_JUNJAMODE_ATX
-                               KD_KEY_KANAMODE_ATX
-                               KD_KEY_KANJIMODE_ATX
-                               KD_KEY_KATAKANA_ATX */
-                            case(VK_LAUNCH_APP1):
-                            {
-                                keyevent->keycode = KD_KEY_LAUNCHAPPLICATION1_ATX;
-                                break;
-                            }
-                            case(VK_LAUNCH_APP2):
-                            {
-                                keyevent->keycode = KD_KEY_LAUNCHAPPLICATION2_ATX;
-                                break;
-                            }
-                            case(VK_LAUNCH_MAIL):
-                            {
-                                keyevent->keycode = KD_KEY_LAUNCHMAIL_ATX;
-                                break;
-                            }
-                            case(VK_LEFT):
-                            {
-                                keyevent->keycode = KD_KEY_LEFT_ATX;
-                                break;
-                            }
-                            /* KD_KEY_META_ATX */
-                            case(VK_MEDIA_NEXT_TRACK):
-                            {
-                                keyevent->keycode = KD_KEY_MEDIANEXTTRACK_ATX;
-                                break;
-                            }
-                            case(VK_MEDIA_PLAY_PAUSE):
-                            {
-                                keyevent->keycode = KD_KEY_MEDIAPLAYPAUSE_ATX;
-                                break;
-                            }
-                            case(VK_MEDIA_PREV_TRACK):
-                            {
-                                keyevent->keycode = KD_KEY_MEDIAPREVIOUSTRACK_ATX;
-                                break;
-                            }
-                            case(VK_MEDIA_STOP):
-                            {
-                                keyevent->keycode = KD_KEY_MEDIASTOP_ATX;
-                                break;
-                            }
-                            case(VK_MODECHANGE):
-                            {
-                                keyevent->keycode = KD_KEY_MODECHANGE_ATX;
-                                break;
-                            }
-                            case(VK_NONCONVERT):
-                            {
-                                keyevent->keycode = KD_KEY_NONCONVERT_ATX;
-                                break;
-                            }
-                            case(VK_NUMLOCK):
-                            {
-                                keyevent->keycode = KD_KEY_NUMLOCK_ATX;
-                                break;
-                            }
-                            case(VK_NEXT):
-                            {
-                                keyevent->keycode = KD_KEY_PAGEDOWN_ATX;
-                                break;
-                            }
-                            case(VK_PRIOR):
-                            {
-                                keyevent->keycode = KD_KEY_PAGEUP_ATX;
-                                break;
-                            }
-                            case(VK_PAUSE):
-                            {
-                                keyevent->keycode = KD_KEY_PAUSE_ATX;
-                                break;
-                            }
-                            case(VK_PLAY):
-                            {
-                                keyevent->keycode = KD_KEY_PLAY_ATX;
-                                break;
-                            }
-                            /* KD_KEY_PREVIOUSCANDIDATE_ATX */
-                            case(VK_PRINT):
-                            {
-                                keyevent->keycode = KD_KEY_PRINTSCREEN_ATX;
-                                break;
-                            }
-                            case(VK_PROCESSKEY):
-                            {
-                                keyevent->keycode = KD_KEY_PROCESS_ATX;
-                                break;
-                            }
-                            /* KD_KEY_PROPS_ATX */
-                            case(VK_RIGHT):
-                            {
-                                keyevent->keycode = KD_KEY_RIGHT_ATX;
-                                break;
-                            }
-                            /* KD_KEY_ROMANCHARACTERS_ATX */
-                            case(VK_SCROLL):
-                            {
-                                keyevent->keycode = KD_KEY_SCROLL_ATX;
-                                break;
-                            }
-                            case(VK_SELECT):
-                            {
-                                keyevent->keycode = KD_KEY_SELECT_ATX;
-                                break;
-                            }
-                            case(VK_LAUNCH_MEDIA_SELECT):
-                            {
-                                keyevent->keycode = KD_KEY_SELECTMEDIA_ATX;
-                                break;
-                            }
-                            case(VK_SHIFT):
-                            {
-                                keyevent->keycode = KD_KEY_SHIFT_ATX;
-                                break;
-                            }
-                            case(VK_CANCEL):
-                            {
-                                keyevent->keycode = KD_KEY_STOP_ATX;
-                                break;
-                            }
-                            case(VK_UP):
-                            {
-                                keyevent->keycode = KD_KEY_UP_ATX;
-                                break;
-                            }
-                            /* KD_KEY_UNDO_ATX */
-                            case(VK_VOLUME_DOWN):
-                            {
-                                keyevent->keycode = KD_KEY_VOLUMEDOWN_ATX;
-                                break;
-                            }
-                            case(VK_VOLUME_MUTE):
-                            {
-                                keyevent->keycode = KD_KEY_VOLUMEMUTE_ATX;
-                                break;
-                            }
-                            case(VK_VOLUME_UP):
-                            {
-                                keyevent->keycode = KD_KEY_VOLUMEUP_ATX;
-                                break;
-                            }
-                            case(VK_LWIN):
-                            case(VK_RWIN):
-                            {
-                                keyevent->keycode = KD_KEY_WIN_ATX;
-                                break;
-                            }
-                            case(VK_ZOOM):
-                            {
-                                keyevent->keycode = KD_KEY_ZOOM_ATX;
-                                break;
-                            }
-                            default:
-                            {
-                                event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-                                KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
-                                GetKeyNameText((KDint64)MapVirtualKey(raw->data.keyboard.VKey, MAPVK_VK_TO_VSC) << 16, (KDchar *)&keycharevent->character, sizeof(KDint32));
+                                keyevent->flags = 0;
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 6313)
+#endif
+                                if(raw->data.keyboard.Flags & RI_KEY_MAKE)
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+                                {
+                                    keyevent->flags |= KD_KEY_PRESS_ATX;
+                                }
+                                keyevent->keycode = keycode;
+
+                                window->states.keyboard.flags = keyevent->flags;
+                                window->states.keyboard.keycode = keyevent->keycode;
+
+                                __kdHandleSpecialKeys(window, keyevent);
+                            }
+                            else
+                            {
+                                kdFreeEvent(kdevent);
                                 break;
                             }
                         }
                     }
-                    if(!__kdExecCallback(event))
+                    if(!__kdExecCallback(kdevent))
                     {
-                        kdPostEvent(event);
+                        kdPostEvent(kdevent);
                     }
                     break;
                 }
                 default:
                 {
-                    kdFreeEvent(event);
+                    kdFreeEvent(kdevent);
                     DispatchMessage(&msg);
                     break;
                 }
             }
         }
     }
-#else
+#elif defined(KD_WINDOW_EMSCRIPTEN)
+    emscripten_sleep(1);
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_X11)
-    if(window && window->platform == _EGL_PLATFORM_X11)
+    if(window && window->platform == EGL_PLATFORM_X11_KHR)
     {
-        XSelectInput(window->nativedisplay, (Window)window->nativewindow, KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
-        while(XPending(window->nativedisplay) > 0)
+        xcb_generic_event_t *event;
+        while((event = xcb_poll_for_event(window->nativedisplay)))
         {
-            KDEvent *event = kdCreateEvent();
-            XEvent xevent = {0};
-            XNextEvent(window->nativedisplay, &xevent);
-            switch(xevent.type)
+            KDEvent *kdevent = kdCreateEvent();
+            kdevent->userptr = window->eventuserptr;
+            KDuint type = event->response_type & ~0x80;
+            switch(type)
             {
-                case ButtonPress:
+                case XCB_BUTTON_PRESS:
+                case XCB_BUTTON_RELEASE:
                 {
-                    event->type = KD_EVENT_INPUT_POINTER;
-                    event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                    event->data.inputpointer.select = 1;
-                    event->data.inputpointer.x = xevent.xbutton.x;
-                    event->data.inputpointer.y = xevent.xbutton.y;
-                    if(!__kdExecCallback(event))
-                    {
-                        kdPostEvent(event);
-                    }
-                    break;
-                }
-                case ButtonRelease:
-                {
-                    event->type = KD_EVENT_INPUT_POINTER;
-                    event->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-                    event->data.inputpointer.select = 0;
-                    event->data.inputpointer.x = xevent.xbutton.x;
-                    event->data.inputpointer.y = xevent.xbutton.y;
-                    if(!__kdExecCallback(event))
-                    {
-                        kdPostEvent(event);
-                    }
-                    break;
-                }
-                case KeyRelease:
-                case KeyPress:
-                {
-                    KeySym keysym;
-                    XLookupString(&xevent.xkey, KD_NULL, 25, &keysym, KD_NULL);
-                    event->type = KD_EVENT_INPUT_KEY_ATX;
-                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                    xcb_button_press_event_t *press = (xcb_button_press_event_t *)event;
+                    kdevent->type = KD_EVENT_INPUT_POINTER;
+                    kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+                    kdevent->data.inputpointer.select = (type == XCB_BUTTON_PRESS) ? 1 : 0;
+                    kdevent->data.inputpointer.x = press->event_x;
+                    kdevent->data.inputpointer.y = press->event_y;
 
-                    /* Press or release */
-                    if(xevent.type == KeyPress)
+                    window->states.pointer.select = kdevent->data.inputpointer.select;
+                    window->states.pointer.x = kdevent->data.inputpointer.x;
+                    window->states.pointer.y = kdevent->data.inputpointer.y;
+
+                    if(!__kdExecCallback(kdevent))
                     {
-                        keyevent->flags = KD_KEY_PRESS_ATX;
+                        kdPostEvent(kdevent);
+                    }
+                    break;
+                }
+                case XCB_KEY_PRESS:
+                case XCB_KEY_RELEASE:
+                {
+                    xcb_key_press_event_t *press = (xcb_key_press_event_t *)event;
+                    xkb_keysym_t keysym = xkb_state_key_get_one_sym(window->xkb.state, press->detail);
+
+                    KDuint32 flags = 0;
+                    KDint32 character = 0;
+                    static xcb_key_press_event_t *lastpress = KD_NULL;
+                    if(type == XCB_KEY_PRESS)
+                    {
+                        if(lastpress && ((lastpress->response_type & ~0x80) == XCB_KEY_RELEASE) && (lastpress->detail == press->detail) && (lastpress->time == press->time))
+                        {
+                            flags = KD_KEY_AUTOREPEAT_ATX;
+                        }
+
+                        /* Printable ASCII range. */
+                        if((keysym >= 20) && (keysym <= 126))
+                        {
+                            character = keysym;
+                        }
+                    }
+                    lastpress = press;
+
+                    if(character)
+                    {
+                        kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+                        keycharevent->flags = flags;
+                        keycharevent->character = character;
+
+                        window->states.keyboard.charflags = keycharevent->flags;
+                        window->states.keyboard.character = keycharevent->character;
                     }
                     else
                     {
-                        keyevent->flags = 0;
+                        KDint32 keycode = __KDKeycodeLookup(keysym);
+                        if(keycode)
+                        {
+                            kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+                            KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
+                            keyevent->flags = 0;
+                            if(type == XCB_KEY_PRESS)
+                            {
+                                keyevent->flags |= KD_KEY_PRESS_ATX;
+                            }
+                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0)
+                            {
+                                keyevent->flags |= KD_KEY_MODIFIER_SHIFT_ATX;
+                            }
+                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE) > 0)
+                            {
+                                keyevent->flags |= KD_KEY_MODIFIER_CTRL_ATX;
+                            }
+                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE) > 0)
+                            {
+                                keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
+                            }
+                            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0)
+                            {
+                                keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
+                            }
+                            keyevent->keycode = keycode;
+
+                            window->states.keyboard.flags = keyevent->flags;
+                            window->states.keyboard.keycode = keyevent->keycode;
+                            
+                            __kdHandleSpecialKeys(window, keyevent);
+                        }
+                        else
+                        {
+                            kdFreeEvent(kdevent);
+                            break;
+                        }
                     }
 
-                    switch(keysym)
+                    if(!__kdExecCallback(kdevent))
                     {
-                        /* KD_KEY_ACCEPT_ATX */
-                        case(XK_Redo):
-                        {
-                            keyevent->keycode = KD_KEY_AGAIN_ATX;
-                            break;
-                        }
-                        /* KD_KEY_ALLCANDIDATES_ATX */
-                        /* KD_KEY_ALPHANUMERIC_ATX */
-                        case(XK_Alt_L):
-                        case(XK_Alt_R):
-                        {
-                            keyevent->keycode = KD_KEY_ALT_ATX;
-                            break;
-                        }
-                        /* KD_KEY_ALTGRAPH_ATX */
-                        /* KD_KEY_APPS_ATX */
-                        /* KD_KEY_ATTN_ATX */
-                        case(XF86XK_Back):
-                        {
-                            keyevent->keycode = KD_KEY_BROWSERBACK_ATX;
-                            break;
-                        }
-                        case(XF86XK_Favorites):
-                        {
-                            keyevent->keycode = KD_KEY_BROWSERFAVORITES_ATX;
-                            break;
-                        }
-                        case(XF86XK_Forward):
-                        {
-                            keyevent->keycode = KD_KEY_BROWSERFORWARD_ATX;
-                            break;
-                        }
-                        case(XF86XK_HomePage):
-                        {
-                            keyevent->keycode = KD_KEY_BROWSERHOME_ATX;
-                            break;
-                        }
-                        case(XF86XK_Refresh):
-                        {
-                            keyevent->keycode = KD_KEY_BROWSERREFRESH_ATX;
-                            break;
-                        }
-                        case(XF86XK_Search):
-                        {
-                            keyevent->keycode = KD_KEY_BROWSERSEARCH_ATX;
-                            break;
-                        }
-                        case(XF86XK_Stop):
-                        {
-                            keyevent->keycode = KD_KEY_BROWSERSTOP_ATX;
-                            break;
-                        }
-                        case(XK_Caps_Lock):
-                        {
-                            keyevent->keycode = KD_KEY_CAPSLOCK_ATX;
-                            break;
-                        }
-                        case(XK_Clear):
-                        {
-                            keyevent->keycode = KD_KEY_CLEAR_ATX;
-                            break;
-                        }
-                        case(XK_Codeinput):
-                        {
-                            keyevent->keycode = KD_KEY_CODEINPUT_ATX;
-                            break;
-                        }
-                        case(XK_Multi_key):
-                        {
-                            keyevent->keycode = KD_KEY_COMPOSE_ATX;
-                            break;
-                        }
-                        case(XK_Control_L):
-                        case(XK_Control_R):
-                        {
-                            keyevent->keycode = KD_KEY_CONTROL_ATX;
-                            break;
-                        }
-                        /* KD_KEY_CRSEL_ATX */
-                        /* KD_KEY_CONVERT_ATX */
-                        case(XF86XK_Copy):
-                        {
-                            keyevent->keycode = KD_KEY_COPY_ATX;
-                            break;
-                        }
-                        case(XF86XK_Cut):
-                        {
-                            keyevent->keycode = KD_KEY_CUT_ATX;
-                            break;
-                        }
-                        case(XK_Down):
-                        case(XK_KP_Down):
-                        {
-                            keyevent->keycode = KD_KEY_DOWN_ATX;
-                            break;
-                        }
-                        case(XK_End):
-                        case(XK_KP_End):
-                        {
-                            keyevent->keycode = KD_KEY_END_ATX;
-                            break;
-                        }
-                        case(XK_Return):
-                        case(XK_KP_Enter):
-                        case(XK_ISO_Enter):
-                        {
-                            keyevent->keycode = KD_KEY_ENTER_ATX;
-                            break;
-                        }
-                        /* KD_KEY_ERASEEOF_ATX */
-                        case(XK_Execute):
-                        {
-                            keyevent->keycode = KD_KEY_EXECUTE_ATX;
-                            break;
-                        }
-                        /* KD_KEY_EXSEL_ATX */
-                        case(XK_F1):
-                        case(XK_KP_F1):
-                        {
-                            keyevent->keycode = KD_KEY_F1_ATX;
-                            break;
-                        }
-                        case(XK_F2):
-                        case(XK_KP_F2):
-                        {
-                            keyevent->keycode = KD_KEY_F2_ATX;
-                            break;
-                        }
-                        case(XK_F3):
-                        case(XK_KP_F3):
-                        {
-                            keyevent->keycode = KD_KEY_F3_ATX;
-                            break;
-                        }
-                        case(XK_F4):
-                        case(XK_KP_F4):
-                        {
-                            keyevent->keycode = KD_KEY_F4_ATX;
-                            break;
-                        }
-                        case(XK_F5):
-                        {
-                            keyevent->keycode = KD_KEY_F5_ATX;
-                            break;
-                        }
-                        case(XK_F6):
-                        {
-                            keyevent->keycode = KD_KEY_F6_ATX;
-                            break;
-                        }
-                        case(XK_F7):
-                        {
-                            keyevent->keycode = KD_KEY_F7_ATX;
-                            break;
-                        }
-                        case(XK_F8):
-                        {
-                            keyevent->keycode = KD_KEY_F8_ATX;
-                            break;
-                        }
-                        case(XK_F9):
-                        {
-                            keyevent->keycode = KD_KEY_F9_ATX;
-                            break;
-                        }
-                        case(XK_F10):
-                        {
-                            keyevent->keycode = KD_KEY_F10_ATX;
-                            break;
-                        }
-                        case(XK_F11):
-                        {
-                            keyevent->keycode = KD_KEY_F11_ATX;
-                            break;
-                        }
-                        case(XK_F12):
-                        {
-                            keyevent->keycode = KD_KEY_F12_ATX;
-                            break;
-                        }
-                        case(XK_F13):
-                        {
-                            keyevent->keycode = KD_KEY_F13_ATX;
-                            break;
-                        }
-                        case(XK_F14):
-                        {
-                            keyevent->keycode = KD_KEY_F14_ATX;
-                            break;
-                        }
-                        case(XK_F15):
-                        {
-                            keyevent->keycode = KD_KEY_F15_ATX;
-                            break;
-                        }
-                        case(XK_F16):
-                        {
-                            keyevent->keycode = KD_KEY_F16_ATX;
-                            break;
-                        }
-                        case(XK_F17):
-                        {
-                            keyevent->keycode = KD_KEY_F17_ATX;
-                            break;
-                        }
-                        case(XK_F18):
-                        {
-                            keyevent->keycode = KD_KEY_F18_ATX;
-                            break;
-                        }
-                        case(XK_F19):
-                        {
-                            keyevent->keycode = KD_KEY_F19_ATX;
-                            break;
-                        }
-                        case(XK_F20):
-                        {
-                            keyevent->keycode = KD_KEY_F20_ATX;
-                            break;
-                        }
-                        case(XK_F21):
-                        {
-                            keyevent->keycode = KD_KEY_F21_ATX;
-                            break;
-                        }
-                        case(XK_F22):
-                        {
-                            keyevent->keycode = KD_KEY_F22_ATX;
-                            break;
-                        }
-                        case(XK_F23):
-                        {
-                            keyevent->keycode = KD_KEY_F23_ATX;
-                            break;
-                        }
-                        case(XK_F24):
-                        {
-                            keyevent->keycode = KD_KEY_F24_ATX;
-                            break;
-                        }
-                        /* KD_KEY_FINALMODE_ATX */
-                        case(XK_Find):
-                        {
-                            keyevent->keycode = KD_KEY_FIND_ATX;
-                            break;
-                        }
-                        /* KD_KEY_FULLWIDTH_ATX
-                           KD_KEY_HALFWIDTH_ATX
-                           KD_KEY_HANGULMODE_ATX
-                           KD_KEY_HANJAMODE_ATX */
-                        case(XK_Help):
-                        {
-                            keyevent->keycode = KD_KEY_HELP_ATX;
-                            break;
-                        }
-                        case(XK_Hiragana):
-                        {
-                            keyevent->keycode = KD_KEY_HIRAGANA_ATX;
-                            break;
-                        }
-                        case(XK_Home):
-                        {
-                            keyevent->keycode = KD_KEY_HOME_ATX;
-                            break;
-                        }
-                        case(XK_Insert):
-                        {
-                            keyevent->keycode = KD_KEY_INSERT_ATX;
-                            break;
-                        }
-                        /* KD_KEY_JAPANESEHIRAGANA_ATX
-                           KD_KEY_JAPANESEKATAKANA_ATX
-                           KD_KEY_JAPANESEROMAJI_ATX
-                           KD_KEY_JUNJAMODE_ATX
-                           KD_KEY_KANAMODE_ATX
-                           KD_KEY_KANJIMODE_ATX
-                           KD_KEY_KATAKANA_ATX */
-                        case(XF86XK_Launch0):
-                        {
-                            keyevent->keycode = KD_KEY_LAUNCHAPPLICATION1_ATX;
-                            break;
-                        }
-                        case(XF86XK_Launch1):
-                        {
-                            keyevent->keycode = KD_KEY_LAUNCHAPPLICATION2_ATX;
-                            break;
-                        }
-                        case(XF86XK_Mail):
-                        {
-                            keyevent->keycode = KD_KEY_LAUNCHMAIL_ATX;
-                            break;
-                        }
-                        case(XK_Left):
-                        {
-                            keyevent->keycode = KD_KEY_LEFT_ATX;
-                            break;
-                        }
-                        case(XK_Meta_L):
-                        case(XK_Meta_R):
-                        {
-                            keyevent->keycode = KD_KEY_META_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioForward):
-                        {
-                            keyevent->keycode = KD_KEY_MEDIANEXTTRACK_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioPlay):
-                        case(XF86XK_AudioPause):
-                        {
-                            keyevent->keycode = KD_KEY_MEDIAPLAYPAUSE_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioPrev):
-                        {
-                            keyevent->keycode = KD_KEY_MEDIAPREVIOUSTRACK_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioStop):
-                        {
-                            keyevent->keycode = KD_KEY_MEDIASTOP_ATX;
-                            break;
-                        }
-                        case(XK_Mode_switch):
-                        {
-                            keyevent->keycode = KD_KEY_MODECHANGE_ATX;
-                            break;
-                        }
-                        /* KD_KEY_NONCONVERT_ATX */
-                        case(XK_Num_Lock):
-                        {
-                            keyevent->keycode = KD_KEY_NUMLOCK_ATX;
-                            break;
-                        }
-                        case(XK_Page_Down):
-                        case(XK_KP_Page_Down):
-                        {
-                            keyevent->keycode = KD_KEY_PAGEDOWN_ATX;
-                            break;
-                        }
-                        case(XK_KP_Up):
-                        case(XK_KP_Page_Up):
-                        {
-                            keyevent->keycode = KD_KEY_PAGEUP_ATX;
-                            break;
-                        }
-                        case(XK_Pause):
-                        {
-                            keyevent->keycode = KD_KEY_PAUSE_ATX;
-                            break;
-                        }
-                        /* KD_KEY_PLAY_ATX */
-                        /* KD_KEY_PREVIOUSCANDIDATE_ATX */
-                        case(XK_Print):
-                        {
-                            keyevent->keycode = KD_KEY_PRINTSCREEN_ATX;
-                            break;
-                        }
-                        /* KD_KEY_PROCESS_ATX */
-                        /* KD_KEY_PROPS_ATX */
-                        case(XK_Right):
-                        {
-                            keyevent->keycode = KD_KEY_RIGHT_ATX;
-                            break;
-                        }
-                        /* KD_KEY_ROMANCHARACTERS_ATX */
-                        /* KD_KEY_SCROLL_ATX */
-                        case(XK_Select):
-                        {
-                            keyevent->keycode = KD_KEY_SELECT_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioMedia):
-                        {
-                            keyevent->keycode = KD_KEY_SELECTMEDIA_ATX;
-                            break;
-                        }
-                        case(XK_Shift_L):
-                        case(XK_Shift_R):
-                        {
-                            keyevent->keycode = KD_KEY_SHIFT_ATX;
-                            break;
-                        }
-                        case(XK_Cancel):
-                        {
-                            keyevent->keycode = KD_KEY_STOP_ATX;
-                            break;
-                        }
-                        case(XK_Up):
-                        {
-                            keyevent->keycode = KD_KEY_UP_ATX;
-                            break;
-                        }
-                        case(XK_Undo):
-                        {
-                            keyevent->keycode = KD_KEY_UNDO_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioLowerVolume):
-                        {
-                            keyevent->keycode = KD_KEY_VOLUMEDOWN_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioMute):
-                        {
-                            keyevent->keycode = KD_KEY_VOLUMEMUTE_ATX;
-                            break;
-                        }
-                        case(XF86XK_AudioRaiseVolume):
-                        {
-                            keyevent->keycode = KD_KEY_VOLUMEUP_ATX;
-                            break;
-                        }
-                        case(XK_Super_L):
-                        case(XK_Super_R):
-                        {
-                            keyevent->keycode = KD_KEY_WIN_ATX;
-                            break;
-                        }
-                        /* KD_KEY_ZOOM_ATX */
-                        default:
-                        {
-                            event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-                            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
-                            keycharevent->character = (KDint32)keysym;
-                            break;
-                        }
-                    }
-                    if(!__kdExecCallback(event))
-                    {
-                        kdPostEvent(event);
+                        kdPostEvent(kdevent);
                     }
                     break;
                 }
-                case MotionNotify:
+                case XCB_MOTION_NOTIFY:
                 {
-                    event->type = KD_EVENT_INPUT_POINTER;
-                    event->data.inputpointer.index = KD_INPUT_POINTER_X;
-                    event->data.inputpointer.x = xevent.xmotion.x;
-                    event->data.inputpointer.y = xevent.xmotion.y;
-                    if(!__kdExecCallback(event))
-                    {
-                        kdPostEvent(event);
-                    }
-                    KDEvent *event2 = kdCreateEvent();
-                    event2->type = KD_EVENT_INPUT_POINTER;
-                    event2->data.inputpointer.index = KD_INPUT_POINTER_Y;
-                    event2->data.inputpointer.x = xevent.xmotion.x;
-                    event2->data.inputpointer.y = xevent.xmotion.y;
-                    if(!__kdExecCallback(event2))
-                    {
-                        kdPostEvent(event2);
-                    }
-                    break;
-                }
-                case ConfigureNotify:
-                {
-                    event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+                    xcb_motion_notify_event_t *motion = (xcb_motion_notify_event_t *)event;
+                    kdevent->type = KD_EVENT_INPUT_POINTER;
+                    kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+                    kdevent->data.inputpointer.select = 0;
+                    kdevent->data.inputpointer.x = motion->event_x;
+                    kdevent->data.inputpointer.y = motion->event_y;
 
-                    if(!__kdExecCallback(event))
+                    window->states.pointer.select = kdevent->data.inputpointer.select;
+                    window->states.pointer.x = kdevent->data.inputpointer.x;
+                    window->states.pointer.y = kdevent->data.inputpointer.y;
+
+                    if(!__kdExecCallback(kdevent))
                     {
-                        kdPostEvent(event);
+                        kdPostEvent(kdevent);
                     }
                     break;
                 }
-                case ClientMessage:
+                case XCB_ENTER_NOTIFY:
+                case XCB_LEAVE_NOTIFY:
                 {
-                    if((Atom)xevent.xclient.data.l[0] == XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False))
+                    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+                    kdevent->data.windowfocus.focusstate = (type == XCB_ENTER_NOTIFY) ? 1 : 0;
+
+                    if(!__kdExecCallback(kdevent))
                     {
-                        event->type = KD_EVENT_WINDOW_CLOSE;
-                        if(!__kdExecCallback(event))
+                        kdPostEvent(kdevent);
+                    }
+                    break;
+                }
+                case XCB_CLIENT_MESSAGE:
+                {
+                    xcb_intern_atom_cookie_t delcookie = xcb_intern_atom(window->nativedisplay, 0, 16, "WM_DELETE_WINDOW");
+                    xcb_intern_atom_reply_t *delreply = xcb_intern_atom_reply(window->nativedisplay, delcookie, 0);
+                    if((*(xcb_client_message_event_t *)event).data.data32[0] == (*delreply).atom)
+                    {
+                        kdevent->type = KD_EVENT_WINDOW_CLOSE;
+                        if(!__kdExecCallback(kdevent))
                         {
-                            kdPostEvent(event);
+                            kdPostEvent(kdevent);
                         }
                         break;
                     }
-#if __GNUC__ >= 7
-                    __attribute__((fallthrough));
-#endif
-                }
-                case MappingNotify:
-                {
-                    XRefreshKeyboardMapping(&xevent.xmapping);
-#if __GNUC__ >= 7
-                    __attribute__((fallthrough));
-#endif
+                    kdFreeEvent(kdevent);
+                    break;
                 }
                 default:
                 {
-                    kdFreeEvent(event);
+                    if(type == window->xkb.firstevent)
+                    {
+                        switch(event->pad0)
+                        {
+                            case XCB_XKB_NEW_KEYBOARD_NOTIFY:
+                            case XCB_XKB_MAP_NOTIFY:
+                            {
+                                KDint32 device = xkb_x11_get_core_keyboard_device_id(window->nativedisplay);
+                                xkb_keymap_unref(window->xkb.keymap);
+                                window->xkb.keymap = xkb_x11_keymap_new_from_device(window->xkb.context, window->nativedisplay, device, XKB_KEYMAP_COMPILE_NO_FLAGS);
+                                xkb_state_unref(window->xkb.state);
+                                window->xkb.state = xkb_x11_state_new_from_device(window->xkb.keymap, window->nativedisplay, device);
+                                break;
+                            }
+                            case XCB_XKB_STATE_NOTIFY:
+                            {
+                                xcb_xkb_state_notify_event_t *statenotify = (xcb_xkb_state_notify_event_t *)event;
+                                xkb_state_update_mask(window->xkb.state,
+                                    statenotify->baseMods, statenotify->latchedMods, statenotify->lockedMods,
+                                    statenotify->baseGroup, statenotify->latchedGroup, statenotify->lockedGroup);
+                                break;
+                            }
+                            default:
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    kdFreeEvent(kdevent);
                     break;
                 }
             }
@@ -2520,7 +3209,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
     }
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-    if(window && window->platform == _EGL_PLATFORM_WAYLAND)
+    if(window && window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
         wl_display_dispatch_pending(window->nativedisplay);
     }
@@ -2533,9 +3222,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 /* kdInstallCallback: Install or remove a callback function for event processing. */
 KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype, void *eventuserptr)
 {
-    KDuint callbackindex = kdThreadSelf()->callbackindex;
+    KDint callbackindex = kdThreadSelf()->callbackindex;
     __KDCallback **callbacks = kdThreadSelf()->callbacks;
-    for(KDuint i = 0; i < callbackindex; i++)
+    for(KDint i = 0; i < callbackindex; i++)
     {
         KDboolean typematch = callbacks[i]->eventtype == eventtype || callbacks[i]->eventtype == 0;
         KDboolean userptrmatch = callbacks[i]->eventuserptr == eventuserptr;
@@ -2587,7 +3276,9 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     KDint error = kdQueuePushVEN(thread->eventqueue, (void *)event);
     if(error == -1)
     {
-        kdAssert(0);
+        kdFreeEvent(event);
+        kdSetError(KD_ENOMEM);
+        return -1;
     }
     return 0;
 }
@@ -2621,7 +3312,7 @@ const char *__kdAppName(KD_UNUSED const char *argv0)
 #endif
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
 /* All Android events are send to the mainthread */
 static KDThread *__kd_androidmainthread = KD_NULL;
 static KDThreadMutex *__kd_androidmainthread_mutex = KD_NULL;
@@ -2800,7 +3491,7 @@ static int __kdPreMain(int argc, char **argv)
 #ifdef __ANDROID__
 static void *__kdAndroidPreMain(void *arg)
 {
-    return __kdPreMain(0, KD_NULL);
+    return (void *)__kdPreMain(0, KD_NULL);
 }
 void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_t savedStateSize)
 {
@@ -2854,7 +3545,8 @@ int WINAPI mainCRTStartup(void)
 #endif
 KD_API int main(int argc, char **argv)
 {
-    return __kdPreMain(argc, argv);
+    KDint result = __kdPreMain(argc, argv);
+    return result;
 }
 
 /* kdExit: Exit the application. */
@@ -2868,6 +3560,10 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
     {
         status = EXIT_FAILURE;
     }
+
+#if defined(__EMSCRIPTEN__)
+    emscripten_force_exit(status);
+#endif
 
 #if defined(_WIN32)
     ExitProcess(status);
@@ -3347,13 +4043,18 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 }
 
 /* kdGetEnvVEN: Get an environment variable. */
-KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KD_UNUSED KDsize buflen)
+KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env)
 {
 #if defined(_WIN32)
-    return GetEnvironmentVariableA(env, buf, (DWORD)buflen);
+    static KDchar buf[32767];
+    DWORD result = GetEnvironmentVariableA(env, (KDchar *)buf, 32767);
+    if(result == 0)
+    {
+        return KD_NULL;
+    }
+    return (KDchar *)buf;
 #else
-    buf = getenv(env);
-    return kdStrlen(buf);
+    return getenv(env);
 #endif
 }
 
@@ -3365,7 +4066,8 @@ KD_API KDsize KD_APIENTRY kdGetEnvVEN(const KDchar *env, KDchar *buf, KD_UNUSED 
 KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 {
     /* TODO: Add ISO 3166-1 part.*/
-    static KDchar localestore[2] = "";
+    static KDchar localestore[5] = "";
+    kdMemset(&localestore, 0, sizeof(localestore));
 #if defined(_WIN32)
     KDint localesize = GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, KD_NULL, 0);
     KDchar *locale = (KDchar *)kdMalloc(localesize);
@@ -3403,21 +4105,14 @@ kdMalloc(KDsize size)
     void *result = KD_NULL;
 #if defined(_WIN32)
     result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
+#else
+    result = malloc(size);
+#endif
     if(result == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-#else
-    result = mmap(0, size + sizeof(KDsize), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }    
-    *(KDsize *)result = size;
-    result = (KDchar *)result + sizeof(KDsize);
-#endif
     return result;
 }
 
@@ -3429,9 +4124,7 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
 #if defined(_WIN32)
         HeapFree(GetProcessHeap(), 0, ptr);
 #else
-        ptr = (KDchar *)ptr - sizeof(KDsize);
-        KDsize size = *(KDsize *)ptr;
-        munmap(ptr, size + sizeof(KDsize));
+        free(ptr);
 #endif
     }
 }
@@ -3446,46 +4139,15 @@ kdRealloc(void *ptr, KDsize size)
     void *result = KD_NULL;
 #if defined(_WIN32)
     result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-#elif defined(__APPLE__)
-    /* HACK */
-    ptr = (KDchar *)ptr - sizeof(KDsize);
-    KDsize oldsize = *(KDsize *)ptr;
-    result = kdMalloc(size);
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    kdMemcpy(result, (KDchar *)ptr + sizeof(KDsize), oldsize);
-    kdFree(ptr);
 #else
-    ptr = (KDchar *)ptr - sizeof(KDsize);
-    KDsize oldsize = *(KDsize *)ptr;
-    result = mremap(ptr, oldsize + sizeof(KDsize), size + sizeof(KDsize), MREMAP_MAYMOVE);
+    result = realloc(ptr, size);
+#endif
     if(result == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    *(KDsize *)result = size;
-    result = (KDchar *)result + sizeof(KDsize);
-#endif
     return result;
-}
-
-KD_API KDsize KD_APIENTRY kdMallocSizeVEN(void *ptr)
-{
-#if defined(_WIN32)
-    return HeapSize(GetProcessHeap(), 0, ptr);
-#else
-    ptr = (KDchar *)ptr - sizeof(KDsize);
-    return *(KDsize *)ptr;
-#endif
 }
 
 /******************************************************************************
@@ -4562,7 +5224,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
 
 
     __KDFloatShape hx = {x};
-    KDfloat64KHR tx[1], ty[1], fn;
+    KDfloat64KHR tx[1], ty[1];
     KDint32 e0, n;
     KDint32 ix = hx.i & KDINT32_MAX;
     KDboolean sign = hx.i >> 31;
@@ -4571,7 +5233,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        fn = hx.f * KD_2_PI_KHR + 6.7553994410557440e+15;
+        KDfloat64KHR fn = hx.f * KD_2_PI_KHR + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
         *y = hx.f - fn * pio2_1 - fn * pio2_1t;
@@ -4612,9 +5274,9 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
         pio2_3 = 2.02226624871116645580e-21,  /* 0x3BA3198A, 0x2E000000 */
         pio2_3t = 8.47842766036889956997e-32; /* 0x397B839A, 0x252049C1 */
 
-    KDfloat64KHR z, w, t, r, fn;
+    KDfloat64KHR z;
     KDfloat64KHR tx[3], ty[2];
-    KDint32 e0, i, j, nx, n, ix, hx;
+    KDint32 e0, i, nx, n, ix, hx;
     KDuint32 low;
     KDboolean medium = KD_FALSE;
 
@@ -4718,20 +5380,20 @@ KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
     if(ix < 0x413921fb || medium)
     { /* |x| ~< 2^20*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        fn = x * invpio2 + 6.7553994410557440e+15;
+        KDfloat64KHR fn = x * invpio2 + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
-        r = x - fn * pio2_1;
-        w = fn * pio2_1t; /* 1st round good to 85 bit */
+        KDfloat64KHR r = x - fn * pio2_1;
+        KDfloat64KHR w = fn * pio2_1t; /* 1st round good to 85 bit */
         {
             KDuint32 high;
-            j = ix >> 20;
+            KDint32 j = ix >> 20;
             y[0] = r - w;
             GET_HIGH_WORD(high, y[0]);
             i = j - ((high >> 20) & 0x7ff);
             if(i > 16)
             { /* 2nd iteration needed, good to 118 */
-                t = r;
+                KDfloat64KHR t = r;
                 w = fn * pio2_2;
                 r = t - w;
                 w = fn * pio2_2t - ((t - r) - w);
@@ -5526,7 +6188,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
 
     volatile KDfloat32 vzero = 0.0;
 
-    KDfloat32 hfsq, f, s, z, R, w, t1, t2, dk;
+    KDfloat32 f, s, z, R, w, t1, t2, dk;
     KDint32 k, ix, i, j;
 
     GET_FLOAT_WORD(ix, x);
@@ -5592,7 +6254,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     R = t2 + t1;
     if(i > 0)
     {
-        hfsq = 0.5f * f * f;
+        KDfloat32 hfsq = 0.5f * f * f;
         if(k == 0)
         {
             return f - (hfsq - s * (hfsq + R));
@@ -5662,8 +6324,8 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         ivln2_h = 1.4426879883e+00f, /* 0x3fb8aa00 =16b 1/ln2*/
         ivln2_l = 7.0526075433e-06f; /* 0x36eca570 =1/ln2 tail*/
 
-    KDfloat32 z, ax, z_h, z_l, p_h, p_l;
-    KDfloat32 y1, t1, t2, r, s, sn, t, u, v, w;
+    KDfloat32 z, ax, p_h, p_l;
+    KDfloat32 y1, t1, t2, r, sn, t, u, v, w;
     KDint32 i, j, k, yisint, n;
     KDint32 hx, hy, ix, iy, is;
     GET_FLOAT_WORD(hx, x);
@@ -5834,7 +6496,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         /* compute s = s_h+s_l = (x-1)/(x+1) or (x-1.5)/(x+1.5) */
         u = ax - bp[k]; /* bp[0]=1.0, bp[1]=1.5 */
         v = 1.0f / (ax + bp[k]);
-        s = u * v;
+        KDfloat32 s = u * v;
         s_h = s;
         GET_FLOAT_WORD(is, s_h);
         SET_FLOAT_WORD(s_h, is & 0xfffff000);
@@ -5860,8 +6522,8 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         GET_FLOAT_WORD(is, p_h);
         SET_FLOAT_WORD(p_h, is & 0xfffff000);
         p_l = v - (p_h - u);
-        z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
-        z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        KDfloat32 z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
+        KDfloat32 z_l = cp_l * p_h + p_l * cp + dp_l[k];
         /* log2(ax) = (s+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         t = (KDfloat32)n;
         t1 = (((z_h + z_l) + dp_h[k]) + t);
@@ -5951,7 +6613,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     const KDfloat32 tiny = 1.0e-30f;
     KDfloat32 z;
     KDint32 sign = (KDint32)0x80000000;
-    KDint32 ix, s, q, m, t, i;
+    KDint32 ix, s, q, m, i;
     KDuint32 r;
 
     GET_FLOAT_WORD(ix, x);
@@ -5995,7 +6657,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
     r = 0x01000000; /* r = moving bit from right to left */
     while(r != 0)
     {
-        t = s + r;
+        KDint32 t = s + r;
         if(t <= ix)
         {
             s = t + r;
@@ -6464,7 +7126,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
         qS3 = -6.88283971605453293030e-01, /* 0xBFE6066C, 0x1B8D0159 */
         qS4 = 7.70381505559019352791e-02;  /* 0x3FB3B8C5, 0xB12E9282 */
 
-    KDfloat64KHR t = 0.0, w, p, q, c, r, s;
+    KDfloat64KHR t = 0.0, w, p, q, s;
     KDint32 hx, ix;
     GET_HIGH_WORD(hx, x);
     ix = hx & 0x7fffffff;
@@ -6510,8 +7172,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
     {
         w = s;
         SET_LOW_WORD(w, 0);
-        c = (t - w * w) / (s + w);
-        r = p / q;
+        KDfloat64KHR c = (t - w * w) / (s + w);
+        KDfloat64KHR r = p / q;
         p = 2.0 * s * r - (pio2_lo - 2.0 * c);
         q = pio4_hi - 2.0 * w;
         t = pio4_hi - (p - q);
@@ -6837,7 +7499,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
 
 KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
 {
-    KDfloat64KHR y[2], z = 0.0;
+    KDfloat64KHR y[2];
     KDint32 n, ix;
 
     /* High word of x. */
@@ -6854,7 +7516,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
                 return 1.0; /* generate inexact */
             }
         }
-        return __kdCosKernel(x, z);
+        return __kdCosKernel(x, 0.0);
     }
 
     /* cos(Inf or NaN) is NaN */
@@ -6914,7 +7576,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
  */
 KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
 {
-    KDfloat64KHR y[2], z = 0.0;
+    KDfloat64KHR y[2];
     KDint32 n, ix;
 
     /* High word of x. */
@@ -6931,7 +7593,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
                 return x;
             }
         } /* generate inexact */
-        return __kdSinKernel(x, z, 0);
+        return __kdSinKernel(x, 0.0, 0);
     }
 
     /* sin(Inf or NaN) is NaN */
@@ -6990,7 +7652,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
  */
 KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
 {
-    KDfloat64KHR y[2], z = 0.0;
+    KDfloat64KHR y[2];
     KDint32 n, ix;
 
     /* High word of x. */
@@ -7007,7 +7669,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
                 return x; /* generate inexact */
             }
         }
-        return __kdTanKernel(x, z, 1);
+        return __kdTanKernel(x, 0.0, 1);
     }
 
     /* tan(Inf or NaN) is NaN */
@@ -7262,7 +7924,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
 
     const KDfloat64KHR zero = 0.0;
     volatile KDfloat64KHR vzero = 0.0;
-    KDfloat64KHR hfsq, f, s, z, R, w, t1, t2, dk;
+    KDfloat64KHR f, s, z, R, w, t1, t2, dk;
     KDint32 k, hx, i, j;
     KDuint32 lx;
 
@@ -7330,7 +7992,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
     R = t2 + t1;
     if(i > 0)
     {
-        hfsq = 0.5 * f * f;
+        KDfloat64KHR hfsq = 0.5 * f * f;
         if(k == 0)
         {
             return f - (hfsq - s * (hfsq + R));
@@ -7435,7 +8097,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         ivln2_h = 1.44269502162933349609e+00, /* 0x3FF71547, 0x60000000 =24b 1/ln2*/
         ivln2_l = 1.92596299112661746887e-08; /* 0x3E54AE0B, 0xF85DDF44 =1/ln2 tail*/
 
-    KDfloat64KHR z, ax, z_h, z_l, p_h, p_l;
+    KDfloat64KHR z, ax, p_h, p_l;
     KDfloat64KHR y1, t1, t2, r, s, t, u, v, w;
     KDint32 i, j, k, yisint, n;
     KDint32 hx, hy, ix, iy;
@@ -7670,8 +8332,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
         p_h = u + v;
         SET_LOW_WORD(p_h, 0);
         p_l = v - (p_h - u);
-        z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
-        z_l = cp_l * p_h + p_l * cp + dp_l[k];
+        KDfloat64KHR z_h = cp_h * p_h; /* cp_h+cp_l = 2/(3*log2) */
+        KDfloat64KHR z_l = cp_l * p_h + p_l * cp + dp_l[k];
         /* log2(ax) = (ss+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         t = (KDfloat64KHR)n;
         t1 = (((z_h + z_l) + dp_h[k]) + t);
@@ -7829,7 +8491,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
     KDfloat64KHR z;
     KDint32 sign = (KDint)0x80000000;
     KDint32 ix0, s0, q, m, t, i;
-    KDuint32 r, t1, s1, ix1, q1;
+    KDuint32 r, s1, ix1, q1;
 
     EXTRACT_WORDS(ix0, ix1, x);
 
@@ -7905,7 +8567,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
     r = sign;
     while(r != 0)
     {
-        t1 = s1 + r;
+        KDuint32 t1 = s1 + r;
         t = s0;
         if((t < ix0) || ((t == ix0) && (t1 <= ix1)))
         {
@@ -8846,7 +9508,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
     {
         return 0;
     }
-#if defined(__SSE4_2__)
+#if defined(__SSE4_2__) && !defined(KD_ASAN)
     __m128i *ptr1 = (__m128i *)(KDchar *)str1;
     __m128i *ptr2 = (__m128i *)(KDchar *)str2;
 
@@ -8902,7 +9564,7 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
 KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 {
     const KDchar *s = str;
-#if defined(__SSE4_2__)
+#if defined(__SSE4_2__) && !defined(KD_ASAN)
     KDsize result = 0;
     const __m128i zeros = _mm_setzero_si128();
     __m128i *mem = (__m128i *)(KDchar *)s;
@@ -8926,7 +9588,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
             return result + idx;
         }
     }
-#elif defined(__SSE4_1__)
+#elif defined(__SSE4_1__) && !defined(KD_ASAN)
     KDsize result = 0;
     const __m128i zeros = _mm_setzero_si128();
     __m128i *mem = (__m128i *)(KDchar *)s;
@@ -8945,7 +9607,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 
     kdAssert(0);
     return 0;
-#elif defined(__SSE2__) || defined(__ARM_NEON__)
+#elif (defined(__SSE2__) && !defined(KD_ASAN)) || defined(__ARM_NEON__)
 #if defined(__SSE2__)
     __m128i c16 = _mm_set1_epi8(0);
 #elif defined(__ARM_NEON__)
@@ -9188,11 +9850,9 @@ KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *s
 KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 {
     KDchar c, sc;
-    KDsize len;
-
     if((c = *str2++) != '\0')
     {
-        len = kdStrlen(str2);
+        KDsize len = kdStrlen(str2);
         do
         {
             do
@@ -9221,7 +9881,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     LARGE_INTEGER tick;
     QueryPerformanceFrequency(&tickspersecond);
     QueryPerformanceCounter(&tick);
-    return (tick.QuadPart / tickspersecond.QuadPart) * 1000000000LL;
+    return (tick.QuadPart * 1000000000LL) / tickspersecond.QuadPart;
 #elif defined(__linux__)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
@@ -9238,13 +9898,13 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
         PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
         if(eglGetSystemTimeNV && eglGetSystemTimeFrequencyNV)
         {
-            return (eglGetSystemTimeNV() / eglGetSystemTimeFrequencyNV()) * 1000000000LL;
+            return (eglGetSystemTimeNV() * 1000000000LL) / eglGetSystemTimeFrequencyNV();
         }
     }
 #elif defined(__EMSCRIPTEN__)
     return emscripten_get_now() * 1000000LL;
 #else
-    return (clock() / CLOCKS_PER_SEC) * 1000000000LL;
+    return (clock() * 1000000000LL) / CLOCKS_PER_SEC;
 #endif
 }
 
@@ -9987,7 +10647,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         {
             buf->st_mode = 0x4000;
         }
-        else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
+        else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL || data.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE)
         {
             buf->st_mode = 0x8000;
         }
@@ -10128,29 +10788,17 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         return KD_NULL;
     }
 #if defined(_WIN32)
+    KDchar dirpath[MAX_PATH];
     WIN32_FIND_DATA data;
     if(kdStrcmp(pathname, ".") == 0)
     {
-        DWORD curdirsize = GetCurrentDirectoryA(0, KD_NULL);
-        KDchar *curdir = (KDchar *)kdMalloc((KDsize)curdirsize);
-        if(curdir == KD_NULL)
-        {
-            kdFree(dir->dirent);
-            kdFree(dir);
-            kdSetError(KD_ENOMEM);
-            return KD_NULL;
-        }
-        GetCurrentDirectoryA(curdirsize, curdir);
+        GetCurrentDirectoryA(MAX_PATH, dirpath);
+    }
+    kdStrncat_s(dirpath, MAX_PATH, "\\*", 2);
 #if defined(_MSC_VER)
 #pragma warning(suppress : 6102)
 #endif
-        dir->nativedir = FindFirstFileA((const KDchar *)curdir, &data);
-        kdFree(curdir);
-    }
-    else
-    {
-        dir->nativedir = FindFirstFileA(pathname, &data);
-    }
+    dir->nativedir = FindFirstFileA((const KDchar *)dirpath, &data);
     if(dir->nativedir == INVALID_HANDLE_VALUE)
     {
         error = GetLastError();
@@ -10174,6 +10822,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+
     if(FindNextFileA(dir->nativedir, &data) != 0)
     {
         dir->dirent->d_name = data.cFileName;
@@ -10284,7 +10933,7 @@ static void *__kdNameLookupHandler(void *arg)
 #if defined(_WIN32)
 #undef s_addr
 #endif
-        lookupevent.resultlen = sizeof(addr);
+        lookupevent.resultlen = 1;
         lookupevent.result = &addr;
         freeaddrinfo(result);
     }
@@ -10314,7 +10963,7 @@ KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *ev
 
     KDThread *thread = kdThreadCreate(KD_NULL, __kdNameLookupHandler, &payload);
     if(thread == KD_NULL)
-    {        
+    {
         if(kdGetError() == KD_ENOSYS)
         {
             kdLogMessage("kdNameLookup() needs a threading implementation.\n");
@@ -10446,7 +11095,7 @@ KD_API KDint KD_APIENTRY kdSocketBind(KDSocket *socket, const KDSockaddr *addr, 
 #endif
     address.sin_port = kdHtons(addr->data.sin.port);
     KDint error = 0;
-    KDint retval = bind(socket->nativesocket , (struct sockaddr*)&address, sizeof(address));
+    KDint retval = bind(socket->nativesocket, (struct sockaddr *)&address, sizeof(address));
 #if defined(_WIN32)
     if(retval == SOCKET_ERROR)
     {
@@ -10502,12 +11151,12 @@ KD_API KDint KD_APIENTRY kdSocketConnect(KDSocket *socket, const KDSockaddr *add
     address.sin_port = kdHtons(addr->data.sin.port);
     KDint error = 0;
 #if defined(_WIN32)
-    KDint retval = WSAConnect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address), 0, 0, 0, 0);
+    KDint retval = WSAConnect(socket->nativesocket, (struct sockaddr *)&address, sizeof(address), 0, 0, 0, 0);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    KDint retval = connect(socket->nativesocket, (struct sockaddr*)&address, sizeof(address));
+    KDint retval = connect(socket->nativesocket, (struct sockaddr *)&address, sizeof(address));
     if(retval == -1)
     {
         error = errno;
@@ -10553,7 +11202,7 @@ KD_API KDint KD_APIENTRY kdSocketSend(KDSocket *socket, const void *buf, KDint l
     {
         error = errno;
 #endif
-       kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
+        kdSetErrorPlatformVEN(error, KD_EAFNOSUPPORT | KD_EAGAIN | KD_ECONNRESET | KD_EDESTADDRREQ | KD_EIO | KD_ENOMEM | KD_ENOTCONN);
         return -1;
     }
     return result;
@@ -10586,13 +11235,13 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
     wsabuf.len = len;
     wsabuf.buf = kdMalloc(len);
     kdMemcpy(wsabuf.buf, buf, len);
-    KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, 0, (const struct sockaddr*)&address, sizeof(address), KD_NULL, KD_NULL); 
+    KDint retval = WSASendTo(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, 0, (const struct sockaddr *)&address, sizeof(address), KD_NULL, KD_NULL);
     kdFree(wsabuf.buf);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    result = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, sizeof(address)); 
+    result = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr *)&address, sizeof(address));
     if(result == -1)
     {
         error = errno;
@@ -10622,9 +11271,11 @@ KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
     {
         error = errno;
 #endif
-        kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);        return -1;
+        kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);
+        return -1;
     }
-    return result;;
+    return result;
+    ;
 }
 
 KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len, KDSockaddr *addr)
@@ -10639,12 +11290,12 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
     WSABUF wsabuf;
     wsabuf.len = len;
     wsabuf.buf = buf;
-    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, (struct sockaddr*)&address, &addresssize, KD_NULL, KD_NULL);
+    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, (struct sockaddr *)&address, &addresssize, KD_NULL, KD_NULL);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
 #else
-    result = recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr*)&address, &addresssize);
+    result = recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr *)&address, &addresssize);
     if(result == -1)
     {
         error = errno;
@@ -10652,7 +11303,7 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
         kdSetErrorPlatformVEN(error, KD_EAGAIN | KD_ECONNRESET | KD_EIO | KD_ENOMEM | KD_ENOTCONN | KD_ETIMEDOUT);
         return -1;
     }
-    
+
     addr->family = KD_AF_INET;
 #if defined(_WIN32)
 #define s_addr S_un.S_addr
@@ -10753,10 +11404,165 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *
  * Input/output
  ******************************************************************************/
 /* kdStateGeti, kdStateGetl, kdStateGetf: get state value(s) */
-KD_API KDint KD_APIENTRY kdStateGeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *buffer)
 {
-    kdSetError(KD_EIO);
-    return -1;
+    KDint idx = startidx;
+    for(KDuint i = 0; i != numidxs; i++)
+    {
+        switch(idx)
+        {
+#if defined(KD_WINDOW_SUPPORTED)
+            case KD_STATE_POINTER_AVAILABILITY:
+            {
+                buffer[i] = __kd_window->states.pointer.availability;;
+                break;
+            }
+            case KD_INPUT_POINTER_X:
+            {
+                buffer[i] = __kd_window->states.pointer.x;
+                break;
+            }
+            case KD_INPUT_POINTER_Y:
+            {
+                buffer[i] = __kd_window->states.pointer.y;
+                break;
+            }
+            case KD_INPUT_POINTER_SELECT:
+            {
+                buffer[i] = __kd_window->states.pointer.select;
+                break;
+            }
+            case KD_STATE_KEYBOARD_AVAILABILITY_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.availability;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_FLAGS_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.flags;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_CHAR_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.character;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_KEYCODE_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.keycode;
+                break;
+            }
+            case KD_INPUT_KEYBOARD_CHARFLAGS_ATX:
+            {
+                buffer[i] = __kd_window->states.keyboard.charflags;
+                break;
+            }
+            case KD_STATE_DPAD_AVAILABILITY:
+            {
+                buffer[i] = __kd_window->states.dpad.availability;
+                break;
+            }
+            case KD_STATE_DPAD_COPY:
+            {
+                buffer[i] = -1;
+                break;
+            }
+            case KD_INPUT_DPAD_UP:
+            {
+                buffer[i] = __kd_window->states.dpad.up;
+                break;
+            }
+            case KD_INPUT_DPAD_LEFT:
+            {
+                buffer[i] = __kd_window->states.dpad.left;
+                break;
+            }
+            case KD_INPUT_DPAD_RIGHT:
+            {
+                buffer[i] = __kd_window->states.dpad.right;
+                break;
+            }
+            case KD_INPUT_DPAD_DOWN:
+            {
+                buffer[i] = __kd_window->states.dpad.down;
+                break;
+            }
+            case KD_INPUT_DPAD_SELECT:
+            {
+                buffer[i] = __kd_window->states.dpad.select;
+                break;
+            }
+            case KD_STATE_GAMEKEYS_AVAILABILITY:
+            {
+                buffer[i] = __kd_window->states.gamekeys.availability;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_UP:
+            {
+                buffer[i] = __kd_window->states.gamekeys.up;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_LEFT:
+            {
+                buffer[i] = __kd_window->states.gamekeys.left;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_RIGHT:
+            {
+                buffer[i] = __kd_window->states.gamekeys.right;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_DOWN:
+            {
+                buffer[i] = __kd_window->states.gamekeys.down;
+                break;
+            }
+            case KD_INPUT_GAMEKEYS_FIRE:
+            {
+                buffer[i] = __kd_window->states.gamekeys.fire;
+                break;
+            }
+#endif
+            case KD_STATE_EVENT_USING_BATTERY:
+            {
+#if defined(_WIN32)
+                SYSTEM_POWER_STATUS status;
+                GetSystemPowerStatus(&status);
+                buffer[i] = (status.ACLineStatus == 0);
+#else
+                buffer[i] = 0;
+#endif
+                break;
+            }
+            case KD_STATE_EVENT_LOW_BATTERY:
+            {
+#if defined(_WIN32)
+                SYSTEM_POWER_STATUS status;
+                GetSystemPowerStatus(&status);
+                buffer[i] = (status.BatteryFlag == 2) || (status.BatteryFlag == 4);
+#else
+                buffer[i] = 0;
+#endif
+                break;
+            }
+            case KD_STATE_BACKLIGHT_AVAILABILITY:
+            {
+#if defined(_WIN32)
+                buffer[i] = 1;
+#else
+                buffer[i] = 0;
+#endif
+                break;
+            }
+            default:
+            {
+                kdSetError(KD_EIO);
+                return -1;
+            }
+        }
+        idx++;
+    }
+    return 0;
 }
 
 KD_API KDint KD_APIENTRY kdStateGetl(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED KDint64 *buffer)
@@ -10773,10 +11579,32 @@ KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint 
 
 
 /* kdOutputSeti, kdOutputSetf: set outputs */
-KD_API KDint KD_APIENTRY kdOutputSeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdOutputSeti(KDint startidx, KDuint numidxs, KD_UNUSED const KDint32 *buffer)
 {
-    kdSetError(KD_EIO);
-    return -1;
+    KDint idx = startidx;
+    for(KDuint i = 0; i != numidxs; i++)
+    {
+        switch(idx)
+        {
+#if defined(_WIN32)
+            case KD_OUTPUT_BACKLIGHT_FORCE:
+            {
+                if(buffer[0])
+                {
+                    SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+                }
+                break;
+            }
+#endif
+            default:
+            {
+                kdSetError(KD_EIO);
+                return -1;
+            }
+        }
+        idx++;
+    }
+    return 0;
 }
 
 KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDfloat32 *buffer)
@@ -10787,43 +11615,12 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
 
 /******************************************************************************
  * Windowing
- *
- * Notes:
- * - __kdIsPointerDereferencable based on Mesa (https://mesa3d.org)
- ******************************************************************************/
-/******************************************************************************
- *
- * Copyright 2008 VMware, Inc.
- * Copyright 2009-2010 Chia-I Wu <olvaffe@gmail.com>
- * Copyright 2010-2011 LunarG, Inc.
- * All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sub license, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice (including the
- * next paragraph) shall be included in all copies or substantial portions
- * of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
- *
  ******************************************************************************/
 
 #ifdef KD_WINDOW_SUPPORTED
 /* kdCreateWindow: Create a window. */
 #if defined(KD_WINDOW_WIN32)
-LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     switch(msg)
     {
@@ -10841,65 +11638,419 @@ LRESULT CALLBACK windowcallback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
     }
     return 0;
 }
-#elif defined(KD_WINDOW_WAYLAND)
-static KDboolean __kdIsPointerDereferencable(void *p)
+#elif defined(KD_WINDOW_EMSCRIPTEN)
+EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
 {
-#if defined(__linux__) && (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 19)
-    KDuintptr addr = (KDuintptr)p;
-    KDuint8 valid = 0;
-    const KDint page_size = sysconf(_SC_PAGESIZE);
-
-    if(p == KD_NULL)
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = __kd_window->eventuserptr;
+    kdevent->type = KD_EVENT_INPUT_POINTER;
+    if(type == EMSCRIPTEN_EVENT_MOUSEDOWN || type == EMSCRIPTEN_EVENT_MOUSEUP)
     {
-        return KD_FALSE;
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+        kdevent->data.inputpointer.select = (type == EMSCRIPTEN_EVENT_MOUSEDOWN) ? 1 : 0;
+
+        __kd_window->states.pointer.select = kdevent->data.inputpointer.select;
     }
-
-    /* align addr to page_size */
-    addr &= ~(KDuintptr)(page_size - 1);
-
-    if(mincore((void *)addr, page_size, &valid) < 0)
+    else if(type == EMSCRIPTEN_EVENT_MOUSEMOVE)
     {
-        return KD_FALSE;
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
     }
+    kdevent->data.inputpointer.x = event->canvasX;
+    kdevent->data.inputpointer.y = event->canvasY;
 
-    return (valid & 0x01) == 0x01;
-#else
-    return p != KD_NULL;
-#endif
+    __kd_window->states.pointer.x = kdevent->data.inputpointer.x;
+    __kd_window->states.pointer.y = kdevent->data.inputpointer.y;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+    return 1;
 }
-static void registry_add_object(KD_UNUSED void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
+
+EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
 {
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr =__kd_window->eventuserptr;
+
+    KDint32 keycode = __KDKeycodeLookup(event->keyCode);
+    if(keycode)
+    {
+        kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
+
+        keyevent->flags = 0;
+        if(type == EMSCRIPTEN_EVENT_KEYDOWN)
+        {
+            keyevent->flags |= KD_KEY_PRESS_ATX;
+        }
+        if(event->location == DOM_KEY_LOCATION_LEFT)
+        {
+            keyevent->flags |= KD_KEY_LOCATION_LEFT_ATX;
+        }
+        if(event->location == DOM_KEY_LOCATION_RIGHT)
+        {
+            keyevent->flags |= KD_KEY_LOCATION_RIGHT_ATX;
+        }
+        if(event->location == DOM_KEY_LOCATION_NUMPAD)
+        {
+            keyevent->flags |= KD_KEY_LOCATION_NUMPAD_ATX;
+        }
+        if(event->shiftKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_SHIFT_ATX;
+        }
+        if(event->ctrlKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_CTRL_ATX;
+        }
+        if(event->altKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
+        }
+        if(event->metaKey)
+        {
+            keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
+        }
+        keyevent->keycode = keycode;
+
+        __kd_window->states.keyboard.flags = keyevent->flags;
+        __kd_window->states.keyboard.keycode = keyevent->keycode;
+        
+        __kdHandleSpecialKeys(__kd_window, keyevent);
+    }
+    else if(type == EMSCRIPTEN_EVENT_KEYDOWN)
+    {
+        KDint32 character = 0;
+        /* Printable ASCII range. */
+        if((event->key[0] >= 20) && (event->key[0] <= 126))
+        {
+            character = event->key[0];
+        }
+
+        if(character)
+        {
+            kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+            keycharevent->flags = 0;
+            if(event->repeat)
+            {
+                keycharevent->flags = KD_KEY_AUTOREPEAT_ATX;
+            }
+            keycharevent->character = character;
+
+            __kd_window->states.keyboard.charflags = keycharevent->flags;
+            __kd_window->states.keyboard.character = keycharevent->character;
+        }
+        else
+        {
+            kdFreeEvent(kdevent);
+            return 1;
+        }
+    }
+    else
+    {
+        kdFreeEvent(kdevent);
+        return 1;
+    }
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+    return 1;
+}
+
+EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event, void *user)
+{
+    if(type == EMSCRIPTEN_EVENT_FOCUSIN)
+    {
+        __kd_window->properties.focused = 1;
+    }
+    else if(type == EMSCRIPTEN_EVENT_FOCUSOUT)
+    {
+        __kd_window->properties.focused = 0;
+    }
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = __kd_window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = __kd_window->properties.focused;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+    return 1;
+}
+
+EM_BOOL __kd_EmscriptenVisibilityCallback(int type, const EmscriptenVisibilityChangeEvent *event, void *user)
+{
+    __kd_window->properties.visible = !event->hidden;
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = __kd_window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+    kdevent->data.windowproperty.pname = KD_WINDOWPROPERTY_VISIBILITY;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+    return 1;
+}
+
+#elif defined(KD_WINDOW_WAYLAND)
+static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) 
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = 1;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
+static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) 
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOW_FOCUS;
+    kdevent->data.windowfocus.focusstate = 0;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
+static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
+{
+    static KDuint32 lasttime = 0;
+    if((lasttime + 15) < time)
+    {
+        struct KDWindow *window = data;
+
+        KDEvent *kdevent = kdCreateEvent();
+        kdevent->userptr = window->eventuserptr;
+        kdevent->type = KD_EVENT_INPUT_POINTER;
+        kdevent->data.inputpointer.index = KD_INPUT_POINTER_X;
+        kdevent->data.inputpointer.x = wl_fixed_to_int(sx);
+        kdevent->data.inputpointer.y = wl_fixed_to_int(sy);
+
+        window->states.pointer.x = kdevent->data.inputpointer.x;
+        window->states.pointer.y = kdevent->data.inputpointer.y;
+
+        if(!__kdExecCallback(kdevent))
+        {
+            kdPostEvent(kdevent);
+        }
+    }
+    lasttime = time;
+}
+
+static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_pointer *wl_pointer, KD_UNUSED uint32_t serial, KD_UNUSED uint32_t time, KD_UNUSED uint32_t button, uint32_t state)
+{
+    struct KDWindow *window = data;
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_INPUT_POINTER;
+    kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
+    kdevent->data.inputpointer.select = state;
+    kdevent->data.inputpointer.x = window->states.pointer.x;
+    kdevent->data.inputpointer.y = window->states.pointer.y;
+
+    window->states.pointer.select = kdevent->data.inputpointer.select;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
+
+static void __kdWaylandPointerHandleAxis(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *wl_pointer, KD_UNUSED uint32_t time, KD_UNUSED uint32_t axis, KD_UNUSED wl_fixed_t value) {}
+static const struct wl_pointer_listener __kd_wl_pointer_listener = {
+    __kdWaylandPointerHandleEnter,
+    __kdWaylandPointerHandleLeave,
+    __kdWaylandPointerHandleMotion,
+    __kdWaylandPointerHandleButton,
+    __kdWaylandPointerHandleAxis,
+};
+
+static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, uint32_t format, int fd, uint32_t size)
+{
+    struct KDWindow *window = data;
+    if(format == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1)
+    {
+        KDchar *keymap_string = mmap(KD_NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+        xkb_keymap_unref(window->xkb.keymap);
+        window->xkb.keymap = xkb_keymap_new_from_string(window->xkb.context, keymap_string, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        munmap(keymap_string, size);
+        xkb_state_unref(window->xkb.state);
+        window->xkb.state = xkb_state_new(window->xkb.keymap);
+    }
+}
+static void __kdWaylandKeyboardHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED struct wl_array *keys) {}
+static void __kdWaylandKeyboardHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) {}
+static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, KD_UNUSED uint32_t time, uint32_t key, uint32_t state)
+{
+    struct KDWindow *window = data;
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+
+    xkb_keysym_t keysym = xkb_state_key_get_one_sym(window->xkb.state, key + 8);
+
+    KDint32 character = 0;
+    if(state == WL_KEYBOARD_KEY_STATE_PRESSED)
+    {
+        /* Printable ASCII range. */
+        if((keysym >= 20) && (keysym <= 126))
+        {
+            character = keysym;
+        }
+    }
+
+    if(character)
+    {
+        kdevent->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&kdevent->data);
+        keycharevent->character = character;
+
+        __kd_window->states.keyboard.charflags = 0;
+        __kd_window->states.keyboard.character = keycharevent->character;
+    }
+    else
+    {
+        KDint32 keycode = __KDKeycodeLookup(keysym);
+        if(keycode)
+        {
+            kdevent->type = KD_EVENT_INPUT_KEY_ATX;
+            KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&kdevent->data);
+
+            if(state == WL_KEYBOARD_KEY_STATE_PRESSED)
+            {
+                keyevent->flags |= KD_KEY_PRESS_ATX;
+            }
+            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0)
+            {
+                keyevent->flags |= KD_KEY_MODIFIER_SHIFT_ATX;
+            }
+            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE) > 0)
+            {
+                keyevent->flags |= KD_KEY_MODIFIER_CTRL_ATX;
+            }
+            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_EFFECTIVE) > 0)
+            {
+                keyevent->flags |= KD_KEY_MODIFIER_ALT_ATX;
+            }
+            if(xkb_state_mod_name_is_active(window->xkb.state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_EFFECTIVE) > 0)
+            {
+                keyevent->flags |= KD_KEY_MODIFIER_META_ATX;
+            }
+
+            keyevent->keycode = keycode;
+
+            __kd_window->states.keyboard.flags = keyevent->flags;
+            __kd_window->states.keyboard.keycode = keyevent->keycode;
+            
+            __kdHandleSpecialKeys(__kd_window, keyevent);
+        }
+        else
+        {
+            kdFreeEvent(kdevent);
+            return;
+        }
+    }
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+}
+static void __kdWaylandKeyboardHandleModifiers(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group)
+{
+    struct KDWindow *window = data;
+    xkb_state_update_mask(window->xkb.state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+}
+static const struct wl_keyboard_listener __kd_wl_keyboard_listener = {
+    __kdWaylandKeyboardHandleKeymap,
+    __kdWaylandKeyboardHandleEnter,
+    __kdWaylandKeyboardHandleLeave,
+    __kdWaylandKeyboardHandleKey,
+    __kdWaylandKeyboardHandleModifiers,
+};
+
+static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, enum wl_seat_capability caps)
+{
+    struct KDWindow *window = data;
+    if(caps & WL_SEAT_CAPABILITY_POINTER)
+    {
+        window->wayland.pointer = wl_seat_get_pointer(seat);
+        wl_pointer_add_listener(window->wayland.pointer, &__kd_wl_pointer_listener, window);
+    }
+    if(caps & WL_SEAT_CAPABILITY_KEYBOARD)
+    {
+        window->wayland.keyboard = wl_seat_get_keyboard(seat);
+        wl_keyboard_add_listener(window->wayland.keyboard, &__kd_wl_keyboard_listener, window);
+    }
+}
+static const struct wl_seat_listener __kd_wl_seat_listener = {
+    __kdWaylandSeatHandleCapabilities};
+
+static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
+{
+    struct KDWindow *window = data;
     if(!kdStrcmp(interface, "wl_compositor"))
     {
-        __kd_wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+        window->wayland.compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+        window->wayland.surface = wl_compositor_create_surface(window->wayland.compositor);
     }
     else if(!kdStrcmp(interface, "wl_shell"))
     {
-        __kd_wl_shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
+        window->wayland.shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
+        window->wayland.shell_surface = wl_shell_get_shell_surface(window->wayland.shell, window->wayland.surface);
+    }
+    else if(!kdStrcmp(interface, "wl_seat"))
+    {
+        window->wayland.seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
+        wl_seat_add_listener(window->wayland.seat, &__kd_wl_seat_listener, window);
     }
 }
-static void registry_remove_object(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
-static const KD_UNUSED struct wl_registry_listener registry_listener = {
-    registry_add_object,
-    registry_remove_object};
-static void shell_surface_ping(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
+static void __kdWaylandRegistryRemoveObject(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
+static const struct wl_registry_listener __kd_wl_registry_listener = {
+    __kdWaylandRegistryAddObject,
+    __kdWaylandRegistryRemoveObject};
+
+static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
 {
-    kdLogMessage("wl_shell_surface_pong\n");
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void shell_surface_configure(void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, int32_t width, int32_t height)
-{
-    struct KDWindow *window = data;
-    wl_egl_window_resize(window->nativewindow, width, height, 0, 0);
-}
-static void shell_surface_popup_done(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
-static KD_UNUSED struct wl_shell_surface_listener shell_surface_listener = {
-    &shell_surface_ping,
-    &shell_surface_configure,
-    &shell_surface_popup_done};
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, KD_UNUSED int32_t width, KD_UNUSED int32_t height) {}
+static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
+static struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
+    &__kdWaylandShellSurfacePing,
+    &__kdWaylandShellSurfaceConfigure,
+    &__kdWaylandShellSurfacePopupDone};
 #endif
 
-KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, KD_UNUSED void *eventuserptr)
+KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
+{
+#if defined(KD_WINDOW_WAYLAND)
+    KDchar *sessiontype = kdGetEnvVEN("XDG_SESSION_TYPE");
+    if(kdStrstrVEN(sessiontype, "wayland"))
+    {
+        __kd_wl_display = wl_display_connect(KD_NULL);
+        return (NativeDisplayType)__kd_wl_display;
+    }
+#endif
+    return (NativeDisplayType)EGL_DEFAULT_DISPLAY;
+}
+
+KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNUSED EGLConfig config, void *eventuserptr)
 {
     if(__kd_window)
     {
@@ -10927,20 +12078,40 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     }
     window->originthr = kdThreadSelf();
 
-#if defined(__ANDROID__)
+    kdMemset(&window->properties, 0, sizeof(window->properties));
+    kdMemset(&window->states.pointer, 0, sizeof(window->states.pointer));
+    kdMemset(&window->states.keyboard, 0, sizeof(window->states.keyboard));
+
+    /* If we have a window assume basic input support. */
+    window->states.pointer.availability = 7;
+    window->states.keyboard.availability = 15;
+    window->states.dpad.availability = 31;
+    window->states.gamekeys.availability = 31;
+
+    const KDchar *caption = "OpenKODE";
+    kdMemcpy(window->properties.caption, caption, kdStrlen(caption));
+
+#if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
 #elif defined(KD_WINDOW_WIN32)
+    window->screen.width = GetSystemMetrics(SM_CXSCREEN);
+    window->screen.height = GetSystemMetrics(SM_CYSCREEN);
+    window->properties.width = window->screen.width;
+    window->properties.height = window->screen.height;
+
     WNDCLASS windowclass = {0};
     HINSTANCE instance = GetModuleHandle(KD_NULL);
     GetClassInfo(instance, "", &windowclass);
-    windowclass.lpszClassName = "OpenKODE";
-    windowclass.lpfnWndProc = windowcallback;
+    windowclass.lpszClassName = window->properties.caption;
+    windowclass.lpfnWndProc = __kdWindowsWindowCallback;
     windowclass.hInstance = instance;
     windowclass.hbrBackground = (HBRUSH)COLOR_BACKGROUND;
     RegisterClass(&windowclass);
-    window->nativewindow = CreateWindow("OpenKODE", "OpenKODE", WS_POPUP | WS_VISIBLE, 0, 0,
-        GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+    window->nativewindow = CreateWindow(window->properties.caption, window->properties.caption, WS_POPUP | WS_VISIBLE, 0, 0,
+        window->properties.width, window->properties.height,
         KD_NULL, KD_NULL, instance, KD_NULL);
+
+    window->nativedisplay = GetDC(window->nativewindow);
     /* Activate raw input */
     RAWINPUTDEVICE device[2];
     /* Mouse */
@@ -10954,34 +12125,38 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     device[1].dwFlags = RIDEV_NOLEGACY;
     device[1].hwndTarget = window->nativewindow;
     RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
-#elif defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+    window->xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
-    /* HACK: Poke into Mesa EGLDisplay */
-    if(kdStrstrVEN(eglQueryString(display, EGL_VENDOR), "Mesa"))
-    {
-        /* EGLDisplay is a pointer underneath */
-        _EGLDisplay *_display = (_EGLDisplay *)display;
-        window->platform = _display->Platform;
-    }
+    /* Determine size of primary display. */
+    xcb_connection_t* dummyconnection = xcb_connect(KD_NULL, KD_NULL);
+    xcb_screen_t* dummyscreen = xcb_setup_roots_iterator(xcb_get_setup(dummyconnection)).data;
+    xcb_window_t dummywindow = xcb_generate_id(dummyconnection);
+    xcb_create_window(dummyconnection, 0, dummywindow, dummyscreen->root, 0, 0, 1, 1, 0, 0, 0, 0, 0);
+    xcb_flush(dummyconnection);
+    xcb_randr_get_screen_resources_cookie_t dummyscreencookie = xcb_randr_get_screen_resources(dummyconnection, dummywindow);
+    xcb_randr_get_screen_resources_reply_t* dummyscreenreply = xcb_randr_get_screen_resources_reply(dummyconnection, dummyscreencookie, 0);
+    xcb_randr_crtc_t* crtc = xcb_randr_get_screen_resources_crtcs(dummyscreenreply);
+    xcb_randr_get_crtc_info_cookie_t crtccookie = xcb_randr_get_crtc_info(dummyconnection, crtc[0], 0);
+    xcb_randr_get_crtc_info_reply_t* crtcreply = xcb_randr_get_crtc_info_reply(dummyconnection, crtccookie, NULL);
+    window->screen.width = crtcreply->width;
+    window->screen.height = crtcreply->height;
+    window->properties.width = window->screen.width;
+    window->properties.height = window->screen.height;
+    xcb_disconnect(dummyconnection);
 
-#if defined(EGL_NV_native_query)
-    if(kdStrstrVEN(eglQueryString(display, EGL_EXTENSIONS), "EGL_NV_native_query"))
-    {
-        PFNEGLQUERYNATIVEDISPLAYNVPROC eglQueryNativeDisplayNV = (PFNEGLQUERYNATIVEDISPLAYNVPROC)eglGetProcAddress("eglQueryNativeDisplayNV");
-        if(eglQueryNativeDisplayNV)
-        {
-            eglQueryNativeDisplayNV(display, (EGLNativeDisplayType*)&window->nativedisplay);
 #if defined(KD_WINDOW_WAYLAND)
-            if(__kdIsPointerDereferencable(window->nativedisplay))
-            {
-                void *first_pointer = *(void **)window->nativedisplay;
-                if(first_pointer == &wl_display_interface)
-                {
-                    window->platform = _EGL_PLATFORM_WAYLAND;
-                }
-            }
-#endif
-        }
+    if(__kd_wl_display)
+    {
+        window->platform = EGL_PLATFORM_WAYLAND_KHR;
+    }
+    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+    {
+        window->nativedisplay = __kd_wl_display;
+        window->wayland.registry = wl_display_get_registry(window->nativedisplay);
+        wl_registry_add_listener(window->wayland.registry, &__kd_wl_registry_listener, window);
+        wl_display_roundtrip(window->nativedisplay);
+        wl_shell_surface_add_listener(window->wayland.shell_surface, &__kd_wl_shell_surface_listener, window);
     }
 #endif
 
@@ -10989,55 +12164,74 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     if(!window->platform)
     {
         /* Fallback to X11*/
-        window->platform = _EGL_PLATFORM_X11;
+        window->platform = EGL_PLATFORM_X11_KHR;
     }
-    if(window->platform == _EGL_PLATFORM_X11)
+    if(window->platform == EGL_PLATFORM_X11_KHR)
     {
         if(!window->nativedisplay)
         {
-            window->nativedisplay = XOpenDisplay(NULL);
+            window->nativedisplay = xcb_connect(KD_NULL, KD_NULL);
         }
-        window->nativewindow = (void *)XCreateSimpleWindow(window->nativedisplay,
-            XRootWindow(window->nativedisplay, XDefaultScreen(window->nativedisplay)), 0, 0,
-            (KDuint)XWidthOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)),
-            (KDuint)XHeightOfScreen(XDefaultScreenOfDisplay(window->nativedisplay)), 0,
-            XBlackPixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)),
-            XWhitePixel(window->nativedisplay, XDefaultScreen(window->nativedisplay)));
-        XStoreName(window->nativedisplay, (Window)window->nativewindow, "OpenKODE");
-        Atom wm_del_win_msg = XInternAtom(window->nativedisplay, "WM_DELETE_WINDOW", False);
-        XSetWMProtocols(window->nativedisplay, (Window)window->nativewindow, &wm_del_win_msg, 1);
-        Atom mwm_prop_hints = XInternAtom(window->nativedisplay, "_MOTIF_WM_HINTS", True);
-        const KDuint8 mwm_hints[5] = {2, 0, 0, 0, 0};
-        XChangeProperty(window->nativedisplay, (Window)window->nativewindow, mwm_prop_hints, mwm_prop_hints, 32, 0, (const KDuint8 *)&mwm_hints, 5);
-        Atom netwm_prop_hints = XInternAtom(window->nativedisplay, "_NET_WM_STATE", False);
-        Atom netwm_hints[3];
-        netwm_hints[0] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FULLSCREEN", False);
-        netwm_hints[1] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-        netwm_hints[2] = XInternAtom(window->nativedisplay, "_NET_WM_STATE_FOCUSED", False);
-        XChangeProperty(window->nativedisplay, (Window)window->nativewindow, netwm_prop_hints, 4, 32, 0, (const KDuint8 *)&netwm_hints, 3);
+        xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(window->nativedisplay)).data;
+        window->nativewindow = (void *)(KDuintptr)xcb_generate_id(window->nativedisplay);
+
+        KDuint32 mask = XCB_CW_EVENT_MASK;
+        KDuint32 values[1] = {XCB_EVENT_MASK_POINTER_MOTION |
+            XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
+            XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+            XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW};
+
+        xcb_create_window(window->nativedisplay, screen->root_depth, (KDuintptr)window->nativewindow,
+            screen->root, 0, 0, window->properties.width, window->properties.height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
+
+        xcb_intern_atom_cookie_t *ewmhcookie = xcb_ewmh_init_atoms(window->nativedisplay, &window->xcb.ewmh);
+        xcb_ewmh_init_atoms_replies(&window->xcb.ewmh, ewmhcookie, KD_NULL);
+
+        xcb_intern_atom_cookie_t protcookie = xcb_intern_atom(window->nativedisplay, 1, 12, "WM_PROTOCOLS");
+        xcb_intern_atom_reply_t *protreply = xcb_intern_atom_reply(window->nativedisplay, protcookie, 0);
+        xcb_intern_atom_cookie_t delcookie = xcb_intern_atom(window->nativedisplay, 0, 16, "WM_DELETE_WINDOW");
+        xcb_intern_atom_reply_t *delreply = xcb_intern_atom_reply(window->nativedisplay, delcookie, 0);
+        xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow, (*protreply).atom, 4, 32, 1, &(*delreply).atom);
+
+        xkb_x11_setup_xkb_extension(window->nativedisplay, XKB_X11_MIN_MAJOR_XKB_VERSION, XKB_X11_MIN_MINOR_XKB_VERSION,
+            XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS, KD_NULL, KD_NULL, &window->xkb.firstevent, KD_NULL);
+        KDint32 device = xkb_x11_get_core_keyboard_device_id(window->nativedisplay);
+        window->xkb.keymap = xkb_x11_keymap_new_from_device(window->xkb.context, window->nativedisplay, device, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        window->xkb.state = xkb_x11_state_new_from_device(window->xkb.keymap, window->nativedisplay, device);
+
+        enum {
+            required_events =
+                (XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY |
+                    XCB_XKB_EVENT_TYPE_MAP_NOTIFY |
+                    XCB_XKB_EVENT_TYPE_STATE_NOTIFY),
+
+            required_map_parts =
+                (XCB_XKB_MAP_PART_KEY_TYPES |
+                    XCB_XKB_MAP_PART_KEY_SYMS |
+                    XCB_XKB_MAP_PART_MODIFIER_MAP |
+                    XCB_XKB_MAP_PART_EXPLICIT_COMPONENTS |
+                    XCB_XKB_MAP_PART_KEY_ACTIONS |
+                    XCB_XKB_MAP_PART_VIRTUAL_MODS |
+                    XCB_XKB_MAP_PART_VIRTUAL_MOD_MAP),
+
+            required_state_details =
+                (XCB_XKB_STATE_PART_MODIFIER_BASE |
+                    XCB_XKB_STATE_PART_MODIFIER_LATCH |
+                    XCB_XKB_STATE_PART_MODIFIER_LOCK |
+                    XCB_XKB_STATE_PART_GROUP_BASE |
+                    XCB_XKB_STATE_PART_GROUP_LATCH |
+                    XCB_XKB_STATE_PART_GROUP_LOCK),
+        };
+
+        static const xcb_xkb_select_events_details_t details = {
+            .affectState = required_state_details,
+            .stateDetails = required_state_details,
+        };
+
+        xcb_xkb_select_events_aux(window->nativedisplay, device, required_events, 0, 0,
+            required_map_parts, required_map_parts, &details);
     }
 #endif
-#if defined(KD_WINDOW_WAYLAND)
-    if(window->platform == _EGL_PLATFORM_WAYLAND)
-    {
-        if(!window->nativedisplay)
-        {
-            kdLogMessage("Wayland support depends on EGL_NV_native_query.\n");
-            kdAssert(0);
-        }
-        __kd_wl_registry = wl_display_get_registry(window->nativedisplay);
-        wl_registry_add_listener(__kd_wl_registry, &registry_listener, KD_NULL);
-        wl_display_roundtrip(window->nativedisplay);
-    }
-#endif
-#elif defined(__EMSCRIPTEN__)
-    EmscriptenFullscreenStrategy strategy;
-    kdMemset(&strategy, 0, sizeof(strategy));
-    strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
-    strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
-    strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-    emscripten_enter_soft_fullscreen(0, &strategy);
 #endif
     __kd_window = window;
     return window;
@@ -11052,22 +12246,47 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
         return -1;
     }
 #if defined(KD_WINDOW_WIN32)
+    ReleaseDC(window->nativewindow, window->nativedisplay);
     DestroyWindow(window->nativewindow);
-#else
-#if defined(KD_WINDOW_X11)
-    if(window->platform == _EGL_PLATFORM_X11)
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+    xkb_state_unref(window->xkb.state);
+    xkb_keymap_unref(window->xkb.keymap);
+    xkb_context_unref(window->xkb.context);
+
+#if defined(KD_WINDOW_WAYLAND)
+    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
-        XCloseDisplay(window->nativedisplay);
+        if(window->wayland.keyboard)
+        {
+            wl_keyboard_destroy(window->wayland.keyboard);
+        }
+        if(window->wayland.pointer)
+        {
+            wl_pointer_destroy(window->wayland.pointer);
+        }
+        if(window->wayland.seat)
+        {
+            wl_seat_destroy(window->wayland.seat);
+        }
+        if(window->wayland.shell)
+        {
+            wl_shell_destroy(window->wayland.shell);
+        }
+        if(window->wayland.compositor)
+        {
+            wl_compositor_destroy(window->wayland.compositor);
+        }
+        wl_egl_window_destroy(window->nativewindow);
+        wl_shell_surface_destroy(window->wayland.shell_surface);
+        wl_surface_destroy(window->wayland.surface);
+        wl_registry_destroy(window->wayland.registry);
+        wl_display_disconnect(window->nativedisplay);
     }
 #endif
-#if defined(KD_WINDOW_WAYLAND)
-    if(window->platform == _EGL_PLATFORM_WAYLAND)
+#if defined(KD_WINDOW_X11)
+    if(window->platform == EGL_PLATFORM_X11_KHR)
     {
-        wl_egl_window_destroy(window->nativewindow);
-        wl_shell_surface_destroy(window->shell_surface);
-        wl_surface_destroy(window->surface);
-        wl_registry_destroy(__kd_wl_registry);
-        wl_display_disconnect(window->nativedisplay);
+        xcb_disconnect(window->nativedisplay);
     }
 #endif
 #endif
@@ -11079,108 +12298,160 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 /* kdSetWindowPropertybv, kdSetWindowPropertyiv, kdSetWindowPropertycv: Set a window property to request a change in the on-screen representation of the window. */
 KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED const KDboolean *param)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDint32 *param)
+
+KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, const KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
+#if defined(KD_WINDOW_WIN32)
+        SetWindowPos(window->nativewindow, 0, 0, 0, param[0], param[1], 0);
+#elif defined(KD_WINDOW_EMSCRIPTEN)
+        emscripten_set_canvas_element_size("#canvas",param[0], param[1]);
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+        KDboolean fullscreen = (param[0] == window->screen.width) && (param[1] == window->screen.height);
+
+#if defined(KD_WINDOW_WAYLAND)   
+        if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            if(fullscreen)
+            {
+                wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);  
+            }
+            else
+            {
+                wl_shell_surface_set_toplevel(window->wayland.shell_surface);
+            }
+            if(window->nativewindow)
+            {
+                wl_egl_window_resize(window->nativewindow, param[0], param[1], 0, 0);
+            }
+        }
+#endif
 #if defined(KD_WINDOW_X11)
-        if(window->platform == _EGL_PLATFORM_X11)
+        if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            XMoveResizeWindow(window->nativedisplay, (Window)window->nativewindow, 0, 0, (KDuint)param[0], (KDuint)param[1]);
-            XFlush(window->nativedisplay);
-            KDEvent *event = kdCreateEvent();
-            event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
-            kdPostEvent(event);
-            return 0;
+            xcb_size_hints_t hints;
+            kdMemset(&hints, 0, sizeof(hints));
+            xcb_icccm_size_hints_set_min_size(&hints, param[0], param[1]);
+            xcb_icccm_size_hints_set_base_size(&hints, param[0], param[1]);
+            xcb_icccm_size_hints_set_max_size(&hints, param[0], param[1]);
+            xcb_icccm_size_hints_set_size(&hints, 0, param[0], param[1]);
+            xcb_icccm_size_hints_set_position(&hints, 0, 0, 0);
+            xcb_icccm_set_wm_size_hints(window->nativedisplay, (KDuintptr)window->nativewindow, XCB_ATOM_WM_NORMAL_HINTS, &hints);  
+            xcb_flush(window->nativedisplay);
+
+            if(fullscreen)
+            {
+                xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
+                    window->xcb.ewmh._NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, &(window->xcb.ewmh._NET_WM_STATE_FULLSCREEN));
+                xcb_flush(window->nativedisplay);
+            }
+
         }
-#elif defined(__EMSCRIPTEN__)
-        emscripten_set_canvas_size(param[0], param[1]);
-        return 0;
+#endif   
+#else
+        kdSetError(KD_EINVAL);
+        return -1;
 #endif
-    }
-    kdSetError(KD_EOPNOTSUPP);
-    return -1;
-}
-KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED const KDchar *param)
-{
-    if(pname == KD_WINDOWPROPERTY_CAPTION)
-    {
-#if defined(KD_WINDOW_X11)
-        if(window->platform == _EGL_PLATFORM_X11)
-        {
-            XStoreName(window->nativedisplay, (Window)window->nativewindow, param);
-            XFlush(window->nativedisplay);
-        }
-#endif
-#if defined(KD_WINDOW_WAYLAND)
-        if(window->platform == _EGL_PLATFORM_WAYLAND)
-        {
-            wl_shell_surface_set_title(window->shell_surface, param);
-        }
-#endif
+        window->properties.width = param[0];
+        window->properties.height = param[1];
+
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        event->data.windowproperty.pname = KD_WINDOWPROPERTY_SIZE;
         kdPostEvent(event);
         return 0;
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
+    return -1;
+}
+
+KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, const KDchar *param)
+{
+    if(pname == KD_WINDOWPROPERTY_CAPTION)
+    {
+#if defined(KD_WINDOW_WIN32)
+        SetWindowTextA(window->nativewindow, param);
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+#if defined(KD_WINDOW_WAYLAND)
+        if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            wl_shell_surface_set_title(window->wayland.shell_surface, param);
+        }
+#endif
+#if defined(KD_WINDOW_X11)
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            xcb_icccm_set_wm_name(window->nativedisplay, (KDuintptr)window->nativewindow, XCB_ATOM_STRING, 8, kdStrlen(window->properties.caption), window->properties.caption);
+            xcb_flush(window->nativedisplay);
+        }
+#endif
+#else
+        kdSetError(KD_EINVAL);
+        return -1;
+#endif
+        kdMemcpy(window->properties.caption, param, kdStrlen(param));
+
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        event->data.windowproperty.pname = KD_WINDOWPROPERTY_CAPTION;
+        kdPostEvent(event);
+        return 0;
+    }
+    kdSetError(KD_EINVAL);
     return -1;
 }
 
 /* kdGetWindowPropertybv, kdGetWindowPropertyiv, kdGetWindowPropertycv: Get the current value of a window property. */
-KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED KDboolean *param)
+KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KDWindow *window, KDint pname, KDboolean *param)
 {
-    kdSetError(KD_EOPNOTSUPP);
+    if(pname == KD_WINDOWPROPERTY_FOCUS)
+    {
+        param[0] = window->properties.focused;
+    }
+    else if(pname == KD_WINDOWPROPERTY_VISIBILITY)
+    {
+        param[0] = window->properties.visible;
+    }
+    kdSetError(KD_EINVAL);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED KDint32 *param)
+KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KDint32 *param)
 {
     if(pname == KD_WINDOWPROPERTY_SIZE)
     {
-#if defined(__ANDROID__)
-        param[0] = ANativeWindow_getWidth(window->nativewindow);
-        param[1] = ANativeWindow_getHeight(window->nativewindow);
-        return 0;
-#elif defined(KD_WINDOW_X11)
-        if(window->platform == _EGL_PLATFORM_X11)
-        {
-            XWindowAttributes attributes = {0};
-            XGetWindowAttributes(window->nativedisplay, (Window)window->nativewindow, &attributes);
-            param[0] = attributes.width;
-            param[1] = attributes.height;
-            return 0;
-        }
-#elif defined(__EMSCRIPTEN__)
-        emscripten_get_canvas_size(&param[0], &param[1], (KDint[]){0});
-        return 0;
-#endif
+        param[0] = window->properties.width;
+        param[1] = window->properties.height;
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
-KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KD_UNUSED KDWindow *window, KDint pname, KD_UNUSED KDchar *param, KD_UNUSED KDsize *size)
+KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KDchar *param, KDsize *size)
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
-    {
-#if defined(KD_WINDOW_X11)
-        if(window->platform == _EGL_PLATFORM_X11)
-        {
-            XFetchName(window->nativedisplay, (Window)window->nativewindow, &param);
-            return 0;
-        }
-#endif
+    {   
+        *size = kdStrlen(window->properties.caption);
+        kdMemcpy(param, window->properties.caption, *size);
     }
-    kdSetError(KD_EOPNOTSUPP);
+    kdSetError(KD_EINVAL);
     return -1;
 }
 
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-#if defined(__ANDROID__)
+    KDint32 windowsize[2];
+    windowsize[0] = window->properties.width;
+    windowsize[1] = window->properties.height;
+    kdSetWindowPropertyiv(window, KD_WINDOWPROPERTY_SIZE, windowsize);
+    kdSetWindowPropertycv(window, KD_WINDOWPROPERTY_CAPTION, window->properties.caption);
+    window->properties.focused = 1;
+    window->properties.visible = 1;
+
+#if defined(KD_WINDOW_ANDROID)
     for(;;)
     {
         kdThreadMutexLock(__kd_androidwindow_mutex);
@@ -11193,25 +12464,51 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
         kdThreadMutexUnlock(__kd_androidwindow_mutex);
     }
     ANativeWindow_setBuffersGeometry(window->nativewindow, 0, 0, window->format);
-#else
-#if defined(KD_WINDOW_X11)
-    if(window->platform == _EGL_PLATFORM_X11)
-    {
-        XMapWindow(window->nativedisplay, (Window)window->nativewindow);
-        XFlush(window->nativedisplay);
-    }
-#endif
+#elif defined(KD_WINDOW_EMSCRIPTEN)
+    EmscriptenFullscreenStrategy strategy;
+    kdMemset(&strategy, 0, sizeof(strategy));
+    strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
+    strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
+    strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
+    emscripten_enter_soft_fullscreen(0, &strategy);
+    window->properties.width = 800;
+    window->properties.height = 600;
+    //emscripten_get_element_css_size("#canvas", (KDfloat64KHR*)&window->properties.width, (KDfloat64KHR*)&window->properties.height); 
+    emscripten_set_canvas_element_size("#canvas", window->properties.width, window->properties.height);
+    emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_keydown_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_keyup_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_visibilitychange_callback(0, 1, __kd_EmscriptenVisibilityCallback);
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
-    if(window->platform == _EGL_PLATFORM_WAYLAND)
+    if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
-        window->surface = wl_compositor_create_surface(__kd_wl_compositor);
-        window->shell_surface = wl_shell_get_shell_surface(__kd_wl_shell, window->surface);
-        wl_shell_surface_add_listener(window->shell_surface, &shell_surface_listener, window);
-        wl_shell_surface_set_toplevel(window->shell_surface);
-        window->nativewindow = wl_egl_window_create(window->surface, 0, 0);
+        window->nativewindow = wl_egl_window_create(window->wayland.surface, window->properties.width, window->properties.height);
+    }
+#endif
+#if defined(KD_WINDOW_X11)
+    if(window->platform == EGL_PLATFORM_X11_KHR)
+    {
+        xcb_map_window(window->nativedisplay, (KDuintptr)window->nativewindow);
+        xcb_flush(window->nativedisplay);
     }
 #endif
 #endif
+
+    KDEvent *kdevent = kdCreateEvent();
+    kdevent->userptr = window->eventuserptr;
+    kdevent->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+    kdevent->data.windowproperty.pname = KD_EVENT_WINDOW_REDRAW;
+
+    if(!__kdExecCallback(kdevent))
+    {
+        kdPostEvent(kdevent);
+    }
+
     if(nativewindow)
     {
         *nativewindow = (EGLNativeWindowType)window->nativewindow;
@@ -11219,12 +12516,6 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     return 0;
 }
 
-KD_API KDint KD_APIENTRY kdRealizePlatformWindowVEN(KDWindow *window, void **nativewindow)
-{
-    kdRealizeWindow(window, KD_NULL);
-    *nativewindow = &window->nativewindow;
-    return 0;
-}
 #endif
 
 /******************************************************************************
@@ -11281,6 +12572,7 @@ typedef struct _KDImageATX {
     KDint width;
     KDint height;
     KDint levels;
+    KDint bpp;
     KDint format;
     KDboolean alpha;
 } _KDImageATX;
@@ -11294,6 +12586,17 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressImageATX(KDImageATX image, KDint32 co
         kdSetError(KD_EINVAL);
         return KD_NULL;
     }
+
+    /* Determine max mipmap levels */
+    KDint width = _image->width;
+    KDint height = _image->height;
+    while((width > 1) && (height > 1))
+    {
+        width >>= 1;
+        height >>= 1;
+        _image->levels++;
+    }
+
     return kdDXTCompressBufferATX(_image->buffer, _image->width, _image->height, comptype, _image->levels);
 }
 
@@ -11324,7 +12627,6 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
 
     KDint32 bw = kdMinVEN(w - x, 4);
     KDint32 bh = kdMinVEN(h - y, 4);
-    KDint32 bx, by;
 
     const KDint32 rem[] =
         {
@@ -11335,10 +12637,10 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
 
     for(KDint i = 0; i < 4; ++i)
     {
-        by = rem[(bh - 1) * 4 + i] + y;
+        KDint32 by = rem[(bh - 1) * 4 + i] + y;
         for(KDint j = 0; j < 4; ++j)
         {
-            bx = rem[(bw - 1) * 4 + j] + x;
+            KDint32 bx = rem[(bw - 1) * 4 + j] + x;
             block[(i * 4 * 4) + (j * 4) + 0] = src[(by * (w * 4)) + (bx * 4) + 0];
             block[(i * 4 * 4) + (j * 4) + 1] = src[(by * (w * 4)) + (bx * 4) + 1];
             block[(i * 4 * 4) + (j * 4) + 2] = src[(by * (w * 4)) + (bx * 4) + 2];
@@ -11347,7 +12649,7 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
     }
 }
 
-KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32 width, KDint32 height, KDint32 comptype, KD_UNUSED KDint32 levels)
+KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32 width, KDint32 height, KDint32 comptype, KDint32 levels)
 {
     _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
     if(image == KD_NULL)
@@ -11355,7 +12657,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    image->levels = 0;
+    image->levels = levels;
     image->width = width;
     image->height = height;
 
@@ -11392,8 +12694,18 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
             return KD_NULL;
         }
     }
+    image->bpp = image->alpha ? 16 : 8;
+    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->bpp/8);
 
-    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->alpha ? 2 : 1);
+    KDint _width = image->width;
+    KDint _height = image->height;
+    for(KDint i = 0; i < image->levels; i++)
+    {
+        _width >>= 1;
+        _height >>= 1;
+        image->size += (KDsize)_width * (KDsize)_height * (KDsize)(image->bpp/8);
+    }
+    
     image->buffer = kdMalloc(image->size);
     if(image->buffer == KD_NULL)
     {
@@ -11402,15 +12714,34 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         return KD_NULL;
     }
 
-    KDuint8 block[64];
-    for(KDint y = 0; y < image->height; y += 4)
+    _width = image->width;
+    _height = image->height;
+    KDint channels = (image->alpha ? 4 : 3);
+    for(KDint i = 0; i <= image->levels; i++)
     {
-        for(KDint x = 0; x < image->width; x += 4)
+        KDsize size = (KDsize)_width * (KDsize)_height * (KDsize)channels;
+        void *tmp = kdMalloc(size);
+        if((_width == image->width) && (_height == image->height))
         {
-            __kdExtractBlock(buffer, x, y, image->width, image->height, block);
-            stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
-            image->buffer += image->alpha ? 16 : 8;
+            kdMemcpy(tmp, buffer, size);
         }
+        else
+        {
+            stbir_resize_uint8(buffer, image->width, image->height, 0, tmp, _width, _height, 0, channels);
+        }
+        for(KDint y = 0; y < _height; y += 4)
+        {
+            for(KDint x = 0; x < _width; x += 4)
+            {
+                KDuint8 block[64];
+                __kdExtractBlock(tmp, x, y, _width, _height, block);
+                stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
+                image->buffer += image->bpp;
+            }
+        }
+        kdFree(tmp);
+        _width >>= 1;
+        _height >>= 1;
     }
 
     return image;
@@ -11454,7 +12785,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, fd, 0);
     if(filedata == MAP_FAILED)
-#elif(_WIN32)
+#elif defined(_WIN32)
     HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
     if(fm)
     {
@@ -11465,7 +12796,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     {
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
         close(fd);
-#elif(_WIN32)
+#elif defined(_WIN32)
         CloseHandle(fd);
 #endif
         kdFree(image);
@@ -11511,7 +12842,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     munmap(filedata, image->size);
     close(fd);
-#elif(_WIN32)
+#elif defined(_WIN32)
     UnmapViewOfFile(filedata);
     CloseHandle(fd);
 #endif
@@ -11555,6 +12886,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
     image->levels = 0;
+    image->bpp= 8;
 
     KDStat st;
     if(kdFstat(file, &st) == -1)
@@ -11620,7 +12952,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             kdFree(image);
             kdSetError(KD_EINVAL);
             return KD_NULL;
-            break;
         }
     }
 
@@ -11642,7 +12973,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     }
     kdFree(filedata);
 
-    image->size = kdMallocSizeVEN(image->buffer);
+    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
     return image;
 }
 
@@ -11680,53 +13011,45 @@ KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
         case(KD_IMAGE_WIDTH_ATX):
         {
             return _image->width;
-            break;
         }
         case(KD_IMAGE_HEIGHT_ATX):
         {
             return _image->height;
-            break;
         }
         case(KD_IMAGE_FORMAT_ATX):
         {
             return _image->format;
-            break;
         }
         case(KD_IMAGE_STRIDE_ATX):
         {
             return 0;
-            break;
         }
         case(KD_IMAGE_BITSPERPIXEL_ATX):
         {
-            return 8;
-            break;
+            return _image->bpp;
         }
         case(KD_IMAGE_LEVELS_ATX):
         {
             return _image->levels;
-            break;
         }
         case(KD_IMAGE_DATASIZE_ATX):
         {
+            /* Specbug: Int is too small... */
+            kdAssert(0);
             return (KDint)_image->size;
-            break;
         }
         case(KD_IMAGE_BUFFEROFFSET_ATX):
         {
             return 0;
-            break;
         }
         case(KD_IMAGE_ALPHA_ATX):
         {
             return _image->alpha;
-            break;
         }
         default:
         {
             kdSetError(KD_EINVAL);
             return 0;
-            break;
         }
     }
 }
@@ -11840,6 +13163,8 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
 
 #if defined(__ANDROID__)
     result = __android_log_vprint(ANDROID_LOG_INFO, __kdAppName(KD_NULL), format, ap);
+#elif defined(__EMSCRIPTEN__)
+    result = vprintf(format, ap);
 #else
     KDchar buf[STB_SPRINTF_MIN];
     result = stbsp_vsprintfcb(&__kdLogMessagefCallback, KD_NULL, buf, format, ap);
@@ -11914,7 +13239,7 @@ struct KDAtomicIntVEN {
 struct KDAtomicPtrVEN {
     atomic_uintptr_t value;
 };
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
 struct KDAtomicIntVEN {
     KDint value;
 #if defined(KD_ATOMIC_MUTEX)
@@ -11939,7 +13264,7 @@ KD_API KDAtomicIntVEN *KD_APIENTRY kdAtomicIntCreateVEN(KDint value)
     }
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
     object->value = value;
 #if defined(KD_ATOMIC_MUTEX)
     object->mutex = kdThreadMutexCreate(KD_NULL);
@@ -11958,7 +13283,7 @@ KD_API KDAtomicPtrVEN *KD_APIENTRY kdAtomicPtrCreateVEN(void *value)
     }
 #if defined(KD_ATOMIC_C11)
     atomic_init(&object->value, (KDuintptr)value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
+#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
     object->value = value;
 #if defined(KD_ATOMIC_MUTEX)
     object->mutex = kdThreadMutexCreate(KD_NULL);
@@ -11998,6 +13323,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object)
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_load_u32(&object->value);
 #endif
 }
 
@@ -12014,6 +13341,8 @@ KD_API void *KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
     return value;
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return (void *)emscripten_atomic_load_u32(&object->value);
 #endif
 }
 
@@ -12031,6 +13360,8 @@ KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
     kdThreadMutexLock(object->mutex);
     object->value = value;
     kdThreadMutexUnlock(object->mutex);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    emscripten_atomic_store_u32(&object->value, value);
 #endif
 }
 
@@ -12050,6 +13381,8 @@ KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void *value)
     kdThreadMutexLock(object->mutex);
     object->value = value;
     kdThreadMutexUnlock(object->mutex);
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    emscripten_atomic_store_u32(&object->value, (KDuint32)value);
 #endif
 }
 
@@ -12069,6 +13402,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint va
     object->value = object->value + value;
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_add_u32(&object->value, value);
 #endif
 }
 
@@ -12089,6 +13424,8 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint va
     object->value = object->value - value;
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_sub_u32(&object->value, value);
 #endif
 }
 
@@ -12112,6 +13449,8 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
     }
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_cas_u32(&object->value, expected, desired);
 #endif
 }
 
@@ -12137,6 +13476,8 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
     }
     kdThreadMutexUnlock(object->mutex);
     return retval;
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+    return emscripten_atomic_cas_u32(&object->value, (KDuint32)expected, (KDuint32)desired);
 #endif
 }
 

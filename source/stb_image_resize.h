@@ -1,4 +1,4 @@
-/* stb_image_resize - v0.94 - public domain image resizing
+/* stb_image_resize - v0.95 - public domain image resizing
    by Jorge L Rodriguez (@VinoBS) - 2014
    http://github.com/nothings/stb
 
@@ -156,8 +156,10 @@
       Jorge L Rodriguez: Implementation
       Sean Barrett: API design, optimizations
       Aras Pranckevicius: bugfix
-         
+      Nathan Reed: warning fixes
+
    REVISIONS
+      0.95 (2017-07-23) fixed warnings
       0.94 (2017-03-18) fixed warnings
       0.93 (2017-03-03) fixed bug with certain combinations of heights
       0.92 (2017-01-02) fix integer overflow on large (>2GB) images
@@ -413,8 +415,9 @@ STBIRDEF int stbir_resize_region(  const void *input_pixels , int input_w , int 
 
 #ifndef STBIR_MALLOC
 #include <stdlib.h>
-#define STBIR_MALLOC(size,c) malloc(size)
-#define STBIR_FREE(ptr,c)    free(ptr)
+// use comma operator to evaluate c, to avoid "unused parameter" warnings
+#define STBIR_MALLOC(size,c) ((void)(c), malloc(size))
+#define STBIR_FREE(ptr,c)    ((void)(c), free(ptr))
 #endif
 
 #ifndef _MSC_VER
@@ -1003,7 +1006,7 @@ static int stbir__edge_wrap_slow(stbir_edge edge, int n, int max)
 
             return (m);
         }
-        return n;  // NOTREACHED
+        // NOTREACHED
 
     default:
         STBIR_ASSERT(!"Unimplemented edge type");
@@ -1030,8 +1033,8 @@ static void stbir__calculate_sample_range_upsample(int n, float out_filter_radiu
     float in_pixel_influence_upperbound = (out_pixel_influence_upperbound + out_shift) / scale_ratio;
 
     *in_center_of_out = (out_pixel_center + out_shift) / scale_ratio;
-    *in_first_pixel = (int)(floor(in_pixel_influence_lowerbound + 0.5));
-    *in_last_pixel = (int)(floor(in_pixel_influence_upperbound - 0.5));
+    *in_first_pixel = (int)(STBIR_FLOOR(in_pixel_influence_lowerbound + 0.5));
+    *in_last_pixel = (int)(STBIR_FLOOR(in_pixel_influence_upperbound - 0.5));
 }
 
 // What output pixels does this input pixel contribute to?
@@ -1045,8 +1048,8 @@ static void stbir__calculate_sample_range_downsample(int n, float in_pixels_radi
     float out_pixel_influence_upperbound = in_pixel_influence_upperbound * scale_ratio - out_shift;
 
     *out_center_of_in = in_pixel_center * scale_ratio - out_shift;
-    *out_first_pixel = (int)(floor(out_pixel_influence_lowerbound + 0.5));
-    *out_last_pixel = (int)(floor(out_pixel_influence_upperbound - 0.5));
+    *out_first_pixel = (int)(STBIR_FLOOR(out_pixel_influence_lowerbound + 0.5));
+    *out_last_pixel = (int)(STBIR_FLOOR(out_pixel_influence_upperbound - 0.5));
 }
 
 static void stbir__calculate_coefficients_upsample(stbir_filter filter, float scale, int in_first_pixel, int in_last_pixel, float in_center_of_out, stbir__contributors* contributor, float* coefficient_group)

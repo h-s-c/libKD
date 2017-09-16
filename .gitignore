@@ -1,4 +1,5 @@
 /.idea
+/.scannerwork
 /build
 /ci/build
 /thirdparty/gles_amd
