@@ -205,7 +205,7 @@ jobs:
                      'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util-dev']
-     i nstall: python ci-tools/install_cmake.py   
+      install: python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
     - os: linux
