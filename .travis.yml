@@ -317,8 +317,8 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev 
-              libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
@@ -342,8 +342,8 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev 
-              libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
@@ -367,8 +367,8 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev 
-              libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
@@ -392,8 +392,8 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev 
-              libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
@@ -417,8 +417,8 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev 
-              libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
