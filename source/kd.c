@@ -3974,7 +3974,7 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     {
         return -1;
     }
-    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, "%f", number);
+    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, "%f", (KDfloat64KHR)number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -5128,7 +5128,7 @@ static KDint __kdRemPio2Kernel(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0,
             }
             if(ih == 2)
             {
-                z = 1.0f - z;
+                z = 1.0 - z;
                 if(carry != 0)
                 {
                     z -= __kdScalbn(1.0, q0);
@@ -5233,10 +5233,10 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        KDfloat64KHR fn = hx.f * KD_2_PI_KHR + 6.7553994410557440e+15;
+        KDfloat64KHR fn = (KDfloat64KHR)hx.f * KD_2_PI_KHR + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
-        *y = hx.f - fn * pio2_1 - fn * pio2_1t;
+        *y = (KDfloat64KHR)hx.f - fn * pio2_1 - fn * pio2_1t;
         return n;
     }
     /*
@@ -5244,13 +5244,13 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
      */
     if(ix >= KD_HUGE_VALF)
     { /* x is inf or NaN */
-        *y = hx.f - hx.f;
+        *y = (KDfloat64KHR)(hx.f - hx.f);
         return 0;
     }
 
     e0 = (ix >> 23) - 150; /* e0 = ilogb(|x|)-23; */
     hx.i = ix - (e0 << 23);
-    tx[0] = hx.f;
+    tx[0] = (KDfloat64KHR)hx.f;
     n = __kdRemPio2Kernel(tx, ty, e0, 1);
     if(sign)
     {
@@ -5848,23 +5848,23 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
                 return 1.0f;
             }
         } /* 1 with inexact if x != 0 */
-        return __kdCosdfKernel(x);
+        return __kdCosdfKernel((KDfloat64KHR)x);
     }
     if(ix <= 0x407b53d1)
     { /* |x| ~<= 5*pi/4 */
         if(ix > 0x4016cbe3)
         { /* |x|  ~> 3*pi/4 */
-            return -__kdCosdfKernel(x + (hx > 0 ? -(2 * KD_PI_2_KHR) : (2 * KD_PI_2_KHR)));
+            return -__kdCosdfKernel((KDfloat64KHR)x + (hx > 0 ? -(2 * KD_PI_2_KHR) : (2 * KD_PI_2_KHR)));
         }
         else
         {
             if(hx > 0)
             {
-                return __kdSindfKernel(KD_PI_2_KHR - x);
+                return __kdSindfKernel(KD_PI_2_KHR - (KDfloat64KHR)x);
             }
             else
             {
-                return __kdSindfKernel(x + KD_PI_2_KHR);
+                return __kdSindfKernel((KDfloat64KHR)x + KD_PI_2_KHR);
             }
         }
     }
@@ -5872,17 +5872,17 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
     { /* |x| ~<= 9*pi/4 */
         if(ix > 0x40afeddf)
         { /* |x|  ~> 7*pi/4 */
-            return __kdCosdfKernel(x + (hx > 0 ? -(4 * KD_PI_2_KHR) : (4 * KD_PI_2_KHR)));
+            return __kdCosdfKernel((KDfloat64KHR)x + (hx > 0 ? -(4 * KD_PI_2_KHR) : (4 * KD_PI_2_KHR)));
         }
         else
         {
             if(hx > 0)
             {
-                return __kdSindfKernel(x - (3 * KD_PI_2_KHR));
+                return __kdSindfKernel((KDfloat64KHR)x - (3 * KD_PI_2_KHR));
             }
             else
             {
-                return __kdSindfKernel(-(3 * KD_PI_2_KHR) - x);
+                return __kdSindfKernel(-(3 * KD_PI_2_KHR) - (KDfloat64KHR)x);
             }
         }
     }
@@ -5933,7 +5933,7 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
                 return x;
             }
         } /* x with inexact if x != 0 */
-        return __kdSindfKernel(x);
+        return __kdSindfKernel((KDfloat64KHR)x);
     }
     if(ix <= 0x407b53d1)
     { /* |x| ~<= 5*pi/4 */
@@ -5941,16 +5941,16 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
         { /* |x| ~<= 3pi/4 */
             if(hx > 0)
             {
-                return __kdCosdfKernel(x - KD_PI_2_KHR);
+                return __kdCosdfKernel((KDfloat64KHR)x - KD_PI_2_KHR);
             }
             else
             {
-                return -__kdCosdfKernel(x + KD_PI_2_KHR);
+                return -__kdCosdfKernel((KDfloat64KHR)x + KD_PI_2_KHR);
             }
         }
         else
         {
-            return __kdSindfKernel((hx > 0 ? (2 * KD_PI_2_KHR) : -(2 * KD_PI_2_KHR)) - x);
+            return __kdSindfKernel((hx > 0 ? (2 * KD_PI_2_KHR) : -(2 * KD_PI_2_KHR)) - (KDfloat64KHR)x);
         }
     }
     if(ix <= 0x40e231d5)
@@ -5959,16 +5959,16 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
         { /* |x| ~<= 7*pi/4 */
             if(hx > 0)
             {
-                return -__kdCosdfKernel(x - (3 * KD_PI_2_KHR));
+                return -__kdCosdfKernel((KDfloat64KHR)x - (3 * KD_PI_2_KHR));
             }
             else
             {
-                return __kdCosdfKernel(x + (3 * KD_PI_2_KHR));
+                return __kdCosdfKernel((KDfloat64KHR)x + (3 * KD_PI_2_KHR));
             }
         }
         else
         {
-            return __kdSindfKernel(x + (hx > 0 ? -(4 * KD_PI_2_KHR) : (4 * KD_PI_2_KHR)));
+            return __kdSindfKernel((KDfloat64KHR)x + (hx > 0 ? -(4 * KD_PI_2_KHR) : (4 * KD_PI_2_KHR)));
         }
     }
     /* sin(Inf or NaN) is NaN */
@@ -6018,28 +6018,28 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
                 return x;
             }
         } /* x with inexact if x != 0 */
-        return __kdTandfKernel(x, 1);
+        return __kdTandfKernel((KDfloat64KHR)x, 1);
     }
     if(ix <= 0x407b53d1)
     { /* |x| ~<= 5*pi/4 */
         if(ix <= 0x4016cbe3)
         { /* |x| ~<= 3pi/4 */
-            return __kdTandfKernel(x + (hx > 0 ? -KD_PI_2_KHR : KD_PI_2_KHR), -1);
+            return __kdTandfKernel((KDfloat64KHR)x + (hx > 0 ? -KD_PI_2_KHR : KD_PI_2_KHR), -1);
         }
         else
         {
-            return __kdTandfKernel(x + (hx > 0 ? -(2 * KD_PI_2_KHR) : (2 * KD_PI_2_KHR)), 1);
+            return __kdTandfKernel((KDfloat64KHR)x + (hx > 0 ? -(2 * KD_PI_2_KHR) : (2 * KD_PI_2_KHR)), 1);
         }
     }
     if(ix <= 0x40e231d5)
     { /* |x| ~<= 9*pi/4 */
         if(ix <= 0x40afeddf)
         { /* |x| ~<= 7*pi/4 */
-            return __kdTandfKernel(x + (hx > 0 ? -(3 * KD_PI_2_KHR) : (3 * KD_PI_2_KHR)), -1);
+            return __kdTandfKernel((KDfloat64KHR)x + (hx > 0 ? -(3 * KD_PI_2_KHR) : (3 * KD_PI_2_KHR)), -1);
         }
         else
         {
-            return __kdTandfKernel(x + (hx > 0 ? -(4 * KD_PI_2_KHR) : (4 * KD_PI_2_KHR)), 1);
+            return __kdTandfKernel((KDfloat64KHR)x + (hx > 0 ? -(4 * KD_PI_2_KHR) : (4 * KD_PI_2_KHR)), 1);
         }
     }
     /* tan(Inf or NaN) is NaN */
@@ -11579,32 +11579,20 @@ KD_API KDint KD_APIENTRY kdStateGetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint 
 
 
 /* kdOutputSeti, kdOutputSetf: set outputs */
-KD_API KDint KD_APIENTRY kdOutputSeti(KDint startidx, KDuint numidxs, KD_UNUSED const KDint32 *buffer)
+KD_API KDint KD_APIENTRY kdOutputSeti(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDint32 *buffer)
 {
-    KDint idx = startidx;
-    for(KDuint i = 0; i != numidxs; i++)
-    {
-        switch(idx)
-        {
 #if defined(_WIN32)
-            case KD_OUTPUT_BACKLIGHT_FORCE:
-            {
-                if(buffer[0])
-                {
-                    SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
-                }
-                break;
-            }
-#endif
-            default:
-            {
-                kdSetError(KD_EIO);
-                return -1;
-            }
+    if(startidx == KD_OUTPUT_BACKLIGHT_FORCE)
+    {
+        if(buffer[0])
+        {
+            SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+            return 0;
         }
-        idx++;
     }
-    return 0;
+#endif
+    kdSetError(KD_EIO);
+    return -1;
 }
 
 KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint numidxs, KD_UNUSED const KDfloat32 *buffer)
@@ -12720,26 +12708,29 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
     for(KDint i = 0; i <= image->levels; i++)
     {
         KDsize size = (KDsize)_width * (KDsize)_height * (KDsize)channels;
-        void *tmp = kdMalloc(size);
-        if((_width == image->width) && (_height == image->height))
+        if(size)
         {
-            kdMemcpy(tmp, buffer, size);
-        }
-        else
-        {
-            stbir_resize_uint8(buffer, image->width, image->height, 0, tmp, _width, _height, 0, channels);
-        }
-        for(KDint y = 0; y < _height; y += 4)
-        {
-            for(KDint x = 0; x < _width; x += 4)
+            void *tmp = kdMalloc(size);
+            if((_width == image->width) && (_height == image->height))
             {
-                KDuint8 block[64];
-                __kdExtractBlock(tmp, x, y, _width, _height, block);
-                stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
-                image->buffer += image->bpp;
+                kdMemcpy(tmp, buffer, size);
             }
+            else
+            {
+                stbir_resize_uint8(buffer, image->width, image->height, 0, tmp, _width, _height, 0, channels);
+            }
+            for(KDint y = 0; y < _height; y += 4)
+            {
+                for(KDint x = 0; x < _width; x += 4)
+                {
+                    KDuint8 block[64];
+                    __kdExtractBlock(tmp, x, y, _width, _height, block);
+                    stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
+                    image->buffer += image->bpp;
+                }
+            }
+            kdFree(tmp);
         }
-        kdFree(tmp);
         _width >>= 1;
         _height >>= 1;
     }
