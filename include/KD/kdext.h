@@ -32,10 +32,7 @@
 #include <KD/ATX_keyboard.h>
 #include <KD/KHR_float64.h>
 #include <KD/KHR_formatted.h>
-#include <KD/KHR_perfcounter.h>
 #include <KD/KHR_thread_storage.h>
-#include <KD/QNX_input.h>
-#include <KD/QNX_window.h>
 #include <KD/VEN_atomic_ops.h>
 #include <KD/VEN_queue.h>
 
