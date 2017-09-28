@@ -28,7 +28,6 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #include <KD/kd.h>
 #include <KD/kdext.h>
 
@@ -36,6 +35,7 @@
  * C includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(KD_ATOMIC_C11)
 #   include <stdatomic.h> /* atomic_.. */
 #endif

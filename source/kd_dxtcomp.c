@@ -28,7 +28,6 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #include <KD/kd.h>
 #include <KD/kdext.h>
 
@@ -38,6 +37,7 @@
  * Thirdparty includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(__TINYC__)  
 #   define STBI_NO_SIMD
 #endif

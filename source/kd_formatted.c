@@ -28,7 +28,6 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #include <KD/kd.h>
 #include <KD/kdext.h>
 
@@ -36,6 +35,7 @@
  * C includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(__EMSCRIPTEN__) && !defined(KD_FREESTANDING)
 #   include <stdio.h> /* vprintf */
 #endif
