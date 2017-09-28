@@ -36,7 +36,7 @@
  ******************************************************************************/
 
 /* clang-format off */
-#if !defined(KD_FREESTANDING)
+#if !defined(_WIN32) && !defined(KD_FREESTANDING)
 #   include <stdlib.h> /* getenv */
 #endif
 
