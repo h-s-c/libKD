@@ -71,6 +71,18 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout);
  * Utility library functions (extensions)
  *******************************************************/
 
+/* kdIsalphaVEN: Check if character is alphabetic.*/
+KD_API KDint KD_APIENTRY kdIsalphaVEN(KDint c);
+
+/* kdIsdigitVEN: Check if character is decimal digit. */
+KD_API KDint KD_APIENTRY kdIsdigitVEN(KDint c);
+
+/* kdIsspaceVEN: Check if character is a white-space. */
+KD_API KDint KD_APIENTRY kdIsspaceVEN(KDint c);
+
+/* kdIsupperVEN: Check if character is uppercase letter. */
+KD_API KDint KD_APIENTRY kdIsupperVEN(KDint c);
+
 /* kdMinVEN: Returns the smaller of the given values. */
 KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b);
 
@@ -83,6 +95,9 @@ KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env);
 
 /* kdStrstrVEN: Locate substring. */
 KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
+
+/* kdStrcspnVEN:  Get span until character in string. */
+KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2);
 
 /*******************************************************
  * Windowing (extensions)

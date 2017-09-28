@@ -258,7 +258,7 @@ typedef unsigned long long      KDuint64;
 #   define KD_VA_ARG_INT64_KHR(ap)     va_arg(ap, KDint64)
 #   define KD_VA_ARG_FLOAT32_KHR(ap)   va_arg(ap, KDfloat32)
 #   define KD_VA_ARG_FLOAT64_KHR(ap)   va_arg(ap, KDfloat64)
-#   define KD_VA_ARG_PTR_KHR(ap)       va_arg(ap, KDuintptr)
+#   define KD_VA_ARG_PTR_KHR(ap)       (void *)va_arg(ap, KDchar *)
 #   define KD_VA_COPY_VEN(d, s)        va_copy(d, s)
 #endif
 

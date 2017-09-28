@@ -99,7 +99,6 @@
 #       define WIN32_LEAN_AND_MEAN
 #   endif
 #   include <windows.h>
-#   include <wincrypt.h> /* CryptGenRandom etc. */
 #   include <direct.h> /* R_OK/W_OK/X_OK */
 #   include <intrin.h> /* _mm_* */
 #   include <winsock2.h> /* WSA */
@@ -117,10 +116,7 @@
 #   include <dlfcn.h>
 #   include <netdb.h>
 #   include <netinet/in.h>
-#   include <sys/mman.h> /* mincore, mmap */
-#   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
-#       include <sys/random.h> /* getentropy/getrandom */
-#   endif
+#   include <sys/mman.h> /* mmap */
 #   include <sys/socket.h>
 #   include <sys/stat.h>
 #   include <sys/syscall.h>
@@ -142,7 +138,6 @@
 #   if defined(__ANDROID__)
 #       include <android/api-level.h>
 #       include <android/keycodes.h>
-#       include <android/log.h>
 #       include <android/native_activity.h>
 #       include <android/native_window.h>
 #       include <android/window.h>
@@ -201,7 +196,6 @@
 #   if !defined(__clang__)
 #       pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #   endif
-#   pragma GCC diagnostic ignored "-Wsign-compare"
 #   pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
@@ -242,12 +236,6 @@
 #define STB_IMAGE_RESIZE_STATIC
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
-#define STB_SPRINTF_STATIC
-#if defined(__EMSCRIPTEN__)
-#define STB_SPRINTF_NOUNALIGNED
-#endif
-#define STB_SPRINTF_IMPLEMENTATION
-#include "stb_sprintf.h"
 #if defined(__INTEL_COMPILER) || defined(_MSC_VER)
 #   pragma warning(pop)
 #elif defined(__GNUC__)
@@ -3573,488 +3561,6 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
     }
 #else
     exit(status);
-#endif
-}
-
-/******************************************************************************
- * Utility library functions
- *
- * Notes:
- * - Based on the BSD libc developed at the University of California, Berkeley
- * - kdStrtof  based on K&R Second Edition
- ******************************************************************************/
-/******************************************************************************
- * Copyright (c) 1990, 1993
- *  The Regents of the University of California.  All rights reserved.
- *
- * This code is derived from software contributed to Berkeley by
- * Chris Torek.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- ******************************************************************************/
-
-static KDint __kdIsalpha(KDint c)
-{
-    return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
-}
-
-static KDint __kdIsdigit(KDint c)
-{
-    return ((c >= '0') && (c <= '9'));
-}
-
-static KDint __kdIsspace(KDint c)
-{
-    return ((c >= 0x09 && c <= 0x0D) || (c == 0x20));
-}
-
-static KDint __kdIsupper(KDint c)
-{
-    return ((c >= 'A') && (c <= 'Z'));
-}
-
-/* kdAbs: Compute the absolute value of an integer. */
-KD_API KDint KD_APIENTRY kdAbs(KDint i)
-{
-    return (i < 0) ? -i : i;
-}
-
-/* kdMinVEN: Returns the smaller of the given values. */
-KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b)
-{
-    return (b < a) ? b : a;
-}
-
-/* kdStrtof: Convert a string to a floating point number. */
-KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
-{
-    return (KDfloat32)kdStrtodKHR(s, endptr);
-}
-
-/* kdStrtodKHR: Convert a string to a 64-bit floating point number. */
-KD_API KDfloat64KHR KD_APIENTRY kdStrtodKHR(const KDchar *s, KD_UNUSED KDchar **endptr)
-{
-    KDfloat64KHR val, power;
-    KDint i, sign;
-
-    for(i = 0; __kdIsspace(s[i]); i++)
-    {
-        ;
-    }
-    sign = (s[i] == '-') ? -1 : 1;
-    if(s[i] == '+' || s[i] == '-')
-    {
-        i++;
-    }
-    for(val = 0.0; __kdIsdigit(s[i]); i++)
-    {
-        val = 10.0 * val + (s[i] - '0');
-    }
-    if(s[i] == '.')
-    {
-        i++;
-    }
-    for(power = 1.0; __kdIsdigit(s[i]); i++)
-    {
-        val = 10.0 * val + (s[i] - '0');
-        power *= 10.0;
-    }
-    return sign * val / power;
-}
-
-/* kdStrtol, kdStrtoul: Convert a string to an integer. */
-KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint base)
-{
-    const KDchar *s;
-    KDint64 acc, cutoff;
-    KDint c;
-    KDint neg, any, cutlim;
-    /*
-     * Ensure that base is between 2 and 36 inclusive, or the special
-     * value of 0.
-     */
-    if(base < 0 || base == 1 || base > 36)
-    {
-        if(endptr != 0)
-        {
-            *endptr = (KDchar *)nptr;
-        }
-        kdSetError(KD_EINVAL);
-        return 0;
-    }
-    /*
-     * Skip white space and pick up leading +/- sign if any.
-     * If base is 0, allow 0x for hex and 0 for octal, else
-     * assume decimal; if base is already 16, allow 0x.
-     */
-    s = nptr;
-    do
-    {
-        c = (KDuint8)*s++;
-    } while(__kdIsspace(c));
-    if(c == '-')
-    {
-        neg = 1;
-        c = *s++;
-    }
-    else
-    {
-        neg = 0;
-        if(c == '+')
-        {
-            c = *s++;
-        }
-    }
-    if((base == 0 || base == 16) && c == '0' && (*s == 'x' || *s == 'X'))
-    {
-        c = s[1];
-        s += 2;
-        base = 16;
-    }
-    if(base == 0)
-    {
-        base = c == '0' ? 8 : 10;
-    }
-    /*
-     * Compute the cutoff value between legal numbers and illegal
-     * numbers.  That is the largest legal value, divided by the
-     * base.  An input number that is greater than this value, if
-     * followed by a legal input character, is too big.  One that
-     * is equal to this value may be valid or not; the limit
-     * between valid and invalid numbers is then based on the last
-     * digit.  For instance, if the range for intmax_t is
-     * [-9223372036854775808..9223372036854775807] and the input base
-     * is 10, cutoff will be set to 922337203685477580 and cutlim to
-     * either 7 (neg==0) or 8 (neg==1), meaning that if we have
-     * accumulated a value > 922337203685477580, or equal but the
-     * next digit is > 7 (or 8), the number is too big, and we will
-     * return a range error.
-     *
-     * Set any if any `digits' consumed; make it negative to indicate
-     * overflow.
-     */
-    cutoff = neg ? KDINT_MIN : KDINT_MAX;
-    cutlim = cutoff % base;
-    cutoff /= base;
-    if(neg)
-    {
-        if(cutlim > 0)
-        {
-            cutlim -= base;
-            cutoff += 1;
-        }
-        cutlim = -cutlim;
-    }
-    for(acc = 0, any = 0;; c = (KDuint8)*s++)
-    {
-        if(__kdIsdigit(c))
-        {
-            c -= '0';
-        }
-        else if(__kdIsalpha(c))
-        {
-            c -= __kdIsupper(c) ? 'A' - 10 : 'a' - 10;
-        }
-        else
-        {
-            break;
-        }
-        if(c >= base)
-        {
-            break;
-        }
-        if(any < 0)
-        {
-            continue;
-        }
-        if(neg)
-        {
-            if(acc < cutoff || (acc == cutoff && c > cutlim))
-            {
-                any = -1;
-                acc = KDINT_MIN;
-                kdSetError(KD_ERANGE);
-            }
-            else
-            {
-                any = 1;
-                acc *= base;
-                acc -= c;
-            }
-        }
-        else
-        {
-            if(acc > cutoff || (acc == cutoff && c > cutlim))
-            {
-                any = -1;
-                acc = KDINT_MAX;
-                kdSetError(KD_ERANGE);
-            }
-            else
-            {
-                any = 1;
-                acc *= base;
-                acc += c;
-            }
-        }
-    }
-    if(endptr)
-    {
-        *endptr = (KDchar *)(any ? s - 1 : nptr);
-    }
-    return (KDint)acc;
-}
-
-KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint base)
-{
-    const KDchar *s;
-    KDint64 acc, cutoff;
-    KDint c;
-    KDint neg, any, cutlim;
-    /*
-     * See strtoimax for comments as to the logic used.
-     */
-    if(base < 0 || base == 1 || base > 36)
-    {
-        if(endptr != 0)
-        {
-            *endptr = (KDchar *)nptr;
-        }
-        kdSetError(KD_EINVAL);
-        return 0;
-    }
-    s = nptr;
-    do
-    {
-        c = (KDuint8)*s++;
-    } while(__kdIsspace(c));
-    if(c == '-')
-    {
-        neg = 1;
-        c = *s++;
-    }
-    else
-    {
-        neg = 0;
-        if(c == '+')
-        {
-            c = *s++;
-        }
-    }
-    if((base == 0 || base == 16) && c == '0' && (*s == 'x' || *s == 'X'))
-    {
-        c = s[1];
-        s += 2;
-        base = 16;
-    }
-    if(base == 0)
-    {
-        base = c == '0' ? 8 : 10;
-    }
-    cutoff = KDUINT_MAX / (KDuint)base;
-    cutlim = KDUINT_MAX % (KDuint)base;
-    for(acc = 0, any = 0;; c = (KDuint8)*s++)
-    {
-        if(__kdIsdigit(c))
-        {
-            c -= '0';
-        }
-        else if(__kdIsalpha(c))
-        {
-            c -= __kdIsupper(c) ? 'A' - 10 : 'a' - 10;
-        }
-        else
-        {
-            break;
-        }
-        if(c >= base)
-        {
-            break;
-        }
-        if(any < 0)
-        {
-            continue;
-        }
-        if(acc > cutoff || (acc == cutoff && c > cutlim))
-        {
-            any = -1;
-            acc = KDUINT_MAX;
-            kdSetError(KD_ERANGE);
-        }
-        else
-        {
-            any = 1;
-            acc *= (KDuint)base;
-            acc += c;
-        }
-    }
-    if(neg && any > 0)
-    {
-        acc = -acc;
-    }
-    if(endptr != 0)
-    {
-        *endptr = (KDchar *)(any ? s - 1 : nptr);
-    }
-    return (KDuint)acc;
-}
-
-/* kdLtostr, kdUltostr: Convert an integer to a string. */
-KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
-{
-    if(buflen == 0)
-    {
-        return -1;
-    }
-    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, "%d", number);
-    if(retval > (KDssize)buflen)
-    {
-        return -1;
-    }
-    return retval;
-}
-
-KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint number, KDint base)
-{
-    if(buflen == 0)
-    {
-        return -1;
-    }
-    char *fmt = "";
-    if(base == 8)
-    {
-        fmt = "%o";
-    }
-    else if(base == 10)
-    {
-        fmt = "%u";
-    }
-    else if(base == 16)
-    {
-        fmt = "%x";
-    }
-    else
-    {
-        kdAssert(0);
-    }
-    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, (const KDchar *)fmt, number);
-    if(retval > (KDssize)buflen)
-    {
-        return -1;
-    }
-    return retval;
-}
-
-/* kdFtostr: Convert a float to a string. */
-KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 number)
-{
-    if(buflen == 0)
-    {
-        return -1;
-    }
-    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, "%f", (KDfloat64KHR)number);
-    if(retval > (KDssize)buflen)
-    {
-        return -1;
-    }
-    return retval;
-}
-
-/* kdDtostrKHR: Convert a 64-bit float to a string. */
-KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64KHR number)
-{
-    if(buflen == 0)
-    {
-        return -1;
-    }
-    KDssize retval = stbsp_snprintf(buffer, (KDint)buflen, "%.17g", number);
-    if(retval > (KDssize)buflen)
-    {
-        return -1;
-    }
-    return retval;
-}
-
-/* kdCryptoRandom: Return random data. */
-KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize buflen)
-{
-    KDint retval = 0;
-#if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25
-    retval = getrandom(buf, buflen, GRND_NONBLOCK);
-#elif defined(__OpenBSD__) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
-    /* Non-conforming to OpenKODE spec (blocking). */
-    retval = getentropy(buf, buflen);
-#elif defined(_WIN32) && !defined(_M_ARM)
-    /* Non-conforming to OpenKODE spec (blocking). */
-    HCRYPTPROV provider = 0;
-    retval = CryptAcquireContextA(&provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT) - 1;
-    if(retval == 0)
-    {
-        retval = CryptGenRandom(provider, (KDuint32)buflen, buf) - 1;
-    }
-    CryptReleaseContext(provider, 0);
-#elif defined(__EMSCRIPTEN__)
-    /* TODO: Use window.crypto.getRandomValues() instead */
-    for(KDsize i = 0; i < buflen; i++)
-    {
-        buf[i] = (KDuint8)(emscripten_random() * 255) % 256;
-    }
-#elif defined(__unix__) || defined(__APPLE__)
-    KDFile *urandom = kdFopen("/dev/urandom", "r");
-    if(urandom)
-    {
-        if(kdFread((void *)buf, 1, buflen, urandom) != buflen)
-        {
-            retval = -1;
-        }
-        kdFclose(urandom);
-    }
-#else
-    kdLogMessage("No cryptographic RNG available.");
-    kdAssert(0);
-#endif
-    if(retval == -1)
-    {
-        kdSetError(KD_ENOMEM);
-    }
-    return retval;
-}
-
-/* kdGetEnvVEN: Get an environment variable. */
-KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env)
-{
-#if defined(_WIN32)
-    static KDchar buf[32767];
-    DWORD result = GetEnvironmentVariableA(env, (KDchar *)buf, 32767);
-    if(result == 0)
-    {
-        return KD_NULL;
-    }
-    return (KDchar *)buf;
-#else
-    return getenv(env);
 #endif
 }
 
@@ -9868,6 +9374,25 @@ KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
     return (KDchar *)str1;
 }
 
+/* kdStrcspnVEN:  Get span until character in string. */
+KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2)
+{
+    KDsize retval = 0;
+    while(*str1)
+    {
+        if(kdStrchr(str2,*str1))
+        {
+            return retval;
+        }
+        else
+        {
+            str1++;
+            retval++;
+        }
+    }
+    return retval;
+}
+
 
 /******************************************************************************
  * Time functions
@@ -12081,7 +11606,9 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-#elif defined(KD_WINDOW_WIN32)
+#endif
+
+#if defined(KD_WINDOW_WIN32)
     window->screen.width = GetSystemMetrics(SM_CXSCREEN);
     window->screen.height = GetSystemMetrics(SM_CYSCREEN);
     window->properties.width = window->screen.width;
@@ -13053,170 +12580,6 @@ KD_API KDint KD_APIENTRY kdGetImageLevelIntATX(KDImageATX image, KDint attr, KDi
         return 0;
     }
     return kdGetImageIntATX(image, attr);
-}
-
-/******************************************************************************
- * OpenKODE Core extension: KD_KHR_formatted
- ******************************************************************************/
-
-/* kdSnprintfKHR, kdVsnprintfKHR, kdSprintfKHR, kdVsprintfKHR: Formatted output to a buffer. */
-KD_API KDint KD_APIENTRY kdSnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar *format, ...)
-{
-    KDint result = 0;
-    KDVaListKHR ap;
-    KD_VA_START_KHR(ap, format);
-    result = kdVsnprintfKHR(buf, bufsize, format, ap);
-    KD_VA_END_KHR(ap);
-    return result;
-}
-
-KD_API KDint KD_APIENTRY kdVsnprintfKHR(KDchar *buf, KDsize bufsize, const KDchar *format, KDVaListKHR ap)
-{
-    return stbsp_vsnprintf(buf, (KDint)bufsize, format, ap);
-}
-
-KD_API KDint KD_APIENTRY kdSprintfKHR(KDchar *buf, const KDchar *format, ...)
-{
-    KDint result = 0;
-    KDVaListKHR ap;
-    KD_VA_START_KHR(ap, format);
-    result = kdVsprintfKHR(buf, format, ap);
-    KD_VA_END_KHR(ap);
-    return result;
-}
-
-KD_API KDint KD_APIENTRY kdVsprintfKHR(KDchar *buf, const KDchar *format, KDVaListKHR ap)
-{
-    return stbsp_vsprintf(buf, format, ap);
-}
-
-/* kdFprintfKHR, kdVfprintfKHR: Formatted output to an open file. */
-KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...)
-{
-    KDint result = 0;
-    KDVaListKHR ap;
-    KD_VA_START_KHR(ap, format);
-    result = kdVfprintfKHR(file, format, ap);
-    KD_VA_END_KHR(ap);
-    return result;
-}
-
-static KDchar *__kdVfprintfCallback(KDchar *buf, void *user, KDint len)
-{
-    KDFile *file = (KDFile *)user;
-    for(KDint i = 0; i < len; i++)
-    {
-        kdPutc(buf[i], file);
-    }
-    if(len < STB_SPRINTF_MIN)
-    {
-        return KD_NULL;
-    }
-    /* Reuse buffer */
-    return buf;
-}
-
-KD_API KDint KD_APIENTRY kdVfprintfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap)
-{
-    KDchar buf[STB_SPRINTF_MIN];
-    return stbsp_vsprintfcb(&__kdVfprintfCallback, &file, buf, format, ap);
-}
-
-/* kdLogMessagefKHR: Formatted output to the platform's debug logging facility. */
-static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint len)
-{
-#if defined(_WIN32)
-    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-    WriteFile(out, buf, len, (DWORD[]){0}, KD_NULL);
-#else
-    KDssize result = write(STDOUT_FILENO, buf, len);
-    if(result != len)
-    {
-        return KD_NULL;
-    }
-#endif
-    if(len < STB_SPRINTF_MIN)
-    {
-#if defined(_WIN32)
-        FlushFileBuffers(out);
-#endif
-        return KD_NULL;
-    }
-    /* Reuse buffer */
-    return buf;
-}
-
-KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
-{
-    KDint result = 0;
-    KDVaListKHR ap;
-    KD_VA_START_KHR(ap, format);
-
-#if defined(__ANDROID__)
-    result = __android_log_vprint(ANDROID_LOG_INFO, __kdAppName(KD_NULL), format, ap);
-#elif defined(__EMSCRIPTEN__)
-    result = vprintf(format, ap);
-#else
-    KDchar buf[STB_SPRINTF_MIN];
-    result = stbsp_vsprintfcb(&__kdLogMessagefCallback, KD_NULL, buf, format, ap);
-#endif
-
-    KD_VA_END_KHR(ap);
-    return result;
-}
-
-/* kdSscanfKHR, kdVsscanfKHR: Read formatted input from a buffer. */
-KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ...)
-{
-    KDint result = 0;
-    KDVaListKHR ap;
-    KD_VA_START_KHR(ap, format);
-    result = kdVsscanfKHR(str, format, ap);
-    KD_VA_END_KHR(ap);
-    return result;
-}
-
-KD_API KDint KD_APIENTRY kdVsscanfKHR(KD_UNUSED const KDchar *str, KD_UNUSED const KDchar *format, KD_UNUSED KDVaListKHR ap)
-{
-    /* TODO: Implement */
-    return KD_EOF;
-}
-
-/* kdFscanfKHR, kdVfscanfKHR: Read formatted input from a file. */
-KD_API KDint KD_APIENTRY kdFscanfKHR(KDFile *file, const KDchar *format, ...)
-{
-    KDint result = 0;
-    KDVaListKHR ap;
-    KD_VA_START_KHR(ap, format);
-    result = kdVfscanfKHR(file, format, ap);
-    KD_VA_END_KHR(ap);
-    return result;
-}
-
-KD_API KDint KD_APIENTRY kdVfscanfKHR(KDFile *file, const KDchar *format, KDVaListKHR ap)
-{
-    KDStat st;
-    if(kdFstat(file, &st) == -1)
-    {
-        kdSetError(KD_EIO);
-        return KD_EOF;
-    }
-    KDsize size = (KDsize)st.st_size;
-    void *buffer = kdMalloc(size);
-    if(buffer == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_EOF;
-    }
-    if(kdFread(buffer, 1, size, file) != size)
-    {
-        kdFree(buffer);
-        kdSetError(KD_EIO);
-        return KD_EOF;
-    }
-    KDint retval = kdVsscanfKHR((const KDchar *)buffer, format, ap);
-    kdFree(buffer);
-    return retval;
 }
 
 /******************************************************************************
