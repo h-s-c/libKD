@@ -65,7 +65,7 @@
 #   endif
 #   include <windows.h>
 #   define _WINSOCK_DEPRECATED_NO_WARNINGS 1
-#   include <winsock2.h> /* WSA */
+#   include <winsock2.h> /* WSA.. */
 #   include <ws2tcpip.h>
 #   undef s_addr /* OpenKODE uses this */
 #endif

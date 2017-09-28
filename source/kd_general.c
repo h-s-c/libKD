@@ -25,6 +25,15 @@
  ******************************************************************************/
 
 /******************************************************************************
+ * Header workarounds
+ ******************************************************************************/
+
+/* clang-format off */
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
+#   define _GNU_SOURCE /* clock_gettime */
+#endif
+
+/******************************************************************************
  * KD includes
  ******************************************************************************/
 
@@ -37,10 +46,10 @@
  * C includes
  ******************************************************************************/
 
-/* clang-format off */
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
 #   include <errno.h>
 #   include <locale.h> /* setlocale */
+#   include <time.h> /* clock, time */
 #   include <stdlib.h> /* malloc etc. */
 #endif
 
@@ -437,6 +446,226 @@ kdRealloc(void *ptr, KDsize size)
         return KD_NULL;
     }
     return result;
+}
+
+/******************************************************************************
+ * Time functions
+ ******************************************************************************/
+
+/* kdGetTimeUST: Get the current unadjusted system time. */
+KD_API KDust KD_APIENTRY kdGetTimeUST(void)
+{
+#if defined(_WIN32)
+    LARGE_INTEGER tickspersecond;
+    LARGE_INTEGER tick;
+    QueryPerformanceFrequency(&tickspersecond);
+    QueryPerformanceCounter(&tick);
+    return (tick.QuadPart * 1000000000LL) / tickspersecond.QuadPart;
+#elif defined(__linux__)
+    struct timespec ts = {0};
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
+#elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038
+    /* Supported as of XCode 8 / macOS Sierra 10.12 */
+    struct timespec ts = {0};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
+#elif defined(EGL_NV_system_time) && !defined(__APPLE__)
+    if(kdStrstrVEN(eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS), "EGL_NV_system_time"))
+    {
+        PFNEGLGETSYSTEMTIMENVPROC eglGetSystemTimeNV = (PFNEGLGETSYSTEMTIMENVPROC)eglGetProcAddress("eglGetSystemTimeNV");
+        PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC)eglGetProcAddress("eglGetSystemTimeFrequencyNV");
+        if(eglGetSystemTimeNV && eglGetSystemTimeFrequencyNV)
+        {
+            return (eglGetSystemTimeNV() * 1000000000LL) / eglGetSystemTimeFrequencyNV();
+        }
+    }
+#elif defined(__EMSCRIPTEN__)
+    return emscripten_get_now() * 1000000LL;
+#else
+    return (clock() * 1000000000LL) / CLOCKS_PER_SEC;
+#endif
+}
+
+/* kdTime: Get the current wall clock time. */
+KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
+{
+#if defined(_WIN32)
+    FILETIME filetime;
+    ULARGE_INTEGER largeuint;
+    GetSystemTimeAsFileTime(&filetime);
+    largeuint.LowPart = filetime.dwLowDateTime;
+    largeuint.HighPart = filetime.dwHighDateTime;
+    /* See RtlTimeToSecondsSince1970 */
+    KDtime time = (KDtime)((largeuint.QuadPart / 10000000LL) - 11644473600LL);
+    (*timep) = time;
+    return time;
+#else
+    return time((time_t *)timep);
+#endif
+}
+
+/* kdGmtime_r, kdLocaltime_r: Convert a seconds-since-epoch time into broken-down time. */
+static KDboolean __kdIsleap(KDint32 year)
+{
+    return (!((year) % 4) && (((year) % 100) || !((year) % 400)));
+}
+KD_API KDTm *KD_APIENTRY kdGmtime_r(const KDtime *timep, KDTm *result)
+{
+    KDint32 secs_per_day = 3600 * 24;
+    KDint32 days_in_secs = (KDint32)(*timep % secs_per_day);
+    KDint32 days = (KDint32)(*timep / secs_per_day);
+    result->tm_sec = days_in_secs % 60;
+    result->tm_min = (days_in_secs % 3600) / 60;
+    result->tm_hour = days_in_secs / 3600;
+    result->tm_wday = (days + 4) % 7;
+
+    KDint32 year = 1970;
+    while(days >= (__kdIsleap(year) ? 366 : 365))
+    {
+        days -= (__kdIsleap(year) ? 366 : 365);
+        year++;
+    }
+    result->tm_year = year - 1900;
+    result->tm_yday = days;
+    result->tm_mon = 0;
+
+    const KDint months[2][12] = {
+        {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+        {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
+
+    while(days >= months[__kdIsleap(year)][result->tm_mon])
+    {
+        days -= months[__kdIsleap(year)][result->tm_mon];
+        result->tm_mon++;
+    }
+    result->tm_mday = days + 1;
+    result->tm_isdst = 0;
+
+    return result;
+}
+KD_API KDTm *KD_APIENTRY kdLocaltime_r(const KDtime *timep, KDTm *result)
+{
+    /* No timezone support */
+    return kdGmtime_r(timep, result);
+}
+
+/* kdUSTAtEpoch: Get the UST corresponding to KDtime 0. */
+KD_API KDust KD_APIENTRY kdUSTAtEpoch(void)
+{
+    /* Implement */
+    kdAssert(0);
+    return 0;
+}
+
+/******************************************************************************
+ * Timer functions
+ ******************************************************************************/
+
+/* kdSetTimer: Set timer. */
+typedef struct {
+    KDint64 interval;
+    KDint periodic;
+    void *eventuserptr;
+    KDThread *destination;
+} _KDTimerPayload;
+static void *__kdTimerHandler(void *arg)
+{
+    _KDTimerPayload *payload = (_KDTimerPayload *)arg;
+    for(;;)
+    {
+        kdThreadSleepVEN(payload->interval);
+
+        /* Post event to the original thread */
+        KDEvent *timerevent = kdCreateEvent();
+        timerevent->type = KD_EVENT_TIMER;
+        timerevent->userptr = payload->eventuserptr;
+        kdPostThreadEvent(timerevent, payload->destination);
+
+        /* Abort if this is a oneshot timer*/
+        if(payload->periodic == KD_TIMER_ONESHOT)
+        {
+            break;
+        }
+
+        /* Check for quit event send by kdCancelTimer */
+        const KDEvent *event = kdWaitEvent(-1);
+        if(event)
+        {
+            if(event->type == KD_EVENT_QUIT)
+            {
+                break;
+            }
+            kdDefaultEvent(event);
+        }
+    }
+    return 0;
+}
+struct KDTimer {
+    KDThread *thread;
+    KDThread *originthr;
+    _KDTimerPayload *payload;
+};
+KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
+{
+    if(periodic != KD_TIMER_ONESHOT && periodic != KD_TIMER_PERIODIC_AVERAGE && periodic != KD_TIMER_PERIODIC_MINIMUM)
+    {
+        kdLogMessage("kdSetTimer() encountered unknown periodic value.\n");
+        return KD_NULL;
+    }
+
+    _KDTimerPayload *payload = (_KDTimerPayload *)kdMalloc(sizeof(_KDTimerPayload));
+    if(payload == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    payload->interval = interval;
+    payload->periodic = periodic;
+    payload->eventuserptr = eventuserptr;
+    payload->destination = kdThreadSelf();
+
+    KDTimer *timer = (KDTimer *)kdMalloc(sizeof(KDTimer));
+    if(timer == KD_NULL)
+    {
+        kdFree(payload);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    timer->thread = kdThreadCreate(KD_NULL, __kdTimerHandler, payload);
+    if(timer->thread == KD_NULL)
+    {
+        kdFree(timer);
+        kdFree(payload);
+        if(kdGetError() == KD_ENOSYS)
+        {
+            kdLogMessage("kdSetTimer() needs a threading implementation.\n");
+            return KD_NULL;
+        }
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    timer->originthr = kdThreadSelf();
+    timer->payload = payload;
+    return timer;
+}
+
+/* kdCancelTimer: Cancel and free a timer. */
+KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
+{
+    if(timer->originthr != kdThreadSelf())
+    {
+        kdSetError(KD_EINVAL);
+        return -1;
+    }
+    /* Post quit event to the timer thread */
+    KDEvent *event = kdCreateEvent();
+    event->type = KD_EVENT_QUIT;
+    kdPostThreadEvent(event, timer->thread);
+    kdThreadJoin(timer->thread, KD_NULL);
+    kdFree(timer->payload);
+    kdFree(timer);
+    return 0;
 }
 
 /******************************************************************************
