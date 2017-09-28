@@ -63,6 +63,7 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+#include "kd_internal.h"
 
 #ifndef EGL_PLATFORM_X11_KHR
 #define EGL_PLATFORM_X11_KHR 0x31D5
@@ -148,7 +149,6 @@
 #   if defined(__EMSCRIPTEN__)
 #       include <emscripten/emscripten.h>
 #       include <emscripten/html5.h>
-#       include <emscripten/threading.h>
 #   endif
 #   if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
 #       include <xcb/xcb.h>
@@ -176,10 +176,6 @@
 #   include <threads.h>
 #endif
 
-#if defined(KD_ATOMIC_C11)
-#   include <stdatomic.h>
-#endif
-
 /******************************************************************************
  * Thirdparty includes
  ******************************************************************************/
@@ -204,38 +200,7 @@
 #   pragma warning(disable : 4703)
 #   pragma warning(disable : 6001)
 #   pragma warning(disable : 6011)
-#elif defined(__TINYC__)  
-#   define STBI_NO_SIMD
 #endif
-#define STBD_ABS            kdAbs
-#define STBD_FABS           kdFabsKHR
-#define STBD_MEMSET         kdMemset
-#define STB_DXT_STATIC
-#define STB_DXT_IMPLEMENTATION
-#include "stb_dxt.h"
-#define STBI_ONLY_JPEG
-#define STBI_ONLY_PNG
-#define STBI_NO_LINEAR
-#define STBI_NO_HDR
-#define STBI_NO_STDIO
-#define STBI_ASSERT         kdAssert
-#define STBI_MALLOC         kdMalloc
-#define STBI_REALLOC        kdRealloc
-#define STBI_FREE           kdFree
-#define STB_IMAGE_STATIC
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-#define STBIR_ASSERT        kdAssert
-#define STBIR_MEMSET        kdMemset
-#define STBIR_MALLOC(s,c)   kdMalloc(s)
-#define STBIR_FREE(p,c)     kdFree(p)
-#define STBIR_CEIL          kdCeilKHR
-#define STBIR_FABS          kdFabsKHR
-#define STBIR_FLOOR         kdFloorKHR
-#define STBIR_POW           kdPowKHR
-#define STB_IMAGE_RESIZE_STATIC
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "stb_image_resize.h"
 #if defined(__INTEL_COMPILER) || defined(_MSC_VER)
 #   pragma warning(pop)
 #elif defined(__GNUC__)
@@ -259,7 +224,7 @@ struct KDThread {
     void *(*start_routine)(void *);
     void *arg;
     const KDThreadAttr *attr;
-    KDQueueVEN *eventqueue;
+    _KDQueue *eventqueue;
     KDEvent *lastevent;
     KDint lasterror;
     KDint callbackindex;
@@ -646,7 +611,7 @@ static KDThread *__kdThreadInit(void)
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
-    thread->eventqueue = kdQueueCreateVEN(64);
+    thread->eventqueue = __kdQueueCreate(64);
     if(thread->eventqueue == KD_NULL)
     {
         kdFree(thread);
@@ -659,7 +624,7 @@ static KDThread *__kdThreadInit(void)
     thread->callbacks = (__KDCallback **)kdMalloc(sizeof(__KDCallback *));
     if(thread->callbacks == KD_NULL)
     {
-        kdQueueFreeVEN(thread->eventqueue);
+        __kdQueueFree(thread->eventqueue);
         kdFree(thread);
         kdSetError(KD_EAGAIN);
         return KD_NULL;
@@ -678,11 +643,11 @@ static void __kdThreadFree(KDThread *thread)
     {
         kdFreeEvent(thread->lastevent);
     }
-    while(kdQueueSizeVEN(thread->eventqueue) > 0)
+    while(__kdQueueSize(thread->eventqueue) > 0)
     {
-        kdFreeEvent((KDEvent *)kdQueuePullVEN(thread->eventqueue));
+        kdFreeEvent((KDEvent *)__kdQueuePull(thread->eventqueue));
     }
-    kdQueueFreeVEN(thread->eventqueue);
+    __kdQueueFree(thread->eventqueue);
     kdFree(thread);
 }
 
@@ -1269,7 +1234,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 /* kdWaitEvent: Get next event from thread's event queue. */
 KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
 {
-    KDQueueVEN *eventqueue = kdThreadSelf()->eventqueue;
+    _KDQueue *eventqueue = kdThreadSelf()->eventqueue;
     KDEvent *lastevent = kdThreadSelf()->lastevent;
     if(lastevent)
     {
@@ -1280,9 +1245,9 @@ KD_API const KDEvent *KD_APIENTRY kdWaitEvent(KDust timeout)
         kdThreadSleepVEN(timeout);
     }
     kdPumpEvents();
-    if(kdQueueSizeVEN(eventqueue) > 0)
+    if(__kdQueueSize(eventqueue) > 0)
     {
-        lastevent = (KDEvent *)kdQueuePullVEN(eventqueue);
+        lastevent = (KDEvent *)__kdQueuePull(eventqueue);
     }
     else
     {
@@ -2786,10 +2751,10 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
 
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
-    KDsize queuesize = kdQueueSizeVEN(kdThreadSelf()->eventqueue);
+    KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
     for(KDuint i = 0; i < queuesize; i++)
     {
-        KDEvent *callbackevent = kdQueuePullVEN(kdThreadSelf()->eventqueue);
+        KDEvent *callbackevent = __kdQueuePull(kdThreadSelf()->eventqueue);
         if(callbackevent)
         {
             if(!__kdExecCallback(callbackevent))
@@ -3261,7 +3226,7 @@ KD_API KDint KD_APIENTRY kdPostThreadEvent(KDEvent *event, KDThread *thread)
     {
         event->timestamp = kdGetTimeUST();
     }
-    KDint error = kdQueuePushVEN(thread->eventqueue, (void *)event);
+    KDint error = __kdQueuePush(thread->eventqueue, (void *)event);
     if(error == -1)
     {
         kdFreeEvent(event);
@@ -9619,16 +9584,6 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
  ******************************************************************************/
 
 /* kdFopen: Open a file from the file system. */
-struct KDFile {
-#if defined(_WIN32)
-    HANDLE nativefile;
-#else
-    KDint nativefile;
-#endif
-    const KDchar *pathname;
-    KDboolean eof;
-    KDboolean error;
-};
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 {
     KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
@@ -12063,908 +12018,3 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     kdLogMessagefKHR("%s", string);
 }
 #endif
-
-/******************************************************************************
- * Extensions
- ******************************************************************************/
-
-/******************************************************************************
- * OpenKODE Core extension: KD_ATX_dxtcomp
- ******************************************************************************/
-/******************************************************************************
- * OpenKODE Core extension: KD_ATX_imgdec
- ******************************************************************************/
-/******************************************************************************
- * OpenKODE Core extension: KD_ATX_imgdec_jpeg
- ******************************************************************************/
-/******************************************************************************
- * OpenKODE Core extension: KD_ATX_imgdec_png
- ******************************************************************************/
-
-typedef struct _KDImageATX {
-    KDuint8 *buffer;
-    KDsize size;
-    KDint width;
-    KDint height;
-    KDint levels;
-    KDint bpp;
-    KDint format;
-    KDboolean alpha;
-} _KDImageATX;
-
-/* kdDXTCompressImageATX, kdDXTCompressBufferATX: Compresses an image into a DXT format. */
-KD_API KDImageATX KD_APIENTRY kdDXTCompressImageATX(KDImageATX image, KDint32 comptype)
-{
-    _KDImageATX *_image = image;
-    if(_image->format != KD_IMAGE_FORMAT_RGBA8888_ATX)
-    {
-        kdSetError(KD_EINVAL);
-        return KD_NULL;
-    }
-
-    /* Determine max mipmap levels */
-    KDint width = _image->width;
-    KDint height = _image->height;
-    while((width > 1) && (height > 1))
-    {
-        width >>= 1;
-        height >>= 1;
-        _image->levels++;
-    }
-
-    return kdDXTCompressBufferATX(_image->buffer, _image->width, _image->height, comptype, _image->levels);
-}
-
-static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w, KDint32 h, KDuint8 *block)
-{
-    if((w - x >= 4) && (h - y >= 4))
-    {
-        /* Full Square shortcut */
-        src += x * 4;
-        src += y * w * 4;
-        for(KDint i = 0; i < 4; ++i)
-        {
-            *(KDuint32 *)block = *(KDuint32 *)src;
-            block += 4;
-            src += 4;
-            *(KDuint32 *)block = *(KDuint32 *)src;
-            block += 4;
-            src += 4;
-            *(KDuint32 *)block = *(KDuint32 *)src;
-            block += 4;
-            src += 4;
-            *(KDuint32 *)block = *(KDuint32 *)src;
-            block += 4;
-            src += (w * 4) - 12;
-        }
-        return;
-    }
-
-    KDint32 bw = kdMinVEN(w - x, 4);
-    KDint32 bh = kdMinVEN(h - y, 4);
-
-    const KDint32 rem[] =
-        {
-            0, 0, 0, 0,
-            0, 1, 0, 1,
-            0, 1, 2, 0,
-            0, 1, 2, 3};
-
-    for(KDint i = 0; i < 4; ++i)
-    {
-        KDint32 by = rem[(bh - 1) * 4 + i] + y;
-        for(KDint j = 0; j < 4; ++j)
-        {
-            KDint32 bx = rem[(bw - 1) * 4 + j] + x;
-            block[(i * 4 * 4) + (j * 4) + 0] = src[(by * (w * 4)) + (bx * 4) + 0];
-            block[(i * 4 * 4) + (j * 4) + 1] = src[(by * (w * 4)) + (bx * 4) + 1];
-            block[(i * 4 * 4) + (j * 4) + 2] = src[(by * (w * 4)) + (bx * 4) + 2];
-            block[(i * 4 * 4) + (j * 4) + 3] = src[(by * (w * 4)) + (bx * 4) + 3];
-        }
-    }
-}
-
-KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32 width, KDint32 height, KDint32 comptype, KDint32 levels)
-{
-    _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
-    if(image == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    image->levels = levels;
-    image->width = width;
-    image->height = height;
-
-    switch(comptype)
-    {
-        case(KD_DXTCOMP_TYPE_DXT1_ATX):
-        {
-            image->format = KD_IMAGE_FORMAT_DXT1_ATX;
-            image->alpha = KD_FALSE;
-            break;
-        }
-        case(KD_DXTCOMP_TYPE_DXT1A_ATX):
-        {
-            kdFree(image);
-            kdSetError(KD_EINVAL);
-            return KD_NULL;
-        }
-        case(KD_DXTCOMP_TYPE_DXT3_ATX):
-        {
-            kdFree(image);
-            kdSetError(KD_EINVAL);
-            return KD_NULL;
-        }
-        case(KD_DXTCOMP_TYPE_DXT5_ATX):
-        {
-            image->format = KD_IMAGE_FORMAT_DXT5_ATX;
-            image->alpha = KD_TRUE;
-            break;
-        }
-        default:
-        {
-            kdFree(image);
-            kdSetError(KD_EINVAL);
-            return KD_NULL;
-        }
-    }
-    image->bpp = image->alpha ? 16 : 8;
-    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->bpp/8);
-
-    KDint _width = image->width;
-    KDint _height = image->height;
-    for(KDint i = 0; i < image->levels; i++)
-    {
-        _width >>= 1;
-        _height >>= 1;
-        image->size += (KDsize)_width * (KDsize)_height * (KDsize)(image->bpp/8);
-    }
-    
-    image->buffer = kdMalloc(image->size);
-    if(image->buffer == KD_NULL)
-    {
-        kdFree(image);
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-
-    _width = image->width;
-    _height = image->height;
-    KDint channels = (image->alpha ? 4 : 3);
-    for(KDint i = 0; i <= image->levels; i++)
-    {
-        KDsize size = (KDsize)_width * (KDsize)_height * (KDsize)channels;
-        if(size)
-        {
-            void *tmp = kdMalloc(size);
-            if((_width == image->width) && (_height == image->height))
-            {
-                kdMemcpy(tmp, buffer, size);
-            }
-            else
-            {
-                stbir_resize_uint8(buffer, image->width, image->height, 0, tmp, _width, _height, 0, channels);
-            }
-            for(KDint y = 0; y < _height; y += 4)
-            {
-                for(KDint x = 0; x < _width; x += 4)
-                {
-                    KDuint8 block[64];
-                    __kdExtractBlock(tmp, x, y, _width, _height, block);
-                    stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
-                    image->buffer += image->bpp;
-                }
-            }
-            kdFree(tmp);
-        }
-        _width >>= 1;
-        _height >>= 1;
-    }
-
-    return image;
-}
-
-/* kdGetImageInfoATX, kdGetImageInfoFromStreamATX: Construct an informational image object based on an image in a file or stream. */
-KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
-{
-    _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
-    if(image == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    image->levels = 0;
-
-    KDStat st;
-    if(kdStat(pathname, &st) == -1)
-    {
-        kdFree(image);
-        kdSetError(KD_EIO);
-        return KD_NULL;
-    }
-    image->size = (KDsize)st.st_size;
-
-#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    KDint fd = open(pathname, O_RDONLY | O_CLOEXEC, 0);
-    if(fd == -1)
-#elif(_WIN32)
-    WIN32_FIND_DATA data;
-    HANDLE fd = FindFirstFileA(pathname, &data);
-    if(fd == INVALID_HANDLE_VALUE)
-#endif
-    {
-        kdFree(image);
-        kdSetError(KD_EIO);
-        return KD_NULL;
-    }
-
-    void *filedata = KD_NULL;
-#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if(filedata == MAP_FAILED)
-#elif defined(_WIN32)
-    HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
-    if(fm)
-    {
-        filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, image->size);
-    }
-    if(filedata == KD_NULL)
-#endif
-    {
-#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-        close(fd);
-#elif defined(_WIN32)
-        CloseHandle(fd);
-#endif
-        kdFree(image);
-        kdSetError(KD_EIO);
-        return KD_NULL;
-    }
-
-    KDint channels = 0;
-    KDint error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
-    switch(channels)
-    {
-        case(4):
-        {
-            image->format = KD_IMAGE_FORMAT_RGBA8888_ATX;
-            image->alpha = KD_TRUE;
-            break;
-        }
-        case(3):
-        {
-            image->format = KD_IMAGE_FORMAT_RGB888_ATX;
-            image->alpha = KD_FALSE;
-            break;
-        }
-        case(2):
-        {
-            image->format = KD_IMAGE_FORMAT_LUMALPHA88_ATX;
-            image->alpha = KD_TRUE;
-            break;
-        }
-        case(1):
-        {
-            image->format = KD_IMAGE_FORMAT_ALPHA8_ATX;
-            image->alpha = KD_TRUE;
-            break;
-        }
-        default:
-        {
-            error = 0;
-            break;
-        }
-    }
-
-#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    munmap(filedata, image->size);
-    close(fd);
-#elif defined(_WIN32)
-    UnmapViewOfFile(filedata);
-    CloseHandle(fd);
-#endif
-
-    if(error == 0)
-    {
-        kdFree(image);
-        kdSetError(KD_EILSEQ);
-        return KD_NULL;
-    }
-
-    return image;
-}
-
-KD_API KDImageATX KD_APIENTRY kdGetImageInfoFromStreamATX(KDFile *file)
-{
-    KDImageATX image = kdGetImageInfoATX(file->pathname);
-    return image;
-}
-
-/* kdGetImageATX, kdGetImageFromStreamATX: Read and decode an image from a file or stream, returning a decoded image object. */
-KD_API KDImageATX KD_APIENTRY kdGetImageATX(const KDchar *pathname, KDint format, KDint flags)
-{
-    KDFile *file = kdFopen(pathname, "rb");
-    if(file == KD_NULL)
-    {
-        kdSetError(KD_EIO);
-        return KD_NULL;
-    }
-    KDImageATX image = kdGetImageFromStreamATX(file, format, flags);
-    kdFclose(file);
-    return image;
-}
-
-KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format, KDint flags)
-{
-    _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
-    if(image == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    image->levels = 0;
-    image->bpp= 8;
-
-    KDStat st;
-    if(kdFstat(file, &st) == -1)
-    {
-        kdFree(image);
-        kdSetError(KD_EIO);
-        return KD_NULL;
-    }
-
-    void *filedata = kdMalloc(st.st_size);
-    if(filedata == KD_NULL)
-    {
-        kdFree(image);
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    if(kdFread(filedata, 1, st.st_size, file) != (KDsize)st.st_size)
-    {
-        kdFree(filedata);
-        kdFree(image);
-        kdSetError(KD_EIO);
-        return KD_NULL;
-    }
-    if(kdFseek(file, 0, KD_SEEK_SET) == -1)
-    {
-        kdFree(filedata);
-        kdFree(image);
-        kdSetError(KD_EIO);
-        return KD_NULL;
-    }
-
-    KDint channels = 0;
-    image->format = format;
-    switch(image->format)
-    {
-        case(KD_IMAGE_FORMAT_RGBA8888_ATX):
-        {
-            channels = 4;
-            image->alpha = KD_TRUE;
-            break;
-        }
-        case(KD_IMAGE_FORMAT_RGB888_ATX):
-        {
-            channels = 3;
-            image->alpha = KD_FALSE;
-            break;
-        }
-        case(KD_IMAGE_FORMAT_LUMALPHA88_ATX):
-        {
-            channels = 2;
-            image->alpha = KD_TRUE;
-            break;
-        }
-        case(KD_IMAGE_FORMAT_ALPHA8_ATX):
-        {
-            channels = 1;
-            image->alpha = KD_TRUE;
-            break;
-        }
-        default:
-        {
-            kdFree(filedata);
-            kdFree(image);
-            kdSetError(KD_EINVAL);
-            return KD_NULL;
-        }
-    }
-
-    if(flags != 0)
-    {
-        kdFree(filedata);
-        kdFree(image);
-        kdSetError(KD_EINVAL);
-        return KD_NULL;
-    }
-
-    image->buffer = stbi_load_from_memory(filedata, (KDint)st.st_size, &image->width, &image->height, (int[]){0}, channels);
-    if(image->buffer == KD_NULL)
-    {
-        kdFree(filedata);
-        kdFree(image);
-        kdSetError(KD_EILSEQ);
-        return KD_NULL;
-    }
-    kdFree(filedata);
-
-    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
-    return image;
-}
-
-/* kdFreeImageATX: Free image object. */
-KD_API void KD_APIENTRY kdFreeImageATX(KDImageATX image)
-{
-    _KDImageATX *_image = image;
-    if(_image->buffer)
-    {
-        kdFree(_image->buffer);
-    }
-    kdFree(_image);
-}
-
-KD_API void *KD_APIENTRY kdGetImagePointerATX(KDImageATX image, KDint attr)
-{
-    if(attr == KD_IMAGE_POINTER_BUFFER_ATX)
-    {
-        _KDImageATX *_image = image;
-        return _image->buffer;
-    }
-    else
-    {
-        kdSetError(KD_EINVAL);
-        return KD_NULL;
-    }
-}
-
-/* kdGetImageIntATX, kdGetImageLevelIntATX: Get the value of an image integer attribute. */
-KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
-{
-    _KDImageATX *_image = image;
-    switch(attr)
-    {
-        case(KD_IMAGE_WIDTH_ATX):
-        {
-            return _image->width;
-        }
-        case(KD_IMAGE_HEIGHT_ATX):
-        {
-            return _image->height;
-        }
-        case(KD_IMAGE_FORMAT_ATX):
-        {
-            return _image->format;
-        }
-        case(KD_IMAGE_STRIDE_ATX):
-        {
-            return 0;
-        }
-        case(KD_IMAGE_BITSPERPIXEL_ATX):
-        {
-            return _image->bpp;
-        }
-        case(KD_IMAGE_LEVELS_ATX):
-        {
-            return _image->levels;
-        }
-        case(KD_IMAGE_DATASIZE_ATX):
-        {
-            /* Specbug: Int is too small... */
-            kdAssert(0);
-            return (KDint)_image->size;
-        }
-        case(KD_IMAGE_BUFFEROFFSET_ATX):
-        {
-            return 0;
-        }
-        case(KD_IMAGE_ALPHA_ATX):
-        {
-            return _image->alpha;
-        }
-        default:
-        {
-            kdSetError(KD_EINVAL);
-            return 0;
-        }
-    }
-}
-
-KD_API KDint KD_APIENTRY kdGetImageLevelIntATX(KDImageATX image, KDint attr, KDint level)
-{
-    if(level != 0)
-    {
-        kdSetError(KD_EINVAL);
-        return 0;
-    }
-    return kdGetImageIntATX(image, attr);
-}
-
-/******************************************************************************
- * OpenKODE Core extension: KD_VEN_atomic_ops
- ******************************************************************************/
-
-#if defined(KD_ATOMIC_C11)
-struct KDAtomicIntVEN {
-    atomic_int value;
-};
-struct KDAtomicPtrVEN {
-    atomic_uintptr_t value;
-};
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
-struct KDAtomicIntVEN {
-    KDint value;
-#if defined(KD_ATOMIC_MUTEX)
-    KDThreadMutex *mutex;
-#endif
-};
-struct KDAtomicPtrVEN {
-    void *value;
-#if defined(KD_ATOMIC_MUTEX)
-    KDThreadMutex *mutex;
-#endif
-};
-#endif
-
-KD_API KDAtomicIntVEN *KD_APIENTRY kdAtomicIntCreateVEN(KDint value)
-{
-    KDAtomicIntVEN *object = (KDAtomicIntVEN *)kdMalloc(sizeof(KDAtomicIntVEN));
-    if(object == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-#if defined(KD_ATOMIC_C11)
-    atomic_init(&object->value, value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
-    object->value = value;
-#if defined(KD_ATOMIC_MUTEX)
-    object->mutex = kdThreadMutexCreate(KD_NULL);
-#endif
-#endif
-    return object;
-}
-
-KD_API KDAtomicPtrVEN *KD_APIENTRY kdAtomicPtrCreateVEN(void *value)
-{
-    KDAtomicPtrVEN *object = (KDAtomicPtrVEN *)kdMalloc(sizeof(KDAtomicPtrVEN));
-    if(object == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-#if defined(KD_ATOMIC_C11)
-    atomic_init(&object->value, (KDuintptr)value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_BUILTIN) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX) || defined(KD_ATOMIC_EMSCRIPTEN)
-    object->value = value;
-#if defined(KD_ATOMIC_MUTEX)
-    object->mutex = kdThreadMutexCreate(KD_NULL);
-#endif
-#endif
-    return object;
-}
-
-KD_API KDint KD_APIENTRY kdAtomicIntFreeVEN(KDAtomicIntVEN *object)
-{
-#if defined(KD_ATOMIC_MUTEX)
-    kdThreadMutexFree(object->mutex);
-#endif
-    kdFree(object);
-    return 0;
-}
-
-KD_API KDint KD_APIENTRY kdAtomicPtrFreeVEN(KDAtomicPtrVEN *object)
-{
-#if defined(KD_ATOMIC_MUTEX)
-    kdThreadMutexFree(object->mutex);
-#endif
-    kdFree(object);
-    return 0;
-}
-
-KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object)
-{
-#if defined(KD_ATOMIC_C11)
-    return atomic_load(&object->value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
-    KDint value = 0;
-    do
-    {
-        value = object->value;
-    } while(!kdAtomicIntCompareExchangeVEN(object, value, value));
-    return value;
-#elif defined(KD_ATOMIC_BUILTIN)
-    return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_load_u32(&object->value);
-#endif
-}
-
-KD_API void *KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
-{
-#if defined(KD_ATOMIC_C11)
-    return (void *)atomic_load(&object->value);
-#elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
-    void *value = 0;
-    do
-    {
-        value = object->value;
-    } while(!kdAtomicPtrCompareExchangeVEN(object, value, value));
-    return value;
-#elif defined(KD_ATOMIC_BUILTIN)
-    return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return (void *)emscripten_atomic_load_u32(&object->value);
-#endif
-}
-
-KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
-{
-#if defined(KD_ATOMIC_C11)
-    atomic_store(&object->value, value);
-#elif defined(KD_ATOMIC_WIN32)
-    _InterlockedExchange((long *)&object->value, (long)value);
-#elif defined(KD_ATOMIC_BUILTIN)
-    __atomic_store_n(&object->value, value, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_SYNC)
-    __sync_lock_test_and_set(&object->value, value);
-#elif defined(KD_ATOMIC_MUTEX)
-    kdThreadMutexLock(object->mutex);
-    object->value = value;
-    kdThreadMutexUnlock(object->mutex);
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    emscripten_atomic_store_u32(&object->value, value);
-#endif
-}
-
-KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void *value)
-{
-#if defined(KD_ATOMIC_C11)
-    atomic_store(&object->value, (KDuintptr)value);
-#elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
-    _InterlockedExchange((long *)&object->value, (long)value);
-#elif defined(KD_ATOMIC_WIN32)
-    _InterlockedExchangePointer(&object->value, value);
-#elif defined(KD_ATOMIC_BUILTIN)
-    __atomic_store_n(&object->value, value, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_SYNC)
-    KD_UNUSED void *unused = __sync_lock_test_and_set(&object->value, value);
-#elif defined(KD_ATOMIC_MUTEX)
-    kdThreadMutexLock(object->mutex);
-    object->value = value;
-    kdThreadMutexUnlock(object->mutex);
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    emscripten_atomic_store_u32(&object->value, (KDuint32)value);
-#endif
-}
-
-KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint value)
-{
-#if defined(KD_ATOMIC_C11)
-    return atomic_fetch_add(&object->value, value);
-#elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((long *)&object->value, (long)value);
-#elif defined(KD_ATOMIC_BUILTIN)
-    return __atomic_add_fetch(&object->value, value, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_SYNC)
-    return __sync_fetch_and_add(&object->value, value);
-#elif defined(KD_ATOMIC_MUTEX)
-    kdThreadMutexLock(object->mutex);
-    KDint retval = object->value;
-    object->value = object->value + value;
-    kdThreadMutexUnlock(object->mutex);
-    return retval;
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_add_u32(&object->value, value);
-#endif
-}
-
-KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint value)
-{
-#if defined(KD_ATOMIC_C11)
-    return atomic_fetch_sub(&object->value, value);
-#elif defined(KD_ATOMIC_WIN32)
-    return _InterlockedExchangeAdd((long *)&object->value, (long)-value);
-#elif defined(KD_ATOMIC_BUILTIN)
-    return __atomic_sub_fetch(&object->value, value, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_SYNC)
-    return __sync_fetch_and_sub(&object->value, value);
-#elif defined(KD_ATOMIC_MUTEX)
-    KDint retval = 0;
-    kdThreadMutexLock(object->mutex);
-    retval = object->value;
-    object->value = object->value - value;
-    kdThreadMutexUnlock(object->mutex);
-    return retval;
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_sub_u32(&object->value, value);
-#endif
-}
-
-KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *object, KDint expected, KDint desired)
-{
-#if defined(KD_ATOMIC_C11)
-    return atomic_compare_exchange_weak(&object->value, &expected, desired);
-#elif defined(KD_ATOMIC_WIN32)
-    return (_InterlockedCompareExchange((long *)&object->value, (long)desired, (long)expected) == (long)expected);
-#elif defined(KD_ATOMIC_BUILTIN)
-    return __atomic_compare_exchange_n(&object->value, &expected, desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_SYNC)
-    return __sync_bool_compare_and_swap(&object->value, expected, desired);
-#elif defined(KD_ATOMIC_MUTEX)
-    KDboolean retval = KD_FALSE;
-    kdThreadMutexLock(object->mutex);
-    if(object->value == expected)
-    {
-        object->value = desired;
-        retval = KD_TRUE;
-    }
-    kdThreadMutexUnlock(object->mutex);
-    return retval;
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_cas_u32(&object->value, expected, desired);
-#endif
-}
-
-KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void *expected, void *desired)
-{
-#if defined(KD_ATOMIC_C11)
-    return atomic_compare_exchange_weak(&object->value, (KDuintptr *)&expected, (KDuintptr)desired);
-#elif defined(KD_ATOMIC_WIN32) && defined(_M_IX86)
-    return (_InterlockedCompareExchange((long *)&object->value, (long)desired, (long)expected) == (long)expected);
-#elif defined(KD_ATOMIC_WIN32)
-    return (_InterlockedCompareExchangePointer(&object->value, desired, expected) == expected);
-#elif defined(KD_ATOMIC_BUILTIN)
-    return __atomic_compare_exchange_n(&object->value, &expected, desired, 1, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-#elif defined(KD_ATOMIC_SYNC)
-    return __sync_bool_compare_and_swap(&object->value, expected, desired);
-#elif defined(KD_ATOMIC_MUTEX)
-    KDboolean retval = KD_FALSE;
-    kdThreadMutexLock(object->mutex);
-    if(object->value == expected)
-    {
-        object->value = desired;
-        retval = KD_TRUE;
-    }
-    kdThreadMutexUnlock(object->mutex);
-    return retval;
-#elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_cas_u32(&object->value, (KDuint32)expected, (KDuint32)desired);
-#endif
-}
-
-/******************************************************************************
- * OpenKODE Core extension: KD_VEN_queue
- *
- * Notes:
- * - Based on http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
- ******************************************************************************/
-
-typedef struct __kdQueueCell __kdQueueCell;
-struct __kdQueueCell {
-    KDAtomicIntVEN *sequence;
-    void *data;
-};
-
-struct KDQueueVEN {
-    KDsize buffer_mask;
-    __kdQueueCell *buffer;
-    KDAtomicIntVEN *tail;
-    KDAtomicIntVEN *head;
-};
-
-KD_API KDQueueVEN *KD_APIENTRY kdQueueCreateVEN(KDsize size)
-{
-    kdAssert((size >= 2) && ((size & (size - 1)) == 0));
-
-    KDQueueVEN *queue = (KDQueueVEN *)kdMalloc(sizeof(KDQueueVEN));
-    if(queue == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    queue->buffer_mask = size - 1;
-    queue->buffer = kdMalloc(sizeof(__kdQueueCell) * size);
-    if(queue->buffer == KD_NULL)
-    {
-        kdFree(queue);
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-
-    for(KDsize i = 0; i != size; i += 1)
-    {
-        queue->buffer[i].sequence = kdAtomicIntCreateVEN((KDint)i);
-    }
-
-    queue->tail = kdAtomicIntCreateVEN(0);
-    queue->head = kdAtomicIntCreateVEN(0);
-    return queue;
-}
-
-KD_API KDint KD_APIENTRY kdQueueFreeVEN(KDQueueVEN *queue)
-{
-    kdAtomicIntFreeVEN(queue->head);
-    kdAtomicIntFreeVEN(queue->tail);
-
-    for(KDsize i = 0; i != queue->buffer_mask + 1; i += 1)
-    {
-        kdAtomicIntFreeVEN(queue->buffer[i].sequence);
-    }
-
-    kdFree(queue->buffer);
-    kdFree(queue);
-    return 0;
-}
-
-KD_API KDsize KD_APIENTRY kdQueueSizeVEN(KDQueueVEN *queue)
-{
-    return kdAtomicIntLoadVEN(queue->tail) - kdAtomicIntLoadVEN(queue->head);
-}
-
-KD_API KDint KD_APIENTRY kdQueuePushVEN(KDQueueVEN *queue, void *value)
-{
-    __kdQueueCell *cell;
-    KDsize pos = (KDsize)kdAtomicIntLoadVEN(queue->tail);
-    for(;;)
-    {
-        cell = &queue->buffer[pos & queue->buffer_mask];
-        KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
-        KDssize dif = (KDssize)seq - (KDssize)pos;
-        if(dif == 0)
-        {
-            if(kdAtomicIntCompareExchangeVEN(queue->tail, (KDint)pos, (KDint)pos + 1))
-            {
-                break;
-            }
-        }
-        else if(dif < 0)
-        {
-            kdSetError(KD_EAGAIN);
-            return -1;
-        }
-        else
-        {
-            pos = (KDsize)kdAtomicIntLoadVEN(queue->tail);
-        }
-    }
-
-    cell->data = value;
-    kdAtomicIntStoreVEN(cell->sequence, (KDint)pos + 1);
-
-    return 0;
-}
-
-KD_API void *KD_APIENTRY kdQueuePullVEN(KDQueueVEN *queue)
-{
-    __kdQueueCell *cell;
-    KDsize pos = (KDsize)kdAtomicIntLoadVEN(queue->head);
-    for(;;)
-    {
-        cell = &queue->buffer[pos & queue->buffer_mask];
-        KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
-        KDssize dif = (KDssize)seq - (KDssize)(pos + 1);
-        if(dif == 0)
-        {
-            if(kdAtomicIntCompareExchangeVEN(queue->head, (KDint)pos, (KDint)pos + 1))
-            {
-                break;
-            }
-        }
-        else if(dif < 0)
-        {
-            kdSetError(KD_EAGAIN);
-            return KD_NULL;
-        }
-        else
-        {
-            pos = (KDsize)kdAtomicIntLoadVEN(queue->head);
-        }
-    }
-
-    void *value = cell->data;
-    kdAtomicIntStoreVEN(cell->sequence, (KDint)(pos + queue->buffer_mask) + 1);
-    return value;
-}

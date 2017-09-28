@@ -28,6 +28,7 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
 #include <KD/kd.h>
 #include <KD/kdext.h>
 
@@ -63,6 +64,7 @@
 #   include <processenv.h> /* GetEnvironmentVariable */
 #   include <wincrypt.h> /* CryptGenRandom etc. */
 #endif
+/* clang-format on */
 
 /******************************************************************************
  * Utility library functions

@@ -28,6 +28,7 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
 #include <KD/kd.h>
 #include <KD/kdext.h>
 
@@ -58,7 +59,7 @@
 #   include <windows.h> /* GetStdHandle */
 #   include <fileapi.h> /* WriteFile etc. */
 #endif
-
+/* clang-format on */
 
 /******************************************************************************
  * Thirdparty includes

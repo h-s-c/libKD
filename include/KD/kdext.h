@@ -34,7 +34,6 @@
 #include <KD/KHR_formatted.h>
 #include <KD/KHR_thread_storage.h>
 #include <KD/VEN_atomic_ops.h>
-#include <KD/VEN_queue.h>
 
 #define KD_ATX_dxtcomp 1
 #define KD_ATX_imgdec 1
@@ -44,12 +43,8 @@
 #define KD_ATX_keyboard 1
 #define KD_KHR_float64 1
 #define KD_KHR_formatted 1
-#define KD_KHR_perfcounter 1
 #define KD_KHR_thread_storage 1
-#define KD_QNX_input 1
-#define KD_QNX_window 1
 #define KD_VEN_atomic_ops 1
-#define KD_VEN_queue 1
 
 /*******************************************************
  * Errors (extensions)
