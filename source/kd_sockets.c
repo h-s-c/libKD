@@ -45,7 +45,7 @@
  ******************************************************************************/
 
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#include <errno.h>
+#   include <errno.h>
 #endif
 
 /******************************************************************************
@@ -80,11 +80,11 @@ typedef struct {
     const KDchar *hostname;
     void *eventuserptr;
     KDThread *destination;
-} __KDNameLookupPayload;
+} _KDNameLookupPayload;
 static void *__kdNameLookupHandler(void *arg)
 {
     /* TODO: Make async, threadsafe and cancelable */
-    __KDNameLookupPayload *payload = (__KDNameLookupPayload *)arg;
+    _KDNameLookupPayload *payload = (_KDNameLookupPayload *)arg;
 
     static KDEventNameLookup lookupevent;
     kdMemset(&lookupevent, 0, sizeof(lookupevent));
@@ -133,7 +133,7 @@ KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *ev
         return -1;
     }
 
-    static __KDNameLookupPayload payload;
+    static _KDNameLookupPayload payload;
     kdMemset(&payload, 0, sizeof(payload));
     payload.hostname = hostname;
     payload.eventuserptr = eventuserptr;

@@ -51,7 +51,6 @@
 
 #if defined(_MSC_VER)
 #   define _CRT_SECURE_NO_WARNINGS 1
-#   define _WINSOCK_DEPRECATED_NO_WARNINGS 1
 #endif
 
 /******************************************************************************
@@ -78,16 +77,12 @@
  ******************************************************************************/
 
 /* Freestanding safe */
-#include <float.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #if !defined(KD_FREESTANDING)
 #   include <errno.h>
-#   include <locale.h>
-#   include <stdlib.h>
-#   include <stdio.h>
 #   include <time.h>
 #endif
 
@@ -95,30 +90,10 @@
  * Platform includes
  ******************************************************************************/
 
-#if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <direct.h> /* R_OK/W_OK/X_OK */
-#   ifndef inline
-#       define inline __inline /* MSVC redefinition fix */
-#   endif
-#endif
-
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 #   include <unistd.h>
-#   include <fcntl.h>
-#   include <dirent.h>
 #   include <dlfcn.h>
 #   include <sys/mman.h> /* mmap */
-#   include <sys/stat.h>
-#   include <sys/syscall.h>
-#   if defined(__APPLE__) || defined(BSD)
-#       include <sys/mount.h>
-#   else
-#       include <sys/vfs.h>
-#   endif
 #   if defined(__linux__)
 #       include <sys/prctl.h>
 #   endif
@@ -128,9 +103,6 @@
 #       include <android/native_activity.h>
 #       include <android/native_window.h>
 #       include <android/window.h>
-#   endif
-#   if defined(__APPLE__)
-#       include <TargetConditionals.h>
 #   endif
 #   if defined(__EMSCRIPTEN__)
 #       include <emscripten/emscripten.h>
@@ -152,14 +124,14 @@
 #       include <xcb/xkb.h>
 #       include <xkbcommon/xkbcommon-x11.h>
 #   endif
-#   undef st_mtime /* OpenKODE uses this */
 #endif
 
-#if defined(KD_THREAD_POSIX) || defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
-#   include <pthread.h>
-#endif
-#if defined(KD_THREAD_C11)
-#   include <threads.h>
+#if defined(_WIN32)
+#   ifndef WIN32_LEAN_AND_MEAN
+#       define WIN32_LEAN_AND_MEAN
+#   endif
+#   include <windows.h>
+#   include <winsock2.h> /* WSA */
 #endif
 
 /******************************************************************************
@@ -193,311 +165,6 @@
 #   pragma GCC diagnostic pop
 #endif
 /* clang-format on */
-
-/******************************************************************************
- * Errors
- ******************************************************************************/
-
-typedef struct __KDCallback __KDCallback;
-struct KDThread {
-#if defined(KD_THREAD_C11)
-    thrd_t nativethread;
-#elif defined(KD_THREAD_POSIX)
-    pthread_t nativethread;
-#elif defined(KD_THREAD_WIN32)
-    HANDLE nativethread;
-#endif
-    void *(*start_routine)(void *);
-    void *arg;
-    const KDThreadAttr *attr;
-    _KDQueue *eventqueue;
-    KDEvent *lastevent;
-    KDint lasterror;
-    KDint callbackindex;
-    __KDCallback **callbacks;
-    void *tlsptr;
-};
-
-/* kdGetError: Get last error indication. */
-KD_API KDint KD_APIENTRY kdGetError(void)
-{
-    return kdThreadSelf()->lasterror;
-}
-
-/* kdSetError: Set last error indication. */
-KD_API void KD_APIENTRY kdSetError(KDint error)
-{
-    kdThreadSelf()->lasterror = error;
-}
-
-KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDint error, KDint allowed)
-{
-    KDint kderror = 0;
-#if defined(_WIN32)
-    switch(error)
-    {
-        case(ERROR_ACCESS_DENIED):
-        case(ERROR_LOCK_VIOLATION):
-        case(ERROR_SHARING_VIOLATION):
-        case(ERROR_WRITE_PROTECT):
-        {
-            kderror = KD_EACCES;
-            break;
-        }
-        case(ERROR_INVALID_HANDLE):
-        {
-            kderror = KD_EBADF;
-            break;
-        }
-        case(ERROR_BUSY):
-        case(ERROR_CHILD_NOT_COMPLETE):
-        case(ERROR_PIPE_BUSY):
-        case(ERROR_PIPE_CONNECTED):
-        case(ERROR_SIGNAL_PENDING):
-        {
-            kderror = KD_EBUSY;
-            break;
-        }
-        case(ERROR_ALREADY_EXISTS):
-        case(ERROR_DIR_NOT_EMPTY):
-        case(ERROR_FILE_EXISTS):
-        {
-            kderror = KD_EEXIST;
-            break;
-        }
-        case(ERROR_BAD_USERNAME):
-        case(ERROR_BAD_PIPE):
-        case(ERROR_INVALID_DATA):
-        case(ERROR_INVALID_PARAMETER):
-        case(ERROR_INVALID_SIGNAL_NUMBER):
-        case(ERROR_META_EXPANSION_TOO_LONG):
-        case(ERROR_NEGATIVE_SEEK):
-        case(ERROR_NO_TOKEN):
-        case(ERROR_THREAD_1_INACTIVE):
-        {
-            kderror = KD_EINVAL;
-            break;
-        }
-        case(ERROR_CRC):
-        case(ERROR_IO_DEVICE):
-        case(ERROR_NO_SIGNAL_SENT):
-        case(ERROR_SIGNAL_REFUSED):
-        case(ERROR_OPEN_FAILED):
-        {
-            kderror = KD_EIO;
-            break;
-        }
-        case(ERROR_NO_MORE_SEARCH_HANDLES):
-        case(ERROR_TOO_MANY_OPEN_FILES):
-        {
-            kderror = KD_EMFILE;
-            break;
-        }
-        case(ERROR_FILENAME_EXCED_RANGE):
-        {
-            kderror = KD_ENAMETOOLONG;
-            break;
-        }
-        case(ERROR_BAD_PATHNAME):
-        case(ERROR_FILE_NOT_FOUND):
-        case(ERROR_INVALID_NAME):
-        case(ERROR_PATH_NOT_FOUND):
-        {
-            kderror = KD_ENOENT;
-            break;
-        }
-        case(ERROR_NOT_ENOUGH_MEMORY):
-        case(ERROR_OUTOFMEMORY):
-        {
-            kderror = KD_ENOMEM;
-            break;
-        }
-        case(ERROR_END_OF_MEDIA):
-        case(ERROR_DISK_FULL):
-        case(ERROR_HANDLE_DISK_FULL):
-        case(ERROR_NO_DATA_DETECTED):
-        case(ERROR_EOM_OVERFLOW):
-        {
-            kderror = KD_ENOSPC;
-            break;
-        }
-        default:
-        {
-            /* TODO: Handle other errorcodes */
-            kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unknown errorcode: %d\n", error);
-            kdAssert(0);
-        }
-    }
-#else
-    switch(error)
-    {
-        case(EACCES):
-        case(EROFS):
-        case(EISDIR):
-        {
-            kderror = KD_EACCES;
-            break;
-        }
-        case(EAGAIN):
-        {
-            kderror = KD_ETRY_AGAIN;
-            break;
-        }
-        case(EBADF):
-        {
-            kderror = KD_EBADF;
-            break;
-        }
-        case(EBUSY):
-        {
-            kderror = KD_EBUSY;
-            break;
-        }
-        case(EEXIST):
-        case(ENOTEMPTY):
-        {
-            kderror = KD_EEXIST;
-            break;
-        }
-        case(EFBIG):
-        {
-            kderror = KD_EFBIG;
-            break;
-        }
-        case(EINVAL):
-        {
-            kderror = KD_EINVAL;
-            break;
-        }
-        case(EIO):
-        {
-            kderror = KD_EIO;
-            break;
-        }
-        case(EMFILE):
-        case(ENFILE):
-        {
-            kderror = KD_EMFILE;
-            break;
-        }
-        case(ENAMETOOLONG):
-        {
-            kderror = KD_ENAMETOOLONG;
-            break;
-        }
-        case(ENOENT):
-        case(ENOTDIR):
-        {
-            kderror = KD_ENOENT;
-            break;
-        }
-        case(ENOMEM):
-        {
-            kderror = KD_ENOMEM;
-            break;
-        }
-        case(ENOSPC):
-        {
-            kderror = KD_ENOSPC;
-            break;
-        }
-        case(EOVERFLOW):
-        {
-            kderror = KD_EOVERFLOW;
-            break;
-        }
-        default:
-        {
-            /* TODO: Handle other errorcodes */
-            kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unknown errorcode: %d\n", error);
-            kdAssert(0);
-        }
-    }
-#endif
-
-    /* KD errors are 1 to 37*/
-    for(KDint i = KD_EACCES; i <= KD_ETRY_AGAIN; i++)
-    {
-        if(kderror == (allowed & i))
-        {
-            kdSetError(kderror);
-            return;
-        }
-    }
-    /* Error is not in allowed list */
-    kdLogMessagefKHR("kdSetErrorPlatformVEN() encountered unexpected errorcode: %d\n", kderror);
-    kdAssert(0);
-}
-
-/******************************************************************************
- * Versioning and attribute queries
- ******************************************************************************/
-
-/* kdQueryAttribi: Obtain the value of a numeric OpenKODE Core attribute. */
-KD_API KDint KD_APIENTRY kdQueryAttribi(KD_UNUSED KDint attribute, KD_UNUSED KDint *value)
-{
-    kdSetError(KD_EINVAL);
-    return -1;
-}
-
-/* kdQueryAttribcv: Obtain the value of a string OpenKODE Core attribute. */
-KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
-{
-    if(attribute == KD_ATTRIB_VENDOR)
-    {
-        return "libKD (zlib license)";
-    }
-    else if(attribute == KD_ATTRIB_VERSION)
-    {
-        return "1.0.3 (libKD 0.1.0)";
-    }
-    else if(attribute == KD_ATTRIB_PLATFORM)
-    {
-#if defined(__EMSCRIPTEN__)
-        return "Web (Emscripten)";
-#elif defined(__MINGW32__)
-        return "Windows (MinGW)";
-#elif defined(_WIN32)
-        return "Windows";
-#elif defined(__ANDROID__)
-        return "Android";
-#elif defined(__linux__) && defined(KD_WINDOW_SUPPORTED)
-        if(kdStrstrVEN(kdGetEnvVEN("XDG_SESSION_TYPE"), "wayland"))
-        {
-            return "Linux (Wayland)";
-        }
-        else
-        {
-            return "Linux (X11)";
-        }
-#elif defined(__linux__)
-        return "Linux";
-#elif defined(__APPLE__) && TARGET_OS_IPHONE
-        return "iOS";
-#elif defined(__APPLE__) && TARGET_OS_MAC
-        return "macOS";
-#elif defined(__FreeBSD__)
-        return "FreeBSD";
-#elif defined(__NetBSD__)
-        return "NetBSD";
-#elif defined(__OpenBSD__)
-        return "OpenBSD";
-#elif defined(__DragonFly__)
-        return "DragonFly BSD";
-#else
-        return "Unknown";
-#endif
-    }
-    kdSetError(KD_EINVAL);
-    return KD_NULL;
-}
-
-/* kdQueryIndexedAttribcv: Obtain the value of an indexed string OpenKODE Core attribute. */
-KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribute, KD_UNUSED KDint index)
-{
-    kdSetError(KD_EINVAL);
-    return KD_NULL;
-}
 
 /******************************************************************************
  * Threads and synchronization
@@ -607,7 +274,7 @@ static KDThread *__kdThreadInit(void)
     thread->lastevent = KD_NULL;
     thread->lasterror = 0;
     thread->callbackindex = 0;
-    thread->callbacks = (__KDCallback **)kdMalloc(sizeof(__KDCallback *));
+    thread->callbacks = (_KDCallback **)kdMalloc(sizeof(_KDCallback *));
     if(thread->callbacks == KD_NULL)
     {
         __kdQueueFree(thread->eventqueue);
@@ -1259,7 +926,7 @@ KD_API void KD_APIENTRY kdDefaultEvent(KD_UNUSED const KDEvent *event)
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
-struct __KDCallback {
+struct _KDCallback {
     KDCallbackFunc *func;
     KDint eventtype;
     void *eventuserptr;
@@ -1267,7 +934,7 @@ struct __KDCallback {
 static KDboolean __kdExecCallback(KDEvent *event)
 {   
     KDint callbackindex = kdThreadSelf()->callbackindex;
-    __KDCallback **callbacks = kdThreadSelf()->callbacks;
+    _KDCallback **callbacks = kdThreadSelf()->callbacks;
     for(KDint i = 0; i < callbackindex; i++)
     {
         if(callbacks[i]->func)
@@ -3162,7 +2829,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype, void *eventuserptr)
 {
     KDint callbackindex = kdThreadSelf()->callbackindex;
-    __KDCallback **callbacks = kdThreadSelf()->callbacks;
+    _KDCallback **callbacks = kdThreadSelf()->callbacks;
     for(KDint i = 0; i < callbackindex; i++)
     {
         KDboolean typematch = callbacks[i]->eventtype == eventtype || callbacks[i]->eventtype == 0;
@@ -3173,7 +2840,7 @@ KD_API KDint KD_APIENTRY kdInstallCallback(KDCallbackFunc *func, KDint eventtype
             return 0;
         }
     }
-    callbacks[callbackindex] = (__KDCallback *)kdMalloc(sizeof(__KDCallback));
+    callbacks[callbackindex] = (_KDCallback *)kdMalloc(sizeof(_KDCallback));
     if(callbacks[callbackindex] == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
@@ -3227,11 +2894,6 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 {
     kdFree(event);
 }
-
-/******************************************************************************
- * System events
- ******************************************************************************/
-/* Header only */
 
 /******************************************************************************
  * Application startup and exit.
@@ -3516,98 +3178,6 @@ KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
 }
 
 /******************************************************************************
- * Locale specific functions
- ******************************************************************************/
-
-/* kdGetLocale: Determine the current language and locale. */
-KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
-{
-    /* TODO: Add ISO 3166-1 part.*/
-    static KDchar localestore[5] = "";
-    kdMemset(&localestore, 0, sizeof(localestore));
-#if defined(_WIN32)
-    KDint localesize = GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, KD_NULL, 0);
-    KDchar *locale = (KDchar *)kdMalloc(localesize);
-    GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, locale, localesize);
-    kdMemcpy(localestore, locale, 2);
-    kdFree(locale);
-#else
-    setlocale(LC_ALL, "");
-    KDchar *locale = setlocale(LC_CTYPE, KD_NULL);
-    if(locale == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-    }
-    else if(kdStrcmp(locale, "C") == 0)
-    {
-        /* No locale support (musl, emscripten) */
-        locale = "en";
-    }
-    kdMemcpy(localestore, locale, 2 /* 5 */);
-#endif
-    return (const KDchar *)localestore;
-}
-
-/******************************************************************************
- * Memory allocation
- ******************************************************************************/
-
-/* kdMalloc: Allocate memory. */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((__malloc__))
-#endif
-KD_API void *KD_APIENTRY
-kdMalloc(KDsize size)
-{
-    void *result = KD_NULL;
-#if defined(_WIN32)
-    result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
-#else
-    result = malloc(size);
-#endif
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    return result;
-}
-
-/* kdFree: Free allocated memory block. */
-KD_API void KD_APIENTRY kdFree(void *ptr)
-{
-    if(ptr)
-    {
-#if defined(_WIN32)
-        HeapFree(GetProcessHeap(), 0, ptr);
-#else
-        free(ptr);
-#endif
-    }
-}
-
-/* kdRealloc: Resize memory block. */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((__malloc__))
-#endif
-KD_API void *KD_APIENTRY
-kdRealloc(void *ptr, KDsize size)
-{
-    void *result = KD_NULL;
-#if defined(_WIN32)
-    result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
-#else
-    result = realloc(ptr, size);
-#endif
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    return result;
-}
-
-/******************************************************************************
  * Thread-local storage.
  ******************************************************************************/
 
@@ -3624,8 +3194,8 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 }
 
 /* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
-typedef struct __KDThreadStorage __KDThreadStorage;
-struct __KDThreadStorage {
+typedef struct _KDThreadStorage _KDThreadStorage;
+struct _KDThreadStorage {
     KDThreadStorageKeyKHR key;
 #if defined(KD_THREAD_C11)
     tss_t nativekey;
@@ -3639,7 +3209,7 @@ struct __KDThreadStorage {
     void *id;
 };
 
-static __KDThreadStorage __kd_tls[999];
+static _KDThreadStorage __kd_tls[999];
 static KDuint __kd_tls_index = 0;
 KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void *id)
 {
@@ -3850,10 +3420,10 @@ typedef struct {
     KDint periodic;
     void *eventuserptr;
     KDThread *destination;
-} __KDTimerPayload;
+} _KDTimerPayload;
 static void *__kdTimerHandler(void *arg)
 {
-    __KDTimerPayload *payload = (__KDTimerPayload *)arg;
+    _KDTimerPayload *payload = (_KDTimerPayload *)arg;
     for(;;)
     {
         kdThreadSleepVEN(payload->interval);
@@ -3886,7 +3456,7 @@ static void *__kdTimerHandler(void *arg)
 struct KDTimer {
     KDThread *thread;
     KDThread *originthr;
-    __KDTimerPayload *payload;
+    _KDTimerPayload *payload;
 };
 KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *eventuserptr)
 {
@@ -3896,7 +3466,7 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
         return KD_NULL;
     }
 
-    __KDTimerPayload *payload = (__KDTimerPayload *)kdMalloc(sizeof(__KDTimerPayload));
+    _KDTimerPayload *payload = (_KDTimerPayload *)kdMalloc(sizeof(_KDTimerPayload));
     if(payload == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
@@ -3948,800 +3518,6 @@ KD_API KDint KD_APIENTRY kdCancelTimer(KDTimer *timer)
     kdFree(timer->payload);
     kdFree(timer);
     return 0;
-}
-
-/******************************************************************************
- * File system
- ******************************************************************************/
-
-/* kdFopen: Open a file from the file system. */
-KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
-{
-    KDFile *file = (KDFile *)kdMalloc(sizeof(KDFile));
-    if(file == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    file->pathname = pathname;
-    KDint error = 0;
-#if defined(_WIN32)
-    DWORD access = 0;
-    DWORD create = 0;
-    switch(mode[0])
-    {
-        case 'w':
-        {
-            access = GENERIC_WRITE;
-            create = CREATE_ALWAYS;
-            break;
-        }
-        case 'r':
-        {
-            access = GENERIC_READ;
-            create = OPEN_EXISTING;
-            break;
-        }
-        case 'a':
-        {
-            access = GENERIC_READ | GENERIC_WRITE;
-            create = OPEN_ALWAYS;
-            break;
-        }
-        default:
-        {
-            kdSetError(KD_EINVAL);
-            return KD_NULL;
-        }
-    }
-    if(mode[1] == '+' || mode[2] == '+')
-    {
-        access = GENERIC_READ | GENERIC_WRITE;
-    }
-    file->nativefile = CreateFileA(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
-    if(file->nativefile != INVALID_HANDLE_VALUE)
-    {
-        if(mode[0] == 'a')
-        {
-            SetFilePointer(file->nativefile, 0, KD_NULL, FILE_END);
-        }
-    }
-    else
-    {
-        error = GetLastError();
-#else
-    KDint access = 0;
-    mode_t create = 0;
-    switch(mode[0])
-    {
-        case 'w':
-        {
-            access = O_WRONLY | O_CREAT;
-            create = S_IRUSR | S_IWUSR;
-            break;
-        }
-        case 'r':
-        {
-            access = O_RDONLY;
-            create = 0;
-            break;
-        }
-        case 'a':
-        {
-            access = O_WRONLY | O_CREAT | O_APPEND;
-            create = 0;
-            break;
-        }
-        default:
-        {
-            kdFree(file);
-            kdSetError(KD_EINVAL);
-            return KD_NULL;
-        }
-    }
-    if(mode[1] == '+' || mode[2] == '+')
-    {
-        access = O_RDWR | O_CREAT;
-        create = S_IRUSR | S_IWUSR;
-    }
-    file->nativefile = open(pathname, access | O_CLOEXEC, create);
-    if(file->nativefile == -1)
-    {
-        error = errno;
-#endif
-        kdFree(file);
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
-        return KD_NULL;
-    }
-    file->eof = KD_FALSE;
-    return file;
-}
-
-/* kdFclose: Close an open file. */
-KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
-{
-    KDint retval = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    retval = CloseHandle(file->nativefile);
-    if(retval == 0)
-    {
-        error = GetLastError();
-#else
-    retval = close(file->nativefile);
-    if(retval == -1)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
-        kdFree(file);
-        return KD_EOF;
-    }
-    kdFree(file);
-    return 0;
-}
-
-/* kdFflush: Flush an open file. */
-KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
-{
-#if !defined(_WIN32)
-    KDint retval = fsync(file->nativefile);
-    if(retval == -1)
-    {
-        file->error = KD_TRUE;
-        kdSetErrorPlatformVEN(errno, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
-        return KD_EOF;
-    }
-#endif
-    return 0;
-}
-
-/* kdFread: Read from a file. */
-KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
-{
-    KDssize retval = 0;
-    KDint error = 0;
-    KDsize length = count * size;
-#if defined(_WIN32)
-    BOOL success = ReadFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
-    if(success == TRUE && retval == 0)
-    {
-        file->eof = KD_TRUE;
-    }
-    else if(success == FALSE)
-    {
-        error = GetLastError();
-#else
-    KDchar *temp = buffer;
-    while(length != 0 && (retval = read(file->nativefile, temp, length)) != 0)
-    {
-        if(retval == -1)
-        {
-            if(errno != EINTR)
-            {
-                break;
-            }
-        }
-        length -= retval;
-        temp += retval;
-    }
-    length = count * size;
-    if(retval == 0)
-    {
-        file->eof = KD_TRUE;
-    }
-    else if((KDsize)retval != length)
-    {
-        error = errno;
-#endif
-        file->error = KD_TRUE;
-        kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
-    }
-    return (KDsize)retval;
-}
-
-/* kdFwrite: Write to a file. */
-KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
-{
-    KDssize retval = 0;
-    KDint error = 0;
-    KDsize length = count * size;
-#if defined(_WIN32)
-    BOOL success = WriteFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
-    if(success == FALSE)
-    {
-        error = GetLastError();
-#else
-    KDchar *temp = kdMalloc(length);
-    KDchar *_temp = temp;
-    kdMemcpy(temp, buffer, length);
-    while(length != 0 && (retval = write(file->nativefile, temp, length)) != 0)
-    {
-        if(retval == -1)
-        {
-            if(errno != EINTR)
-            {
-                break;
-            }
-        }
-        length -= retval;
-        temp += retval;
-    }
-    kdFree(_temp);
-    length = count * size;
-    if((KDsize)retval != length)
-    {
-        error = errno;
-#endif
-        file->error = KD_TRUE;
-        kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
-    }
-    return (KDsize)retval;
-}
-
-/* kdGetc: Read next byte from an open file. */
-KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
-{
-    KDuint8 byte = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    DWORD byteswritten = 0;
-    BOOL success = ReadFile(file->nativefile, &byte, 1, &byteswritten, KD_NULL);
-    if(success == TRUE && byteswritten == 0)
-    {
-        file->eof = KD_TRUE;
-        return KD_EOF;
-    }
-    else if(success == FALSE)
-    {
-        error = GetLastError();
-#else
-    KDint success = (KDsize)read(file->nativefile, &byte, 1);
-    if(success == 0)
-    {
-        file->eof = KD_TRUE;
-        return KD_EOF;
-    }
-    else if(success == -1)
-    {
-        error = errno;
-#endif
-        file->error = KD_TRUE;
-        kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
-        return KD_EOF;
-    }
-    return (KDint)byte;
-}
-
-/* kdPutc: Write a byte to an open file. */
-KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
-{
-    KDint error = 0;
-    KDuint8 byte = c & 0xFF;
-#if defined(_WIN32)
-    BOOL success = WriteFile(file->nativefile, &byte, 1, (DWORD[]){0}, KD_NULL);
-    if(success == FALSE)
-    {
-        error = GetLastError();
-#else
-    KDint success = (KDsize)write(file->nativefile, &byte, 1);
-    if(success == -1)
-    {
-        error = errno;
-#endif
-        file->error = KD_TRUE;
-        kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
-        return KD_EOF;
-    }
-    return (KDint)byte;
-}
-
-/* kdFgets: Read a line of text from an open file. */
-KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
-{
-    KDchar *line = buffer;
-    for(KDsize i = buflen; i > 1; --i)
-    {
-        KDint character = kdGetc(file);
-        if(character == KD_EOF)
-        {
-            if(i == buflen - 1)
-            {
-                return KD_NULL;
-            }
-            break;
-        }
-        *line++ = (KDchar)character;
-        if(character == '\n')
-        {
-            break;
-        }
-    }
-    return line;
-}
-
-/* kdFEOF: Check for end of file. */
-KD_API KDint KD_APIENTRY kdFEOF(KDFile *file)
-{
-    if(file->eof == KD_TRUE)
-    {
-        return KD_EOF;
-    }
-    return 0;
-}
-
-/* kdFerror: Check for an error condition on an open file. */
-KD_API KDint KD_APIENTRY kdFerror(KDFile *file)
-{
-    if(file->error == KD_TRUE)
-    {
-        return KD_EOF;
-    }
-    return 0;
-}
-
-/* kdClearerr: Clear a file's error and end-of-file indicators. */
-KD_API void KD_APIENTRY kdClearerr(KDFile *file)
-{
-    file->error = KD_FALSE;
-    file->eof = KD_FALSE;
-}
-
-/* TODO: Cleanup */
-typedef struct {
-#if defined(_MSC_VER)
-    KDint seekorigin_kd;
-#else
-    KDuint seekorigin_kd;
-#endif
-#if defined(_WIN32)
-    DWORD seekorigin;
-#else
-    KDint seekorigin;
-#endif
-} __KDSeekOrigin;
-
-#if defined(_WIN32)
-static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, FILE_BEGIN}, {KD_SEEK_CUR, FILE_CURRENT}, {KD_SEEK_END, FILE_END}};
-#else
-static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
-#endif
-
-/* kdFseek: Reposition the file position indicator in a file. */
-KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
-{
-    KDint error = 0;
-    for(KDuint i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
-    {
-        if(seekorigins[i].seekorigin_kd == origin)
-        {
-#if defined(_WIN32)
-            DWORD retval = SetFilePointer(file->nativefile, (LONG)offset, KD_NULL, seekorigins[i].seekorigin);
-            if(retval == INVALID_SET_FILE_POINTER)
-            {
-                error = GetLastError();
-#else
-            KDint retval = lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
-            if(retval != 0)
-            {
-                error = errno;
-#endif
-                kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EINVAL | KD_EIO | KD_ENOMEM | KD_ENOSPC | KD_EOVERFLOW);
-                return -1;
-            }
-            break;
-        }
-    }
-    return 0;
-}
-
-/* kdFtell: Get the file position of an open file. */
-KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
-{
-    KDoff position = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    position = (KDoff)SetFilePointer(file->nativefile, 0, KD_NULL, FILE_CURRENT);
-    if(position == INVALID_SET_FILE_POINTER)
-    {
-        error = GetLastError();
-#else
-    position = lseek(file->nativefile, 0, SEEK_CUR);
-    if(position == -1)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EOVERFLOW);
-        return -1;
-    }
-    return position;
-}
-
-/* kdMkdir: Create new directory. */
-KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
-{
-    KDint retval = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    retval = CreateDirectoryA(pathname, KD_NULL);
-    if(retval == 0)
-    {
-        error = GetLastError();
-#else
-    retval = mkdir(pathname, 0777);
-    if(retval == -1)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
-        return -1;
-    }
-    return 0;
-}
-
-/* kdRmdir: Delete a directory. */
-KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
-{
-    KDint retval = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    retval = RemoveDirectoryA(pathname);
-    if(retval == 0)
-    {
-        error = GetLastError();
-#else
-    retval = rmdir(pathname);
-    if(retval == -1)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
-        return -1;
-    }
-    return 0;
-}
-
-/* kdRename: Rename a file. */
-KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
-{
-    KDint retval = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    retval = MoveFileA(src, dest);
-    if(retval == 0)
-    {
-        error = GetLastError();
-        if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK)
-        {
-            kdSetError(KD_EINVAL);
-        }
-        else
-#else
-    retval = rename(src, dest);
-    if(retval == -1)
-    {
-        error = errno;
-        if(error == ENOTDIR)
-        {
-            kdSetError(KD_EINVAL);
-        }
-        else if(error == ENOTEMPTY)
-        {
-            kdSetError(KD_EACCES);
-        }
-        else
-#endif
-        {
-            kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
-        }
-        return -1;
-    }
-    return 0;
-}
-
-/* kdRemove: Delete a file. */
-KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
-{
-    KDint retval = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    retval = DeleteFileA(pathname);
-    if(retval == 0)
-    {
-        error = GetLastError();
-#else
-    retval = remove(pathname);
-    if(retval == -1)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
-        return -1;
-    }
-    return 0;
-}
-
-/* kdTruncate: Truncate or extend a file. */
-KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
-{
-    KDint retval = 0;
-    KDint error = 0;
-#if defined(_WIN32)
-    WIN32_FIND_DATA data;
-    HANDLE file = FindFirstFileA(pathname, &data);
-    retval = (KDint)SetFileValidData(file, (LONGLONG)length);
-    FindClose(file);
-    if(retval == 0)
-    {
-        error = GetLastError();
-#else
-    retval = truncate(pathname, length);
-    if(retval == -1)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
-        return -1;
-    }
-    return 0;
-}
-
-/* kdStat, kdFstat: Return information about a file. */
-KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
-{
-    KDint error = 0;
-#if defined(_WIN32)
-    WIN32_FIND_DATA data;
-    if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
-    {
-        if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
-            buf->st_mode = 0x4000;
-        }
-        else if(data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL || data.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE)
-        {
-            buf->st_mode = 0x8000;
-        }
-        else
-        {
-            kdSetError(KD_EACCES);
-            return -1;
-        }
-        LARGE_INTEGER size;
-        size.LowPart = data.nFileSizeLow;
-        size.HighPart = data.nFileSizeHigh;
-        buf->st_size = size.QuadPart;
-
-        ULARGE_INTEGER time;
-        time.LowPart = data.ftLastWriteTime.dwLowDateTime;
-        time.HighPart = data.ftLastWriteTime.dwHighDateTime;
-        /* See RtlTimeToSecondsSince1970 */
-        buf->st_mtime = (KDtime)((time.QuadPart / 10000000) - 11644473600LL);
-    }
-    else
-    {
-        error = GetLastError();
-#else
-    struct stat posixstat = {0};
-    if(stat(pathname, &posixstat) == 0)
-    {
-        if(posixstat.st_mode & S_IFDIR)
-        {
-            buf->st_mode = 0x4000;
-        }
-        else if(posixstat.st_mode & S_IFREG)
-        {
-            buf->st_mode = 0x8000;
-        }
-        else
-        {
-            kdSetError(KD_EACCES);
-            return -1;
-        }
-        buf->st_size = posixstat.st_size;
-#if defined(__APPLE__)
-        buf->st_mtime = posixstat.st_mtimespec.tv_sec;
-#else
-        /* We undef the st_mtime macro*/
-        buf->st_mtime = posixstat.st_mtim.tv_sec;
-#endif
-    }
-    else
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_EOVERFLOW);
-        return -1;
-    }
-    return 0;
-}
-
-KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
-{
-    return kdStat(file->pathname, buf);
-}
-
-/* kdAccess: Determine whether the application can access a file or directory. */
-KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
-{
-    KDint error = 0;
-#if defined(_WIN32)
-    WIN32_FIND_DATA data;
-    if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
-    {
-        if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
-        {
-            if(amode & KD_X_OK || amode & KD_R_OK)
-            {
-                return 0;
-            }
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    else
-    {
-        error = GetLastError();
-#else
-    typedef struct __KDAccessMode {
-        KDint accessmode_kd;
-        KDint accessmode_posix;
-    } __KDAccessMode;
-    __KDAccessMode accessmodes[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
-    KDint accessmode = 0;
-    for(KDuint i = 0; i < sizeof(accessmodes) / sizeof(accessmodes[0]); i++)
-    {
-        if(accessmodes[i].accessmode_kd & amode)
-        {
-            accessmode |= accessmodes[i].accessmode_posix;
-        }
-    }
-    if(access(pathname, accessmode) == -1)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
-        return -1;
-    }
-    return 0;
-}
-
-/* kdOpenDir: Open a directory ready for listing. */
-struct KDDir {
-#if defined(_WIN32)
-    HANDLE nativedir;
-#else
-    DIR *nativedir;
-#endif
-    KDDirent *dirent;
-};
-KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
-{
-    KDint error = 0;
-    if(kdStrcmp(pathname, "/") == 0)
-    {
-        kdSetError(KD_EACCES);
-        return KD_NULL;
-    }
-    KDDir *dir = (KDDir *)kdMalloc(sizeof(KDDir));
-    if(dir == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    dir->dirent = (KDDirent *)kdMalloc(sizeof(KDDirent));
-    if(dir->dirent == KD_NULL)
-    {
-        kdFree(dir);
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-#if defined(_WIN32)
-    KDchar dirpath[MAX_PATH];
-    WIN32_FIND_DATA data;
-    if(kdStrcmp(pathname, ".") == 0)
-    {
-        GetCurrentDirectoryA(MAX_PATH, dirpath);
-    }
-    kdStrncat_s(dirpath, MAX_PATH, "\\*", 2);
-#if defined(_MSC_VER)
-#pragma warning(suppress : 6102)
-#endif
-    dir->nativedir = FindFirstFileA((const KDchar *)dirpath, &data);
-    if(dir->nativedir == INVALID_HANDLE_VALUE)
-    {
-        error = GetLastError();
-#else
-    dir->nativedir = opendir(pathname);
-    if(dir->nativedir == KD_NULL)
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
-        kdFree(dir->dirent);
-        kdFree(dir);
-        return KD_NULL;
-    }
-    return dir;
-}
-
-/* kdReadDir: Return the next file in a directory. */
-KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
-{
-    KDint error = 0;
-#if defined(_WIN32)
-    WIN32_FIND_DATA data;
-
-    if(FindNextFileA(dir->nativedir, &data) != 0)
-    {
-        dir->dirent->d_name = data.cFileName;
-    }
-    else
-    {
-        error = GetLastError();
-        if(error == ERROR_NO_MORE_FILES)
-        {
-            return KD_NULL;
-        }
-#else
-    struct dirent *de = readdir(dir->nativedir);
-    if(de != KD_NULL)
-    {
-        dir->dirent->d_name = de->d_name;
-    }
-    else if(errno == 0)
-    {
-        return KD_NULL;
-    }
-    else
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EIO | KD_ENOMEM);
-        return KD_NULL;
-    }
-    return dir->dirent;
-}
-
-/* kdCloseDir: Close a directory. */
-KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
-{
-#if defined(_WIN32)
-    FindClose(dir->nativedir);
-#else
-    closedir(dir->nativedir);
-#endif
-    kdFree(dir->dirent);
-    kdFree(dir);
-    return 0;
-}
-
-/* kdGetFree: Get free space on a drive. */
-KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
-{
-    KDint error = 0;
-    KDoff freespace = 0;
-    const KDchar *temp = pathname;
-#if defined(_WIN32)
-    if(GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL) == 0)
-    {
-        error = GetLastError();
-#else
-    struct statfs buf = {0};
-    if(statfs(temp, &buf) == 0)
-    {
-        freespace = (buf.f_bsize / 1024LL) * buf.f_bavail;
-    }
-    else
-    {
-        error = errno;
-#endif
-        kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSYS | KD_EOVERFLOW);
-        return (KDoff)-1;
-    }
-    return freespace;
 }
 
 /******************************************************************************
@@ -5850,35 +4626,4 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     return 0;
 }
 
-#endif
-
-/******************************************************************************
- * Assertions and logging
- ******************************************************************************/
-
-/* kdHandleAssertion: Handle assertion failure. */
-KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
-{
-    kdLogMessagefKHR("---Assertion---\nCondition: %s\nFile: %s(%i)\n", condition, filename, linenumber);
-
-#if defined(__GNUC__) || defined(__clang__)
-    __builtin_trap();
-#elif defined(_MSC_VER) || defined(__MINGW32__)
-    __debugbreak();
-#else
-    kdExit(-1);
-#endif
-}
-
-/* kdLogMessage: Output a log message. */
-#ifndef KD_NDEBUG
-KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
-{
-    KDsize length = kdStrlen(string);
-    if(!length)
-    {
-        return;
-    }
-    kdLogMessagefKHR("%s", string);
-}
 #endif
