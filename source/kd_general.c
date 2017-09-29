@@ -61,6 +61,10 @@
 #   include <TargetConditionals.h>
 #endif
 
+#if defined(__EMSCRIPTEN__)
+#   include <emscripten/emscripten.h>
+#endif
+
 #if defined(_WIN32)
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN

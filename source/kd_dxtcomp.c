@@ -38,8 +38,8 @@
  ******************************************************************************/
 
 /* clang-format off */
-#if defined(__TINYC__)  
-#   define STBI_NO_SIMD
+#if defined(_MSC_VER)
+#   pragma warning(disable : 4244)
 #endif
 #define STBD_ABS            kdAbs
 #define STBD_FABS           kdFabsKHR
@@ -47,6 +47,10 @@
 #define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
+#if defined(_MSC_VER)
+#   pragma warning(pop)
+#endif
+
 #define STBIR_ASSERT        kdAssert
 #define STBIR_MEMSET        kdMemset
 #define STBIR_MALLOC(s,c)   kdMalloc(s)

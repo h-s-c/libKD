@@ -283,7 +283,7 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 }
                 if (!width)
                 {
-                    width = kdStrcspnVEN (str, " \t\n\r\f\v");
+                    width = (KDint)kdStrcspnVEN (str, " \t\n\r\f\v");
                 }
                 if (!noassign) 
                 {
@@ -335,11 +335,11 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 {
                     if (kdIsspaceVEN (*(format + 1)) || *(format + 1) == 0)
                     {
-                        width = kdStrcspnVEN (str, " \t\n\r\f\v");
+                        width = (KDint)kdStrcspnVEN (str, " \t\n\r\f\v");
                     }
                     else
                     {
-                        width = kdStrchr(str, *(format + 1)) - str;
+                        width = (KDint)(kdStrchr(str, *(format + 1)) - str);
                     }
                 }
                 kdStrncpy_s(tmp, width, str, width);

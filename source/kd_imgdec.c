@@ -64,6 +64,9 @@
  * Thirdparty includes
  ******************************************************************************/
 
+#if defined(__TINYC__)  
+#   define STBI_NO_SIMD
+#endif
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 #define STBI_NO_LINEAR

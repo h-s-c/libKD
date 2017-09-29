@@ -70,6 +70,9 @@
  * C includes
  ******************************************************************************/
 
+/* freestanding safe */
+#include <stdlib.h> /* EXIT_.., __arg.. */
+
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
 #   include <errno.h>
 #   include <time.h> /* nanosleep */
@@ -94,6 +97,7 @@
 #   endif
 #   if defined(__EMSCRIPTEN__)
 #       include <emscripten/emscripten.h>
+#       include <emscripten/threading.h> /* emscripten_has_threading_support */
 #       include <emscripten/html5.h>
 #   endif
 #   if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
@@ -141,7 +145,6 @@
 #   pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #elif defined(_MSC_VER)
 #   pragma warning(push)
-#   pragma warning(disable : 4244)
 #   pragma warning(disable : 4701)
 #   pragma warning(disable : 4703)
 #   pragma warning(disable : 6001)

@@ -844,7 +844,7 @@ KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
             {
                 if((sc = *str1++) == '\0')
                 {
-                    return (NULL);
+                    return (KD_NULL);
                 }
             } while(sc != c);
         } while(kdStrncmp(str1, str2, len) != 0);
