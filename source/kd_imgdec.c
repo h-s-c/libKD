@@ -64,7 +64,11 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#if defined(__TINYC__)  
+#if defined(_MSC_VER)
+#   pragma warning(push)
+#   pragma warning(disable : 6001)
+#   pragma warning(disable : 6011)
+#elif defined(__TINYC__)  
 #   define STBI_NO_SIMD
 #endif
 #define STBI_ONLY_JPEG
@@ -79,6 +83,9 @@
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#if defined(_MSC_VER)
+#   pragma warning(pop)
+#endif
 /* clang-format on */
 
 /******************************************************************************

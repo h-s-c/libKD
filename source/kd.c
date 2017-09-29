@@ -125,36 +125,6 @@
 #   include <windows.h>
 #   include <winsock2.h> /* WSA.. */
 #endif
-
-/******************************************************************************
- * Thirdparty includes
- ******************************************************************************/
-
-#if defined(__INTEL_COMPILER)
-#    pragma warning(push)
-#    pragma warning(disable: 3656)
-#elif defined(__GNUC__) || (__clang__)
-#   pragma GCC diagnostic push
-#   if __GNUC__ >= 6
-#       pragma GCC diagnostic ignored "-Wmisleading-indentation"
-#       pragma GCC diagnostic ignored "-Wshift-negative-value"
-#   endif
-#   if !defined(__clang__)
-#       pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#   endif
-#   pragma GCC diagnostic ignored "-Wstrict-aliasing"
-#elif defined(_MSC_VER)
-#   pragma warning(push)
-#   pragma warning(disable : 4701)
-#   pragma warning(disable : 4703)
-#   pragma warning(disable : 6001)
-#   pragma warning(disable : 6011)
-#endif
-#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-#   pragma warning(pop)
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic pop
-#endif
 /* clang-format on */
 
 /******************************************************************************
