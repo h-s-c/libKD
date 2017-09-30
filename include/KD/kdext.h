@@ -33,6 +33,7 @@
 #include <KD/KHR_float64.h>
 #include <KD/KHR_formatted.h>
 #include <KD/KHR_thread_storage.h>
+#include <KD/NV_extwindowprops.h>
 #include <KD/VEN_atomic_ops.h>
 
 #define KD_ATX_dxtcomp 1
@@ -44,6 +45,7 @@
 #define KD_KHR_float64 1
 #define KD_KHR_formatted 1
 #define KD_KHR_thread_storage 1
+#define KD_NV_extwindowprops 1
 #define KD_VEN_atomic_ops 1
 
 /*******************************************************

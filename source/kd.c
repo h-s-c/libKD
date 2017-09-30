@@ -921,15 +921,12 @@ struct KDWindow {
     EGLint format;
     void *eventuserptr;
     KDThread *originthr;
-    struct {
-        KDint32 width;
-        KDint32 height; 
-    } screen;
     struct
     {
         KDchar caption[256];
         KDboolean focused;
         KDboolean visible;
+        KDboolean fullscreen;
         KDint32 width;
         KDint32 height;
     } properties;
@@ -3937,6 +3934,9 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     window->states.dpad.availability = 31;
     window->states.gamekeys.availability = 31;
 
+    window->properties.width = 800;
+    window->properties.height = 600;
+
     const KDchar *caption = "OpenKODE";
     kdMemcpy(window->properties.caption, caption, kdStrlen(caption));
 
@@ -3945,11 +3945,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #endif
 
 #if defined(KD_WINDOW_WIN32)
-    window->screen.width = GetSystemMetrics(SM_CXSCREEN);
-    window->screen.height = GetSystemMetrics(SM_CYSCREEN);
-    window->properties.width = window->screen.width;
-    window->properties.height = window->screen.height;
-
     WNDCLASS windowclass = {0};
     HINSTANCE instance = GetModuleHandle(KD_NULL);
     GetClassInfo(instance, "", &windowclass);
@@ -3978,23 +3973,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     RegisterRawInputDevices(device, 2, sizeof(RAWINPUTDEVICE));
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
     window->xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-
-    /* Determine size of primary display. */
-    xcb_connection_t* dummyconnection = xcb_connect(KD_NULL, KD_NULL);
-    xcb_screen_t* dummyscreen = xcb_setup_roots_iterator(xcb_get_setup(dummyconnection)).data;
-    xcb_window_t dummywindow = xcb_generate_id(dummyconnection);
-    xcb_create_window(dummyconnection, 0, dummywindow, dummyscreen->root, 0, 0, 1, 1, 0, 0, 0, 0, 0);
-    xcb_flush(dummyconnection);
-    xcb_randr_get_screen_resources_cookie_t dummyscreencookie = xcb_randr_get_screen_resources(dummyconnection, dummywindow);
-    xcb_randr_get_screen_resources_reply_t* dummyscreenreply = xcb_randr_get_screen_resources_reply(dummyconnection, dummyscreencookie, 0);
-    xcb_randr_crtc_t* crtc = xcb_randr_get_screen_resources_crtcs(dummyscreenreply);
-    xcb_randr_get_crtc_info_cookie_t crtccookie = xcb_randr_get_crtc_info(dummyconnection, crtc[0], 0);
-    xcb_randr_get_crtc_info_reply_t* crtcreply = xcb_randr_get_crtc_info_reply(dummyconnection, crtccookie, NULL);
-    window->screen.width = crtcreply->width;
-    window->screen.height = crtcreply->height;
-    window->properties.width = window->screen.width;
-    window->properties.height = window->screen.height;
-    xcb_disconnect(dummyconnection);
 
 #if defined(KD_WINDOW_WAYLAND)
     if(__kd_wl_display)
@@ -4147,8 +4125,62 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
 }
 
 /* kdSetWindowPropertybv, kdSetWindowPropertyiv, kdSetWindowPropertycv: Set a window property to request a change in the on-screen representation of the window. */
-KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KD_UNUSED KDWindow *window, KD_UNUSED KDint pname, KD_UNUSED const KDboolean *param)
+KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, KD_UNUSED const KDboolean *param)
 {
+    if(pname == KD_WINDOWPROPERTY_FULLSCREEN_NV)
+    {
+#if defined(KD_WINDOW_EMSCRIPTEN)
+        if(param[0])
+        {
+            EmscriptenFullscreenStrategy strategy;
+            kdMemset(&strategy, 0, sizeof(strategy));
+            strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
+            strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
+            strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
+            emscripten_enter_soft_fullscreen(0, &strategy);
+        }
+        else
+        {
+            emscripten_exit_soft_fullscreen();
+        }
+#elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
+#if defined(KD_WINDOW_WAYLAND)   
+        if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
+        {
+            if(param[0])
+            {
+                wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);  
+            }
+            else
+            {
+                wl_shell_surface_set_toplevel(window->wayland.shell_surface);
+            }
+        }
+#endif
+#if defined(KD_WINDOW_X11)
+        if(window->platform == EGL_PLATFORM_X11_KHR)
+        {
+            if(param[0])
+            {
+                xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
+                    window->xcb.ewmh._NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, &(window->xcb.ewmh._NET_WM_STATE_FULLSCREEN));
+                xcb_flush(window->nativedisplay);
+            }
+
+        }
+#endif   
+#else
+        kdSetError(KD_EINVAL);
+        return -1;
+#endif
+        window->properties.fullscreen = param[0];
+
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_WINDOWPROPERTY_CHANGE;
+        event->data.windowproperty.pname = KD_WINDOWPROPERTY_FULLSCREEN_NV;
+        kdPostEvent(event);
+        return 0;
+    }
     kdSetError(KD_EINVAL);
     return -1;
 }
@@ -4162,19 +4194,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 #elif defined(KD_WINDOW_EMSCRIPTEN)
         emscripten_set_canvas_element_size("#canvas",param[0], param[1]);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
-        KDboolean fullscreen = (param[0] == window->screen.width) && (param[1] == window->screen.height);
-
 #if defined(KD_WINDOW_WAYLAND)   
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
         {
-            if(fullscreen)
-            {
-                wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);  
-            }
-            else
-            {
-                wl_shell_surface_set_toplevel(window->wayland.shell_surface);
-            }
             if(window->nativewindow)
             {
                 wl_egl_window_resize(window->nativewindow, param[0], param[1], 0, 0);
@@ -4193,14 +4215,6 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
             xcb_icccm_size_hints_set_position(&hints, 0, 0, 0);
             xcb_icccm_set_wm_size_hints(window->nativedisplay, (KDuintptr)window->nativewindow, XCB_ATOM_WM_NORMAL_HINTS, &hints);  
             xcb_flush(window->nativedisplay);
-
-            if(fullscreen)
-            {
-                xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
-                    window->xcb.ewmh._NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, &(window->xcb.ewmh._NET_WM_STATE_FULLSCREEN));
-                xcb_flush(window->nativedisplay);
-            }
-
         }
 #endif   
 #else
@@ -4267,6 +4281,10 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertybv(KDWindow *window, KDint pname, KD
     {
         param[0] = window->properties.visible;
     }
+    else if(pname == KD_WINDOWPROPERTY_FULLSCREEN_NV)
+    {
+        param[0] = window->properties.fullscreen;
+    }
     kdSetError(KD_EINVAL);
     return -1;
 }
@@ -4316,16 +4334,6 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
     ANativeWindow_setBuffersGeometry(window->nativewindow, 0, 0, window->format);
 #elif defined(KD_WINDOW_EMSCRIPTEN)
-    EmscriptenFullscreenStrategy strategy;
-    kdMemset(&strategy, 0, sizeof(strategy));
-    strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
-    strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
-    strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-    emscripten_enter_soft_fullscreen(0, &strategy);
-    window->properties.width = 800;
-    window->properties.height = 600;
-    //emscripten_get_element_css_size("#canvas", (KDfloat64KHR*)&window->properties.width, (KDfloat64KHR*)&window->properties.height); 
-    emscripten_set_canvas_element_size("#canvas", window->properties.width, window->properties.height);
     emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
     emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
