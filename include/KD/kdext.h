@@ -78,6 +78,9 @@ KD_API KDint KD_APIENTRY kdIsspaceVEN(KDint c);
 /* kdIsupperVEN: Check if character is uppercase letter. */
 KD_API KDint KD_APIENTRY kdIsupperVEN(KDint c);
 
+/* kdMaxVEN: Returns the bigger of the given values. */
+KD_API KDint KD_APIENTRY kdMaxVEN(KDint a, KDint b);
+
 /* kdMinVEN: Returns the smaller of the given values. */
 KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b);
 

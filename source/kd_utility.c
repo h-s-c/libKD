@@ -135,6 +135,12 @@ KD_API KDint KD_APIENTRY kdAbs(KDint i)
     return (i < 0) ? -i : i;
 }
 
+/* kdMaxVEN: Returns the bigger of the given values. */
+KD_API KDint KD_APIENTRY kdMaxVEN(KDint a, KDint b)
+{
+    return (b > a) ? b : a;
+}
+
 /* kdMinVEN: Returns the smaller of the given values. */
 KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b)
 {
