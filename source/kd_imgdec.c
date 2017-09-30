@@ -179,8 +179,8 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
         }
         case(1):
         {
-            image->format = KD_IMAGE_FORMAT_ALPHA8_ATX;
-            image->alpha = KD_TRUE;
+            image->format = KD_IMAGE_FORMAT_LUM8_ATX;
+            image->alpha = KD_FALSE;
             break;
         }
         default:
