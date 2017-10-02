@@ -72,6 +72,12 @@ struct _KDImageATX {
     KDboolean alpha;
 };
 
+KDThread *__kdThreadInit(void);
+void __kdThreadInitOnce(void);
+void __kdThreadFree(KDThread *thread);
+
+void __kdCleanupThreadStorageKHR(void);
+
 _KDQueue* __kdQueueCreate(KDsize size);
 KDint __kdQueueFree(_KDQueue* queue);
 KDsize __kdQueueSize(_KDQueue *queue);
