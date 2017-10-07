@@ -237,7 +237,7 @@ static KDuint32 __kdBitScanForward(KDuint32 x)
 #endif
 }
 
-#if defined(__EMSCRIPTEN__)
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 /* Silence -Wunused-function */
 static KD_UNUSED KDuint32(* __dummyfunc)(KDuint32) = &__kdBitScanForward;
 #endif

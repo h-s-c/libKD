@@ -868,7 +868,7 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
     kdMemset(&buf, 0, sizeof(buf));
     if(statfs(temp, &buf) == 0)
     {
-        KDsize _freespace = (KDsize)(buf.f_bsize / 1024L) * buf.f_bavail;
+        KDsize _freespace = (KDsize)(buf.f_bsize / 1024L) * (KDsize)buf.f_bavail;
         freespace = (KDoff)(_freespace);
     }
     else

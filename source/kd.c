@@ -363,6 +363,11 @@ static void __kdHandleSpecialKeys(KDWindow *window, KDEventInputKeyATX *keyevent
     }
 }
 
+#if defined(__ANDROID__)
+/* Silence -Wunused-function */
+static KD_UNUSED void(* __dummyfunc)(KDWindow *, KDEventInputKeyATX *) = &__kdHandleSpecialKeys;
+#endif
+
 static KDint32 __KDKeycodeLookup(KDint32 keycode)
 {
     switch(keycode)
@@ -2135,60 +2140,60 @@ static KDThread *__kd_androidmainthread = KD_NULL;
 static KDThreadMutex *__kd_androidmainthread_mutex = KD_NULL;
 static ANativeActivity *__kd_androidactivity = KD_NULL;
 static KDThreadMutex *__kd_androidactivity_mutex = KD_NULL;
-static void __kd_AndroidOnDestroy(ANativeActivity *activity)
+static void __kd_AndroidOnDestroy(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_CLOSE;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnStart(ANativeActivity *activity)
+static void __kd_AndroidOnStart(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnResume(ANativeActivity *activity)
+static void __kd_AndroidOnResume(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void *__kd_AndroidOnSaveInstanceState(ANativeActivity *activity, size_t *len)
+static void *__kd_AndroidOnSaveInstanceState(KD_UNUSED ANativeActivity *activity, KD_UNUSED KDsize *len)
 {
     /* TODO: Save state */
     return KD_NULL;
 }
 
-static void __kd_AndroidOnPause(ANativeActivity *activity)
+static void __kd_AndroidOnPause(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnStop(ANativeActivity *activity)
+static void __kd_AndroidOnStop(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnConfigurationChanged(ANativeActivity *activity)
+static void __kd_AndroidOnConfigurationChanged(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_ORIENTATION;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnLowMemory(ANativeActivity *activity)
+static void __kd_AndroidOnLowMemory(KD_UNUSED ANativeActivity *activity)
 {
     /* TODO: Avoid getting killed by Android */
 }
 
-static void __kd_AndroidOnWindowFocusChanged(ANativeActivity *activity, int focused)
+static void __kd_AndroidOnWindowFocusChanged(KD_UNUSED ANativeActivity *activity, KDint focused)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_FOCUS;
@@ -2198,14 +2203,14 @@ static void __kd_AndroidOnWindowFocusChanged(ANativeActivity *activity, int focu
 
 static ANativeWindow *__kd_androidwindow = KD_NULL;
 static KDThreadMutex *__kd_androidwindow_mutex = KD_NULL;
-static void __kd_AndroidOnNativeWindowCreated(ANativeActivity *activity, ANativeWindow *window)
+static void __kd_AndroidOnNativeWindowCreated(KD_UNUSED ANativeActivity *activity, ANativeWindow *window)
 {
     kdThreadMutexLock(__kd_androidwindow_mutex);
     __kd_androidwindow = window;
     kdThreadMutexUnlock(__kd_androidwindow_mutex);
 }
 
-static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANativeWindow *window)
+static void __kd_AndroidOnNativeWindowDestroyed(KD_UNUSED ANativeActivity *activity, KD_UNUSED ANativeWindow *window)
 {
     kdThreadMutexLock(__kd_androidwindow_mutex);
     __kd_androidwindow = KD_NULL;
@@ -2215,14 +2220,14 @@ static void __kd_AndroidOnNativeWindowDestroyed(ANativeActivity *activity, ANati
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnInputQueueCreated(ANativeActivity *activity, AInputQueue *queue)
+static void __kd_AndroidOnInputQueueCreated(KD_UNUSED ANativeActivity *activity, AInputQueue *queue)
 {
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     __kd_androidinputqueue = queue;
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 }
 
-static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQueue *queue)
+static void __kd_AndroidOnInputQueueDestroyed(KD_UNUSED ANativeActivity *activity, KD_UNUSED AInputQueue *queue)
 {
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     __kd_androidinputqueue = KD_NULL;
@@ -2230,7 +2235,7 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
-static int __kdPreMain(int argc, char **argv)
+static KDint __kdPreMain(KDint argc, KDchar **argv)
 {
 #if defined(_WIN32)
     if(WSAStartup(0x202, (WSADATA[]){{0}}) != 0)
@@ -2304,11 +2309,12 @@ static int __kdPreMain(int argc, char **argv)
 }
 
 #ifdef __ANDROID__
-static void *__kdAndroidPreMain(void *arg)
+static void *__kdAndroidPreMain(KD_UNUSED void *arg)
 {
-    return (void *)__kdPreMain(0, KD_NULL);
+    __kdPreMain(0, KD_NULL);
+    return 0;
 }
-void ANativeActivity_onCreate(ANativeActivity *activity, void *savedState, size_t savedStateSize)
+void ANativeActivity_onCreate(ANativeActivity *activity, KD_UNUSED void *savedState, KD_UNUSED KDsize savedStateSize)
 {
     __kd_androidmainthread_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_androidwindow_mutex = kdThreadMutexCreate(KD_NULL);
@@ -3313,9 +3319,6 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, KD
 
         }
 #endif   
-#else
-        kdSetError(KD_EINVAL);
-        return -1;
 #endif
         window->properties.fullscreen = param[0];
 
@@ -3361,9 +3364,6 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
             xcb_flush(window->nativedisplay);
         }
 #endif   
-#else
-        kdSetError(KD_EINVAL);
-        return -1;
 #endif
         window->properties.width = param[0];
         window->properties.height = param[1];

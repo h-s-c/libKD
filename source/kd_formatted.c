@@ -223,7 +223,7 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
 }
 #endif
 
-#if defined(__EMSCRIPTEN__)
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 __attribute__((__format__ (__printf__, 1, 2)))
 #endif
 KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)

@@ -305,7 +305,7 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
     if(emscripten_has_threading_support())
     {
 #else
-    if(1)
+    if((1))
     {
 #endif
         KDThread *thread = __kdThreadInit();
@@ -580,7 +580,7 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
     if(emscripten_has_threading_support())
     {
 #else
-    if(1)
+    if((1))
     {
 #endif
         KDThreadCond *cond = (KDThreadCond *)kdMalloc(sizeof(KDThreadCond));
@@ -768,11 +768,11 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
     /* Determine seconds from the overall nanoseconds */
     if((timeout % 1000000000) == 0)
     {
-        ts.tv_sec = (timeout / 1000000000);
+        ts.tv_sec = (time_t)(timeout / 1000000000);
     }
     else
     {
-        ts.tv_sec = (timeout - (timeout % 1000000000)) / 1000000000;
+        ts.tv_sec = (time_t)(timeout - (timeout % 1000000000)) / 1000000000;
     }
 
     /* Remaining nanoseconds */
