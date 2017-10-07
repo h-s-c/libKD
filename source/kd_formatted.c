@@ -65,15 +65,25 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#if defined(__GNUC__) || (__clang__)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wsign-compare"
-#endif
 #define STB_SPRINTF_STATIC
 #define STB_SPRINTF_NOUNALIGNED
 #define STB_SPRINTF_IMPLEMENTATION
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wcast-align"
+#   pragma clang diagnostic ignored "-Wcast-qual"
+#   pragma clang diagnostic ignored "-Wconditional-uninitialized"
+#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   pragma clang diagnostic ignored "-Wsign-compare"
+#   pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
 #include "stb_sprintf.h"
-#if defined(__GNUC__)
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#elif defined(__GNUC__)
 #   pragma GCC diagnostic pop
 #endif
 
@@ -184,7 +194,7 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
     WriteFile(out, buf, len, (DWORD[]){0}, KD_NULL);
 #else
-    KDssize result = write(STDOUT_FILENO, buf, len);
+    KDssize result = write(STDOUT_FILENO, buf, (KDsize)len);
     if(result != len)
     {
         return KD_NULL;
@@ -269,7 +279,7 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                     {
                         ;
                     }
-                    kdStrncpy_s(tmp, format - tc, tc, format - tc);
+                    kdStrncpy_s(tmp, (KDsize)(format - tc), tc, (KDsize)(format - tc));
                     tmp[format - tc] = '\0';
                     width = kdStrtol(tmp, KD_NULL, 10);
                     format--;
@@ -287,7 +297,7 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 }
                 if (!noassign) 
                 {
-                    kdStrncpy_s(t = (KDchar *)KD_VA_ARG_PTR_KHR(ap), width, str, width);
+                    kdStrncpy_s(t = (KDchar *)KD_VA_ARG_PTR_KHR(ap), (KDsize)width, str, (KDsize)width);
                     t[width] = '\0';
                 }
                 str += width;
@@ -300,7 +310,7 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 }
                 if (!noassign) 
                 {
-                    kdStrncpy_s(t = (KDchar *)KD_VA_ARG_PTR_KHR(ap), width, str, width);
+                    kdStrncpy_s(t = (KDchar *)KD_VA_ARG_PTR_KHR(ap), (KDsize)width, str, (KDsize)width);
                     t[width] = '\0';
                 }
                 str += width;
@@ -342,7 +352,7 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                         width = (KDint)(kdStrchr(str, *(format + 1)) - str);
                     }
                 }
-                kdStrncpy_s(tmp, width, str, width);
+                kdStrncpy_s(tmp, (KDsize)width, str, (KDsize)width);
                 tmp[width] = '\0';
                 str += width;
                 if (!noassign)
@@ -377,7 +387,8 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
             }
             else
             {
-                format++, str++;
+                format++;
+                str++;
             }
         }
     }

@@ -97,7 +97,7 @@ KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const
 
     /* Key is only 0 when an error occurs. */
     __kd_tls[__kd_tls_index].key = __kd_tls_index + 1;
-    __kd_tls[__kd_tls_index].id = (void *)id;
+    kdMemcpy(&__kd_tls[__kd_tls_index].id, &id, sizeof(void *));
 #if defined(KD_THREAD_C11)
     if(tss_create(&__kd_tls[__kd_tls_index].nativekey, KD_NULL) != 0)
 #elif defined(KD_THREAD_POSIX)

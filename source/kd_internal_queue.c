@@ -99,7 +99,7 @@ KDint __kdQueueFree(_KDQueue *queue)
 
 KDsize __kdQueueSize(_KDQueue *queue)
 {
-    return kdAtomicIntLoadVEN(queue->tail) - kdAtomicIntLoadVEN(queue->head);
+    return (KDsize)(kdAtomicIntLoadVEN(queue->tail) - kdAtomicIntLoadVEN(queue->head));
 }
 
 KDint __kdQueuePush(_KDQueue *queue, void *value)

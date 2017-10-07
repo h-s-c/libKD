@@ -447,6 +447,10 @@ kdRealloc(void *ptr, KDsize size)
  * Assertions and logging
  ******************************************************************************/
 
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wmissing-noreturn"
+#endif
 /* kdHandleAssertion: Handle assertion failure. */
 KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
 {
@@ -460,6 +464,9 @@ KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar 
     kdExit(-1);
 #endif
 }
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 
 /* kdLogMessage: Output a log message. */
 #ifndef KD_NDEBUG

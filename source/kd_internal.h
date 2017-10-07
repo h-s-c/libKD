@@ -83,3 +83,8 @@ KDint __kdQueueFree(_KDQueue* queue);
 KDsize __kdQueueSize(_KDQueue *queue);
 KDint __kdQueuePush(_KDQueue *queue, void *value);
 void* __kdQueuePull(_KDQueue *queue);
+
+
+extern KDThreadOnce __kd_threadinit_once;
+extern KDThreadStorageKeyKHR __kd_threadlocal;
+extern KDThreadMutex *__kd_tls_mutex;

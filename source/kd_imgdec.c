@@ -64,13 +64,6 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#if defined(_MSC_VER)
-#   pragma warning(push)
-#   pragma warning(disable : 6001)
-#   pragma warning(disable : 6011)
-#elif defined(__TINYC__)  
-#   define STBI_NO_SIMD
-#endif
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 #define STBI_NO_LINEAR
@@ -82,9 +75,27 @@
 #define STBI_FREE           kdFree
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
+#if defined(_MSC_VER)
+#   pragma warning(push)
+#   pragma warning(disable : 6001)
+#   pragma warning(disable : 6011)
+#elif defined(__TINYC__)  
+#   define STBI_NO_SIMD
+#elif defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wcast-align"
+#   pragma clang diagnostic ignored "-Wcast-qual"
+#   pragma clang diagnostic ignored "-Wcomma"
+#   pragma clang diagnostic ignored "-Wconversion"
+#   pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
+#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   pragma clang diagnostic ignored "-Wsign-conversion"
+#endif
 #include "stb_image.h"
 #if defined(_MSC_VER)
 #   pragma warning(pop)
+#elif defined(__clang__)
+#   pragma clang diagnostic pop
 #endif
 /* clang-format on */
 
@@ -247,14 +258,14 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
 
-    void *filedata = kdMalloc(st.st_size);
+    void *filedata = kdMalloc((KDsize)st.st_size);
     if(filedata == KD_NULL)
     {
         kdFree(image);
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    if(kdFread(filedata, 1, st.st_size, file) != (KDsize)st.st_size)
+    if(kdFread(filedata, 1, (KDsize)st.st_size, file) != (KDsize)st.st_size)
     {
         kdFree(filedata);
         kdFree(image);

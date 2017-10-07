@@ -249,7 +249,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
                 break;
             }
         }
-        length -= retval;
+        length -= (KDsize)retval;
         temp += retval;
     }
     length = count * size;
@@ -291,7 +291,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
                 break;
             }
         }
-        length -= retval;
+        length -= (KDsize)retval;
         temp += retval;
     }
     kdFree(_temp);
@@ -323,7 +323,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     {
         error = GetLastError();
 #else
-    KDint success = (KDsize)read(file->nativefile, &byte, 1);
+    KDint success = (KDint)read(file->nativefile, &byte, 1);
     if(success == 0)
     {
         file->eof = KD_TRUE;
@@ -351,7 +351,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     {
         error = GetLastError();
 #else
-    KDint success = (KDsize)write(file->nativefile, &byte, 1);
+    KDint success = (KDint)write(file->nativefile, &byte, 1);
     if(success == -1)
     {
         error = errno;
@@ -448,7 +448,7 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
             {
                 error = GetLastError();
 #else
-            KDint retval = lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
+            KDint retval = (KDint)lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
             if(retval != 0)
             {
                 error = errno;
@@ -859,7 +859,8 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
     struct statfs buf = {0};
     if(statfs(temp, &buf) == 0)
     {
-        freespace = (buf.f_bsize / 1024LL) * buf.f_bavail;
+        KDsize _freespace = (KDsize)(buf.f_bsize / 1024L) * buf.f_bavail;
+        freespace = (KDoff)(_freespace);
     }
     else
     {

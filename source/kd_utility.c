@@ -187,7 +187,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdStrtodKHR(const KDchar *s, KD_UNUSED KDchar **
 /* kdStrtol, kdStrtoul: Convert a string to an integer. */
 KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint base)
 {
-    const KDchar *s;
+    KDchar _s;
+    KDchar *s = &_s;
     KDint64 acc, cutoff;
     KDint c;
     KDint neg, any, cutlim;
@@ -199,7 +200,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
     {
         if(endptr != 0)
         {
-            *endptr = (KDchar *)nptr;
+            kdMemcpy(endptr, &nptr, sizeof(KDchar *));
         }
         kdSetError(KD_EINVAL);
         return 0;
@@ -209,7 +210,7 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
      * If base is 0, allow 0x for hex and 0 for octal, else
      * assume decimal; if base is already 16, allow 0x.
      */
-    s = nptr;
+    kdMemcpy(&s, &nptr, sizeof(KDchar *));
     do
     {
         c = (KDuint8)*s++;
@@ -322,14 +323,17 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
     }
     if(endptr)
     {
-        *endptr = (KDchar *)(any ? s - 1 : nptr);
+        KDchar _p;
+        KDchar *p = &_p;
+        kdMemcpy(&p, &nptr, sizeof(KDchar *));
+        *endptr = (KDchar *)(any ? s - 1 : p);
     }
     return (KDint)acc;
 }
 
 KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint base)
 {
-    const KDchar *s;
+    KDchar *s;
     KDint64 acc, cutoff;
     KDint c;
     KDint neg, any, cutlim;
@@ -340,12 +344,12 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
     {
         if(endptr != 0)
         {
-            *endptr = (KDchar *)nptr;
+            kdMemcpy(endptr, &nptr, sizeof(KDchar *));
         }
         kdSetError(KD_EINVAL);
         return 0;
     }
-    s = nptr;
+    kdMemcpy(&s, &nptr, sizeof(KDchar *));
     do
     {
         c = (KDuint8)*s++;
@@ -373,8 +377,8 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
     {
         base = c == '0' ? 8 : 10;
     }
-    cutoff = KDUINT_MAX / (KDuint)base;
-    cutlim = KDUINT_MAX % (KDuint)base;
+    cutoff = (KDint64)(KDUINT_MAX / (KDuint)base);
+    cutlim = (KDint)(KDUINT_MAX % (KDuint)base);
     for(acc = 0, any = 0;; c = (KDuint8)*s++)
     {
         if(kdIsdigitVEN(c))
@@ -416,7 +420,10 @@ KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint b
     }
     if(endptr != 0)
     {
-        *endptr = (KDchar *)(any ? s - 1 : nptr);
+        KDchar _p;
+        KDchar *p = &_p;
+        kdMemcpy(&p, &nptr, sizeof(KDchar *));
+        *endptr = (KDchar *)(any ? s - 1 : p);
     }
     return (KDuint)acc;
 }
@@ -428,7 +435,7 @@ KD_API KDssize KD_APIENTRY kdLtostr(KDchar *buffer, KDsize buflen, KDint number)
     {
         return -1;
     }
-    KDssize retval = kdSnprintfKHR(buffer, (KDint)buflen, "%d", number);
+    KDssize retval = (KDssize)kdSnprintfKHR(buffer, buflen, "%d", number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -459,7 +466,7 @@ KD_API KDssize KD_APIENTRY kdUltostr(KDchar *buffer, KDsize buflen, KDuint numbe
     {
         kdAssert(0);
     }
-    KDssize retval = kdSnprintfKHR(buffer, (KDint)buflen, (const KDchar *)fmt, number);
+    KDssize retval = (KDssize)kdSnprintfKHR(buffer, buflen, (const KDchar *)fmt, number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -474,7 +481,7 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     {
         return -1;
     }
-    KDssize retval = kdSnprintfKHR(buffer, (KDint)buflen, "%f", (KDfloat64KHR)number);
+    KDssize retval = (KDssize)kdSnprintfKHR(buffer, buflen, "%f", (KDfloat64KHR)number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -489,7 +496,7 @@ KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64K
     {
         return -1;
     }
-    KDssize retval = kdSnprintfKHR(buffer, (KDint)buflen, "%.17g", number);
+    KDssize retval = (KDssize)kdSnprintfKHR(buffer, buflen, "%.17g", number);
     if(retval > (KDssize)buflen)
     {
         return -1;
@@ -502,10 +509,10 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
 {
     KDint retval = 0;
 #if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25
-    retval = getrandom(buf, buflen, GRND_NONBLOCK);
+    retval = (KDint)getrandom(buf, buflen, GRND_NONBLOCK);
 #elif defined(__OpenBSD__) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
     /* Non-conforming to OpenKODE spec (blocking). */
-    retval = getentropy(buf, buflen);
+    retval = (KDint)getentropy(buf, buflen);
 #elif defined(_WIN32) && !defined(_M_ARM)
     /* Non-conforming to OpenKODE spec (blocking). */
     HCRYPTPROV provider = 0;

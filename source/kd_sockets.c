@@ -107,7 +107,9 @@ static void *__kdNameLookupHandler(void *arg)
 #if defined(_WIN32)
 #define s_addr S_un.S_addr
 #endif
-        addr.data.sin.address = ((struct sockaddr_in *)result->ai_addr)->sin_addr.s_addr;
+        struct sockaddr_in sockin;
+        kdMemcpy(&sockin, result->ai_addr, (sizeof(struct sockaddr)));
+        addr.data.sin.address = sockin.sin_addr.s_addr;
 #if defined(_WIN32)
 #undef s_addr
 #endif
@@ -375,7 +377,7 @@ KD_API KDint KD_APIENTRY kdSocketSend(KDSocket *socket, const void *buf, KDint l
     {
         error = WSAGetLastError();
 #else
-    result = send(socket->nativesocket, buf, len, 0);
+    result = (KDint)send(socket->nativesocket, buf, (KDsize)len, 0);
     if(result == -1)
     {
         error = errno;
@@ -419,7 +421,7 @@ KD_API KDint KD_APIENTRY kdSocketSendTo(KDSocket *socket, const void *buf, KDint
     {
         error = WSAGetLastError();
 #else
-    result = sendto(socket->nativesocket, buf, len, 0, (struct sockaddr *)&address, sizeof(address));
+    result = (KDint)sendto(socket->nativesocket, buf, (KDsize)len, 0, (struct sockaddr *)&address, sizeof(address));
     if(result == -1)
     {
         error = errno;
@@ -444,7 +446,7 @@ KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
     {
         error = WSAGetLastError();
 #else
-    result = recv(socket->nativesocket, buf, len, 0);
+    result = (KDint)recv(socket->nativesocket, buf, (KDsize)len, 0);
     if(result == -1)
     {
         error = errno;
@@ -473,7 +475,7 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
     {
         error = WSAGetLastError();
 #else
-    result = recvfrom(socket->nativesocket, buf, len, 0, (struct sockaddr *)&address, &addresssize);
+    result = (KDint)recvfrom(socket->nativesocket, buf, (KDsize)len, 0, (struct sockaddr *)&address, &addresssize);
     if(result == -1)
     {
         error = errno;
@@ -529,7 +531,7 @@ KD_API KDuint16 KD_APIENTRY kdHtons(KDuint16 hostshort)
     if(u.c)
     {
         KDuint8 *s = (KDuint8 *)&hostshort;
-        return (KDuint32)(s[0] << 8 | s[1]);
+        return (KDuint16)(s[0] << 8 | s[1]);
     }
     else
     {
@@ -570,7 +572,9 @@ KD_API const KDchar *KD_APIENTRY kdInetNtop(KDuint af, const void *src, KDchar *
         return KD_NULL;
     }
 
-    KDuint32 address = kdNtohl(((KDInAddr *)src)->s_addr);
+    KDInAddr in;
+    kdMemcpy(&in, src, (sizeof(KDInAddr)));
+    KDuint32 address = kdNtohl(in.s_addr);
     KDuint8 *s = (KDuint8 *)&address;
     KDchar tempstore[sizeof("255.255.255.255")] = "";
     kdSnprintfKHR(tempstore, sizeof(tempstore), "%u.%u.%u.%u", s[3], s[2], s[1], s[0]);

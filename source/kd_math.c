@@ -110,6 +110,11 @@
 #pragma warning(disable : 4204)
 #pragma warning(disable : 4723)
 #pragma warning(disable : 4756)
+#elif defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wcast-qual"
+#   pragma clang diagnostic ignored "-Wfloat-equal"
+#   pragma clang diagnostic ignored "-Wsign-conversion"
 #endif
 
 /* TODO: Replace macros (see uses of __KDFloatShape) */
@@ -169,61 +174,61 @@ typedef union {
 } ieee_double_shape_type;
 
 /* Get two 32 bit ints from a double.  */
-#define EXTRACT_WORDS(ix0, ix1, d)   \
-    do                               \
-    {                                \
-        ieee_double_shape_type ew_u; \
-        ew_u.value = (d);            \
-        (ix0) = ew_u.parts.msw;      \
-        (ix1) = ew_u.parts.lsw;      \
+#define EXTRACT_WORDS(ix0, ix1, d)          \
+    do                                      \
+    {                                       \
+        ieee_double_shape_type ew_u;        \
+        ew_u.value = (d);                   \
+        (ix0) = ew_u.parts.msw;    \
+        (ix1) = ew_u.parts.lsw;    \
     } while(0)
 
 /* Set a double from two 32 bit ints.  */
-#define INSERT_WORDS(d, ix0, ix1)    \
-    do                               \
-    {                                \
-        ieee_double_shape_type iw_u; \
-        iw_u.parts.msw = (ix0);      \
-        iw_u.parts.lsw = (ix1);      \
-        (d) = iw_u.value;            \
+#define INSERT_WORDS(d, ix0, ix1)           \
+    do                                      \
+    {                                       \
+        ieee_double_shape_type iw_u;        \
+        iw_u.parts.msw = (ix0);   \
+        iw_u.parts.lsw = (ix1);   \
+        (d) = iw_u.value;                   \
     } while(0)
 
 /* Set the more significant 32 bits of a double from an int.  */
-#define SET_HIGH_WORD(d, v)          \
-    do                               \
-    {                                \
-        ieee_double_shape_type sh_u; \
-        sh_u.value = (d);            \
-        sh_u.parts.msw = (v);        \
-        (d) = sh_u.value;            \
+#define SET_HIGH_WORD(d, v)             \
+    do                                  \
+    {                                   \
+        ieee_double_shape_type sh_u;    \
+        sh_u.value = (d);               \
+        sh_u.parts.msw = (v); \
+        (d) = sh_u.value;               \
     } while(0)
 
 /* Get the more significant 32 bit int from a double.  */
-#define GET_HIGH_WORD(i, d)          \
-    do                               \
-    {                                \
-        ieee_double_shape_type gh_u; \
-        gh_u.value = (d);            \
-        (i) = gh_u.parts.msw;        \
+#define GET_HIGH_WORD(i, d)             \
+    do                                  \
+    {                                   \
+        ieee_double_shape_type gh_u;    \
+        gh_u.value = (d);               \
+        (i) = gh_u.parts.msw;  \
     } while(0)
 
 /* Set the less significant 32 bits of a double from an int.  */
-#define SET_LOW_WORD(d, v)           \
-    do                               \
-    {                                \
-        ieee_double_shape_type sl_u; \
-        sl_u.value = (d);            \
-        sl_u.parts.lsw = (v);        \
-        (d) = sl_u.value;            \
+#define SET_LOW_WORD(d, v)              \
+    do                                  \
+    {                                   \
+        ieee_double_shape_type sl_u;    \
+        sl_u.value = (d);               \
+        sl_u.parts.lsw = (v);           \
+        (d) = sl_u.value;               \
     } while(0)
 
 /* Get the less significant 32 bit int from a double.  */
-#define GET_LOW_WORD(i, d)           \
-    do                               \
-    {                                \
-        ieee_double_shape_type gl_u; \
-        gl_u.value = (d);            \
-        (i) = gl_u.parts.lsw;        \
+#define GET_LOW_WORD(i, d)              \
+    do                                  \
+    {                                   \
+        ieee_double_shape_type gl_u;    \
+        gl_u.value = (d);               \
+        (i) = gl_u.parts.lsw;           \
     } while(0)
 
 static inline KDfloat32 __kdCosdfKernel(KDfloat64KHR x)
@@ -338,7 +343,7 @@ static inline KDfloat32 __kdTandfKernel(KDfloat64KHR x, KDint iy)
  *     under FreeBSD, so don't pessimize things by forcibly clipping
  *     any extra precision in w.
  */
-KDfloat64KHR __kdCosKernel(KDfloat64KHR x, KDfloat64KHR y)
+static KDfloat64KHR __kdCosKernel(KDfloat64KHR x, KDfloat64KHR y)
 {
     const KDfloat64KHR
         one = 1.00000000000000000000e+00, /* 0x3FF00000, 0x00000000 */
@@ -518,14 +523,14 @@ static KDfloat64KHR __kdTanKernel(KDfloat64KHR x, KDfloat64KHR y, KDint iy)
     }
 }
 
-KDfloat32 __kdCopysignf(KDfloat32 x, KDfloat32 y)
+static KDfloat32 __kdCopysignf(KDfloat32 x, KDfloat32 y)
 {
     __KDFloatShape ix = {x}, iy = {y};
     ix.i = (ix.i & KDINT32_MAX) | (iy.i & 0x80000000);
     return ix.f;
 }
 
-KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
+static KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
 {
     union {
         KDfloat64KHR f;
@@ -570,7 +575,7 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
     }
     if(k > 0) /* normal result */
     {
-        ix.i = (ix.i & 0x807fffff) | (k << 23);
+        ix.i = (ix.i & 0x807fffff) | ((KDuint32)k << 23);
         return ix.f;
     }
     if(k <= -25)
@@ -585,7 +590,7 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
         }
     }
     k += 25; /* subnormal result */
-    ix.i = (ix.i & 0x807fffff) | (k << 23);
+    ix.i = (ix.i & 0x807fffff) | ((KDuint32)k << 23);
     return ix.f * twom25;
 }
 
@@ -625,7 +630,7 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
     }
     if(k > 0) /* normal result */
     {
-        SET_HIGH_WORD(x, (hx & 0x800fffff) | (k << 20));
+        SET_HIGH_WORD(x, ((KDuint32)hx & 0x800fffff) | ((KDuint32)k << 20));
         return x;
     }
     if(k <= -54)
@@ -640,7 +645,7 @@ static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
         }
     }
     k += 54; /* subnormal result */
-    SET_HIGH_WORD(x, (hx & 0x800fffff) | (k << 20));
+    SET_HIGH_WORD(x, ((KDuint32)hx & 0x800fffff) | ((KDuint32)k << 20));
     return x * twom54;
 }
 
@@ -1038,7 +1043,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     }
 
     e0 = (ix >> 23) - 150; /* e0 = ilogb(|x|)-23; */
-    hx.i = ix - (e0 << 23);
+    hx.i = (KDuint32)(ix - (e0 << 23));
     tx[0] = (KDfloat64KHR)hx.f;
     n = __kdRemPio2Kernel(tx, ty, e0, 1);
     if(sign)
@@ -1050,7 +1055,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     return n;
 }
 
-KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
+static KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
 {
     const KDfloat64KHR
         zero = 0.00000000000000000000e+00,    /* 0x00000000, 0x00000000 */
@@ -4040,7 +4045,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
             {
                 return (hy < 0) ? huge * huge : tiny * tiny;
             }
-            if(ix >= 0x3ff00000)
+            else
             {
                 return (hy > 0) ? huge * huge : tiny * tiny;
             }
@@ -4857,4 +4862,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
+#elif defined(__clang__)
+#   pragma clang diagnostic pop
 #endif

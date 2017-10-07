@@ -209,10 +209,10 @@ struct KDWindow {
         struct 
         {
             KDint32 availability;
-            KDint32 flags;
             KDint32 character;
             KDint32 keycode;
-            KDint32 charflags;
+            KDuint32 flags;
+            KDuint32 charflags;
         } keyboard;
         struct 
         {
@@ -1577,7 +1577,6 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
         case(XKB_KEY_Select):
         {
             return KD_KEY_SELECT_ATX;
-            break;
         }
         case(XKB_KEY_XF86AudioMedia):
         {
@@ -1892,7 +1891,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                         /* Printable ASCII range. */
                         if((keysym >= 20) && (keysym <= 126))
                         {
-                            character = keysym;
+                            character = (KDint32)keysym;
                         }
                     }
                     lastpress = press;
@@ -1909,7 +1908,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     }
                     else
                     {
-                        KDint32 keycode = __KDKeycodeLookup(keysym);
+                        KDint32 keycode = __KDKeycodeLookup((KDint32)keysym);
                         if(keycode)
                         {
                             kdevent->type = KD_EVENT_INPUT_KEY_ATX;
@@ -2023,7 +2022,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                                 xcb_xkb_state_notify_event_t *statenotify = (xcb_xkb_state_notify_event_t *)event;
                                 xkb_state_update_mask(window->xkb.state,
                                     statenotify->baseMods, statenotify->latchedMods, statenotify->lockedMods,
-                                    statenotify->baseGroup, statenotify->latchedGroup, statenotify->lockedGroup);
+                                    (KDuint)statenotify->baseGroup, (KDuint)statenotify->latchedGroup, statenotify->lockedGroup);
                                 break;
                             }
                             default:
@@ -2123,8 +2122,8 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /******************************************************************************
  * Application startup and exit.
  ******************************************************************************/
-extern const char *__progname;
-const char *__kdAppName(KD_UNUSED const char *argv0)
+extern const KDchar *__progname;
+static const KDchar *__kdAppName(KD_UNUSED const KDchar *argv0)
 {
 #ifdef __GLIBC__
     return __progname;
@@ -2239,9 +2238,6 @@ static void __kd_AndroidOnInputQueueDestroyed(ANativeActivity *activity, AInputQ
 }
 #endif
 
-extern KDThreadOnce __kd_threadinit_once;
-extern KDThreadStorageKeyKHR __kd_threadlocal;
-extern KDThreadMutex *__kd_tls_mutex;
 static int __kdPreMain(int argc, char **argv)
 {
 #if defined(_WIN32)
@@ -2442,7 +2438,7 @@ KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *bu
             }
             case KD_INPUT_KEYBOARD_FLAGS_ATX:
             {
-                buffer[i] = __kd_window->states.keyboard.flags;
+                buffer[i] = (KDint32)__kd_window->states.keyboard.flags;
                 break;
             }
             case KD_INPUT_KEYBOARD_CHAR_ATX:
@@ -2457,7 +2453,7 @@ KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *bu
             }
             case KD_INPUT_KEYBOARD_CHARFLAGS_ATX:
             {
-                buffer[i] = __kd_window->states.keyboard.charflags;
+                buffer[i] = (KDint32)__kd_window->states.keyboard.charflags;
                 break;
             }
             case KD_STATE_DPAD_AVAILABILITY:
@@ -2850,7 +2846,7 @@ static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_point
     kdevent->userptr = window->eventuserptr;
     kdevent->type = KD_EVENT_INPUT_POINTER;
     kdevent->data.inputpointer.index = KD_INPUT_POINTER_SELECT;
-    kdevent->data.inputpointer.select = state;
+    kdevent->data.inputpointer.select = (KDint32)state;
     kdevent->data.inputpointer.x = window->states.pointer.x;
     kdevent->data.inputpointer.y = window->states.pointer.y;
 
@@ -2901,7 +2897,7 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
         /* Printable ASCII range. */
         if((keysym >= 20) && (keysym <= 126))
         {
-            character = keysym;
+            character = (KDint32)keysym;
         }
     }
 
@@ -2916,7 +2912,7 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
     }
     else
     {
-        KDint32 keycode = __KDKeycodeLookup(keysym);
+        KDint32 keycode = __KDKeycodeLookup((KDint32)keysym);
         if(keycode)
         {
             kdevent->type = KD_EVENT_INPUT_KEY_ATX;
@@ -3155,8 +3151,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
             XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
             XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW};
 
-        xcb_create_window(window->nativedisplay, screen->root_depth, (KDuintptr)window->nativewindow,
-            screen->root, 0, 0, window->properties.width, window->properties.height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
+        xcb_create_window(window->nativedisplay, screen->root_depth, (KDuint)(KDuintptr)window->nativewindow,
+            screen->root, 0, 0, (KDuint16)window->properties.width, (KDuint16)window->properties.height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
 
         xcb_intern_atom_cookie_t *ewmhcookie = xcb_ewmh_init_atoms(window->nativedisplay, &window->xcb.ewmh);
         xcb_ewmh_init_atoms_replies(&window->xcb.ewmh, ewmhcookie, KD_NULL);
@@ -3165,7 +3161,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         xcb_intern_atom_reply_t *protreply = xcb_intern_atom_reply(window->nativedisplay, protcookie, 0);
         xcb_intern_atom_cookie_t delcookie = xcb_intern_atom(window->nativedisplay, 0, 16, "WM_DELETE_WINDOW");
         xcb_intern_atom_reply_t *delreply = xcb_intern_atom_reply(window->nativedisplay, delcookie, 0);
-        xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow, (*protreply).atom, 4, 32, 1, &(*delreply).atom);
+        xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuint)(KDuintptr)window->nativewindow, (*protreply).atom, 4, 32, 1, &(*delreply).atom);
 
         xkb_x11_setup_xkb_extension(window->nativedisplay, XKB_X11_MIN_MAJOR_XKB_VERSION, XKB_X11_MIN_MINOR_XKB_VERSION,
             XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS, KD_NULL, KD_NULL, &window->xkb.firstevent, KD_NULL);
@@ -3202,7 +3198,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
             .stateDetails = required_state_details,
         };
 
-        xcb_xkb_select_events_aux(window->nativedisplay, device, required_events, 0, 0,
+        xcb_xkb_select_events_aux(window->nativedisplay, (KDuint16)device, required_events, 0, 0,
             required_map_parts, required_map_parts, &details);
     }
 #endif
@@ -3307,7 +3303,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, KD
         {
             if(param[0])
             {
-                xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuintptr)window->nativewindow,
+                xcb_change_property(window->nativedisplay, XCB_PROP_MODE_REPLACE, (KDuint)(KDuintptr)window->nativewindow,
                     window->xcb.ewmh._NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, &(window->xcb.ewmh._NET_WM_STATE_FULLSCREEN));
                 xcb_flush(window->nativedisplay);
             }
@@ -3358,7 +3354,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
             xcb_icccm_size_hints_set_max_size(&hints, param[0], param[1]);
             xcb_icccm_size_hints_set_size(&hints, 0, param[0], param[1]);
             xcb_icccm_size_hints_set_position(&hints, 0, 0, 0);
-            xcb_icccm_set_wm_size_hints(window->nativedisplay, (KDuintptr)window->nativewindow, XCB_ATOM_WM_NORMAL_HINTS, &hints);  
+            xcb_icccm_set_wm_size_hints(window->nativedisplay, (KDuint)(KDuintptr)window->nativewindow, XCB_ATOM_WM_NORMAL_HINTS, &hints);  
             xcb_flush(window->nativedisplay);
         }
 #endif   
@@ -3395,7 +3391,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 #if defined(KD_WINDOW_X11)
         if(window->platform == EGL_PLATFORM_X11_KHR)
         {
-            xcb_icccm_set_wm_name(window->nativedisplay, (KDuintptr)window->nativewindow, XCB_ATOM_STRING, 8, kdStrlen(window->properties.caption), window->properties.caption);
+            xcb_icccm_set_wm_name(window->nativedisplay, (KDuint)(KDuintptr)window->nativewindow, XCB_ATOM_STRING, 8, (KDuint32)kdStrlen(window->properties.caption), window->properties.caption);
             xcb_flush(window->nativedisplay);
         }
 #endif
@@ -3497,7 +3493,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 #if defined(KD_WINDOW_X11)
     if(window->platform == EGL_PLATFORM_X11_KHR)
     {
-        xcb_map_window(window->nativedisplay, (KDuintptr)window->nativewindow);
+        xcb_map_window(window->nativedisplay, (KDuint)(KDuintptr)window->nativewindow);
         xcb_flush(window->nativedisplay);
     }
 #endif

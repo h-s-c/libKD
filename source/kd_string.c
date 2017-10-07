@@ -97,7 +97,7 @@
  * SUCH DAMAGE.
  ******************************************************************************/
 /******************************************************************************
- * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
+ * Copyright (c) 1998 Todd C. Miller
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -196,7 +196,7 @@ static KDuint32 __kdBitScanForward(KDuint32 x)
 #if defined(__BMI__)
     return _tzcnt_u32(x);
 #elif defined(__GNUC__) || defined(__clang__)
-    return __builtin_ctz(x);
+    return (KDuint32)__builtin_ctz(x);
 #elif defined(_MSC_VER) || defined(__MINGW32__)
     return _BitScanForward((unsigned long *)&x, (unsigned long)x);
 #else
@@ -234,7 +234,10 @@ static KDuint32 __kdBitScanForward(KDuint32 x)
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
 #if defined(__SSE2__) || defined(__ARM_NEON__)
-    const KDchar *p = (const KDchar *)src;
+    KDchar _p;
+    KDchar *p = &_p;
+    kdMemcpy(&p , &src, sizeof(KDchar *));
+
     if(len >= 16)
     {
 #if defined(__SSE2__)
@@ -250,12 +253,12 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
         KDuintptr n = ip & 15;
         if(n > 0)
         {
-            ip &= ~15;
+            ip &= (KDuintptr)~15;
             KDuint32 mask = 0;
 #if defined(__SSE2__)
             __m128i x = *(const __m128i *)ip;
             __m128i a = _mm_cmpeq_epi8(x, c16);
-            mask = _mm_movemask_epi8(a);
+            mask = (KDuint32)_mm_movemask_epi8(a);
             mask &= 0xffffffffUL << n;
 #elif defined(__ARM_NEON__)
             uint8x16_t x = *(const uint8x16_t *)ip;
@@ -279,14 +282,16 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
         {
             KDuint32 mask = 0;
 #if defined(__SSE2__)
-            __m128i x = *(const __m128i *)&p[0];
-            __m128i y = *(const __m128i *)&p[16];
+            __m128i x; __m128i y;
+            kdMemcpy(&x, &p[0], sizeof(__m128i));
+            kdMemcpy(&y, &p[16], sizeof(__m128i));
             __m128i a = _mm_cmpeq_epi8(x, c16);
             __m128i b = _mm_cmpeq_epi8(y, c16);
-            mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+            mask = (KDuint32)((_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a));
 #elif defined(__ARM_NEON__)
-            uint8x16_t x = *(const uint8x16_t *)&p[0];
-            uint8x16_t y = *(const uint8x16_t *)&p[16];
+            uint8x16_t x; uint8x16_t y;
+            kdMemcpy(&x, &p[0], sizeof(uint8x16_t));
+            kdMemcpy(&y, &p[16], sizeof(uint8x16_t));
             uint8x16_t a = vceqq_u8(x, c16);
             uint8x16_t b = vceqq_u8(y, c16);
             uint8x8_t xx = vorr_u8(vget_low_u8(vorrq_u8(a, b)), vget_high_u8(vorrq_u8(a, b)));
@@ -476,7 +481,10 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
     {
         if(*str == (KDchar)ch)
         {
-            return ((KDchar *)str);
+            KDchar _p;
+            KDchar *p = &_p;
+            kdMemcpy(&p , &str, sizeof(KDchar *));
+            return p;
         }
         if(*str == '\0')
         {
@@ -606,12 +614,12 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     KDuintptr n = ip & 15;
     if(n > 0)
     {
-        ip &= ~15;
+        ip &= (KDuintptr)~15;
         KDuint32 mask = 0;
 #if defined(__SSE2__)
         __m128i x = *(const __m128i *)ip;
         __m128i a = _mm_cmpeq_epi8(x, c16);
-        mask = _mm_movemask_epi8(a);
+        mask = (KDuint32)_mm_movemask_epi8(a);
         mask &= 0xffffffffUL << n;
 #elif defined(__ARM_NEON__)
         uint8x16_t x = *(const uint8x16_t *)ip;
@@ -634,9 +642,10 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     {
         KDuint32 mask = 0;
 #if defined(__SSE2__)
-        __m128i x = *(const __m128i *)&s[0];
+        __m128i x;
+        kdMemcpy(&x, &s[0], sizeof(__m128i));
         __m128i a = _mm_cmpeq_epi8(x, c16);
-        mask = _mm_movemask_epi8(a);
+        mask = (KDuint32)_mm_movemask_epi8(a);
 #elif defined(__ARM_NEON__)
         uint8x16_t x = *(const uint8x16_t *)&s[0];
         uint8x16_t a = vceqq_u8(x, c16);
@@ -652,7 +661,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 #endif
         if(mask)
         {
-            return s + __kdBitScanForward(mask) - str;
+            return (KDsize)(s + __kdBitScanForward(mask) - str);
         }
         s += 16;
     }
@@ -661,14 +670,16 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     {
         KDuint32 mask = 0;
 #if defined(__SSE2__)
-        __m128i x = *(const __m128i *)&s[0];
-        __m128i y = *(const __m128i *)&s[16];
+        __m128i x; __m128i y;
+        kdMemcpy(&x, &s[0], sizeof(__m128i));
+        kdMemcpy(&y, &s[16], sizeof(__m128i));
         __m128i a = _mm_cmpeq_epi8(x, c16);
         __m128i b = _mm_cmpeq_epi8(y, c16);
-        mask = (_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a);
+        mask = (KDuint32)((_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a));
 #elif defined(__ARM_NEON__)
-        uint8x16_t x = *(const uint8x16_t *)&s[0];
-        uint8x16_t y = *(const uint8x16_t *)&s[16];
+        uint8x16_t x; uint8x16_t y;
+        kdMemcpy(&x, &s[0], sizeof(uint8x16_t));
+        kdMemcpy(&y, &s[16], sizeof(uint8x16_t));
         uint8x16_t a = vceqq_u8(x, c16);
         uint8x16_t b = vceqq_u8(y, c16);
         uint8x8_t xx = vorr_u8(vget_low_u8(vorrq_u8(a, b)), vget_high_u8(vorrq_u8(a, b)));
@@ -685,7 +696,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 #endif
         if(mask)
         {
-            return s + __kdBitScanForward(mask) - str;
+            return (KDsize)(s + __kdBitScanForward(mask) - str);
         }
         s += 32;
     }
@@ -725,7 +736,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     {
         d++;
     }
-    dlen = d - buf;
+    dlen = (KDsize)(d - buf);
     n = buflen - dlen;
 
     if(n == 0)
@@ -743,7 +754,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     }
     *d = '\0';
 
-    return (KDint)(dlen + (s - src)); /* count does not include NUL */
+    return (KDint)(dlen + (KDsize)(s - src)); /* count does not include NUL */
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
@@ -850,7 +861,10 @@ KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
         } while(kdStrncmp(str1, str2, len) != 0);
         str1--;
     }
-    return (KDchar *)str1;
+    KDchar _p;
+    KDchar *p = &_p;
+    kdMemcpy(&p , &str1, sizeof(KDchar *));
+    return p;
 }
 
 /* kdStrcspnVEN:  Get span until character in string. */

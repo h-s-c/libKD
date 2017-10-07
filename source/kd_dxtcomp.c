@@ -38,18 +38,29 @@
  ******************************************************************************/
 
 /* clang-format off */
-#if defined(_MSC_VER)
-#   pragma warning(push)
-#   pragma warning(disable : 4244)
-#endif
 #define STBD_ABS            kdAbs
 #define STBD_FABS           kdFabsKHR
 #define STBD_MEMSET         kdMemset
 #define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
+#if defined(_MSC_VER)
+#   pragma warning(push)
+#   pragma warning(disable : 4244)
+#elif defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wcast-align"
+#   pragma clang diagnostic ignored "-Wcast-qual"
+#   pragma clang diagnostic ignored "-Wconversion"
+#   pragma clang diagnostic ignored "-Wcomma"
+#   pragma clang diagnostic ignored "-Wconditional-uninitialized"
+#   pragma clang diagnostic ignored "-Wsign-conversion"
+#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#endif
 #include "stb_dxt.h"
 #if defined(_MSC_VER)
 #   pragma warning(pop)
+#elif defined(__clang__)
+#   pragma clang diagnostic pop
 #endif
 
 #define STBIR_ASSERT        kdAssert
@@ -62,7 +73,22 @@
 #define STBIR_POW           kdPowKHR
 #define STB_IMAGE_RESIZE_STATIC
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wbad-function-cast"
+#   pragma clang diagnostic ignored "-Wcast-align"
+#   pragma clang diagnostic ignored "-Wcast-qual"
+#   pragma clang diagnostic ignored "-Wcovered-switch-default"
+#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   pragma clang diagnostic ignored "-Wfloat-conversion"
+#   pragma clang diagnostic ignored "-Wfloat-equal"
+#   pragma clang diagnostic ignored "-Wsign-conversion"
+#   pragma clang diagnostic ignored "-Wstring-conversion"
+#endif
 #include "stb_image_resize.h"
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 /* clang-format on */
 
 /******************************************************************************
@@ -101,16 +127,16 @@ static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w
         src += y * w * 4;
         for(KDint i = 0; i < 4; ++i)
         {
-            *(KDuint32 *)block = *(KDuint32 *)src;
+            kdMemcpy(block, src, sizeof(KDuint8));
             block += 4;
             src += 4;
-            *(KDuint32 *)block = *(KDuint32 *)src;
+            kdMemcpy(block, src, sizeof(KDuint8));
             block += 4;
             src += 4;
-            *(KDuint32 *)block = *(KDuint32 *)src;
+            kdMemcpy(block, src, sizeof(KDuint8));
             block += 4;
             src += 4;
-            *(KDuint32 *)block = *(KDuint32 *)src;
+            kdMemcpy(block, src, sizeof(KDuint8));
             block += 4;
             src += (w * 4) - 12;
         }
