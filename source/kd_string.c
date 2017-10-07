@@ -361,8 +361,12 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
         return 0;
     }
 #if defined(__SSE4_2__)
-    __m128i *ptr1 = (__m128i *)src1;
-    __m128i *ptr2 = (__m128i *)src2;
+    __m128i _ptr1;
+    __m128i _ptr2;
+    __m128i *ptr1 = &_ptr1;
+    __m128i *ptr2 = &_ptr2;
+    kdMemcpy(&ptr1, &src1, sizeof(__m128i*));
+    kdMemcpy(&ptr2, &src2, sizeof(__m128i*));
     enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
 
     for(; len != 0; ptr1++, ptr2++)
@@ -373,8 +377,8 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
         if(_mm_cmpestrc(a, len, b, len, mode))
         {
             const KDint idx = _mm_cmpestri(a, len, b, len, mode);
-            const KDuint8 b1 = ((KDchar *)ptr1)[idx];
-            const KDuint8 b2 = ((KDchar *)ptr2)[idx];
+            const KDuint8 b1 = (KDuint8)(((KDchar *)ptr1)[idx]);
+            const KDuint8 b2 = (KDuint8)(((KDchar *)ptr2)[idx]);
 
             if(b1 < b2)
             {
@@ -469,8 +473,10 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
     kdAssert(ch >= 0);
     kdAssert(ch < 256);
 
-    __m128i *mem = (__m128i *)(KDchar *)str;
-    const __m128i set = _mm_setr_epi8(ch, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    __m128i _mem;
+    __m128i *mem = &_mem;
+    kdMemcpy(&mem, &str, sizeof(KDchar *));
+    const __m128i set = _mm_setr_epi8((KDchar)ch, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT };
 
     for(;; mem++)
@@ -516,8 +522,12 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
         return 0;
     }
 #if defined(__SSE4_2__) && !defined(KD_ASAN)
-    __m128i *ptr1 = (__m128i *)(KDchar *)str1;
-    __m128i *ptr2 = (__m128i *)(KDchar *)str2;
+    __m128i _ptr1;
+    __m128i _ptr2;
+    __m128i *ptr1 = &_ptr1;
+    __m128i *ptr2 = &_ptr2;
+    kdMemcpy(&ptr1, &str1, sizeof(__m128i*));
+    kdMemcpy(&ptr2, &str2, sizeof(__m128i*));
 
     for(;; ptr1++, ptr2++)
     {
@@ -531,8 +541,8 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
             /* a & b are different (not counting past-zero bytes) */
             const KDint idx = _mm_cmpistri(a, b, mode);
 
-            const KDuint8 b1 = ((KDchar *)ptr1)[idx];
-            const KDuint8 b2 = ((KDchar *)ptr2)[idx];
+            const KDuint8 b1 = (KDuint8)(((KDchar *)ptr1)[idx]);
+            const KDuint8 b2 = (KDuint8)(((KDchar *)ptr2)[idx]);
 
             if(b1 < b2)
             {
@@ -574,7 +584,10 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
 #if defined(__SSE4_2__) && !defined(KD_ASAN)
     KDsize result = 0;
     const __m128i zeros = _mm_setzero_si128();
-    __m128i *mem = (__m128i *)(KDchar *)s;
+
+    __m128i _mem;
+    __m128i *mem = &_mem;
+    kdMemcpy(&mem, &s, sizeof(KDchar *));  
 
     for(;; mem++, result += 16)
     {
@@ -591,8 +604,8 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
          */
         if(_mm_cmpistrc(data, zeros, mode))
         {
-            const KDint idx = _mm_cmpistri(data, zeros, mode);
-            return result + idx;
+            KDint idx = _mm_cmpistri(data, zeros, mode);
+            return result + (KDsize)idx;
         }
     }
 #elif defined(__SSE4_1__) && !defined(KD_ASAN)

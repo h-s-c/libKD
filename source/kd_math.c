@@ -4631,7 +4631,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
 KD_API KDfloat64KHR KD_APIENTRY kdRoundKHR(KDfloat64KHR x)
 {
 #ifdef __SSE4_1__
-    KDfloat64KHR result = 0.0f;
+    KDfloat64KHR result = 0.0;
     _mm_store_sd(&result, _mm_round_sd(_mm_load_sd(&result), _mm_load_sd(&x), _MM_FROUND_TO_NEAREST_INT));
     return result;
 #else
