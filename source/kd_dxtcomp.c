@@ -87,7 +87,10 @@
 #define STBIR_POW           kdPowKHR
 #define STB_IMAGE_RESIZE_STATIC
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#if defined(__clang__)
+#if defined __INTEL_COMPILER
+#   pragma warning push
+#   pragma warning disable 279
+#elif defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wbad-function-cast"
 #   pragma clang diagnostic ignored "-Wcast-align"
@@ -107,7 +110,9 @@
 #   pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #include "stb_image_resize.h"
-#if defined(__clang__)
+#if defined __INTEL_COMPILER
+#   pragma warning(pop)
+#elif defined(__clang__)
 #   pragma clang diagnostic pop
 #elif defined(__GNUC__)
 #   pragma GCC diagnostic pop

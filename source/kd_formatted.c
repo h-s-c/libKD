@@ -89,6 +89,7 @@
 #   pragma GCC diagnostic push
 #   pragma GCC diagnostic ignored "-Wsign-compare"
 #   pragma GCC diagnostic ignored "-Wunused-function"
+#   pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 #include "stb_sprintf.h"
 #if defined(__clang__)
