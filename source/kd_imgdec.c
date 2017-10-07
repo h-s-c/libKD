@@ -98,12 +98,19 @@
 #   pragma clang diagnostic ignored "-Wdouble-promotion"
 #   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
+#   pragma clang diagnostic ignored "-Wunused-function"
+#   pragma clang diagnostic ignored "-Wunused-parameter"
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic ignored "-Wunused-function"
+#   pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #include "stb_image.h"
 #if defined(_MSC_VER)
 #   pragma warning(pop)
 #elif defined(__clang__)
 #   pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic pop
 #endif
 /* clang-format on */
 

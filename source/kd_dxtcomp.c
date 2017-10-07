@@ -63,12 +63,18 @@
 #   pragma clang diagnostic ignored "-Wdouble-promotion"
 #   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
+#   pragma clang diagnostic ignored "-Wunused-function"
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include "stb_dxt.h"
 #if defined(_MSC_VER)
 #   pragma warning(pop)
 #elif defined(__clang__)
 #   pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic pop
 #endif
 
 #define STBIR_ASSERT        kdAssert
@@ -93,10 +99,18 @@
 #   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
 #   pragma clang diagnostic ignored "-Wstring-conversion"
+#   pragma clang diagnostic ignored "-Wunused-function"
+#   pragma clang diagnostic ignored "-Wunused-parameter"
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wunused-function"
+#   pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #include "stb_image_resize.h"
 #if defined(__clang__)
 #   pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic pop
 #endif
 /* clang-format on */
 

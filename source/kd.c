@@ -2131,21 +2131,6 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /******************************************************************************
  * Application startup and exit.
  ******************************************************************************/
-extern const KDchar *__progname;
-static const KDchar *__kdAppName(KD_UNUSED const KDchar *argv0)
-{
-#ifdef __GLIBC__
-    return __progname;
-#else
-    /* TODO: argv[0] is not a reliable way to get the appname */
-    if(argv0 == KD_NULL)
-    {
-        return "";
-    }
-    return argv0;
-#endif
-}
-
 #if defined(__ANDROID__)
 /* All Android events are send to the mainthread */
 static KDThread *__kd_androidmainthread = KD_NULL;

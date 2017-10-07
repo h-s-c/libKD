@@ -84,9 +84,11 @@
 #   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-compare"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
+#   pragma clang diagnostic ignored "-Wunused-function"
 #elif defined(__GNUC__)
 #   pragma GCC diagnostic push
 #   pragma GCC diagnostic ignored "-Wsign-compare"
+#   pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include "stb_sprintf.h"
 #if defined(__clang__)
@@ -227,7 +229,7 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
     KD_VA_START_KHR(ap, format);
 
 #if defined(__ANDROID__)
-    result = __android_log_vprint(ANDROID_LOG_INFO, __kdAppName(KD_NULL), format, ap);
+    result = __android_log_vprint(ANDROID_LOG_INFO, "OpenKODE", format, ap);
 #elif defined(__EMSCRIPTEN__)
     result = vprintf(format, ap);
 #else
