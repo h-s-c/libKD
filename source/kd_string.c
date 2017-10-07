@@ -521,51 +521,6 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
     {
         return 0;
     }
-#if defined(__SSE4_2__) && !defined(KD_ASAN)
-    __m128i _ptr1;
-    __m128i _ptr2;
-    __m128i *ptr1 = &_ptr1;
-    __m128i *ptr2 = &_ptr2;
-    kdMemcpy(&ptr1, &str1, sizeof(__m128i*));
-    kdMemcpy(&ptr2, &str2, sizeof(__m128i*));
-
-    for(;; ptr1++, ptr2++)
-    {
-        const __m128i a = _mm_loadu_si128(ptr1);
-        const __m128i b = _mm_loadu_si128(ptr2);
-
-        enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
-
-        if(_mm_cmpistrc(a, b, mode))
-        {
-            /* a & b are different (not counting past-zero bytes) */
-            const KDint idx = _mm_cmpistri(a, b, mode);
-
-            const KDuint8 b1 = (KDuint8)(((KDchar *)ptr1)[idx]);
-            const KDuint8 b2 = (KDuint8)(((KDchar *)ptr2)[idx]);
-
-            if(b1 < b2)
-            {
-                return -1;
-            }
-            else if(b1 > b2)
-            {
-                return +1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        else if(_mm_cmpistrz(a, b, mode))
-        {
-            /* a & b are same, but b contains a zero byte */
-            break;
-        }
-    }
-
-    return 0;
-#else
     while(*str1 == *str2++)
     {
         if(*str1++ == '\0')
@@ -574,7 +529,6 @@ KD_API KDint KD_APIENTRY kdStrcmp(const KDchar *str1, const KDchar *str2)
         }
     }
     return *str1 - *(str2 - 1);
-#endif
 }
 
 /* kdStrlen: Determine the length of a string. */
