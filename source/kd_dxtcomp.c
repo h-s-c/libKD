@@ -28,8 +28,15 @@
  * KD includes
  ******************************************************************************/
 
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wpadded"
+#endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 
 #include "kd_internal.h"
 
@@ -53,8 +60,9 @@
 #   pragma clang diagnostic ignored "-Wconversion"
 #   pragma clang diagnostic ignored "-Wcomma"
 #   pragma clang diagnostic ignored "-Wconditional-uninitialized"
-#   pragma clang diagnostic ignored "-Wsign-conversion"
 #   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   pragma clang diagnostic ignored "-Wpadded"
+#   pragma clang diagnostic ignored "-Wsign-conversion"
 #endif
 #include "stb_dxt.h"
 #if defined(_MSC_VER)
@@ -82,6 +90,7 @@
 #   pragma clang diagnostic ignored "-Wdouble-promotion"
 #   pragma clang diagnostic ignored "-Wfloat-conversion"
 #   pragma clang diagnostic ignored "-Wfloat-equal"
+#   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
 #   pragma clang diagnostic ignored "-Wstring-conversion"
 #endif

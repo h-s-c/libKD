@@ -28,8 +28,15 @@
  * KD includes
  ******************************************************************************/
 
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wpadded"
+#endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 
 /******************************************************************************
  * C includes
@@ -74,6 +81,7 @@
 #   pragma clang diagnostic ignored "-Wcast-qual"
 #   pragma clang diagnostic ignored "-Wconditional-uninitialized"
 #   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-compare"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
 #elif defined(__GNUC__)

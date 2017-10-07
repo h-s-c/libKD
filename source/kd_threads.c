@@ -37,8 +37,15 @@
  * KD includes
  ******************************************************************************/
 
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wpadded"
+#endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 
 #include "kd_internal.h"
 
@@ -80,9 +87,12 @@ struct KDThreadAttr {
 #if defined(KD_THREAD_POSIX)
     pthread_attr_t nativeattr;
 #endif
-    KDint detachstate;
-    KDsize stacksize;
     KDchar debugname[256];
+    KDsize stacksize;
+    KDint detachstate;
+#if KDSIZE_MAX == KDUINT64_MAX
+    KDint8 padding[4];
+#endif
 };
 KD_API KDThreadAttr *KD_APIENTRY kdThreadAttrCreate(void)
 {
@@ -658,11 +668,12 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
 
 /* kdThreadSemCreate: Create a semaphore. */
 struct KDThreadSem {
-    KDuint count;
     KDThreadMutex *mutex;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
     KDThreadCond *condition;
 #endif
+    KDuint count;
+    KDint8 padding[4];
 };
 KD_API KDThreadSem *KD_APIENTRY kdThreadSemCreate(KDuint value)
 {

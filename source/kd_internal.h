@@ -30,6 +30,7 @@ struct KDFile {
     HANDLE nativefile;
 #else
     KDint nativefile;
+    KDint8 padding[4];
 #endif
     const KDchar *pathname;
     KDboolean eof;

@@ -28,8 +28,15 @@
  * KD includes
  ******************************************************************************/
 
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wpadded"
+#endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 
 #include "kd_internal.h"
 
@@ -40,9 +47,10 @@
 /* kdSetTimer: Set timer. */
 typedef struct {
     KDint64 interval;
-    KDint periodic;
     void *eventuserptr;
     KDThread *destination;
+    KDint periodic;
+    KDint8 padding[4];
 } _KDTimerPayload;
 static void *__kdTimerHandler(void *arg)
 {

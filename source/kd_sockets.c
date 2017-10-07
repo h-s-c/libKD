@@ -37,8 +37,15 @@
  * KD includes
  ******************************************************************************/
 
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wpadded"
+#endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 
 /******************************************************************************
  * C includes

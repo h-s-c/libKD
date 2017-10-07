@@ -38,8 +38,15 @@
  ******************************************************************************/
 
 /* clang-format off */
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wpadded"
+#endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -156,8 +163,9 @@ KD_API void KD_APIENTRY kdDefaultEvent(KD_UNUSED const KDEvent *event)
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
 struct _KDCallback {
     KDCallbackFunc *func;
-    KDint eventtype;
     void *eventuserptr;
+    KDint eventtype;
+    KDint8 padding[4];
 };
 static KDboolean __kdExecCallback(KDEvent *event)
 {   
@@ -240,6 +248,7 @@ struct KDWindow {
         struct xkb_state *state;
         struct xkb_keymap *keymap;
         KDuint8 firstevent;
+        KDint8 padding[7];
     } xkb;
 #endif
 #if defined(KD_WINDOW_WAYLAND)
