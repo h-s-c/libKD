@@ -750,7 +750,8 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem)
 KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 {
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX)
-    struct timespec ts = {0};
+    struct timespec ts;
+    kdMemset(&ts, 0, sizeof(ts));
     /* Determine seconds from the overall nanoseconds */
     if((timeout % 1000000000) == 0)
     {

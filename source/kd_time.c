@@ -87,7 +87,8 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     QueryPerformanceCounter(&tick);
     return (tick.QuadPart * 1000000000LL) / tickspersecond.QuadPart;
 #elif defined(__linux__)
-    struct timespec ts = {0};
+    struct timespec ts;
+    kdMemset(&ts, 0, sizeof(ts));
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
     return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 #elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038

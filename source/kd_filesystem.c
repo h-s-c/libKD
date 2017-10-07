@@ -656,7 +656,8 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     {
         error = GetLastError();
 #else
-    struct stat posixstat = {0};
+    struct stat posixstat;
+    kdMemset(&posixstat, 0, sizeof(posixstat));
     if(stat(pathname, &posixstat) == 0)
     {
         if(posixstat.st_mode & S_IFDIR)
@@ -863,7 +864,8 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
     {
         error = GetLastError();
 #else
-    struct statfs buf = {0};
+    struct statfs buf;
+    kdMemset(&buf, 0, sizeof(buf));
     if(statfs(temp, &buf) == 0)
     {
         KDsize _freespace = (KDsize)(buf.f_bsize / 1024L) * buf.f_bavail;

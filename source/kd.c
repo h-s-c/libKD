@@ -2797,7 +2797,7 @@ EM_BOOL __kd_EmscriptenVisibilityCallback(int type, const EmscriptenVisibilityCh
 }
 
 #elif defined(KD_WINDOW_WAYLAND)
-static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) 
+static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) 
 {
     struct KDWindow *window = data;
     KDEvent *kdevent = kdCreateEvent();
@@ -2810,7 +2810,7 @@ static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointe
         kdPostEvent(kdevent);
     }
 }
-static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) 
+static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface) 
 {
     struct KDWindow *window = data;
     KDEvent *kdevent = kdCreateEvent();
@@ -2823,7 +2823,7 @@ static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointe
         kdPostEvent(kdevent);
     }
 }
-static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
+static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 time, wl_fixed_t sx, wl_fixed_t sy)
 {
     static KDuint32 lasttime = 0;
     if((lasttime + 15) < time)
@@ -2848,7 +2848,7 @@ static void __kdWaylandPointerHandleMotion(void *data, KD_UNUSED struct wl_point
     lasttime = time;
 }
 
-static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_pointer *wl_pointer, KD_UNUSED uint32_t serial, KD_UNUSED uint32_t time, KD_UNUSED uint32_t button, uint32_t state)
+static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_pointer *wl_pointer, KD_UNUSED KDuint32 serial, KD_UNUSED KDuint32 time, KD_UNUSED KDuint32 button, KDuint32 state)
 {
     struct KDWindow *window = data;
     KDEvent *kdevent = kdCreateEvent();
@@ -2867,16 +2867,19 @@ static void __kdWaylandPointerHandleButton(void *data, KD_UNUSED struct wl_point
     }
 }
 
-static void __kdWaylandPointerHandleAxis(KD_UNUSED void *data, KD_UNUSED struct wl_pointer *wl_pointer, KD_UNUSED uint32_t time, KD_UNUSED uint32_t axis, KD_UNUSED wl_fixed_t value) {}
 static const struct wl_pointer_listener __kd_wl_pointer_listener = {
     __kdWaylandPointerHandleEnter,
     __kdWaylandPointerHandleLeave,
     __kdWaylandPointerHandleMotion,
     __kdWaylandPointerHandleButton,
-    __kdWaylandPointerHandleAxis,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL
 };
 
-static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, uint32_t format, int fd, uint32_t size)
+static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KDuint32 format, int fd, KDuint32 size)
 {
     struct KDWindow *window = data;
     if(format == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1)
@@ -2889,9 +2892,9 @@ static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED stru
         window->xkb.state = xkb_state_new(window->xkb.keymap);
     }
 }
-static void __kdWaylandKeyboardHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED struct wl_array *keys) {}
-static void __kdWaylandKeyboardHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, KD_UNUSED struct wl_surface *surface) {}
-static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, KD_UNUSED uint32_t time, uint32_t key, uint32_t state)
+static void __kdWaylandKeyboardHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED struct wl_array *keys) {}
+static void __kdWaylandKeyboardHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface) {}
+static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED KDuint32 time, KDuint32 key, KDuint32 state)
 {
     struct KDWindow *window = data;
 
@@ -2967,10 +2970,14 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
         kdPostEvent(kdevent);
     }
 }
-static void __kdWaylandKeyboardHandleModifiers(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group)
+static void __kdWaylandKeyboardHandleModifiers(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KDuint32 mods_depressed, KDuint32 mods_latched, KDuint32 mods_locked, KDuint32 group)
 {
     struct KDWindow *window = data;
     xkb_state_update_mask(window->xkb.state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+}
+static void __kdWaylandKeyboardHandleRepeat(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *wl_keyboard, KD_UNUSED KDint32 rate, KD_UNUSED KDint32 delay)
+{
+    /* TODO: KD_KEY_AUTOREPEAT_ATX */
 }
 static const struct wl_keyboard_listener __kd_wl_keyboard_listener = {
     __kdWaylandKeyboardHandleKeymap,
@@ -2978,6 +2985,7 @@ static const struct wl_keyboard_listener __kd_wl_keyboard_listener = {
     __kdWaylandKeyboardHandleLeave,
     __kdWaylandKeyboardHandleKey,
     __kdWaylandKeyboardHandleModifiers,
+    __kdWaylandKeyboardHandleRepeat
 };
 
 static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, enum wl_seat_capability caps)
@@ -2995,9 +3003,11 @@ static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, 
     }
 }
 static const struct wl_seat_listener __kd_wl_seat_listener = {
-    __kdWaylandSeatHandleCapabilities};
+    __kdWaylandSeatHandleCapabilities,
+    KD_NULL
+};
 
-static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, uint32_t name, const char *interface, KD_UNUSED uint32_t version)
+static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, KDuint32 name, const KDchar *interface, KD_UNUSED KDuint32 version)
 {
     struct KDWindow *window = data;
     if(!kdStrcmp(interface, "wl_compositor"))
@@ -3016,21 +3026,22 @@ static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registr
         wl_seat_add_listener(window->wayland.seat, &__kd_wl_seat_listener, window);
     }
 }
-static void __kdWaylandRegistryRemoveObject(KD_UNUSED void *data, KD_UNUSED struct wl_registry *registry, KD_UNUSED uint32_t name) {}
 static const struct wl_registry_listener __kd_wl_registry_listener = {
     __kdWaylandRegistryAddObject,
-    __kdWaylandRegistryRemoveObject};
+    KD_NULL
+};
 
-static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
+static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, KDuint32 serial)
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED uint32_t edges, KD_UNUSED int32_t width, KD_UNUSED int32_t height) {}
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED int32_t width, KD_UNUSED int32_t height) {}
 static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
-static struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
-    &__kdWaylandShellSurfacePing,
-    &__kdWaylandShellSurfaceConfigure,
-    &__kdWaylandShellSurfacePopupDone};
+static const struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
+    __kdWaylandShellSurfacePing,
+    __kdWaylandShellSurfaceConfigure,
+    __kdWaylandShellSurfacePopupDone
+};
 #endif
 
 KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
