@@ -52,7 +52,7 @@
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__)
-#   if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
+#   if (defined(__GLIBC__) && __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
 #       include <sys/random.h> /* getentropy/getrandom */
 #   else
 #       include <unistd.h> /* getentropy */ 
@@ -515,7 +515,7 @@ KD_API KDssize KD_APIENTRY kdDtostrKHR(KDchar *buffer, KDsize buflen, KDfloat64K
 KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize buflen)
 {
     KDint retval = 0;
-#if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25
+#if defined(__GLIBC__) && __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25
     retval = (KDint)getrandom(buf, buflen, GRND_NONBLOCK);
 #elif defined(__OpenBSD__) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
     /* Non-conforming to OpenKODE spec (blocking). */

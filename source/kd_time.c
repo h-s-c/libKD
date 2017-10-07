@@ -107,7 +107,7 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
         }
     }
 #elif defined(__EMSCRIPTEN__)
-    return emscripten_get_now() * 1000000LL;
+    return (KDust)(emscripten_get_now()) * 1000000LL;
 #else
     return (clock() * 1000000000LL) / CLOCKS_PER_SEC;
 #endif

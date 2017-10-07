@@ -4393,16 +4393,16 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
     /* use floating add to find out rounding direction */
     if((ix0 | ix1) != 0)
     {
-        z = 1.0f - tiny; /* trigger inexact flag */
-        if(z >= 1.0f)
+        z = 1.0 - tiny; /* trigger inexact flag */
+        if(z >= 1.0)
         {
-            z = 1.0f + tiny;
+            z = 1.0 + tiny;
             if(q1 == (KDuint32)KDUINT_MAX)
             {
                 q1 = 0;
                 q += 1;
             }
-            else if(z > 1.0f)
+            else if(z > 1.0)
             {
                 if(q1 == (KDuint32)0xfffffffe)
                 {

@@ -596,7 +596,7 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 }
 
 /* kdTruncate: Truncate or extend a file. */
-KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
+KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff length)
 {
     KDint retval = 0;
     KDint error = 0;
@@ -609,7 +609,7 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
     {
         error = GetLastError();
 #else
-    retval = truncate(pathname, length);
+    retval = truncate(pathname, (off_t)length);
     if(retval == -1)
     {
         error = errno;

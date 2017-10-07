@@ -237,14 +237,24 @@ static KDuint32 __kdBitScanForward(KDuint32 x)
 #endif
 }
 
+#if defined(__EMSCRIPTEN__)
+/* Silence -Wunused-function */
+static KD_UNUSED KDuint32(* __dummyfunc)(KDuint32) = &__kdBitScanForward;
+#endif
+
 /* kdMemchr: Scan memory for a byte value. */
 KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
 {
-#if defined(__SSE2__) || defined(__ARM_NEON__)
+    if(!len)
+    {
+        return KD_NULL;
+    }
+
     KDchar _p;
     KDchar *p = &_p;
     kdMemcpy(&p , &src, sizeof(KDchar *));
 
+#if defined(__SSE2__) || defined(__ARM_NEON__)
     if(len >= 16)
     {
 #if defined(__SSE2__)
@@ -331,17 +341,13 @@ KD_API void *KD_APIENTRY kdMemchr(const void *src, KDint byte, KDsize len)
         len--;
     }
 #else
-    if(len != 0)
+    do
     {
-        const KDuint8 *p = src;
-        do
+        if(*p++ == (KDuint8)byte)
         {
-            if(*p++ == (KDuint8)byte)
-            {
-                return ((void *)(p - 1));
-            }
-        } while(--len != 0);
-    }
+            return ((void *)(p - 1));
+        }
+    } while(--len != 0);
 #endif
     return KD_NULL;
 }
@@ -712,7 +718,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     {
         ;
     }
-    return (s - str);
+    return (KDsize)(s - str);
 #endif
 }
 

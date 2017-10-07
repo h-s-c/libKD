@@ -52,14 +52,6 @@
 
 #include "kd_internal.h"
 
-#ifndef EGL_PLATFORM_X11_KHR
-#define EGL_PLATFORM_X11_KHR 0x31D5
-#endif 
-
-#ifndef EGL_PLATFORM_WAYLAND_KHR
-#define EGL_PLATFORM_WAYLAND_KHR 0x31D8
-#endif
-
 /******************************************************************************
  * C includes
  ******************************************************************************/
@@ -89,6 +81,12 @@
 #       include <emscripten/html5.h>
 #   endif
 #   if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+#       ifndef EGL_PLATFORM_X11_KHR
+#           define EGL_PLATFORM_X11_KHR 0x31D5
+#       endif 
+#       ifndef EGL_PLATFORM_WAYLAND_KHR
+#           define EGL_PLATFORM_WAYLAND_KHR 0x31D8
+#       endif
 #       include <xcb/xcb.h>
 #       include <xcb/randr.h>
 #       include <xkbcommon/xkbcommon.h>
@@ -2620,7 +2618,7 @@ static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wp
     return 0;
 }
 #elif defined(KD_WINDOW_EMSCRIPTEN)
-EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, void *userptr)
+static EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *event, KD_UNUSED void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
     kdevent->userptr = __kd_window->eventuserptr;
@@ -2649,12 +2647,12 @@ EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEvent *eve
     return 1;
 }
 
-EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, void *userptr)
+static EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, KD_UNUSED void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
     kdevent->userptr =__kd_window->eventuserptr;
 
-    KDint32 keycode = __KDKeycodeLookup(event->keyCode);
+    KDint32 keycode = __KDKeycodeLookup((KDint32)event->keyCode);
     if(keycode)
     {
         kdevent->type = KD_EVENT_INPUT_KEY_ATX;
@@ -2742,7 +2740,7 @@ EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEven
     return 1;
 }
 
-EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event, void *user)
+static EM_BOOL __kd_EmscriptenFocusCallback(KDint type, KD_UNUSED const EmscriptenFocusEvent *event, KD_UNUSED void *user)
 {
     if(type == EMSCRIPTEN_EVENT_FOCUSIN)
     {
@@ -2765,7 +2763,7 @@ EM_BOOL __kd_EmscriptenFocusCallback(int type, const EmscriptenFocusEvent *event
     return 1;
 }
 
-EM_BOOL __kd_EmscriptenVisibilityCallback(int type, const EmscriptenVisibilityChangeEvent *event, void *user)
+static EM_BOOL __kd_EmscriptenVisibilityCallback(KD_UNUSED KDint type, const EmscriptenVisibilityChangeEvent *event, KD_UNUSED void *user)
 {
     __kd_window->properties.visible = !event->hidden;
 
@@ -3400,9 +3398,6 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
             xcb_flush(window->nativedisplay);
         }
 #endif
-#else
-        kdSetError(KD_EINVAL);
-        return -1;
 #endif
         kdMemcpy(window->properties.caption, param, kdStrlen(param));
 

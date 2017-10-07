@@ -67,6 +67,7 @@
 #endif
 
 #if defined(__EMSCRIPTEN__)
+#   include <emscripten/emscripten.h> /* emscripten_sleep */
 #   include <emscripten/threading.h> /* emscripten_has_threading_support */
 #endif
 
@@ -298,51 +299,54 @@ static void *__kdThreadRun(void *init)
 KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*start_routine)(void *), void *arg)
 {
 #if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
-    kdSetError(KD_ENOSYS);
-    return KD_NULL;
+    if((0))
+    {
+#elif defined(__EMSCRIPTEN__)
+    if(emscripten_has_threading_support())
+    {
+#else
+    if(1)
+    {
 #endif
-#if defined(__EMSCRIPTEN__)
-    if(!emscripten_has_threading_support())
+        KDThread *thread = __kdThreadInit();
+        if(thread == KD_NULL)
+        {
+            kdSetError(KD_EAGAIN);
+            return KD_NULL;
+        }
+        thread->start_routine = start_routine;
+        thread->arg = arg;
+        thread->attr = attr;
+
+        KDint error = 0;
+#if defined(KD_THREAD_C11)
+        error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadRun, thread);
+#elif defined(KD_THREAD_POSIX)
+        error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
+#elif defined(KD_THREAD_WIN32)
+        thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadRun, (LPVOID)thread, 0, KD_NULL);
+        error = thread->nativethread ? 0 : 1;
+#endif
+
+        if(error != 0)
+        {
+            __kdThreadFree(thread);
+            kdSetError(KD_EAGAIN);
+            return KD_NULL;
+        }
+
+        if(attr && attr->detachstate == KD_THREAD_CREATE_DETACHED)
+        {
+            kdThreadDetach(thread);
+            return KD_NULL;
+        }
+        return thread;
+    }
+    else
     {
         kdSetError(KD_ENOSYS);
         return KD_NULL;
     }
-#endif
-
-    KDThread *thread = __kdThreadInit();
-    if(thread == KD_NULL)
-    {
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
-    thread->start_routine = start_routine;
-    thread->arg = arg;
-    thread->attr = attr;
-
-    KDint error = 0;
-#if defined(KD_THREAD_C11)
-    error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadRun, thread);
-#elif defined(KD_THREAD_POSIX)
-    error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
-#elif defined(KD_THREAD_WIN32)
-    thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadRun, (LPVOID)thread, 0, KD_NULL);
-    error = thread->nativethread ? 0 : 1;
-#endif
-
-    if(error != 0)
-    {
-        __kdThreadFree(thread);
-        kdSetError(KD_EAGAIN);
-        return KD_NULL;
-    }
-
-    if(attr && attr->detachstate == KD_THREAD_CREATE_DETACHED)
-    {
-        kdThreadDetach(thread);
-        return KD_NULL;
-    }
-
-    return thread;
 }
 
 /* kdThreadExit: Terminate this thread. */
@@ -414,6 +418,7 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 #elif defined(KD_THREAD_WIN32)
     CloseHandle(thread->nativethread);
 #else
+    KD_UNUSED KDThread *dummythread = thread;
     kdAssert(0);
 #endif
     if(error != 0)
@@ -569,44 +574,48 @@ struct KDThreadCond {
 KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 {
 #if !defined(KD_THREAD_C11) && !defined(KD_THREAD_POSIX) && !defined(KD_THREAD_WIN32)
-    kdSetError(KD_ENOSYS);
-    return KD_NULL;
+    if((0))
+    {
+#elif defined(__EMSCRIPTEN__)
+    if(emscripten_has_threading_support())
+    {
+#else
+    if(1)
+    {
 #endif
-#if defined(__EMSCRIPTEN__)
-    if(!emscripten_has_threading_support())
+        KDThreadCond *cond = (KDThreadCond *)kdMalloc(sizeof(KDThreadCond));
+        if(cond == KD_NULL)
+        {
+            kdSetError(KD_ENOMEM);
+            return KD_NULL;
+        }
+        KDint error = 0;
+#if defined(KD_THREAD_C11)
+        error = cnd_init(&cond->nativecond);
+        if(error == thrd_nomem)
+        {
+            kdSetError(KD_ENOMEM);
+            kdFree(cond);
+            return KD_NULL;
+        }
+#elif defined(KD_THREAD_POSIX)
+        error = pthread_cond_init(&cond->nativecond, KD_NULL);
+#elif defined(KD_THREAD_WIN32)
+        InitializeConditionVariable(&cond->nativecond);
+#endif
+        if(error != 0)
+        {
+            kdSetError(KD_EAGAIN);
+            kdFree(cond);
+            return KD_NULL;
+        }
+        return cond;
+    }
+    else 
     {
         kdSetError(KD_ENOSYS);
         return KD_NULL;
     }
-#endif
-
-    KDThreadCond *cond = (KDThreadCond *)kdMalloc(sizeof(KDThreadCond));
-    if(cond == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    KDint error = 0;
-#if defined(KD_THREAD_C11)
-    error = cnd_init(&cond->nativecond);
-    if(error == thrd_nomem)
-    {
-        kdSetError(KD_ENOMEM);
-        kdFree(cond);
-        return KD_NULL;
-    }
-#elif defined(KD_THREAD_POSIX)
-    error = pthread_cond_init(&cond->nativecond, KD_NULL);
-#elif defined(KD_THREAD_WIN32)
-    InitializeConditionVariable(&cond->nativecond);
-#endif
-    if(error != 0)
-    {
-        kdSetError(KD_EAGAIN);
-        kdFree(cond);
-        return KD_NULL;
-    }
-    return cond;
 }
 
 /* kdThreadCondFree: Free a condition variable. */
@@ -632,6 +641,7 @@ KD_API KDint KD_APIENTRY kdThreadCondSignal(KDThreadCond *cond)
 #elif defined(KD_THREAD_WIN32)
     WakeConditionVariable(&cond->nativecond);
 #else
+    KD_UNUSED KDThreadCond *dummycond = cond;
     kdAssert(0);
 #endif
     return 0;
@@ -646,6 +656,7 @@ KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 #elif defined(KD_THREAD_WIN32)
     WakeAllConditionVariable(&cond->nativecond);
 #else
+    KD_UNUSED KDThreadCond *dummycond = cond;
     kdAssert(0);
 #endif
     return 0;
@@ -661,6 +672,8 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
 #elif defined(KD_THREAD_WIN32)
     SleepConditionVariableSRW(&cond->nativecond, &mutex->nativemutex, INFINITE, 0);
 #else
+    KD_UNUSED KDThreadCond *dummycond = cond;
+    KD_UNUSED KDThreadMutex *dummymutex = mutex;
     kdAssert(0);
 #endif
     return 0;
@@ -767,7 +780,7 @@ KD_API KDint KD_APIENTRY kdThreadSleepVEN(KDust timeout)
 #endif
 
 #if defined(__EMSCRIPTEN__)
-    emscripten_sleep(timeout / 1000000);
+    emscripten_sleep((KDuint)timeout / 1000000);
 #elif defined(KD_THREAD_C11)
     thrd_sleep(&ts, KD_NULL);
 #elif defined(KD_THREAD_POSIX)
