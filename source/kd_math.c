@@ -31,6 +31,7 @@
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
+#   pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
