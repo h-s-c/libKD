@@ -12,7 +12,6 @@
 #ifndef __kd_NV_extwindowprops_h_
 #define __kd_NV_extwindowprops_h_
 #include <KD/kd.h>
-#include <EGL/eglext.h>
 
 #ifdef __cplusplus
 extern "C" {

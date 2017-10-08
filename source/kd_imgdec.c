@@ -88,7 +88,6 @@
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wcast-align"
 #   pragma clang diagnostic ignored "-Wcast-qual"
-#   pragma clang diagnostic ignored "-Wcomma"
 #   pragma clang diagnostic ignored "-Wconversion"
 #   pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
 #   pragma clang diagnostic ignored "-Wdouble-promotion"
@@ -96,6 +95,9 @@
 #   pragma clang diagnostic ignored "-Wsign-conversion"
 #   pragma clang diagnostic ignored "-Wunused-function"
 #   pragma clang diagnostic ignored "-Wunused-parameter"
+#   if __has_warning("-Wcomma")
+#       pragma clang diagnostic ignored "-Wcomma"
+#   endif
 #elif defined(__GNUC__)
 #   pragma GCC diagnostic ignored "-Wunused-function"
 #   pragma GCC diagnostic ignored "-Wunused-parameter"

@@ -90,7 +90,9 @@
 #   pragma GCC diagnostic push
 #   pragma GCC diagnostic ignored "-Wsign-compare"
 #   pragma GCC diagnostic ignored "-Wunused-function"
-#   pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#   if __GNUC__ >= 7
+#       pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#   endif
 #endif
 #include "stb_sprintf.h"
 #if defined(__clang__)

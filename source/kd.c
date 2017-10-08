@@ -2863,10 +2863,12 @@ static const struct wl_pointer_listener __kd_wl_pointer_listener = {
     __kdWaylandPointerHandleMotion,
     __kdWaylandPointerHandleButton,
     KD_NULL,
+#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 14)
     KD_NULL,
     KD_NULL,
     KD_NULL,
     KD_NULL
+#endif
 };
 
 static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KDuint32 format, int fd, KDuint32 size)
@@ -2965,17 +2967,21 @@ static void __kdWaylandKeyboardHandleModifiers(KD_UNUSED void *data, KD_UNUSED s
     struct KDWindow *window = data;
     xkb_state_update_mask(window->xkb.state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
+#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 4)
 static void __kdWaylandKeyboardHandleRepeat(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *wl_keyboard, KD_UNUSED KDint32 rate, KD_UNUSED KDint32 delay)
 {
     /* TODO: KD_KEY_AUTOREPEAT_ATX */
 }
+#endif
 static const struct wl_keyboard_listener __kd_wl_keyboard_listener = {
     __kdWaylandKeyboardHandleKeymap,
     __kdWaylandKeyboardHandleEnter,
     __kdWaylandKeyboardHandleLeave,
     __kdWaylandKeyboardHandleKey,
     __kdWaylandKeyboardHandleModifiers,
+#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 4)
     __kdWaylandKeyboardHandleRepeat
+#endif
 };
 
 static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, enum wl_seat_capability caps)
