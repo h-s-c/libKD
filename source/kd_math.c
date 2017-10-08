@@ -1504,7 +1504,7 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
     {
         return kdAtanf(y);
     }                                        /* x=1.0 */
-    m = ((hy >> 31) & 1) | ((hx >> 30) & 2); /* 2*sign(x)+sign(y) */
+    m = (((KDuint)hy >> 31) & 1) | ((hx >> 30) & 2); /* 2*sign(x)+sign(y) */
 
     /* when y = 0 */
     if(iy == 0)
@@ -3157,7 +3157,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
     {
         return kdAtanKHR(y); /* x=1.0 */
     }
-    m = ((hy >> 31) & 1) | ((hx >> 30) & 2); /* 2*sign(x)+sign(y) */
+    m = (((KDuint)hy >> 31) & 1) | ((hx >> 30) & 2); /* 2*sign(x)+sign(y) */
 
     /* when y = 0 */
     if((iy | ly) == 0)
