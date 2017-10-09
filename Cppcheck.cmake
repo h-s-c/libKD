@@ -199,29 +199,6 @@ function(add_cppcheck _name)
 			endif()
 		endforeach()
 
-		if("1.${CMAKE_VERSION}" VERSION_LESS "1.2.8.0")
-			# Older than CMake 2.8.0
-			add_test(${_name}_cppcheck_test
-				"${CPPCHECK_EXECUTABLE}"
-				${CPPCHECK_TEMPLATE_ARG}
-				${_cppcheck_args}
-				${_files})
-		else()
-			# CMake 2.8.0 and newer
-			add_test(NAME
-				${_name}_cppcheck_test
-				COMMAND
-				"${CPPCHECK_EXECUTABLE}"
-				${CPPCHECK_TEMPLATE_ARG}
-				${_cppcheck_args}
-				${_files})
-		endif()
-
-		set_tests_properties(${_name}_cppcheck_test
-			PROPERTIES
-			FAIL_REGULAR_EXPRESSION
-			"${CPPCHECK_FAIL_REGULAR_EXPRESSION}")
-
 		add_custom_target(${_name}_cppcheck
 			COMMAND
 			${CPPCHECK_EXECUTABLE}
