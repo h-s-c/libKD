@@ -285,7 +285,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     KDchar *temp = kdMalloc(length);
     KDchar *_temp = temp;
     kdMemcpy(temp, buffer, length);
-    while(length != 0 && (retval = write(file->nativefile, temp, length)) != 0)
+    while(length != 0 && (retval = __kdWrite(file->nativefile, temp, length)) != 0)
     {
         if(retval == -1)
         {
@@ -354,7 +354,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     {
         error = GetLastError();
 #else
-    KDint success = (KDint)write(file->nativefile, &byte, 1);
+    KDint success = (KDint)__kdWrite(file->nativefile, &byte, 1);
     if(success == -1)
     {
         error = errno;

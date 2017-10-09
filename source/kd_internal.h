@@ -85,6 +85,7 @@ KDsize __kdQueueSize(_KDQueue *queue);
 KDint __kdQueuePush(_KDQueue *queue, void *value);
 void* __kdQueuePull(_KDQueue *queue);
 
+KDssize __kdWrite(KDint fd, const void *buf, KDsize count);
 
 extern KDThreadOnce __kd_threadinit_once;
 extern KDThreadStorageKeyKHR __kd_threadlocal;
