@@ -64,7 +64,7 @@
  ******************************************************************************/
 
 #if defined(__GNUC__ ) && defined(__linux__) && (defined(__x86_64__) ||  defined(__i386__))
-inline static long __kdSyscall3(long arga, long argb, long argc)
+inline static long __kdSyscall3(KDint nr, long arga, long argb, long argc)
 {
     long result = 0;
 #if defined(__x86_64__)
@@ -72,7 +72,7 @@ inline static long __kdSyscall3(long arga, long argb, long argc)
     (
         "syscall"
         : "=a" (result)
-        : "0"(SYS_write), "D"(arga), "S"(argb), "d"(argc)
+        : "0"(nr), "D"(arga), "S"(argb), "d"(argc)
         : "cc", "rcx", "r11", "memory"
     );
 #elif defined(__i386__)
@@ -80,7 +80,7 @@ inline static long __kdSyscall3(long arga, long argb, long argc)
     (
         "int $0x80"
         : "=a" (result)
-        : "0"(SYS_write), "b"(arga), "c"(argb), "d"(argc)
+        : "0"(nr), "b"(arga), "c"(argb), "d"(argc)
         : "cc", "edi", "esi", "memory"
     );
 #endif
@@ -91,7 +91,7 @@ inline static long __kdSyscall3(long arga, long argb, long argc)
 KDssize __kdWrite(KDint fd, const void *buf, KDsize count)
 {
 #if defined(__GNUC__ ) && defined(__linux__) && (defined(__x86_64__) ||  defined(__i386__))
-    long result = __kdSyscall3((long)fd, (long)buf, (long)count);
+    long result = __kdSyscall3(SYS_write, (long)fd, (long)buf, (long)count);
     if (result >= -4095 && result <= -1) 
     {
         errno = (KDint)-result;
