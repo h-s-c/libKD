@@ -90,3 +90,7 @@ KDssize __kdWrite(KDint fd, const void *buf, KDsize count);
 extern KDThreadOnce __kd_threadinit_once;
 extern KDThreadStorageKeyKHR __kd_threadlocal;
 extern KDThreadMutex *__kd_tls_mutex;
+
+#if !defined(_WIN32) && defined(KD_FREESTANDING)
+extern KDint errno;
+#endif

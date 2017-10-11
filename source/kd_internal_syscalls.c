@@ -42,38 +42,66 @@
 #include "kd_internal.h"
 
 /******************************************************************************
+ * C includes
+ ******************************************************************************/
+
+#if !defined(_WIN32) && !defined(KD_FREESTANDING)
+#   include <errno.h>
+#endif
+
+
+/******************************************************************************
  * Platform includes
  ******************************************************************************/
 
 #if defined(__linux__)
 #   include <unistd.h>
+#   include <sys/syscall.h>
 #endif
 
 /******************************************************************************
  * Syscalls
  ******************************************************************************/
 
-KDssize __kdWrite(KDint fd, const void *buf, KDsize count)
+#if defined(__GNUC__ ) && defined(__linux__) && (defined(__x86_64__) ||  defined(__i386__))
+inline static long __kdSyscall3(long arga, long argb, long argc)
 {
-    KDssize retval;
-#if defined(__linux__) && defined(__x86_64__)
-    __asm__ volatile
+    long result = 0;
+#if defined(__x86_64__)
+    __asm__ __volatile__
     (
         "syscall"
-        : "=a" (retval)
-        : "0"(1), "D"(fd), "S"(buf), "d"(count)
+        : "=a" (result)
+        : "0"(SYS_write), "D"(arga), "S"(argb), "d"(argc)
         : "cc", "rcx", "r11", "memory"
     );
-#elif defined(__linux__) && defined(__i386__)
-    __asm__ volatile
+#elif defined(__i386__)
+    __asm__ __volatile__
     (
         "int $0x80"
-        : "=a" (retval)
-        : "0"(4), "b"(fd), "c"(buf), "d"(count)
+        : "=a" (result)
+        : "0"(SYS_write), "b"(arga), "c"(argb), "d"(argc)
         : "cc", "edi", "esi", "memory"
     );
-#else
-    retval = write(fd, buf, count);
 #endif
-    return retval;
+    return result;
+}
+#endif
+
+KDssize __kdWrite(KDint fd, const void *buf, KDsize count)
+{
+#if defined(__GNUC__ ) && defined(__linux__) && (defined(__x86_64__) ||  defined(__i386__))
+    long result = __kdSyscall3((long)fd, (long)buf, (long)count);
+    if (result >= -4095 && result <= -1) 
+    {
+        errno = (KDint)-result;
+        return -1;
+    } 
+    else
+    {
+        return (KDssize)result;
+    }
+#else 
+    return write(fd, buf, count);
+#endif
 }
