@@ -49,6 +49,10 @@
  * C includes
  ******************************************************************************/
 
+#if defined(KD_THREAD_C11)
+#   include <threads.h>
+#endif
+
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
 #   include <errno.h>
 #   include <time.h> /* nanosleep */
@@ -57,6 +61,10 @@
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
+
+#if defined(KD_THREAD_POSIX)
+#   include <pthread.h>
+#endif
 
 #if defined(__linux__)
 #   include <sys/prctl.h> /* prctl */
@@ -168,6 +176,19 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
+struct _KDThreadInternal { 
+#if defined(KD_THREAD_C11) 
+    thrd_t nativethread; 
+#elif defined(KD_THREAD_POSIX) 
+    pthread_t nativethread; 
+#elif defined(KD_THREAD_WIN32) 
+    HANDLE nativethread; 
+#endif 
+    void *(*start_routine)(void *); 
+    void *arg; 
+    const KDThreadAttr *attr; 
+}; 
+
 KDThread *__kdThreadInit(void)
 {
     KDThread *thread = (KDThread *)kdMalloc(sizeof(KDThread));
@@ -176,6 +197,7 @@ KDThread *__kdThreadInit(void)
         kdSetError(KD_EAGAIN);
         return KD_NULL;
     }
+    thread->internal = (_KDThreadInternal *)kdMalloc(sizeof(_KDThreadInternal));
     thread->eventqueue = __kdQueueCreate(64);
     if(thread->eventqueue == KD_NULL)
     {
@@ -213,6 +235,7 @@ void __kdThreadFree(KDThread *thread)
         kdFreeEvent((KDEvent *)__kdQueuePull(thread->eventqueue));
     }
     __kdQueueFree(thread->eventqueue);
+    kdFree(thread->internal);
     kdFree(thread);
 }
 
@@ -229,7 +252,7 @@ static void *__kdThreadRun(void *init)
     KDThread *thread = (KDThread *)init;
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     /* Set the thread name */
-    KD_UNUSED const KDchar *threadname = thread->attr ? thread->attr->debugname : "KDThread";
+    KD_UNUSED const KDchar *threadname = thread->internal->attr ? thread->internal->attr->debugname : "KDThread";
 #if defined(_MSC_VER)
     typedef HRESULT(WINAPI * SETTHREADDESCRIPTION)(HANDLE hThread, PCWSTR lpThreadDescription);
     SETTHREADDESCRIPTION __SetThreadDescription = KD_NULL;
@@ -283,8 +306,8 @@ static void *__kdThreadRun(void *init)
 #endif
 
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
-    void *result = thread->start_routine(thread->arg);
-    if(thread->attr && thread->attr->detachstate == KD_THREAD_CREATE_DETACHED)
+    void *result = thread->internal->start_routine(thread->internal->arg);
+    if(thread->internal->attr && thread->internal->attr->detachstate == KD_THREAD_CREATE_DETACHED)
     {
         __kdThreadFree(thread);
     }
@@ -310,18 +333,18 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
             kdSetError(KD_EAGAIN);
             return KD_NULL;
         }
-        thread->start_routine = start_routine;
-        thread->arg = arg;
-        thread->attr = attr;
+        thread->internal->start_routine = start_routine;
+        thread->internal->arg = arg;
+        thread->internal->attr = attr;
 
         KDint error = 0;
 #if defined(KD_THREAD_C11)
-        error = thrd_create(&thread->nativethread, (thrd_start_t)__kdThreadRun, thread);
+        error = thrd_create(&thread->internal->nativethread, (thrd_start_t)__kdThreadRun, thread);
 #elif defined(KD_THREAD_POSIX)
-        error = pthread_create(&thread->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
+        error = pthread_create(&thread->internal->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
 #elif defined(KD_THREAD_WIN32)
-        thread->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadRun, (LPVOID)thread, 0, KD_NULL);
-        error = thread->nativethread ? 0 : 1;
+        thread->internal->nativethread = CreateThread(KD_NULL, attr ? attr->stacksize : 0, (LPTHREAD_START_ROUTINE)__kdThreadRun, (LPVOID)thread, 0, KD_NULL);
+        error = thread->internal->nativethread ? 0 : 1;
 #endif
 
         if(error != 0)
@@ -382,15 +405,15 @@ KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
     KD_UNUSED KDint error = 0;
     KDint result = 0;
 #if defined(KD_THREAD_C11)
-    error = thrd_join(thread->nativethread, ipretval);
+    error = thrd_join(thread->internal->nativethread, ipretval);
     if(error == thrd_error)
 #elif defined(KD_THREAD_POSIX)
-    error = pthread_join(thread->nativethread, retval);
+    error = pthread_join(thread->internal->nativethread, retval);
     if(error == EINVAL || error == ESRCH)
 #elif defined(KD_THREAD_WIN32)
-    error = WaitForSingleObject(thread->nativethread, INFINITE);
-    GetExitCodeThread(thread->nativethread, (LPDWORD)ipretval);
-    CloseHandle(thread->nativethread);
+    error = WaitForSingleObject(thread->internal->nativethread, INFINITE);
+    GetExitCodeThread(thread->internal->nativethread, (LPDWORD)ipretval);
+    CloseHandle(thread->internal->nativethread);
     if(error != 0)
 #else
     kdAssert(0);
@@ -408,11 +431,11 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 {
     KDint error = 0;
 #if defined(KD_THREAD_C11)
-    error = thrd_detach(thread->nativethread);
+    error = thrd_detach(thread->internal->nativethread);
 #elif defined(KD_THREAD_POSIX)
-    error = pthread_detach(thread->nativethread);
+    error = pthread_detach(thread->internal->nativethread);
 #elif defined(KD_THREAD_WIN32)
-    CloseHandle(thread->nativethread);
+    CloseHandle(thread->internal->nativethread);
 #else
     KD_UNUSED KDThread *dummythread = thread;
     kdAssert(0);

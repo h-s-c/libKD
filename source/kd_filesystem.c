@@ -429,12 +429,12 @@ typedef struct {
 #else
     KDint seekorigin;
 #endif
-} __KDSeekOrigin;
+} _KDSeekOrigin;
 
 #if defined(_WIN32)
-static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, FILE_BEGIN}, {KD_SEEK_CUR, FILE_CURRENT}, {KD_SEEK_END, FILE_END}};
+static _KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, FILE_BEGIN}, {KD_SEEK_CUR, FILE_CURRENT}, {KD_SEEK_END, FILE_END}};
 #else
-static __KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
+static _KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
 #endif
 
 /* kdFseek: Reposition the file position indicator in a file. */
@@ -716,11 +716,11 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     {
         error = GetLastError();
 #else
-    typedef struct __KDAccessMode {
+    typedef struct _KDAccessMode {
         KDint accessmode_kd;
         KDint accessmode_posix;
-    } __KDAccessMode;
-    __KDAccessMode accessmodes[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
+    } _KDAccessMode;
+    _KDAccessMode accessmodes[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
     KDint accessmode = 0;
     for(KDuint i = 0; i < sizeof(accessmodes) / sizeof(accessmodes[0]); i++)
     {

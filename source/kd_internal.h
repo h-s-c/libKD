@@ -21,10 +21,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
-typedef struct _KDCallback _KDCallback;
-typedef struct _KDImageATX _KDImageATX;
-typedef struct _KDQueue _KDQueue;
-
 struct KDFile {
 #if defined(_WIN32)
     HANDLE nativefile;
@@ -37,23 +33,11 @@ struct KDFile {
     KDboolean error;
 };
 
-#if defined(KD_THREAD_POSIX)
-#   include <pthread.h>
-#elif defined(KD_THREAD_C11)
-#   include <threads.h>
-#endif
-
+typedef struct _KDQueue _KDQueue;
+typedef struct _KDCallback _KDCallback;
+typedef struct _KDThreadInternal _KDThreadInternal;
 struct KDThread {
-#if defined(KD_THREAD_C11)
-    thrd_t nativethread;
-#elif defined(KD_THREAD_POSIX)
-    pthread_t nativethread;
-#elif defined(KD_THREAD_WIN32)
-    HANDLE nativethread;
-#endif
-    void *(*start_routine)(void *);
-    void *arg;
-    const KDThreadAttr *attr;
+    _KDThreadInternal *internal;
     _KDQueue *eventqueue;
     KDEvent *lastevent;
     KDint lasterror;
@@ -62,6 +46,7 @@ struct KDThread {
     void *tlsptr;
 };
 
+typedef struct _KDImageATX _KDImageATX;
 struct _KDImageATX {
     KDuint8 *buffer;
     KDsize size;
