@@ -174,7 +174,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         access = O_RDWR | O_CREAT;
         create = S_IRUSR | S_IWUSR;
     }
-    file->nativefile = open(pathname, access | O_CLOEXEC, create);
+    file->nativefile = __kdOpen(pathname, access | O_CLOEXEC, create);
     if(file->nativefile == -1)
     {
         error = errno;
@@ -243,7 +243,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
         error = GetLastError();
 #else
     KDchar *temp = buffer;
-    while(length != 0 && (retval = read(file->nativefile, temp, length)) != 0)
+    while(length != 0 && (retval = __kdRead(file->nativefile, temp, length)) != 0)
     {
         if(retval == -1)
         {
@@ -326,7 +326,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     {
         error = GetLastError();
 #else
-    KDint success = (KDint)read(file->nativefile, &byte, 1);
+    KDint success = (KDint)__kdRead(file->nativefile, &byte, 1);
     if(success == 0)
     {
         file->eof = KD_TRUE;

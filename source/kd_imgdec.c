@@ -143,7 +143,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     image->size = (KDsize)st.st_size;
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    KDint fd = open(pathname, O_RDONLY | O_CLOEXEC, 0);
+    KDint fd = __kdOpen(pathname, O_RDONLY | O_CLOEXEC, 0);
     if(fd == -1)
 #elif(_WIN32)
     WIN32_FIND_DATA data;

@@ -56,6 +56,7 @@
 
 #if defined(__linux__)
 #   include <unistd.h>
+#   include <fcntl.h>
 #   include <sys/syscall.h>
 #endif
 
@@ -63,11 +64,10 @@
  * Syscalls
  ******************************************************************************/
 
-#if defined(__GNUC__ ) && defined(__linux__) && (defined(__x86_64__) ||  defined(__i386__))
+#if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
 inline static long __kdSyscall3(KDint nr, long arga, long argb, long argc)
 {
     long result = 0;
-#if defined(__x86_64__)
     __asm__ __volatile__
     (
         "syscall"
@@ -75,23 +75,11 @@ inline static long __kdSyscall3(KDint nr, long arga, long argb, long argc)
         : "0"(nr), "D"(arga), "S"(argb), "d"(argc)
         : "cc", "rcx", "r11", "memory"
     );
-#elif defined(__i386__)
-    __asm__ __volatile__
-    (
-        "int $0x80"
-        : "=a" (result)
-        : "0"(nr), "b"(arga), "c"(argb), "d"(argc)
-        : "cc", "edi", "esi", "memory"
-    );
-#endif
     return result;
 }
-#endif
 
-KDssize __kdWrite(KDint fd, const void *buf, KDsize count)
+inline static long __kdSyscallRes(long result)
 {
-#if defined(__GNUC__ ) && defined(__linux__) && (defined(__x86_64__) ||  defined(__i386__))
-    long result = __kdSyscall3(SYS_write, (long)fd, (long)buf, (long)count);
     if (result >= -4095 && result <= -1) 
     {
         errno = (KDint)-result;
@@ -99,9 +87,37 @@ KDssize __kdWrite(KDint fd, const void *buf, KDsize count)
     } 
     else
     {
-        return (KDssize)result;
+        return result;
     }
+}
+#endif
+
+KDssize __kdWrite(KDint fd, const void *buf, KDsize count)
+{
+#if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
+    long result = __kdSyscall3(SYS_write, (long)fd, (long)buf, (long)count);
+    return (KDssize)__kdSyscallRes(result);
 #else 
     return write(fd, buf, count);
+#endif
+}
+
+KDssize __kdRead(KDint fd, const void *buf, KDsize count)
+{
+#if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
+    long result = __kdSyscall3(SYS_read, (long)fd, (long)buf, (long)count);
+    return (KDssize)__kdSyscallRes(result);
+#else 
+    return read(fd, buf, count);
+#endif
+}
+
+KDint __kdOpen(const KDchar *pathname, KDint flags, KDint mode)
+{
+#if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
+    long result = __kdSyscall3(SYS_open, (long)pathname, (long)flags, (long)mode);
+    return (KDssize)__kdSyscallRes(result);
+#else 
+    return open(pathname, flags, mode);
 #endif
 }

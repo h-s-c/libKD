@@ -4053,7 +4053,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
             {
                 return (hy < 0) ? huge * huge : tiny * tiny;
             }
-            else
+            if(ix >= 0x3ff00000) 
             {
                 return (hy > 0) ? huge * huge : tiny * tiny;
             }
