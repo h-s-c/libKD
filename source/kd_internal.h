@@ -73,7 +73,7 @@ void* __kdQueuePull(_KDQueue *queue);
 #if !defined(_WIN32)
 KDssize __kdWrite(KDint fd, const void *buf, KDsize count);
 KDssize __kdRead(KDint fd, const void *buf, KDsize count);
-KDint __kdOpen(const KDchar *pathname, KDint flags, KDint mode);
+KDint __kdOpen(const KDchar *pathname, KDint flags, KDuint mode);
 #endif
 
 extern KDThreadOnce __kd_threadinit_once;

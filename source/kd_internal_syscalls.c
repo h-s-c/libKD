@@ -115,7 +115,7 @@ KDssize __kdRead(KDint fd, const void *buf, KDsize count)
 #endif
 }
 
-KDint __kdOpen(const KDchar *pathname, KDint flags, KDint mode)
+KDint __kdOpen(const KDchar *pathname, KDint flags, KDuint mode)
 {
 #if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
     long result = __kdSyscall3(SYS_open, (long)pathname, (long)flags, (long)mode);
