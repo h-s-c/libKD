@@ -105,7 +105,7 @@ KDssize __kdWrite(KDint fd, const void *buf, KDsize count)
 #endif
 }
 
-KDssize __kdRead(KDint fd, const void *buf, KDsize count)
+KDssize __kdRead(KDint fd, void *buf, KDsize count)
 {
 #if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
     long result = __kdSyscall3(SYS_read, (long)fd, (long)buf, (long)count);
