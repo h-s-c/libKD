@@ -2967,7 +2967,7 @@ static void __kdWaylandKeyboardHandleModifiers(KD_UNUSED void *data, KD_UNUSED s
     struct KDWindow *window = data;
     xkb_state_update_mask(window->xkb.state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
-#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 4)
+#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 14)
 static void __kdWaylandKeyboardHandleRepeat(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *wl_keyboard, KD_UNUSED KDint32 rate, KD_UNUSED KDint32 delay)
 {
     /* TODO: KD_KEY_AUTOREPEAT_ATX */
@@ -2979,7 +2979,7 @@ static const struct wl_keyboard_listener __kd_wl_keyboard_listener = {
     __kdWaylandKeyboardHandleLeave,
     __kdWaylandKeyboardHandleKey,
     __kdWaylandKeyboardHandleModifiers,
-#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 4)
+#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 14)
     __kdWaylandKeyboardHandleRepeat
 #endif
 };
