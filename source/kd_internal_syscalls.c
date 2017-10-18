@@ -119,7 +119,7 @@ KDint __kdOpen(const KDchar *pathname, KDint flags, KDuint mode)
 {
 #if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
     long result = __kdSyscall3(SYS_open, (long)pathname, (long)flags, (long)mode);
-    return (KDssize)__kdSyscallRes(result);
+    return (KDint)__kdSyscallRes(result);
 #else 
     return open(pathname, flags, mode);
 #endif
