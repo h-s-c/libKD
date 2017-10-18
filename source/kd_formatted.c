@@ -83,7 +83,9 @@
 #   pragma clang diagnostic ignored "-Wcast-align"
 #   pragma clang diagnostic ignored "-Wcast-qual"
 #   pragma clang diagnostic ignored "-Wconditional-uninitialized"
-#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   if __has_warning("-Wdouble-promotion")
+#       pragma clang diagnostic ignored "-Wdouble-promotion"
+#   endif
 #   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-compare"
 #   pragma clang diagnostic ignored "-Wsign-conversion"

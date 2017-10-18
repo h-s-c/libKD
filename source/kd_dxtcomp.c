@@ -60,7 +60,9 @@
 #   pragma clang diagnostic ignored "-Wcast-qual"
 #   pragma clang diagnostic ignored "-Wconversion"
 #   pragma clang diagnostic ignored "-Wconditional-uninitialized"
-#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   if __has_warning("-Wdouble-promotion")
+#       pragma clang diagnostic ignored "-Wdouble-promotion"
+#   endif
 #   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
 #   pragma clang diagnostic ignored "-Wunused-function"
@@ -99,7 +101,9 @@
 #   pragma clang diagnostic ignored "-Wcast-align"
 #   pragma clang diagnostic ignored "-Wcast-qual"
 #   pragma clang diagnostic ignored "-Wcovered-switch-default"
-#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   if __has_warning("-Wdouble-promotion")
+#       pragma clang diagnostic ignored "-Wdouble-promotion"
+#   endif
 #   pragma clang diagnostic ignored "-Wfloat-conversion"
 #   pragma clang diagnostic ignored "-Wfloat-equal"
 #   pragma clang diagnostic ignored "-Wpadded"
