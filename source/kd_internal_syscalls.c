@@ -54,16 +54,19 @@
  * Platform includes
  ******************************************************************************/
 
-#if defined(__linux__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 #   include <unistd.h>
 #   include <fcntl.h>
-#   include <sys/syscall.h>
+#   if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
+#       include <sys/syscall.h>
+#   endif
 #endif
 
 /******************************************************************************
  * Syscalls
  ******************************************************************************/
 
+#if !defined(_WIN32)
 #if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
 inline static long __kdSyscall3(KDint nr, long arga, long argb, long argc)
 {
@@ -121,3 +124,4 @@ KDint __kdOpen(const KDchar *pathname, KDint flags, KDint mode)
     return open(pathname, flags, mode);
 #endif
 }
+#endif
