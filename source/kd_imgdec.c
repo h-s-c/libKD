@@ -32,7 +32,9 @@
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
-#   pragma clang diagnostic ignored "-Wreserved-id-macro"
+#   if __has_warning("-Wreserved-id-macro")
+#       pragma clang diagnostic ignored "-Wreserved-id-macro"
+#   endif
 #endif
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
 #   define _GNU_SOURCE /* O_CLOEXEC */
@@ -90,7 +92,9 @@
 #   pragma clang diagnostic ignored "-Wcast-qual"
 #   pragma clang diagnostic ignored "-Wconversion"
 #   pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
-#   pragma clang diagnostic ignored "-Wdouble-promotion"
+#   if __has_warning("-Wdouble-promotion")
+#       pragma clang diagnostic ignored "-Wdouble-promotion"
+#   endif
 #   pragma clang diagnostic ignored "-Wpadded"
 #   pragma clang diagnostic ignored "-Wsign-conversion"
 #   pragma clang diagnostic ignored "-Wunused-function"

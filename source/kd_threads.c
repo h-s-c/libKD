@@ -32,7 +32,9 @@
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
-#   pragma clang diagnostic ignored "-Wreserved-id-macro"
+#   if __has_warning("-Wreserved-id-macro")
+#       pragma clang diagnostic ignored "-Wreserved-id-macro"
+#   endif
 #endif
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
 #   define _GNU_SOURCE /* O_CLOEXEC */
