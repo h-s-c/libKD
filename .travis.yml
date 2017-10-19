@@ -246,19 +246,6 @@ jobs:
         - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
-    - os: osx
-      compiler: clang
-      osx_image: xcode6.4
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
-        - python ci-tools/install_cmake.py  
-      script: python ci-tools/run_ctest.py
-
     - stage: 'Testing (coverity)'
       os: linux
       dist: trusty
