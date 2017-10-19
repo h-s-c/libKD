@@ -28,6 +28,7 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
@@ -47,7 +48,6 @@
  * C includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__EMSCRIPTEN__) && !defined(KD_FREESTANDING)
 #   include <stdio.h> /* vprintf */
 #endif
@@ -71,7 +71,6 @@
 #   include <windows.h> /* GetStdHandle */
 #   include <fileapi.h> /* WriteFile etc. */
 #endif
-/* clang-format on */
 
 /******************************************************************************
  * Thirdparty includes
@@ -106,6 +105,7 @@
 #elif defined(__GNUC__)
 #   pragma GCC diagnostic pop
 #endif
+/* clang-format on */
 
 /******************************************************************************
  * OpenKODE Core extension: KD_KHR_formatted
@@ -233,9 +233,10 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
 #endif
 
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-__attribute__((__format__ (__printf__, 1, 2)))
+__attribute__((__format__(__printf__, 1, 2)))
 #endif
-KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...)
+KD_API KDint KD_APIENTRY
+kdLogMessagefKHR(const KDchar *format, ...)
 {
     KDint result = 0;
     KDVaListKHR ap;
@@ -267,38 +268,38 @@ KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ..
 
 KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, KDVaListKHR ap)
 {
-    KDint             count, noassign, width, base, lflag;
-    const KDchar     *tc;
-    KDchar           *t, tmp[128];
+    KDint count, noassign, width, base, lflag;
+    const KDchar *tc;
+    KDchar *t, tmp[128];
 
     count = noassign = width = lflag = 0;
-    while (*format && *str) 
+    while(*format && *str)
     {
-        while (kdIsspaceVEN (*format))
+        while(kdIsspaceVEN(*format))
         {
             format++;
         }
-        if (*format == '%') 
+        if(*format == '%')
         {
             format++;
-            for (; *format; format++) 
+            for(; *format; format++)
             {
-                if (kdStrchr ("dibouxcsefg%", *format))
+                if(kdStrchr("dibouxcsefg%", *format))
                 {
                     break;
                 }
-                if (*format == '*')
+                if(*format == '*')
                 {
                     noassign = 1;
                 }
-                else if (*format == 'l' || *format == 'L')
+                else if(*format == 'l' || *format == 'L')
                 {
                     lflag = 1;
                 }
-                else if (*format >= '1' && *format <= '9') 
+                else if(*format >= '1' && *format <= '9')
                 {
 
-                    for (tc = format; kdIsdigitVEN (*format); format++)
+                    for(tc = format; kdIsdigitVEN(*format); format++)
                     {
                         ;
                     }
@@ -308,55 +309,55 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                     format--;
                 }
             }
-            if (*format == 's') 
+            if(*format == 's')
             {
-                while (kdIsspaceVEN (*str))
+                while(kdIsspaceVEN(*str))
                 {
                     str++;
                 }
-                if (!width)
+                if(!width)
                 {
-                    width = (KDint)kdStrcspnVEN (str, " \t\n\r\f\v");
+                    width = (KDint)kdStrcspnVEN(str, " \t\n\r\f\v");
                 }
-                if (!noassign) 
+                if(!noassign)
                 {
                     kdStrncpy_s(t = (KDchar *)KD_VA_ARG_PTR_KHR(ap), (KDsize)width, str, (KDsize)width);
                     t[width] = '\0';
                 }
                 str += width;
-            } 
-            else if (*format == 'c') 
+            }
+            else if(*format == 'c')
             {
-                if (!width)
+                if(!width)
                 {
                     width = 1;
                 }
-                if (!noassign) 
+                if(!noassign)
                 {
                     kdStrncpy_s(t = (KDchar *)KD_VA_ARG_PTR_KHR(ap), (KDsize)width, str, (KDsize)width);
                     t[width] = '\0';
                 }
                 str += width;
-            } 
-            else if (kdStrchr("dobxu", *format)) 
+            }
+            else if(kdStrchr("dobxu", *format))
             {
-                while (kdIsspaceVEN (*str))
+                while(kdIsspaceVEN(*str))
                 {
                     str++;
                 }
-                if (*format == 'd' || *format == 'u')
+                if(*format == 'd' || *format == 'u')
                 {
                     base = 10;
                 }
-                else if (*format == 'x')
+                else if(*format == 'x')
                 {
                     base = 16;
                 }
-                else if (*format == 'o')
+                else if(*format == 'o')
                 {
                     base = 8;
                 }
-                else if (*format == 'b')
+                else if(*format == 'b')
                 {
                     base = 2;
                 }
@@ -364,11 +365,11 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 {
                     base = 10;
                 }
-                if (!width) 
+                if(!width)
                 {
-                    if (kdIsspaceVEN (*(format + 1)) || *(format + 1) == 0)
+                    if(kdIsspaceVEN(*(format + 1)) || *(format + 1) == 0)
                     {
-                        width = (KDint)kdStrcspnVEN (str, " \t\n\r\f\v");
+                        width = (KDint)kdStrcspnVEN(str, " \t\n\r\f\v");
                     }
                     else
                     {
@@ -378,9 +379,9 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 kdStrncpy_s(tmp, (KDsize)width, str, (KDsize)width);
                 tmp[width] = '\0';
                 str += width;
-                if (!noassign)
+                if(!noassign)
                 {
-                    if (lflag)
+                    if(lflag)
                     {
                         KDint64 *i = (KDint64 *)KD_VA_ARG_PTR_KHR(ap);
                         *i = (KDint64)kdStrtol(tmp, KD_NULL, base);
@@ -392,19 +393,20 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                     }
                 }
             }
-            if (!noassign)
+            if(!noassign)
             {
                 count++;
             }
             width = noassign = lflag = 0;
             format++;
-        } else 
+        }
+        else
         {
-            while (kdIsspaceVEN (*str))
+            while(kdIsspaceVEN(*str))
             {
                 str++;
             }
-            if (*format != *str)
+            if(*format != *str)
             {
                 break;
             }

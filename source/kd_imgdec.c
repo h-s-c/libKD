@@ -265,7 +265,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
     image->levels = 0;
-    image->bpp= 8;
+    image->bpp = 8;
 
     KDStat st;
     if(kdFstat(file, &st) == -1)

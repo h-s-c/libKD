@@ -28,6 +28,7 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
@@ -45,7 +46,6 @@
  * C includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(KD_ATOMIC_C11)
 #   include <stdatomic.h> /* atomic_.. */
 #endif

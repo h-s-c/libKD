@@ -28,6 +28,7 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
@@ -42,6 +43,7 @@
 #endif
 
 #include "kd_internal.h"
+/* clang-format on */
 
 /******************************************************************************
  * MPMC, FIFO queue
@@ -63,7 +65,7 @@ struct _KDQueue {
     KDAtomicIntVEN *head;
 };
 
-_KDQueue * __kdQueueCreate(KDsize size)
+_KDQueue *__kdQueueCreate(KDsize size)
 {
     kdAssert((size >= 2) && ((size & (size - 1)) == 0));
 
@@ -145,7 +147,7 @@ KDint __kdQueuePush(_KDQueue *queue, void *value)
     return 0;
 }
 
-void * __kdQueuePull(_KDQueue *queue)
+void *__kdQueuePull(_KDQueue *queue)
 {
     _kdQueueCell *cell;
     KDsize pos = (KDsize)kdAtomicIntLoadVEN(queue->head);

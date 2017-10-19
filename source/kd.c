@@ -169,7 +169,7 @@ struct _KDCallback {
     KDint8 padding[4];
 };
 static KDboolean __kdExecCallback(KDEvent *event)
-{   
+{
     KDint callbackindex = kdThreadSelf()->callbackindex;
     _KDCallback **callbacks = kdThreadSelf()->callbacks;
     for(KDint i = 0; i < callbackindex; i++)
@@ -208,14 +208,14 @@ struct KDWindow {
     } properties;
     struct
     {
-        struct 
+        struct
         {
             KDint32 availability;
             KDint32 select;
             KDint32 x;
             KDint32 y;
         } pointer;
-        struct 
+        struct
         {
             KDint32 availability;
             KDint32 character;
@@ -223,7 +223,7 @@ struct KDWindow {
             KDuint32 flags;
             KDuint32 charflags;
         } keyboard;
-        struct 
+        struct
         {
             KDint32 availability;
             KDint32 up;
@@ -232,7 +232,7 @@ struct KDWindow {
             KDint32 down;
             KDint32 select;
         } dpad;
-        struct 
+        struct
         {
             KDint32 availability;
             KDint32 up;
@@ -291,64 +291,64 @@ static void __kdHandleSpecialKeys(KDWindow *window, KDEventInputKeyATX *keyevent
     KDEvent *gamekeysevent = kdCreateEvent();
     gamekeysevent->type = KD_EVENT_INPUT;
 
-    switch(keyevent->keycode) 
+    switch(keyevent->keycode)
     {
-        case(KD_KEY_UP_ATX): 
+        case(KD_KEY_UP_ATX):
         {
             window->states.dpad.up = keyevent->flags & KD_KEY_PRESS_ATX;
-            dpadevent->data.input.index = KD_INPUT_DPAD_UP; 
+            dpadevent->data.input.index = KD_INPUT_DPAD_UP;
             dpadevent->data.input.value.i = window->states.dpad.up;
 
             window->states.gamekeys.up = keyevent->flags & KD_KEY_PRESS_ATX;
-            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_UP; 
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_UP;
             gamekeysevent->data.input.value.i = window->states.gamekeys.up;
             break;
         }
-        case(KD_KEY_LEFT_ATX): 
+        case(KD_KEY_LEFT_ATX):
         {
             window->states.dpad.left = keyevent->flags & KD_KEY_PRESS_ATX;
-            dpadevent->data.input.index = KD_INPUT_DPAD_LEFT; 
+            dpadevent->data.input.index = KD_INPUT_DPAD_LEFT;
             dpadevent->data.input.value.i = window->states.dpad.left;
 
             window->states.gamekeys.left = keyevent->flags & KD_KEY_PRESS_ATX;
-            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_LEFT; 
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_LEFT;
             gamekeysevent->data.input.value.i = window->states.gamekeys.left;
             break;
         }
-        case(KD_KEY_RIGHT_ATX): 
+        case(KD_KEY_RIGHT_ATX):
         {
             window->states.dpad.right = keyevent->flags & KD_KEY_PRESS_ATX;
-            dpadevent->data.input.index = KD_INPUT_DPAD_RIGHT; 
+            dpadevent->data.input.index = KD_INPUT_DPAD_RIGHT;
             dpadevent->data.input.value.i = window->states.dpad.right;
 
             window->states.gamekeys.right = keyevent->flags & KD_KEY_PRESS_ATX;
-            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_RIGHT; 
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_RIGHT;
             gamekeysevent->data.input.value.i = window->states.gamekeys.right;
             break;
         }
-        case(KD_KEY_DOWN_ATX): 
+        case(KD_KEY_DOWN_ATX):
         {
             window->states.dpad.down = keyevent->flags & KD_KEY_PRESS_ATX;
-            dpadevent->data.input.index = KD_INPUT_DPAD_DOWN; 
+            dpadevent->data.input.index = KD_INPUT_DPAD_DOWN;
             dpadevent->data.input.value.i = window->states.dpad.down;
 
             window->states.gamekeys.down = keyevent->flags & KD_KEY_PRESS_ATX;
-            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_DOWN; 
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_DOWN;
             gamekeysevent->data.input.value.i = window->states.gamekeys.down;
             break;
         }
         case(KD_KEY_ENTER_ATX):
         {
             window->states.dpad.select = keyevent->flags & KD_KEY_PRESS_ATX;
-            dpadevent->data.input.index = KD_INPUT_DPAD_SELECT; 
+            dpadevent->data.input.index = KD_INPUT_DPAD_SELECT;
             dpadevent->data.input.value.i = window->states.dpad.select;
 
             window->states.gamekeys.fire = keyevent->flags & KD_KEY_PRESS_ATX;
-            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_FIRE; 
+            gamekeysevent->data.input.index = KD_INPUT_GAMEKEYS_FIRE;
             gamekeysevent->data.input.value.i = window->states.gamekeys.fire;
             break;
         }
-        default: 
+        default:
         {
             kdFreeEvent(dpadevent);
             kdFreeEvent(gamekeysevent);
@@ -356,19 +356,19 @@ static void __kdHandleSpecialKeys(KDWindow *window, KDEventInputKeyATX *keyevent
         }
     }
 
-    if(!__kdExecCallback(dpadevent)) 
-    { 
-        kdPostEvent(dpadevent); 
-    } 
-    if(!__kdExecCallback(gamekeysevent)) 
-    { 
-        kdPostEvent(gamekeysevent); 
+    if(!__kdExecCallback(dpadevent))
+    {
+        kdPostEvent(dpadevent);
+    }
+    if(!__kdExecCallback(gamekeysevent))
+    {
+        kdPostEvent(gamekeysevent);
     }
 }
 
 #if defined(__ANDROID__)
 /* Silence -Wunused-function */
-static KD_UNUSED void(* __dummyfunc)(KDWindow *, KDEventInputKeyATX *) = &__kdHandleSpecialKeys;
+static KD_UNUSED void (*__dummyfunc)(KDWindow *, KDEventInputKeyATX *) = &__kdHandleSpecialKeys;
 #endif
 
 static KDint32 __KDKeycodeLookup(KDint32 keycode)
@@ -1953,7 +1953,7 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 
                             window->states.keyboard.flags = keyevent->flags;
                             window->states.keyboard.keycode = keyevent->keycode;
-                            
+
                             __kdHandleSpecialKeys(window, keyevent);
                         }
                         else
@@ -2414,7 +2414,8 @@ KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *bu
 #if defined(KD_WINDOW_SUPPORTED)
             case KD_STATE_POINTER_AVAILABILITY:
             {
-                buffer[i] = __kd_window->states.pointer.availability;;
+                buffer[i] = __kd_window->states.pointer.availability;
+                ;
                 break;
             }
             case KD_INPUT_POINTER_X:
@@ -2601,7 +2602,7 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
     return -1;
 }
 
-/******************************************************************************
+    /******************************************************************************
  * Windowing
  ******************************************************************************/
 
@@ -2659,7 +2660,7 @@ static EM_BOOL __kd_EmscriptenMouseCallback(KDint type, const EmscriptenMouseEve
 static EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeyboardEvent *event, KD_UNUSED void *userptr)
 {
     KDEvent *kdevent = kdCreateEvent();
-    kdevent->userptr =__kd_window->eventuserptr;
+    kdevent->userptr = __kd_window->eventuserptr;
 
     KDint32 keycode = __KDKeycodeLookup((KDint32)event->keyCode);
     if(keycode)
@@ -2704,7 +2705,7 @@ static EM_BOOL __kd_EmscriptenKeyboardCallback(KDint type, const EmscriptenKeybo
 
         __kd_window->states.keyboard.flags = keyevent->flags;
         __kd_window->states.keyboard.keycode = keyevent->keycode;
-        
+
         __kdHandleSpecialKeys(__kd_window, keyevent);
     }
     else if(type == EMSCRIPTEN_EVENT_KEYDOWN)
@@ -2789,7 +2790,7 @@ static EM_BOOL __kd_EmscriptenVisibilityCallback(KD_UNUSED KDint type, const Ems
 }
 
 #elif defined(KD_WINDOW_WAYLAND)
-static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy) 
+static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy)
 {
     struct KDWindow *window = data;
     KDEvent *kdevent = kdCreateEvent();
@@ -2802,7 +2803,7 @@ static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointe
         kdPostEvent(kdevent);
     }
 }
-static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface) 
+static void __kdWaylandPointerHandleLeave(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface)
 {
     struct KDWindow *window = data;
     KDEvent *kdevent = kdCreateEvent();
@@ -2949,7 +2950,7 @@ static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct 
 
             __kd_window->states.keyboard.flags = keyevent->flags;
             __kd_window->states.keyboard.keycode = keyevent->keycode;
-            
+
             __kdHandleSpecialKeys(__kd_window, keyevent);
         }
         else
@@ -3002,8 +3003,7 @@ static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, 
 }
 static const struct wl_seat_listener __kd_wl_seat_listener = {
     __kdWaylandSeatHandleCapabilities,
-    KD_NULL
-};
+    KD_NULL};
 
 static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, KDuint32 name, const KDchar *interface, KD_UNUSED KDuint32 version)
 {
@@ -3026,8 +3026,7 @@ static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registr
 }
 static const struct wl_registry_listener __kd_wl_registry_listener = {
     __kdWaylandRegistryAddObject,
-    KD_NULL
-};
+    KD_NULL};
 
 static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, KDuint32 serial)
 {
@@ -3038,8 +3037,7 @@ static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED str
 static const struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     __kdWaylandShellSurfacePing,
     __kdWaylandShellSurfaceConfigure,
-    __kdWaylandShellSurfacePopupDone
-};
+    __kdWaylandShellSurfacePopupDone};
 #endif
 
 KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
@@ -3303,12 +3301,12 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, KD
             emscripten_exit_soft_fullscreen();
         }
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
-#if defined(KD_WINDOW_WAYLAND)   
+#if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
         {
             if(param[0])
             {
-                wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);  
+                wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);
             }
             else
             {
@@ -3325,9 +3323,8 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, KD
                     window->xcb.ewmh._NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, &(window->xcb.ewmh._NET_WM_STATE_FULLSCREEN));
                 xcb_flush(window->nativedisplay);
             }
-
         }
-#endif   
+#endif
 #endif
         window->properties.fullscreen = param[0];
 
@@ -3348,9 +3345,9 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 #if defined(KD_WINDOW_WIN32)
         SetWindowPos(window->nativewindow, 0, 0, 0, param[0], param[1], 0);
 #elif defined(KD_WINDOW_EMSCRIPTEN)
-        emscripten_set_canvas_element_size("#canvas",param[0], param[1]);
+        emscripten_set_canvas_element_size("#canvas", param[0], param[1]);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
-#if defined(KD_WINDOW_WAYLAND)   
+#if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
         {
             if(window->nativewindow)
@@ -3369,10 +3366,10 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
             xcb_icccm_size_hints_set_max_size(&hints, param[0], param[1]);
             xcb_icccm_size_hints_set_size(&hints, 0, param[0], param[1]);
             xcb_icccm_size_hints_set_position(&hints, 0, 0, 0);
-            xcb_icccm_set_wm_size_hints(window->nativedisplay, (KDuint)(KDuintptr)window->nativewindow, XCB_ATOM_WM_NORMAL_HINTS, &hints);  
+            xcb_icccm_set_wm_size_hints(window->nativedisplay, (KDuint)(KDuintptr)window->nativewindow, XCB_ATOM_WM_NORMAL_HINTS, &hints);
             xcb_flush(window->nativedisplay);
         }
-#endif   
+#endif
 #endif
         window->properties.width = param[0];
         window->properties.height = param[1];
@@ -3451,7 +3448,7 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertyiv(KDWindow *window, KDint pname, KD
 KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KDchar *param, KDsize *size)
 {
     if(pname == KD_WINDOWPROPERTY_CAPTION)
-    {   
+    {
         *size = kdStrlen(window->properties.caption);
         kdMemcpy(param, window->properties.caption, *size);
     }

@@ -28,6 +28,7 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
@@ -47,7 +48,6 @@
  * Thirdparty includes
  ******************************************************************************/
 
-/* clang-format off */
 #define STBD_ABS            kdAbs
 #define STBD_FABS           kdFabsKHR
 #define STBD_MEMSET         kdMemset
@@ -250,7 +250,7 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
     }
     image->bpp = image->alpha ? 16 : 8;
-    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->bpp/8);
+    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->bpp / 8);
 
     KDint _width = image->width;
     KDint _height = image->height;
@@ -258,9 +258,9 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
     {
         _width >>= 1;
         _height >>= 1;
-        image->size += (KDsize)_width * (KDsize)_height * (KDsize)(image->bpp/8);
+        image->size += (KDsize)_width * (KDsize)_height * (KDsize)(image->bpp / 8);
     }
-    
+
     image->buffer = kdMalloc(image->size);
     if(image->buffer == KD_NULL)
     {

@@ -178,18 +178,18 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
-struct _KDThreadInternal { 
-#if defined(KD_THREAD_C11) 
-    thrd_t nativethread; 
-#elif defined(KD_THREAD_POSIX) 
-    pthread_t nativethread; 
-#elif defined(KD_THREAD_WIN32) 
-    HANDLE nativethread; 
-#endif 
-    void *(*start_routine)(void *); 
-    void *arg; 
-    const KDThreadAttr *attr; 
-}; 
+struct _KDThreadInternal {
+#if defined(KD_THREAD_C11)
+    thrd_t nativethread;
+#elif defined(KD_THREAD_POSIX)
+    pthread_t nativethread;
+#elif defined(KD_THREAD_WIN32)
+    HANDLE nativethread;
+#endif
+    void *(*start_routine)(void *);
+    void *arg;
+    const KDThreadAttr *attr;
+};
 
 KDThread *__kdThreadInit(void)
 {
@@ -632,7 +632,7 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
         }
         return cond;
     }
-    else 
+    else
     {
         kdSetError(KD_ENOSYS);
         return KD_NULL;

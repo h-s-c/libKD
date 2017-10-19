@@ -127,7 +127,7 @@ KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const
     __kd_tls[__kd_tls_index].nativekey = FlsAlloc(NULL);
     if(__kd_tls[__kd_tls_index].nativekey == TLS_OUT_OF_INDEXES)
 #else
-    if((0)) 
+    if((0))
 #endif
     {
         kdSetError(KD_ENOMEM);

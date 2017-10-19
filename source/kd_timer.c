@@ -28,6 +28,7 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
 #if defined(__clang__)
 #   pragma clang diagnostic push
 #   pragma clang diagnostic ignored "-Wpadded"
@@ -42,6 +43,7 @@
 #endif
 
 #include "kd_internal.h"
+/* clang-format on */
 
 /******************************************************************************
  * Timer functions
