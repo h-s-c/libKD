@@ -457,11 +457,11 @@ kdRealloc(void *ptr, KDsize size)
  * Assertions and logging
  ******************************************************************************/
 
+/* kdHandleAssertion: Handle assertion failure. */
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 #endif
-/* kdHandleAssertion: Handle assertion failure. */
 KD_API void KD_APIENTRY kdHandleAssertion(const KDchar *condition, const KDchar *filename, KDint linenumber)
 {
     kdLogMessagefKHR("---Assertion---\nCondition: %s\nFile: %s(%i)\n", condition, filename, linenumber);
