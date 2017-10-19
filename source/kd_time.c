@@ -91,7 +91,8 @@ KD_API KDust KD_APIENTRY kdGetTimeUST(void)
     return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 #elif defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038
     /* Supported as of XCode 8 / macOS Sierra 10.12 */
-    struct timespec ts = {0};
+    struct timespec ts;
+    kdMemset(&ts, 0, sizeof(ts));
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 #elif defined(EGL_NV_system_time) && !defined(__APPLE__)
