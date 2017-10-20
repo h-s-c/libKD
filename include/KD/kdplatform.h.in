@@ -210,7 +210,15 @@ typedef unsigned long long      KDuint64;
     typedef signed   int            KDssize;
     typedef unsigned int            KDsize;
 #else
-    #error "Unknown data model"
+#   include <stdint.h>
+    typedef uintptr_t               KDuintptr;
+    typedef size_t                  KDsize;
+#   if defined(__unix__)
+#       include <unistd.h>
+        typedef ssize_t             KDssize;
+#   else
+        typedef intptr_t            KDssize;
+#   endif
 #endif
 
 #define KDINT_MIN       (-0x7fffffff-1)
