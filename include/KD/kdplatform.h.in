@@ -25,6 +25,7 @@
 #define __kdplatform_h_
 
 #define MESA_EGL_NO_X11_HEADERS
+#include <stddef.h>
 
 /******************************************************************************
  * Implementation defined

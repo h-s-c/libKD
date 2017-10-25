@@ -2356,7 +2356,7 @@ int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInsta
 {
     return __kdPreMain(__argc, __argv);
 }
-#ifdef KD_FREESTANDING
+#if defined(KD_FREESTANDING) && !defined(__MINGW32__)
 int WINAPI WinMainCRTStartup(void)
 {
     return __kdPreMain(__argc, __argv);
