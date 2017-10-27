@@ -28,8 +28,22 @@
  * KD includes
  ******************************************************************************/
 
+/* clang-format off */
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wpadded"
+#   if __has_warning("-Wreserved-id-macro")
+#       pragma clang diagnostic ignored "-Wreserved-id-macro"
+#   endif
+#endif
 #include <KD/kd.h>
 #include <KD/kdext.h>
+#if defined(__clang__)
+#   pragma clang diagnostic pop
+#endif
+
+#include "kd_internal.h"
+/* clang-format on */
 
 /******************************************************************************
  * OpenKODE Core extension: KD_ATX_imgdec_pvr
@@ -267,7 +281,7 @@ static void unpackModulations(const PVRTCWord *word, KDint offsetX, KDint offset
                 else
                 {
                     // clear it to produce 0.0 code
-                    ModulationBits &= ~(0x1 << 20);
+                    ModulationBits &= (KDuint)~(0x1 << 20);
                 }
             }// end if H-Only or V-Only interpolation mode was chosen
 
@@ -277,7 +291,7 @@ static void unpackModulations(const PVRTCWord *word, KDint offsetX, KDint offset
             }
             else
             {
-                ModulationBits &= ~0x1; /*clear it*/
+                ModulationBits &= (KDuint)~0x1; /*clear it*/
             }
 
             // run through all the pixels in the block. Note we can now treat all the
@@ -286,7 +300,7 @@ static void unpackModulations(const PVRTCWord *word, KDint offsetX, KDint offset
             {
                 for (KDint x = 0; x < 8; x++)
                 {
-                    i32ModulationModes[x + offsetX][y + offsetY] = WordModMode;
+                    i32ModulationModes[x + offsetX][y + offsetY] = (KDint32)WordModMode;
 
                     // if this is a stored value...
                     if (((x ^ y) & 1) == 0)
@@ -304,7 +318,7 @@ static void unpackModulations(const PVRTCWord *word, KDint offsetX, KDint offset
             {
                 for (KDint x = 0; x < 8; x++)
                 {
-                    i32ModulationModes[x + offsetX][y + offsetY] = WordModMode;
+                    i32ModulationModes[x + offsetX][y + offsetY] = (KDint32)WordModMode;
 
                     /*
                     // double the bits so 0=> 00, and 1=>11
@@ -439,9 +453,9 @@ static void pvrtcGetDecompressedPixels(const PVRTCWord *P, const PVRTCWord *Q,
 
     //Get the modulations from each word.
     unpackModulations(P, 0, 0, i32ModulationValues, i32ModulationModes, ui8Bpp);
-    unpackModulations(Q, ui32WordWidth, 0, i32ModulationValues, i32ModulationModes, ui8Bpp);
-    unpackModulations(R, 0, ui32WordHeight, i32ModulationValues, i32ModulationModes, ui8Bpp);
-    unpackModulations(S, ui32WordWidth, ui32WordHeight, i32ModulationValues, i32ModulationModes, ui8Bpp);
+    unpackModulations(Q, (KDint)ui32WordWidth, 0, i32ModulationValues, i32ModulationModes, ui8Bpp);
+    unpackModulations(R, 0, (KDint)ui32WordHeight, i32ModulationValues, i32ModulationModes, ui8Bpp);
+    unpackModulations(S, (KDint)ui32WordWidth, (KDint)ui32WordHeight, i32ModulationValues, i32ModulationModes, ui8Bpp);
 
     // Bilinear upscale image data from 2x2 -> 4x4
     interpolateColors(getColorA(P->u32ColorData), getColorA(Q->u32ColorData),
@@ -492,7 +506,7 @@ static void pvrtcGetDecompressedPixels(const PVRTCWord *P, const PVRTCWord *Q,
 
 static KDuint wrapWordIndex(KDuint numWords, KDint word)
 {
-    return ((word + numWords) % numWords);
+    return (((KDuint)word + numWords) % numWords);
 }
 
 /// <summary>Check that a number is an integer power of two, i.e.: 1, 2, 4, 8, ... etc.</summary>
@@ -572,21 +586,21 @@ static void mapDecompressedData(Pixel32* pOutput, KDint width,
     {
         for (KDuint x = 0; x < ui32WordWidth / 2; x++)
         {
-            pOutput[(((words->P[1] * ui32WordHeight) + y + ui32WordHeight / 2)
-                     * width + words->P[0] *ui32WordWidth + x + ui32WordWidth / 2)]  = pWord[y * ui32WordWidth + x];     // map P
+            pOutput[((((KDuint)words->P[1] * ui32WordHeight) + y + ui32WordHeight / 2)
+                     * (KDuint)width + (KDuint)words->P[0] *ui32WordWidth + x + ui32WordWidth / 2)]  = pWord[y * ui32WordWidth + x];     // map P
 
-            pOutput[(((words->Q[1] * ui32WordHeight) + y + ui32WordHeight / 2)
-                     * width + words->Q[0] *ui32WordWidth + x)]          = pWord[y * ui32WordWidth + x + ui32WordWidth / 2];   // map Q
+            pOutput[((((KDuint)words->Q[1] * ui32WordHeight) + y + ui32WordHeight / 2)
+                     * (KDuint)width + (KDuint)words->Q[0] *ui32WordWidth + x)]          = pWord[y * ui32WordWidth + x + ui32WordWidth / 2];   // map Q
 
-            pOutput[(((words->R[1] * ui32WordHeight) + y)
-                     * width + words->R[0] *ui32WordWidth + x + ui32WordWidth / 2)]  = pWord[(y + ui32WordHeight / 2) * ui32WordWidth + x];    // map R
+            pOutput[((((KDuint)words->R[1] * ui32WordHeight) + y)
+                     * (KDuint)width + (KDuint)words->R[0] *ui32WordWidth + x + ui32WordWidth / 2)]  = pWord[(y + ui32WordHeight / 2) * ui32WordWidth + x];    // map R
 
-            pOutput[(((words->S[1] * ui32WordHeight) + y)
-                     * width + words->S[0] *ui32WordWidth + x)]          = pWord[(y + ui32WordHeight / 2) * ui32WordWidth + x + ui32WordWidth / 2];  // map S
+            pOutput[((((KDuint)words->S[1] * ui32WordHeight) + y)
+                     * (KDuint)width + (KDuint)words->S[0] *ui32WordWidth + x)]          = pWord[(y + ui32WordHeight / 2) * ui32WordWidth + x + ui32WordWidth / 2];  // map S
         }
     }
 }
-static KDint pvrtcDecompress(KDuint8* pCompressedData,
+static KDint pvrtcDecompress(const KDuint8* pCompressedData,
                            Pixel32* pDecompressedData,
                            KDuint32 ui32Width,
                            KDuint32 ui32Height,
@@ -599,7 +613,7 @@ static KDint pvrtcDecompress(KDuint8* pCompressedData,
         ui32WordWidth = 8;
     }
 
-    KDuint32* pWordMembers = (KDuint32*)pCompressedData;
+    const KDuint8* pWordMembers = pCompressedData;
     Pixel32* pOutData = pDecompressedData;
 
     // Calculate number of words
@@ -617,22 +631,22 @@ static KDint pvrtcDecompress(KDuint8* pCompressedData,
         // for each column of words
         for (KDint wordX = -1; wordX < i32NumXWords - 1; wordX++)
         {
-            indices.P[0] = wrapWordIndex(i32NumXWords, wordX);
-            indices.P[1] = wrapWordIndex(i32NumYWords, wordY);
-            indices.Q[0] = wrapWordIndex(i32NumXWords, wordX + 1);
-            indices.Q[1] = wrapWordIndex(i32NumYWords, wordY);
-            indices.R[0] = wrapWordIndex(i32NumXWords, wordX);
-            indices.R[1] = wrapWordIndex(i32NumYWords, wordY + 1);
-            indices.S[0] = wrapWordIndex(i32NumXWords, wordX + 1);
-            indices.S[1] = wrapWordIndex(i32NumYWords, wordY + 1);
+            indices.P[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX);
+            indices.P[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY);
+            indices.Q[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX + 1);
+            indices.Q[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY);
+            indices.R[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX);
+            indices.R[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY + 1);
+            indices.S[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX + 1);
+            indices.S[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY + 1);
 
             //Work out the offsets into the twiddle structs, multiply by two as there are two members per word.
             KDuint32 WordOffsets[4] =
             {
-                TwiddleUV(i32NumXWords, i32NumYWords, indices.P[0], indices.P[1]) * 2,
-                TwiddleUV(i32NumXWords, i32NumYWords, indices.Q[0], indices.Q[1]) * 2,
-                TwiddleUV(i32NumXWords, i32NumYWords, indices.R[0], indices.R[1]) * 2,
-                TwiddleUV(i32NumXWords, i32NumYWords, indices.S[0], indices.S[1]) * 2,
+                TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.P[0], (KDuint)indices.P[1]) * 2,
+                TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.Q[0], (KDuint)indices.Q[1]) * 2,
+                TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.R[0], (KDuint)indices.R[1]) * 2,
+                TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.S[0], (KDuint)indices.S[1]) * 2,
             };
 
             //Access individual elements to fill out PVRTCWord
@@ -648,14 +662,14 @@ static KDint pvrtcDecompress(KDuint8* pCompressedData,
 
             // assemble 4 words into struct to get decompressed pixels from
             pvrtcGetDecompressedPixels(&P, &Q, &R, &S, pPixels, ui8Bpp);
-            mapDecompressedData(pOutData, ui32Width, pPixels, &indices, ui8Bpp);
+            mapDecompressedData(pOutData, (KDint)ui32Width, pPixels, &indices, ui8Bpp);
 
         } // for each word
     } // for each row of words
 
     kdFree(pPixels);
     //Return the data size
-    return ui32Width * ui32Height / (KDuint32)(ui32WordWidth / 2);
+    return (KDint)(ui32Width * ui32Height / (ui32WordWidth / 2));
 }
 
 KDint __kdDecompressPVRTC(const void* pCompressedData,
@@ -674,11 +688,11 @@ KDint __kdDecompressPVRTC(const void* pCompressedData,
     //If the dimensions aren't correct, we need to create a new buffer instead of just using the provided one, as the buffer will overrun otherwise.
     if (XTrueDim != XDim || YTrueDim != YDim)
     {
-        pDecompressedData = (Pixel32*)kdMalloc(XTrueDim * YTrueDim * sizeof(Pixel32));
+        pDecompressedData = (Pixel32*)kdMalloc((KDsize)XTrueDim * (KDsize)YTrueDim * sizeof(Pixel32));
     }
 
     //Decompress the surface.
-    KDint retval = pvrtcDecompress((KDuint8*)pCompressedData, pDecompressedData, XTrueDim, YTrueDim, (Do2bitMode == 1 ? 2 : 4));
+    KDint retval = pvrtcDecompress((const KDuint8*)pCompressedData, pDecompressedData, (KDuint32)XTrueDim, (KDuint32)YTrueDim, (Do2bitMode == 1 ? 2 : 4));
 
     //If the dimensions were too small, then copy the new buffer back into the output buffer.
     if (XTrueDim != XDim || YTrueDim != YDim)
