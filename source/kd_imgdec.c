@@ -28,41 +28,43 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#endif
 #endif
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-#   define _GNU_SOURCE /* O_CLOEXEC */
+#define _GNU_SOURCE /* O_CLOEXEC */
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#include "kdplatform.h"     // for kdAssert, KD_API, KD_APIENTRY, KDsize
+#include <KD/kd.h>          // for kdFree, kdSetError, KD_NULL, KDint, kdMalloc
+#include "KD/ATX_imgdec.h"  // for KDImageATX, KD_IMAGE_FORMAT_LUMALPHA88_ATX
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+#include "kd_internal.h"  // for _KDImageATX, __kdOpen, KDFile
 
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#   include <unistd.h>
-#   include <fcntl.h> /* O_RDONLY etc.*/
-#   include <sys/mman.h> /* mmap etc. */
+// IWYU pragma: no_include <asm/fcntl.h>
+// IWYU pragma: no_include <asm/mman-common.h>
+#include <unistd.h>    // for close
+#include <fcntl.h>     // for O_CLOEXEC, O_RDONLY
+#include <sys/mman.h>  // for mmap, munmap, MAP_FAILED, MAP_PRIVATE
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <fileapi.h> /* FindFirstFileA etc. */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <fileapi.h> /* FindFirstFileA etc. */
 #endif
 
 /******************************************************************************
@@ -74,47 +76,46 @@
 #define STBI_NO_LINEAR
 #define STBI_NO_HDR
 #define STBI_NO_STDIO
-#define STBI_ASSERT         kdAssert
-#define STBI_MALLOC         kdMalloc
-#define STBI_REALLOC        kdRealloc
-#define STBI_FREE           kdFree
+#define STBI_ASSERT kdAssert
+#define STBI_MALLOC kdMalloc
+#define STBI_REALLOC kdRealloc
+#define STBI_FREE kdFree
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #if defined(_MSC_VER)
-#   pragma warning(push)
-#   pragma warning(disable : 6001)
-#   pragma warning(disable : 6011)
-#elif defined(__TINYC__)  
-#   define STBI_NO_SIMD
+#pragma warning(push)
+#pragma warning(disable : 6001)
+#pragma warning(disable : 6011)
+#elif defined(__TINYC__)
+#define STBI_NO_SIMD
 #elif defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wcast-align"
-#   pragma clang diagnostic ignored "-Wcast-qual"
-#   pragma clang diagnostic ignored "-Wconversion"
-#   pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
-#   if __has_warning("-Wdouble-promotion")
-#       pragma clang diagnostic ignored "-Wdouble-promotion"
-#   endif
-#   pragma clang diagnostic ignored "-Wpadded"
-#   pragma clang diagnostic ignored "-Wsign-conversion"
-#   pragma clang diagnostic ignored "-Wunused-function"
-#   pragma clang diagnostic ignored "-Wunused-parameter"
-#   if __has_warning("-Wcomma")
-#       pragma clang diagnostic ignored "-Wcomma"
-#   endif
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic ignored "-Wunused-function"
-#   pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wcast-qual"
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
+#if __has_warning("-Wdouble-promotion")
+#pragma clang diagnostic ignored "-Wdouble-promotion"
 #endif
-#include "stb_image.h"
+#pragma clang diagnostic ignored "-Wpadded"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#if __has_warning("-Wcomma")
+#pragma clang diagnostic ignored "-Wcomma"
+#endif
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+#include "stb_image.h"  // for stbi_info_from_memory, stbi_load_from_memory
 #if defined(_MSC_VER)
-#   pragma warning(pop)
+#pragma warning(pop)
 #elif defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #elif defined(__GNUC__)
-#   pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 #endif
-/* clang-format on */
 
 /******************************************************************************
  * OpenKODE Core extension: KD_ATX_imgdec

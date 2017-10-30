@@ -28,49 +28,49 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"      // for KDint32, KDuint32, KD_API, KD_APIENTRY
+#include <KD/kd.h>           // for KDfloat32, KDINT32_MAX, KD_HUGE_VALF, KDint
+#include <KD/KHR_float64.h>  // for KDfloat64KHR, KD_PI_2_KHR, KD_PI_KHR
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
-#include <float.h> /* LDBL_MAX_EXP */
+#include <float.h>  // for LDBL_MAX_EXP
 
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#   if !defined(__TINYC__)  && !defined(__PGIC__)
-#       if defined(__x86_64__) || defined(__i386__)
-#           include <x86intrin.h> /* _mm_.. */  
-#       endif
-#   endif
+#if !defined(__TINYC__) && !defined(__PGIC__)
+#if defined(__x86_64__) || defined(__i386__)
+#include <emmintrin.h>  // for _mm_load_sd, _mm_cvtsd_si32, _mm_sqrt_sd
+#include <xmmintrin.h>  // for _mm_load_ss, _mm_store_ss, _mm_rsqrt_ss
+#endif
+#endif
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <intrin.h> /* _mm_.. */
-#   ifndef inline
-#       define inline __inline /* MSVC redefinition fix */
-#   endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#include <intrin.h> /* _mm_.. */
+#ifndef inline
+#define inline __inline /* MSVC redefinition fix */
+#endif
+#endif
 
 /******************************************************************************
  * Mathematical functions

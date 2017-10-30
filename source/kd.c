@@ -37,84 +37,98 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#endif
 #endif
 #include <KD/kd.h>
-#include <KD/kdext.h>
+#include "KD/ATX_keyboard.h"        // for KDEventInputKeyATX, KD_KEY_...
+#include "KD/KHR_thread_storage.h"  // for kdSetThreadStorageKHR
+#include "KD/NV_extwindowprops.h"   // for KD_WINDOWPROPERTY_FULLSCREE...
+#include <KD/kdext.h>               // for kdGetEnvVEN, kdStrstrVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
 
-#include "kd_internal.h"
+#include <EGL/egl.h>     // for EGLConfig, EGLDisplay, EGL_...
+#if !defined(__ANDROID__)
+#include <EGL/eglext.h>  // for EGL_PLATFORM_WAYLAND_KHR
+#endif
+
+#include "kd_internal.h"  // for _KDCallback, KDThread, __kd...
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
 /* freestanding safe */
-#include <stdlib.h> /* EXIT_.., __arg.. */
+#include <stdlib.h>  // for exit, EXIT_FAILURE, EXIT_SU...
 
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#   include <unistd.h>
-#   include <dlfcn.h>
-#   include <sys/mman.h> /* mmap */
-#   if defined(__linux__)
-#       include <sys/prctl.h>
-#   endif
-#   if defined(__ANDROID__)
-#       include <android/keycodes.h>
-#       include <android/native_activity.h>
-#       include <android/native_window.h>
-#       include <android/window.h>
-#   endif
-#   if defined(__EMSCRIPTEN__)
-#       include <emscripten/emscripten.h>
-#       include <emscripten/html5.h>
-#   endif
-#   if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
-#       ifndef EGL_PLATFORM_X11_KHR
-#           define EGL_PLATFORM_X11_KHR 0x31D5
-#       endif 
-#       ifndef EGL_PLATFORM_WAYLAND_KHR
-#           define EGL_PLATFORM_WAYLAND_KHR 0x31D8
-#       endif
-#       include <xcb/xcb.h>
-#       include <xcb/randr.h>
-#       include <xkbcommon/xkbcommon.h>
-#   endif
-#   if defined(KD_WINDOW_WAYLAND)
-#       include <wayland-client.h>
-#       include <wayland-egl.h>
-#   endif
-#   if defined(KD_WINDOW_X11) 
-#       include <xcb/xcb_ewmh.h>
-#       include <xcb/xcb_icccm.h>
-#       include <xcb/xcb_util.h>
-#       include <xcb/xkb.h>
-#       include <xkbcommon/xkbcommon-x11.h>
-#   endif
+// IWYU pragma: no_include  <bits/stdint-uintn.h>
+#if !defined(__ANDROID__)
+#include <dlfcn.h>     // for dlclose, dlerror, dlopen
+#include <sys/mman.h>  // for mmap, munmap, MAP_SHARED
+#endif
+#if defined(__ANDROID__)
+#include <android/input.h>            // for AInputEvent_getType, AInputQueue
+#include <android/keycodes.h>         // for ::AKEYCODE_ALT_LEFT, ::AKEYCODE...
+#include <android/native_activity.h>  // for ANativeActivity, ANativeActivit...
+#include <android/native_window.h>    // for ANativeWindow, ANativeWindow_se...
+#include <android/window.h>           // for ::AWINDOW_FLAG_KEEP_SCREEN_ON
+#endif
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
+#endif
+#if defined(KD_WINDOW_X11) || defined(KD_WINDOW_WAYLAND)
+#ifndef EGL_PLATFORM_X11_KHR
+#define EGL_PLATFORM_X11_KHR 0x31D5
+#endif
+#ifndef EGL_PLATFORM_WAYLAND_KHR
+#define EGL_PLATFORM_WAYLAND_KHR 0x31D8
+#endif
+#include <xcb/xcb.h>                      // for xcb_flush, xcb_connect, xcb...
+#include <xkbcommon/xkbcommon-keysyms.h>  // for XKB_KEY_Alt_L, XKB_KEY_Alt_R
+#include <xkbcommon/xkbcommon-names.h>    // for XKB_MOD_NAME_ALT, XKB_MOD_N...
+#include <xkbcommon/xkbcommon.h>          // for xkb_state_mod_name_is_active
+#endif
+#if defined(KD_WINDOW_WAYLAND)
+#include <wayland-client-core.h>      // for wl_display_connect, wl_disp...
+#include <wayland-client-protocol.h>  // for wl_registry_bind, wl_compos...
+#include <wayland-egl-core.h>         // for wl_egl_window_create, wl_eg...
+#include <wayland-util.h>             // for wl_fixed_to_int, wl_fixed_t
+#include <wayland-version.h>          // for WAYLAND_VERSION_MAJOR, WAYL...
+struct wl_keyboard;
+struct wl_pointer;
+struct wl_registry;
+struct wl_seat;
+struct wl_shell_surface;
+struct wl_surface;
+#endif
+#if defined(KD_WINDOW_X11)
+#include <xcb/xcb_ewmh.h>             // for xcb_ewmh_connection_t, xcb_...
+#include <xcb/xcb_icccm.h>            // for xcb_icccm_set_wm_name, xcb_...
+#include <xcb/xkb.h>                  // for xcb_xkb_state_notify_event_t
+#include <xcb/xproto.h>               // for xcb_intern_atom, xcb_intern...
+#include <xkbcommon/xkbcommon-x11.h>  // for xkb_x11_get_core_keyboard_d...
+#endif
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <winsock2.h> /* WSA.. */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#include <winsock2.h> /* WSA.. */
+#endif
 
 /******************************************************************************
  * Events
@@ -2874,7 +2888,7 @@ static const struct wl_pointer_listener __kd_wl_pointer_listener = {
 #endif
 };
 
-static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KDuint32 format, int fd, KDuint32 size)
+static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KDuint32 format, KDint fd, KDuint32 size)
 {
     struct KDWindow *window = data;
     if(format == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1)
@@ -3032,7 +3046,7 @@ static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_su
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED int32_t width, KD_UNUSED int32_t height) {}
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED KDint32 width, KD_UNUSED KDint32 height) {}
 static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
 static const struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     __kdWaylandShellSurfacePing,

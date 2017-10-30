@@ -28,31 +28,28 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#endif
 #endif
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-#   define _GNU_SOURCE /* O_CLOEXEC */
+#define _GNU_SOURCE  // for clock_gettime, CLOCK_MONOTONIC_RAW
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#include "kdplatform.h"  // for KDint32, KD_API, KD_APIENTRY
+#include <KD/kd.h>       // for KDTm, KDtime, KDint, kdMemset
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
-
-#include "kd_internal.h"
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#   include <time.h> /* clock, time */
+#include <time.h>  // for clock_gettime, time
 #endif
 
 /******************************************************************************
@@ -60,16 +57,22 @@
  ******************************************************************************/
 
 #if defined(__EMSCRIPTEN__)
-#   include <emscripten/emscripten.h> /* emscripten_get_now */
+#include <emscripten/emscripten.h> /* emscripten_get_now */
+#endif
+
+#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
+// IWYU pragma: no_include <bits/types/struct_timespec.h>
+// IWYU pragma: no_include <bits/types/time_t.h>
+// IWYU pragma: no_include <linux/time.h>
+#include <sys/time.h>  // for CLOCK_MONOTONIC_RAW
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#endif
 
 /******************************************************************************
  * Time functions

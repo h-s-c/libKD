@@ -28,43 +28,41 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"  // for KDssize, KDsize
+#include <KD/kd.h>       // for KDint, KDchar, KDuint
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+#include "kd_internal.h"  // IWYU pragma: keep
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
-#if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#   include <errno.h>
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(KD_FREESTANDING)
+#include <errno.h>  // for errno
 #endif
-
 
 /******************************************************************************
  * Platform includes
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#   include <unistd.h>
-#   include <fcntl.h>
-#   if defined(__GNUC__ ) && defined(__linux__) && defined(__x86_64__)
-#       include <sys/syscall.h>
-#   endif
+#if defined(__GNUC__) && defined(__linux__) && defined(__x86_64__)
+#include <syscall.h>  // for SYS_open, SYS_read, SYS_write
+#else
+#include <unistd.h> 
+#include <fcntl.h> 
 #endif
-/* clang-format on */
+#endif
 
 /******************************************************************************
  * Syscalls

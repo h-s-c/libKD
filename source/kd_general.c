@@ -28,30 +28,31 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"        // for KD_API, KD_APIENTRY, KD_UNUSED, KDsize
+#include <KD/kd.h>             // for KDint, KD_NULL, KDchar, kdThreadSelf
+#include <KD/KHR_formatted.h>  // for kdLogMessagefKHR
+#include <KD/kdext.h>          // for kdGetEnvVEN, kdStrstrVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+#include "kd_internal.h"  // for KDThread
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#   include <errno.h>
-#   include <locale.h> /* setlocale */
-#   include <stdlib.h> /* malloc etc. */
+#include <errno.h>   // for EACCES, EAGAIN, EBADF, EBUSY, EEXIST
+#include <locale.h>  // for setlocale, LC_ALL, LC_CTYPE
+#include <stdlib.h>  // for free, malloc, realloc
 #endif
 
 /******************************************************************************
@@ -59,22 +60,21 @@
  ******************************************************************************/
 
 #if defined(__APPLE__)
-#   include <TargetConditionals.h>
+#include <TargetConditionals.h>
 #endif
 
 #if defined(__EMSCRIPTEN__)
-#   include <emscripten/emscripten.h>
+#include <emscripten/emscripten.h>
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <winerror.h>
-#   include <winnls.h> /* GetLocaleInfoA */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#include <winerror.h>
+#include <winnls.h> /* GetLocaleInfoA */
+#endif
 
 /******************************************************************************
  * Errors

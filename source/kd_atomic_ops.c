@@ -28,18 +28,18 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"         // for KD_API, KD_APIENTRY, KD_ATOMIC_C11
+#include <KD/kd.h>              // for KDint, kdFree, kdMalloc, kdSetError
+#include <KD/VEN_atomic_ops.h>  // for KDAtomicIntVEN, KDAtomicPtrVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 /******************************************************************************
@@ -47,7 +47,7 @@
  ******************************************************************************/
 
 #if defined(KD_ATOMIC_C11)
-#   include <stdatomic.h> /* atomic_.. */
+#include <stdatomic.h>  // for atomic_compare_exchange_weak, atomic_...
 #endif
 
 /******************************************************************************
@@ -55,17 +55,16 @@
  ******************************************************************************/
 
 #if defined(KD_ATOMIC_EMSCRIPTEN)
-#   include <emscripten/threading.h> /* emscripten_atomic_.. */
+#include <emscripten/threading.h> /* emscripten_atomic_.. */
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <intrin.h> /* _Interlocked.. */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#include <intrin.h> /* _Interlocked.. */
+#endif
 
 /******************************************************************************
  * OpenKODE Core extension: KD_VEN_atomic_ops

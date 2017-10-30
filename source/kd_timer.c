@@ -28,22 +28,19 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"  // for KD_API, KD_APIENTRY, KDint64
+#include <KD/kd.h>       // for kdFree, KDTimer, kdSetError, KD_NULL, kdThre...
+#include <KD/kdext.h>    // for kdThreadSleepVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
-
-#include "kd_internal.h"
-/* clang-format on */
 
 /******************************************************************************
  * Timer functions

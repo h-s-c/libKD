@@ -28,105 +28,108 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"         // for kdAssert, KDint32, KDsize, KD_API
+#include <KD/kd.h>              // for KDuint8, kdFree, kdSetError, kdMemcpy
+#include <KD/ATX_dxtcomp.h>     // for KD_DXTCOMP_TYPE_DXT1A_ATX, KD_DXTCOMP...
+#include <KD/ATX_imgdec.h>      // for KDImageATX, KD_IMAGE_FORMAT_RGBA8888_ATX
+#include <KD/ATX_imgdec_pvr.h>  // for KD_IMAGE_FORMAT_DXT1_ATX, KD_IMAGE_FO...
+#include <KD/KHR_float64.h>     // for kdFabsKHR, kdCeilKHR, kdFloorKHR, kdP...
+#include <KD/kdext.h>           // for kdMinVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+#include "kd_internal.h"  // for _KDImageATX
 
 /******************************************************************************
  * Thirdparty includes
  ******************************************************************************/
 
-#define STBD_ABS            kdAbs
-#define STBD_FABS           kdFabsKHR
-#define STBD_MEMSET         kdMemset
+#define STBD_ABS kdAbs
+#define STBD_FABS kdFabsKHR
+#define STBD_MEMSET kdMemset
 #define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
 #if defined(_MSC_VER)
-#   pragma warning(push)
-#   pragma warning(disable : 4244)
+#pragma warning(push)
+#pragma warning(disable : 4244)
 #elif defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wcast-align"
-#   pragma clang diagnostic ignored "-Wcast-qual"
-#   pragma clang diagnostic ignored "-Wconversion"
-#   pragma clang diagnostic ignored "-Wconditional-uninitialized"
-#   if __has_warning("-Wdouble-promotion")
-#       pragma clang diagnostic ignored "-Wdouble-promotion"
-#   endif
-#   pragma clang diagnostic ignored "-Wpadded"
-#   pragma clang diagnostic ignored "-Wsign-conversion"
-#   pragma clang diagnostic ignored "-Wunused-function"
-#   if __has_warning("-Wcomma")
-#       pragma clang diagnostic ignored "-Wcomma"
-#   endif
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wcast-qual"
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wconditional-uninitialized"
+#if __has_warning("-Wdouble-promotion")
+#pragma clang diagnostic ignored "-Wdouble-promotion"
 #endif
-#include "stb_dxt.h"
-#if defined(_MSC_VER)
-#   pragma warning(pop)
-#elif defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic ignored "-Wpadded"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wunused-function"
+#if __has_warning("-Wcomma")
+#pragma clang diagnostic ignored "-Wcomma"
+#endif
 #elif defined(__GNUC__)
-#   pragma GCC diagnostic pop
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+#include "stb_dxt.h"  // for stb_compress_dxt_block, STB_DXT_NORMAL
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
-#define STBIR_ASSERT        kdAssert
-#define STBIR_MEMSET        kdMemset
-#define STBIR_MALLOC(s,c)   kdMalloc(s)
-#define STBIR_FREE(p,c)     kdFree(p)
-#define STBIR_CEIL          kdCeilKHR
-#define STBIR_FABS          kdFabsKHR
-#define STBIR_FLOOR         kdFloorKHR
-#define STBIR_POW           kdPowKHR
+#define STBIR_ASSERT kdAssert
+#define STBIR_MEMSET kdMemset
+#define STBIR_MALLOC(s, c) kdMalloc(s)
+#define STBIR_FREE(p, c) kdFree(p)
+#define STBIR_CEIL kdCeilKHR
+#define STBIR_FABS kdFabsKHR
+#define STBIR_FLOOR kdFloorKHR
+#define STBIR_POW kdPowKHR
 #define STB_IMAGE_RESIZE_STATIC
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #if defined __INTEL_COMPILER
-#   pragma warning push
-#   pragma warning disable 279
+#pragma warning push
+#pragma warning disable 279
 #elif defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wbad-function-cast"
-#   pragma clang diagnostic ignored "-Wcast-align"
-#   pragma clang diagnostic ignored "-Wcast-qual"
-#   pragma clang diagnostic ignored "-Wcovered-switch-default"
-#   if __has_warning("-Wdouble-promotion")
-#       pragma clang diagnostic ignored "-Wdouble-promotion"
-#   endif
-#   pragma clang diagnostic ignored "-Wfloat-conversion"
-#   pragma clang diagnostic ignored "-Wfloat-equal"
-#   pragma clang diagnostic ignored "-Wpadded"
-#   pragma clang diagnostic ignored "-Wsign-conversion"
-#   pragma clang diagnostic ignored "-Wstring-conversion"
-#   pragma clang diagnostic ignored "-Wunused-function"
-#   pragma clang diagnostic ignored "-Wunused-parameter"
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wunused-function"
-#   pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wbad-function-cast"
+#pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wcast-qual"
+#pragma clang diagnostic ignored "-Wcovered-switch-default"
+#if __has_warning("-Wdouble-promotion")
+#pragma clang diagnostic ignored "-Wdouble-promotion"
 #endif
-#include "stb_image_resize.h"
+#pragma clang diagnostic ignored "-Wfloat-conversion"
+#pragma clang diagnostic ignored "-Wfloat-equal"
+#pragma clang diagnostic ignored "-Wpadded"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wstring-conversion"
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+#include "stb_image_resize.h"  // for stbir_resize_uint8
 #if defined __INTEL_COMPILER
-#   pragma warning(pop)
+#pragma warning(pop)
 #elif defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #elif defined(__GNUC__)
-#   pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 #endif
-/* clang-format on */
 
 /******************************************************************************
  * OpenKODE Core extension: KD_ATX_dxtcomp

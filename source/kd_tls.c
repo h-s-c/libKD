@@ -29,27 +29,28 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"             // for KD_APIENTRY, KD_THREAD_POSIX, KD_API
+#include <KD/kd.h>                  // for kdThreadMutexUnlock, kdSetError, kdThreadMu...
+#include <KD/KHR_thread_storage.h>  // IWYU pragma: keep
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
-#include "kd_internal.h"
+
+#include "kd_internal.h"  // for KDThreadStorageKeyKHR, KDThread
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
 #if defined(KD_THREAD_C11)
-#   include <threads.h>
+#include <threads.h>
 #endif
 
 /******************************************************************************
@@ -57,16 +58,16 @@
  ******************************************************************************/
 
 #if defined(KD_THREAD_POSIX)
-#   include <pthread.h>
+// IWYU pragma: no_include <bits/pthread_types.h>
+#include <pthread.h>  // for pthread_getspecific, pthread_key_create
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#endif
 
 /******************************************************************************
  * Thread-local storage.
@@ -85,7 +86,6 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 }
 
 /* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
-typedef struct _KDThreadStorage _KDThreadStorage;
 struct _KDThreadStorage {
     KDThreadStorageKeyKHR key;
 #if defined(KD_THREAD_C11)
@@ -99,6 +99,7 @@ struct _KDThreadStorage {
 #endif
     void *id;
 };
+typedef struct _KDThreadStorage _KDThreadStorage;
 
 static _KDThreadStorage __kd_tls[999];
 static KDuint __kd_tls_index = 0;

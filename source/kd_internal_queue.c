@@ -28,22 +28,21 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"         // for KDsize, KDssize, kdAssert
+#include <KD/kd.h>              // for kdSetError, KDint, kdFree, kdMalloc
+#include "KD/VEN_atomic_ops.h"  // for kdAtomicIntLoadVEN, kdAtomicIntCreateVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
-/* clang-format on */
+#include "kd_internal.h"  // for _KDQueue
 
 /******************************************************************************
  * MPMC, FIFO queue
@@ -52,11 +51,11 @@
  * - Based on http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
  ******************************************************************************/
 
-typedef struct _kdQueueCell _kdQueueCell;
 struct _kdQueueCell {
     KDAtomicIntVEN *sequence;
     void *data;
 };
+typedef struct _kdQueueCell _kdQueueCell;
 
 struct _KDQueue {
     KDsize buffer_mask;

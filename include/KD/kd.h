@@ -185,6 +185,7 @@ KD_API KDint KD_APIENTRY kdThreadSemPost(KDThreadSem *sem);
  *******************************************************/
 
 /* KDEvent: Struct type containing an event. */
+struct KDEvent;
 typedef struct KDEvent KDEvent;
 #define KD_EVENT_USER 0x40000000
 
@@ -888,6 +889,7 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KDint startidx, KDuint numidxs, const KDfl
  *******************************************************/
 #ifdef KD_WINDOW_SUPPORTED
 #include <EGL/egl.h>
+#include <EGL/eglplatform.h>
 typedef struct KDWindow KDWindow;
 
 /* kdCreateWindow: Create a window. */

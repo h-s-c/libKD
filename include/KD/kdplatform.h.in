@@ -40,98 +40,98 @@
 #cmakedefine KD_FREESTANDING
 
 #if defined(KD_WINDOW_X11)
-#   define MESA_EGL_NO_X11_HEADERS
+#define MESA_EGL_NO_X11_HEADERS
 #endif
 
 #if defined(__GNUC__) || defined(__clang__) || defined(__TINYC__)
-#   define KD_UNUSED __attribute__((__unused__))
+#define KD_UNUSED __attribute__((__unused__))
 #elif defined(_MSC_VER)
-#   define KD_UNUSED __pragma(warning(suppress: 4100 4101))
+#define KD_UNUSED __pragma(warning(suppress : 4100 4101))
 #elif defined(__LCLINT__)
-#   define KD_UNUSED /*@unused@*/
+#define KD_UNUSED /*@unused@*/
 #else
-#   define KD_UNUSED
+#define KD_UNUSED
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
-#   define KD_DEPRECATED __attribute__((__deprecated__))
+#define KD_DEPRECATED __attribute__((__deprecated__))
 #elif defined(_MSC_VER)
-#   define KD_DEPRECATED __declspec(deprecated)
+#define KD_DEPRECATED __declspec(deprecated)
 #else
-#   define KD_DEPRECATED
+#define KD_DEPRECATED
 #endif
 
 #if defined(__SANITIZE_ADDRESS__)
-#   define KD_ASAN
+#define KD_ASAN
 #elif defined(__has_feature)
-#   if __has_feature(address_sanitizer)
-#       define KD_ASAN
-#   endif
+#if __has_feature(address_sanitizer)
+#define KD_ASAN
+#endif
 #endif
 
 #if defined(__EMSCRIPTEN__)
-#   define KD_ATOMIC_MUTEX
+#define KD_ATOMIC_MUTEX
 //#   define KD_THREAD_EMSCRIPTEN
 //#   define KD_THREAD_POSIX
 #elif defined(_WIN32)
-#   define KD_ATOMIC_WIN32
-#   define KD_THREAD_WIN32
+#define KD_ATOMIC_WIN32
+#define KD_THREAD_WIN32
 #elif defined(__INTEL_COMPILER)
-#   if defined(__GNUC__)
-#       define KD_ATOMIC_SYNC
-#       define KD_THREAD_POSIX
-#   else
-#       define KD_ATOMIC_WIN32
-#       define KD_THREAD_WIN32
-#   endif
-#elif defined(__clang__)
-#   if (__clang_major__ > 3)
-#       if __has_include(<stdatomic.h>)
-#           define KD_ATOMIC_C11
-#       else
-#           define KD_ATOMIC_BUILTIN
-#       endif
-#   elif (__clang_major__ == 3) && (__clang_minor__ >= 1)
-#       define KD_ATOMIC_BUILTIN
-#   else
-#       define KD_ATOMIC_SYNC
-#   endif
-#   if __has_include(<threads.h>)
-#       define KD_THREAD_C11
-#   elif __has_include(<pthread.h>)
-#       define KD_THREAD_POSIX
-#   endif
-#elif defined(__GNUC__)
-#   if (__GNUC__ > 4)
-#       if __has_include(<stdatomic.h>)
-#           define KD_ATOMIC_C11
-#       else
-#           define KD_ATOMIC_BUILTIN
-#       endif
-#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
-#       define KD_ATOMIC_BUILTIN
-#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 1)
-#       define KD_ATOMIC_SYNC
-#   else
-#       define KD_ATOMIC_MUTEX
-#   endif
-#   if (__GNUC__ > 4)
-#       if __has_include(<threads.h>)
-#           define KD_THREAD_C11
-#       elif __has_include(<pthread.h>)
-#           define KD_THREAD_POSIX
-#       endif
-#   else
-#       define KD_THREAD_POSIX
-#   endif
-#elif defined(__TINYC__)
-#   define KD_ATOMIC_MUTEX
-#   define KD_THREAD_POSIX
-#elif defined(__PGIC__)
-#   define KD_ATOMIC_MUTEX
-#   define KD_THREAD_POSIX
+#if defined(__GNUC__)
+#define KD_ATOMIC_SYNC
+#define KD_THREAD_POSIX
 #else
-#   define KD_ATOMIC_MUTEX
+#define KD_ATOMIC_WIN32
+#define KD_THREAD_WIN32
+#endif
+#elif defined(__clang__)
+#if(__clang_major__ > 3)
+#if __has_include(<stdatomic.h>)
+#define KD_ATOMIC_C11
+#else
+#define KD_ATOMIC_BUILTIN
+#endif
+#elif(__clang_major__ == 3) && (__clang_minor__ >= 1)
+#define KD_ATOMIC_BUILTIN
+#else
+#define KD_ATOMIC_SYNC
+#endif
+#if __has_include(<threads.h>)
+#define KD_THREAD_C11
+#elif __has_include(<pthread.h>)
+#define KD_THREAD_POSIX
+#endif
+#elif defined(__GNUC__)
+#if(__GNUC__ > 4)
+#if __has_include(<stdatomic.h>)
+#define KD_ATOMIC_C11
+#else
+#define KD_ATOMIC_BUILTIN
+#endif
+#elif(__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
+#define KD_ATOMIC_BUILTIN
+#elif(__GNUC__ == 4) && (__GNUC_MINOR__ >= 1)
+#define KD_ATOMIC_SYNC
+#else
+#define KD_ATOMIC_MUTEX
+#endif
+#if(__GNUC__ > 4)
+#if __has_include(<threads.h>)
+#define KD_THREAD_C11
+#elif __has_include(<pthread.h>)
+#define KD_THREAD_POSIX
+#endif
+#else
+#define KD_THREAD_POSIX
+#endif
+#elif defined(__TINYC__)
+#define KD_ATOMIC_MUTEX
+#define KD_THREAD_POSIX
+#elif defined(__PGIC__)
+#define KD_ATOMIC_MUTEX
+#define KD_THREAD_POSIX
+#else
+#define KD_ATOMIC_MUTEX
 #endif
 
 /******************************************************************************
@@ -141,105 +141,105 @@
 #cmakedefine KD_NO_STATIC_DATA
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-    #define KD_APIENTRY __stdcall
+#define KD_APIENTRY __stdcall
 #else
-    #define KD_APIENTRY
+#define KD_APIENTRY
 #endif
 
 #if defined(__ANDROID__)
-    #include <sys/cdefs.h>
+#include <sys/cdefs.h>
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-    #define KD_API __declspec(dllexport)
+#define KD_API __declspec(dllexport)
 #elif defined(__ANDROID__)
-    #include <sys/cdefs.h>
-    #ifndef __NDK_FPABI__
-    #define __NDK_FPABI__
-    #endif
-    #define KD_API __attribute__((__visibility__("default"))) __NDK_FPABI__
-#else 
-    #define KD_API
+#include <sys/cdefs.h>
+#ifndef __NDK_FPABI__
+#define __NDK_FPABI__
+#endif
+#define KD_API __attribute__((__visibility__("default"))) __NDK_FPABI__
+#else
+#define KD_API
 #endif
 
 #if __STDC_VERSION__ >= 201112L
-    #define KD_NORETURN _Noreturn
+#define KD_NORETURN _Noreturn
 #else
-    #if defined(_MSC_VER) || defined(__MINGW32__)
-        #define KD_NORETURN __declspec(noreturn)
-    #elif defined(__GNUC__) || defined(__clang__)
-        #define KD_NORETURN __attribute__((__noreturn__))
-    #else
-        #define KD_NORETURN 
-    #endif
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#define KD_NORETURN __declspec(noreturn)
+#elif defined(__GNUC__) || defined(__clang__)
+#define KD_NORETURN __attribute__((__noreturn__))
+#else
+#define KD_NORETURN
+#endif
 #endif
 
 #ifdef NDEBUG
-    #define KD_NDEBUG
+#define KD_NDEBUG
 #endif
 
 #ifdef KD_NDEBUG
-    #define kdAssert(c) ((void) 0)
+#define kdAssert(c) ((void)0)
 #else
-    #if defined(__GNUC__) || defined(__clang__)
-        #define kdAssert(c) (__builtin_expect((long int)(c), 0) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
-    #else
-        #define kdAssert(c) ((c) ? (void) 0 : kdHandleAssertion(#c, __FILE__, __LINE__))
-    #endif
+#if defined(__GNUC__) || defined(__clang__)
+#define kdAssert(c) (__builtin_expect((long int)(c), 0) ? (void)0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+#else
+#define kdAssert(c) ((c) ? (void)0 : kdHandleAssertion(#c, __FILE__, __LINE__))
+#endif
 #endif
 
-typedef signed   short          KDint16;
-typedef unsigned short          KDuint16;
-typedef signed   int            KDint32;
-typedef unsigned int            KDuint32;
-typedef signed   long long      KDint64;
-typedef unsigned long long      KDuint64;
+typedef signed short KDint16;
+typedef unsigned short KDuint16;
+typedef signed int KDint32;
+typedef unsigned int KDuint32;
+typedef signed long long KDint64;
+typedef unsigned long long KDuint64;
 
 #if defined(_WIN64)
-    /* LLP64 */
-    typedef unsigned long long      KDuintptr;
-    typedef signed   long long      KDssize;
-    typedef unsigned long long      KDsize;
-#elif defined(__LP64__) || defined(__x86_64__) ||  defined(__aarch64__) 
-    /* LP64 */
-    typedef unsigned long           KDuintptr;
-    typedef signed   long           KDssize;
-    typedef unsigned long           KDsize;
-#elif defined(__ILP32__) || defined(__i386__) ||  defined(__arm__) || defined(_WIN32)
-    /* ILP32 */
-    typedef unsigned int            KDuintptr;
-    typedef signed   int            KDssize;
-    typedef unsigned int            KDsize;
+/* LLP64 */
+typedef unsigned long long KDuintptr;
+typedef signed long long KDssize;
+typedef unsigned long long KDsize;
+#elif defined(__LP64__) || defined(__x86_64__) || defined(__aarch64__)
+/* LP64 */
+typedef unsigned long KDuintptr;
+typedef signed long KDssize;
+typedef unsigned long KDsize;
+#elif defined(__ILP32__) || defined(__i386__) || defined(__arm__) || defined(_WIN32)
+/* ILP32 */
+typedef unsigned int KDuintptr;
+typedef signed int KDssize;
+typedef unsigned int KDsize;
 #else
-#   include <stdint.h>
-    typedef uintptr_t               KDuintptr;
-    typedef size_t                  KDsize;
-#   if defined(__unix__)
-#       include <unistd.h>
-        typedef ssize_t             KDssize;
-#   else
-        typedef intptr_t            KDssize;
-#   endif
+#include <stdint.h>
+typedef uintptr_t KDuintptr;
+typedef size_t KDsize;
+#if defined(__unix__)
+#include <unistd.h>
+typedef ssize_t KDssize;
+#else
+typedef intptr_t KDssize;
+#endif
 #endif
 
-#define KDINT_MIN       (-0x7fffffff-1)
-#define KDINT_MAX       0x7fffffff
-#define KDUINT_MAX      0xffffffffU
-#define KDINT64_MIN     (-0x8000000000000000-1)
-#define KDINT64_MAX     0x7fffffffffffffff
-#define KDUINT64_MAX    0xffffffffffffffffU
+#define KDINT_MIN (-0x7fffffff - 1)
+#define KDINT_MAX 0x7fffffff
+#define KDUINT_MAX 0xffffffffU
+#define KDINT64_MIN (-0x8000000000000000 - 1)
+#define KDINT64_MAX 0x7fffffffffffffff
+#define KDUINT64_MAX 0xffffffffffffffffU
 #if defined(_WIN64) || defined(__LP64__) || defined(_LP64)
-#define KDSSIZE_MIN     KDINT64_MIN
-#define KDSSIZE_MAX     KDINT64_MAX
-#define KDSIZE_MAX      KDUINT64_MAX
-#define KDUINTPTR_MAX   KDUINT64_MAX
+#define KDSSIZE_MIN KDINT64_MIN
+#define KDSSIZE_MAX KDINT64_MAX
+#define KDSIZE_MAX KDUINT64_MAX
+#define KDUINTPTR_MAX KDUINT64_MAX
 #elif defined(__ILP32__) || defined(_ILP32) || defined(_WIN32) || defined(_M_IX86) || defined(__i386__) || defined(__i386)
-#define KDSSIZE_MIN     KDINT_MIN
-#define KDSSIZE_MAX     KDINT_MAX 
-#define KDSIZE_MAX      KDUINT_MAX 
-#define KDUINTPTR_MAX   KDUINT_MAX 
+#define KDSSIZE_MIN KDINT_MIN
+#define KDSSIZE_MAX KDINT_MAX
+#define KDSIZE_MAX KDUINT_MAX
+#define KDUINTPTR_MAX KDUINT_MAX
 #endif
-#define KD_INFINITY     0x7f800000
+#define KD_INFINITY 0x7f800000
 
 
 /******************************************************************************
@@ -247,29 +247,28 @@ typedef unsigned long long      KDuint64;
  ******************************************************************************/
 
 #if defined(__GNUC__) || defined(__clang__)
-    typedef __builtin_va_list KDVaListKHR;
-#   define KD_VA_START_KHR(ap, arg)    __builtin_va_start(ap, arg)
-#   define KD_VA_END_KHR(ap)           __builtin_va_end(ap)
-#   define KD_VA_ARG_INT32_KHR(ap)     __builtin_va_arg(ap, KDint32)
-#   define KD_VA_ARG_INT_KHR(ap)       __builtin_va_arg(ap, KDint)
-#   define KD_VA_ARG_INT64_KHR(ap)     __builtin_va_arg(ap, KDint64)
-#   define KD_VA_ARG_FLOAT32_KHR(ap)   __builtin_va_arg(ap, KDfloat32)
-#   define KD_VA_ARG_FLOAT64_KHR(ap)   __builtin_va_arg(ap, KDfloat64)
-#   define KD_VA_ARG_PTR_KHR(ap)       __builtin_va_arg(ap, KDuintptr)
-#   define KD_VA_COPY_VEN(d, s)        __builtin_va_copy(d, s)
+typedef __builtin_va_list KDVaListKHR;
+#define KD_VA_START_KHR(ap, arg) __builtin_va_start(ap, arg)
+#define KD_VA_END_KHR(ap) __builtin_va_end(ap)
+#define KD_VA_ARG_INT32_KHR(ap) __builtin_va_arg(ap, KDint32)
+#define KD_VA_ARG_INT_KHR(ap) __builtin_va_arg(ap, KDint)
+#define KD_VA_ARG_INT64_KHR(ap) __builtin_va_arg(ap, KDint64)
+#define KD_VA_ARG_FLOAT32_KHR(ap) __builtin_va_arg(ap, KDfloat32)
+#define KD_VA_ARG_FLOAT64_KHR(ap) __builtin_va_arg(ap, KDfloat64)
+#define KD_VA_ARG_PTR_KHR(ap) __builtin_va_arg(ap, KDuintptr)
+#define KD_VA_COPY_VEN(d, s) __builtin_va_copy(d, s)
 #else
-#   include <stdarg.h>
-    typedef va_list KDVaListKHR;
-#   define KD_VA_START_KHR(ap, arg)    va_start(ap, arg)
-#   define KD_VA_END_KHR(ap)           va_end(ap)
-#   define KD_VA_ARG_INT32_KHR(ap)     va_arg(ap, KDint32)
-#   define KD_VA_ARG_INT_KHR(ap)       va_arg(ap, KDint)
-#   define KD_VA_ARG_INT64_KHR(ap)     va_arg(ap, KDint64)
-#   define KD_VA_ARG_FLOAT32_KHR(ap)   va_arg(ap, KDfloat32)
-#   define KD_VA_ARG_FLOAT64_KHR(ap)   va_arg(ap, KDfloat64)
-#   define KD_VA_ARG_PTR_KHR(ap)       (void *)va_arg(ap, KDchar *)
-#   define KD_VA_COPY_VEN(d, s)        va_copy(d, s)
+#include <stdarg.h>
+typedef va_list KDVaListKHR;
+#define KD_VA_START_KHR(ap, arg) va_start(ap, arg)
+#define KD_VA_END_KHR(ap) va_end(ap)
+#define KD_VA_ARG_INT32_KHR(ap) va_arg(ap, KDint32)
+#define KD_VA_ARG_INT_KHR(ap) va_arg(ap, KDint)
+#define KD_VA_ARG_INT64_KHR(ap) va_arg(ap, KDint64)
+#define KD_VA_ARG_FLOAT32_KHR(ap) va_arg(ap, KDfloat32)
+#define KD_VA_ARG_FLOAT64_KHR(ap) va_arg(ap, KDfloat64)
+#define KD_VA_ARG_PTR_KHR(ap) (void *)va_arg(ap, KDchar *)
+#define KD_VA_COPY_VEN(d, s) va_copy(d, s)
 #endif
 
 #endif /* __kdplatform_h_ */
-

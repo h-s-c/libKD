@@ -28,32 +28,32 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#endif
 #endif
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-#   define _GNU_SOURCE /* O_CLOEXEC */
+#define _GNU_SOURCE /* O_CLOEXEC */
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#include "kdplatform.h"  // for KD_API, KD_APIENTRY, KDsize
+#include <KD/kd.h>       // for KDint, KDFile, kdFree, KDchar
+#include <KD/kdext.h>    // for kdSetErrorPlatformVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+#include "kd_internal.h"  // for KDFile, __kdRead, __kdWrite
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#   include <errno.h>
-#   include <stdio.h>
+#include <errno.h>  // for errno, EINTR, ENOTDIR, ENOTE...
+#include <stdio.h>  // for remove, rename
 #endif
 
 /******************************************************************************
@@ -61,26 +61,25 @@
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#   include <unistd.h>
-#   include <fcntl.h>
-#   include <dirent.h>
-#   include <sys/stat.h>
-#   if defined(__APPLE__) || defined(BSD)
-#       include <sys/mount.h>
-#   else
-#       include <sys/vfs.h>
-#   endif
-#   undef st_mtime /* OpenKODE uses this */
+// IWYU pragma: no_include <bits/types/struct_timespec.h>
+#include <unistd.h>      // for lseek, access, close, fsync
+#include <fcntl.h>       // for O_CREAT, O_WRONLY, SEEK_CUR
+#include <dirent.h>      // for closedir, opendir, readdir, DIR
+#include <sys/stat.h>    // for stat, mkdir, S_IRUSR, S_IWUSR
+#include <sys/statfs.h>  // for statfs
+#if defined(__APPLE__) || defined(BSD)
+#include <sys/mount.h>
+#endif
+#undef st_mtime /* OpenKODE uses this */
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <direct.h> /* R_OK etc. */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#include <direct.h> /* R_OK etc. */
+#endif
 
 /******************************************************************************
  * File system

@@ -28,28 +28,30 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"  // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
+#include <KD/kd.h>       // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
+#include <KD/kdext.h>    // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+#if !defined(__ANDROID__)
+#include "kd_internal.h"  // for __kdWrite
+#endif
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
 #if defined(__EMSCRIPTEN__) && !defined(KD_FREESTANDING)
-#   include <stdio.h> /* vprintf */
+#include <stdio.h> /* vprintf */
 #endif
 
 /******************************************************************************
@@ -57,19 +59,19 @@
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__)
-#   if defined(__ANDROID__)
-#       include <android/log.h> /* __android_log_vprint */
-#   else
-#       include <unistd.h> /* write */
-#   endif
+#if defined(__ANDROID__)
+#include <android/log.h>  // for __android_log_vprint, android_LogPriority::...
+#else
+#include <unistd.h>  // for STDOUT_FILENO
+#endif
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h> /* GetStdHandle */
-#   include <fileapi.h> /* WriteFile etc. */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h> /* GetStdHandle */
+#include <fileapi.h> /* WriteFile etc. */
 #endif
 
 /******************************************************************************
@@ -80,32 +82,31 @@
 #define STB_SPRINTF_NOUNALIGNED
 #define STB_SPRINTF_IMPLEMENTATION
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wcast-align"
-#   pragma clang diagnostic ignored "-Wcast-qual"
-#   pragma clang diagnostic ignored "-Wconditional-uninitialized"
-#   if __has_warning("-Wdouble-promotion")
-#       pragma clang diagnostic ignored "-Wdouble-promotion"
-#   endif
-#   pragma clang diagnostic ignored "-Wpadded"
-#   pragma clang diagnostic ignored "-Wsign-compare"
-#   pragma clang diagnostic ignored "-Wsign-conversion"
-#   pragma clang diagnostic ignored "-Wunused-function"
-#elif defined(__GNUC__)
-#   pragma GCC diagnostic push
-#   pragma GCC diagnostic ignored "-Wsign-compare"
-#   pragma GCC diagnostic ignored "-Wunused-function"
-#   if __GNUC__ >= 7
-#       pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wcast-qual"
+#pragma clang diagnostic ignored "-Wconditional-uninitialized"
+#if __has_warning("-Wdouble-promotion")
+#pragma clang diagnostic ignored "-Wdouble-promotion"
 #endif
-#include "stb_sprintf.h"
+#pragma clang diagnostic ignored "-Wpadded"
+#pragma clang diagnostic ignored "-Wsign-compare"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wunused-function"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#if __GNUC__ >= 7
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+#endif
+#include "stb_sprintf.h"  // for stbsp_vsprintfcb, STB_SPRINTF_MIN, stbsp_vs...
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #elif defined(__GNUC__)
-#   pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 #endif
-/* clang-format on */
 
 /******************************************************************************
  * OpenKODE Core extension: KD_KHR_formatted

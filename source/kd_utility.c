@@ -28,18 +28,20 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"        // for KD_API, KD_APIENTRY, KDssize, KDint64
+#include <KD/kd.h>             // for KDchar, KDint, kdMemcpy, kdSetError
+#include <KD/KHR_float64.h>    // for KDfloat64KHR
+#include <KD/KHR_formatted.h>  // for kdSnprintfKHR
+#include <KD/kdext.h>          // IWYU pragma: keep
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 /******************************************************************************
@@ -47,7 +49,7 @@
  ******************************************************************************/
 
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#   include <stdlib.h> /* getenv */
+#include <stdlib.h>  // for getenv
 #endif
 
 /******************************************************************************
@@ -55,26 +57,28 @@
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__)
-#   if (defined(__GLIBC__) && __GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
-#       include <sys/random.h> /* getentropy/getrandom */
-#   else
-#       include <unistd.h> /* getentropy */ 
-#   endif
+#if defined(__GLIBC__)
+#include <features.h>  // for __GLIBC__, __GLIBC_MINOR__
+#if(__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
+#include <sys/random.h>  // for getrandom, GRND_NONBLOCK
+#else
+#include <unistd.h> /* getentropy */
+#endif
+#endif
 #endif
 
 #if defined(__EMSCRIPTEN__)
-#   include <emscripten/emscripten.h> /* emscripten_random */
+#include <emscripten/emscripten.h> /* emscripten_random */
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <processenv.h> /* GetEnvironmentVariable */
-#   include <wincrypt.h> /* CryptGenRandom etc. */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#include <processenv.h> /* GetEnvironmentVariable */
+#include <wincrypt.h>   /* CryptGenRandom etc. */
+#endif
 
 /******************************************************************************
  * Utility library functions

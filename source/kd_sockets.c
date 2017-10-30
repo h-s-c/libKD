@@ -28,21 +28,22 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#endif
 #endif
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-#   define _GNU_SOURCE /* O_CLOEXEC */
+#define _GNU_SOURCE /* O_CLOEXEC */
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#include "kdplatform.h"        // for KD_API, KD_APIENTRY, KD_UNUSED, KDuint32
+#include <KD/kd.h>             // for KDint, KDSocket, kdSetError, KDSockaddr
+#include <KD/KHR_formatted.h>  // for kdSnprintfKHR
+#include <KD/kdext.h>          // for kdSetErrorPlatformVEN
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 /******************************************************************************
@@ -50,7 +51,7 @@
  ******************************************************************************/
 
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#   include <errno.h>
+#include <errno.h>  // for errno
 #endif
 
 /******************************************************************************
@@ -58,23 +59,23 @@
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#   include <unistd.h>
-#   include <netdb.h>
-#   include <netinet/in.h>
-#   include <sys/socket.h>
+// IWYU pragma: no_include <linux/in.h>
+#include <unistd.h>
+#include <netdb.h>       // for addrinfo, freeaddrinfo, getaddrinfo
+#include <netinet/in.h>  // for sockaddr_in, in_addr, INADDR_ANY, htonl
+#include <sys/socket.h>  // for socket, AF_INET, bind, connect, recv
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   define _WINSOCK_DEPRECATED_NO_WARNINGS 1
-#   include <winsock2.h> /* WSA.. */
-#   include <ws2tcpip.h>
-#   undef s_addr /* OpenKODE uses this */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS 1
+#include <winsock2.h> /* WSA.. */
+#include <ws2tcpip.h>
+#undef s_addr /* OpenKODE uses this */
+#endif
 
 /******************************************************************************
  * Network sockets
@@ -98,7 +99,7 @@ static void *__kdNameLookupHandler(void *arg)
     kdMemset(&addr, 0, sizeof(addr));
     addr.family = KD_AF_INET;
 
-    struct addrinfo *result = NULL;
+    struct addrinfo *result = KD_NULL;
     struct addrinfo hints;
     kdMemset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;

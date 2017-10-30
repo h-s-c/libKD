@@ -28,18 +28,18 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#endif
+#include "kdplatform.h"  // for KDsize, KD_API, KD_APIENTRY, KDuint32, KDuin...
+#include <KD/kd.h>       // for KDchar, KDint, KDuint8, KDint8, KD_NULL
+#include <KD/kdext.h>    // IWYU pragma: keep
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 /******************************************************************************
@@ -47,23 +47,22 @@
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#   if !defined(__TINYC__)  && !defined(__PGIC__)
-#       if defined(__x86_64__) || defined(__i386__)
-#           include <x86intrin.h>        
-#       elif defined(__ARM_NEON__)       
-#           include <arm_neon.h>     
-#       endif
-#   endif
+#if !defined(__TINYC__) && !defined(__PGIC__)
+#if defined(__x86_64__) || defined(__i386__)
+#include <emmintrin.h>  // for __m128i, _mm_cmpeq_epi8, _mm_movemask_epi8
+#elif defined(__ARM_NEON__)
+#include <arm_neon.h>
+#endif
+#endif
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
-#   include <intrin.h> /* _mm_.. */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#include <intrin.h> /* _mm_.. */
+#endif
 
 /******************************************************************************
  * String and memory functions

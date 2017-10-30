@@ -28,36 +28,37 @@
  * KD includes
  ******************************************************************************/
 
-/* clang-format off */
 #if defined(__clang__)
-#   pragma clang diagnostic push
-#   pragma clang diagnostic ignored "-Wpadded"
-#   if __has_warning("-Wreserved-id-macro")
-#       pragma clang diagnostic ignored "-Wreserved-id-macro"
-#   endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#endif
 #endif
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
-#   define _GNU_SOURCE /* O_CLOEXEC */
+#define _GNU_SOURCE /* O_CLOEXEC */
 #endif
-#include <KD/kd.h>
-#include <KD/kdext.h>
+#include "kdplatform.h"             // for KD_THREAD_POSIX, KD_API, KD_...
+#include <KD/kd.h>                  // for kdSetError, kdFree, KDThread
+#include <KD/KHR_thread_storage.h>  // for kdGetThreadStorageKHR, kdMap...
+#include <KD/kdext.h>               // IWYU pragma: keep
 #if defined(__clang__)
-#   pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+#include "kd_internal.h"  // for KDThread, _KDThreadInternal
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
 #if defined(KD_THREAD_C11)
-#   include <threads.h>
+#include <threads.h>
 #endif
 
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
-#   include <errno.h>
-#   include <time.h> /* nanosleep */
+#include <errno.h>  // for EINVAL, ENOMEM, ESRCH
+#include <time.h>   // for nanosleep
 #endif
 
 /******************************************************************************
@@ -65,25 +66,29 @@
  ******************************************************************************/
 
 #if defined(KD_THREAD_POSIX)
-#   include <pthread.h>
+// IWYU pragma: no_include <bits/pthread_types.h>
+#include <pthread.h>  // for pthread_attr_setdetachstate
 #endif
 
 #if defined(__linux__)
-#   include <sys/prctl.h> /* prctl */
+// IWYU pragma: no_include <bits/types/struct_timespec.h>
+// IWYU pragma: no_include <bits/types/time_t.h>
+// IWYU pragma: no_include <bits/types/struct_timespec.h>
+// IWYU pragma: no_include <linux/time.h>
+#include <sys/prctl.h>  // for prctl, PR_SET_NAME
 #endif
 
 #if defined(__EMSCRIPTEN__)
-#   include <emscripten/emscripten.h> /* emscripten_sleep */
-#   include <emscripten/threading.h> /* emscripten_has_threading_support */
+#include <emscripten/emscripten.h> /* emscripten_sleep */
+#include <emscripten/threading.h>  /* emscripten_has_threading_support */
 #endif
 
 #if defined(_WIN32)
-#   ifndef WIN32_LEAN_AND_MEAN
-#       define WIN32_LEAN_AND_MEAN
-#   endif
-#   include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-/* clang-format on */
+#include <windows.h>
+#endif
 
 /******************************************************************************
  * Threads and synchronization
@@ -291,9 +296,9 @@ static void *__kdThreadRun(void *init)
             {
                 RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR *)&info);
             }
-            /* clang-format off */
+
             __except(EXCEPTION_CONTINUE_EXECUTION)
-            /* clang-format on */
+
             {
             }
         }
