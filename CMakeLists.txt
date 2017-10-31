@@ -73,7 +73,7 @@ project (KD C)
     target_include_directories(KD PUBLIC ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
 
     if(MSVC)
-        target_compile_options(KD PRIVATE /W4 /WX /wd4100 /wd4127)
+        target_compile_options(KD PRIVATE /W4 /WX /wd4100 /wd4127 /wd4204)
         if(KD_BUILD_OPTIMIZATONS)
             target_compile_options(KD PRIVATE /arch:SSE4.2)
         endif()
