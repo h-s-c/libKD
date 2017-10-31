@@ -42,9 +42,7 @@
 #pragma clang diagnostic pop
 #endif
 
-#if !defined(__ANDROID__)
 #include "kd_internal.h"  // for __kdWrite
-#endif
 
 /******************************************************************************
  * C includes

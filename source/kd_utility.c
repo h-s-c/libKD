@@ -57,13 +57,11 @@
  ******************************************************************************/
 
 #if defined(__unix__) || defined(__APPLE__)
-#if defined(__GLIBC__)
-#include <features.h>  // for __GLIBC__, __GLIBC_MINOR__
+// IWYU pragma: no_include  <features.h>
 #if(__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
 #include <sys/random.h>  // for getrandom, GRND_NONBLOCK
 #else
 #include <unistd.h> /* getentropy */
-#endif
 #endif
 #endif
 

@@ -54,9 +54,7 @@
 #endif
 
 #include <EGL/egl.h>     // for EGLConfig, EGLDisplay, EGL_...
-#if !defined(__ANDROID__)
 #include <EGL/eglext.h>  // for EGL_PLATFORM_WAYLAND_KHR
-#endif
 
 #include "kd_internal.h"  // for _KDCallback, KDThread, __kd...
 
