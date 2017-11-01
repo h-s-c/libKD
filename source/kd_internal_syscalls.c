@@ -59,8 +59,8 @@
 #if defined(__GNUC__) && defined(__linux__) && defined(__x86_64__)
 #include <syscall.h>  // for SYS_open, SYS_read, SYS_write
 #else
-#include <unistd.h> 
-#include <fcntl.h> 
+#include <unistd.h>
+#include <fcntl.h>
 #endif
 #endif
 

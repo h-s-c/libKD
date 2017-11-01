@@ -62,13 +62,14 @@
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 // IWYU pragma: no_include <bits/types/struct_timespec.h>
-#include <unistd.h>      // for lseek, access, close, fsync
-#include <fcntl.h>       // for O_CREAT, O_WRONLY, SEEK_CUR
-#include <dirent.h>      // for closedir, opendir, readdir, DIR
-#include <sys/stat.h>    // for stat, mkdir, S_IRUSR, S_IWUSR
-#include <sys/statfs.h>  // for statfs
+#include <unistd.h>    // for lseek, access, close, fsync
+#include <fcntl.h>     // for O_CREAT, O_WRONLY, SEEK_CUR
+#include <dirent.h>    // for closedir, opendir, readdir, DIR
+#include <sys/stat.h>  // for stat, mkdir, S_IRUSR, S_IWUSR
 #if defined(__APPLE__) || defined(BSD)
-#include <sys/mount.h>
+#include <sys/mount.h>  // for statfs
+#else
+#include <sys/statfs.h>  // for statfs
 #endif
 #undef st_mtime /* OpenKODE uses this */
 #endif

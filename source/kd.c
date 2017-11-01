@@ -103,15 +103,15 @@
 // IWYU pragma: no_include <wayland-client-protocol.h>
 // IWYU pragma: no_include <wayland-egl-core.h>
 // IWYU pragma: no_include <wayland-util.h>
-// IWYU pragma: no_include <wayland-version.h> 
-#include <wayland-client.h> // IWYU pragma: keep
+// IWYU pragma: no_include <wayland-version.h>
+#include <wayland-client.h>  // IWYU pragma: keep
 // IWYU pragma: no_forward_declare wl_keyboard
 // IWYU pragma: no_forward_declare wl_pointer
 // IWYU pragma: no_forward_declare wl_registry
 // IWYU pragma: no_forward_declare wl_seat
 // IWYU pragma: no_forward_declare wl_shell_surface
 // IWYU pragma: no_forward_declare wl_surface
-#include <wayland-egl.h> // IWYU pragma: keep
+#include <wayland-egl.h>  // IWYU pragma: keep
 #endif
 #if defined(KD_WINDOW_X11)
 #include <xcb/xcb_ewmh.h>             // for xcb_ewmh_connection_t, xcb_...
