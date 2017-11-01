@@ -46,14 +46,18 @@
  * Platform includes
  ******************************************************************************/
 
-#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#if !defined(__TINYC__) && !defined(__PGIC__)
-#if defined(__x86_64__) || defined(__i386__)
-#include <emmintrin.h>  // for __m128i, _mm_cmpeq_epi8, _mm_movemask_epi8
-#elif defined(__ARM_NEON__)
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#endif
+
+#if defined(__SSE4_2__)
+#include <smmintrin.h>
+#elif defined(__SSE4_1__)
+#include <smmintrin.h>
+#endif
+
+#if defined(__ARM_NEON__)
 #include <arm_neon.h>
-#endif
-#endif
 #endif
 
 #if defined(_WIN32)
@@ -61,7 +65,6 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
-#include <intrin.h> /* _mm_.. */
 #endif
 
 /******************************************************************************

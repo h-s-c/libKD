@@ -52,13 +52,14 @@
  * Platform includes
  ******************************************************************************/
 
-#if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-#if !defined(__TINYC__) && !defined(__PGIC__)
-#if defined(__x86_64__) || defined(__i386__)
-#include <emmintrin.h>  // for _mm_load_sd, _mm_cvtsd_si32, _mm_sqrt_sd
-#include <xmmintrin.h>  // for _mm_load_ss, _mm_store_ss, _mm_rsqrt_ss
+#ifdef __SSE__
+#include <xmmintrin.h>
 #endif
+#ifdef __SSE2__
+#include <emmintrin.h>
 #endif
+#ifdef __SSE4_1__
+#include <smmintrin.h>
 #endif
 
 #if defined(_WIN32)
@@ -66,7 +67,6 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
-#include <intrin.h> /* _mm_.. */
 #ifndef inline
 #define inline __inline /* MSVC redefinition fix */
 #endif
