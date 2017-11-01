@@ -99,17 +99,19 @@
 #include <xkbcommon/xkbcommon.h>          // for xkb_state_mod_name_is_active
 #endif
 #if defined(KD_WINDOW_WAYLAND)
-#include <wayland-client-core.h>      // for wl_display_connect, wl_disp...
-#include <wayland-client-protocol.h>  // for wl_registry_bind, wl_compos...
-#include <wayland-egl-core.h>         // for wl_egl_window_create, wl_eg...
-#include <wayland-util.h>             // for wl_fixed_to_int, wl_fixed_t
-#include <wayland-version.h>          // for WAYLAND_VERSION_MAJOR, WAYL...
-struct wl_keyboard;
-struct wl_pointer;
-struct wl_registry;
-struct wl_seat;
-struct wl_shell_surface;
-struct wl_surface;
+// IWYU pragma: no_include <wayland-client-core.h>
+// IWYU pragma: no_include <wayland-client-protocol.h>
+// IWYU pragma: no_include <wayland-egl-core.h>
+// IWYU pragma: no_include <wayland-util.h>
+// IWYU pragma: no_include <wayland-version.h> 
+#include <wayland-client.h> // IWYU pragma: keep
+// IWYU pragma: no_forward_declare wl_keyboard
+// IWYU pragma: no_forward_declare wl_pointer
+// IWYU pragma: no_forward_declare wl_registry
+// IWYU pragma: no_forward_declare wl_seat
+// IWYU pragma: no_forward_declare wl_shell_surface
+// IWYU pragma: no_forward_declare wl_surface
+#include <wayland-egl.h> // IWYU pragma: keep
 #endif
 #if defined(KD_WINDOW_X11)
 #include <xcb/xcb_ewmh.h>             // for xcb_ewmh_connection_t, xcb_...
