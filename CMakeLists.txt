@@ -162,7 +162,7 @@ project (KD C)
         set_target_properties(KD PROPERTIES SUFFIX ".bc")
     endif()
 
-    if(NOT DEFINED ENV{CI} NOT CMAKE_CROSSCOMPILING AND NOT KD_BUILD_OPTIMIZATONS)
+    if(NOT DEFINED ENV{CI} AND NOT CMAKE_CROSSCOMPILING AND NOT KD_BUILD_OPTIMIZATONS)
         find_program(CLANG_TIDY NAMES clang-tidy)
         if(CLANG_TIDY)
             message(STATUS "clang-tidy found: ${CLANG_TIDY}")
