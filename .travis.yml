@@ -24,7 +24,7 @@ jobs:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-7', 'ninja-build', 'valgrind', 'cppcheck', binutils-gold', 
+          packages: ['gcc-7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
                      'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
