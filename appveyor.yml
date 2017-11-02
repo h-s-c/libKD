@@ -6,6 +6,7 @@ image:
 - Visual Studio 2013
 
 before_build:
+  - ps: Set-Service wuauserv -StartupType Manual
   - cinst ninja wget opencppcoverage cppcheck 
   - cinst cmake --installargs 'ADD_CMAKE_TO_PATH=""User""'
   - refreshenv
