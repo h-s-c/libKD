@@ -3109,7 +3109,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
     window->properties.height = 600;
 
     const KDchar *caption = "OpenKODE";
-    kdMemcpy(window->properties.caption, caption, kdStrlen(caption));
+    kdMemcpy(window->properties.caption, caption, 8);
 
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
