@@ -1,1 +1,1 @@
-Checks: '*,-readability-else-after-return,-readability-misleading-indentation,-google-readability-casting,-clang-analyzer-alpha.*,-clang-diagnostic-unknown-pragmas,-llvm-include-order'
+Checks: '*,-readability-else-after-return,-readability-misleading-indentation,-google-readability-casting,-clang-analyzer-alpha.*,-clang-diagnostic-unknown-pragmas,-clang-diagnostic-unused-command-line-argument,-llvm-include-order,-hicpp-no-assembler'

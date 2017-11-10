@@ -187,7 +187,8 @@ function (pvs_studio_add_target)
     default(PVS_STUDIO_PLATFORM "linux64")
 
     if (PVS_STUDIO_EMPTY_CONFIG)
-        set(PVS_STUDIO_CONFIG_COMMAND echo "${PVS_STUDIO_CFG_TEXT}" > "${PVS_STUDIO_CONFIG}")
+        set(PVS_STUDIO_CONFIG_COMMAND echo "${PVS_STUDIO_CFG_TEXT}" > "${PVS_STUDIO_CONFIG}" &&
+            echo "exclude-path=${CMAKE_SOURCE_DIR}/source/stb_*.h" >> "${PVS_STUDIO_CONFIG}")
     else ()
         set(PVS_STUDIO_CONFIG_COMMAND touch "${PVS_STUDIO_CONFIG}")
     endif ()

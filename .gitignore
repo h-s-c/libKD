@@ -9,3 +9,8 @@
 /*.rpm
 /*.deb
 /cmake-build-debug
+libKD\.srctrlbm
+
+libKD\.srctrldb
+
+libKD\.srctrlprj
