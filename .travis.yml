@@ -25,7 +25,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -39,7 +39,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-6', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -53,7 +53,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-5', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -67,7 +67,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.9', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -81,7 +81,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -95,7 +95,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -112,7 +112,7 @@ jobs:
             - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-4.0', 'llvm-4.0', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -126,7 +126,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.8', 'llvm-3.8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -140,7 +140,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.6', 'llvm-3.6', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -154,7 +154,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['clang-3.5', 'llvm-3.5', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -168,7 +168,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: 
@@ -185,7 +185,7 @@ jobs:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['tcc', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       install: python ci-tools/install_cmake.py   
@@ -253,7 +253,7 @@ jobs:
       addons:
         apt:
           packages: ['ca-certificates', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       env:
@@ -287,7 +287,7 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
@@ -312,7 +312,7 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
@@ -337,7 +337,7 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
@@ -362,7 +362,7 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
@@ -387,8 +387,34 @@ jobs:
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+            python ci-tools/install_cmake.py;
+            python ci-tools/run_cpack.py;"
+
+    - os: linux
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=26
+      dist: trusty
+      sudo: required
+      services: docker
+      deploy:
+        provider: packagecloud
+        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+        repository: "libKD"
+        username: "h-s-c"
+        token:
+          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+        skip_cleanup: true
+        package_glob: "*.rpm"
+        on:
+          tags: true
+      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+      script:
+        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+            dnf -y groupinstall \"C Development Tools and Libraries\" && 
+            dnf -y install git pkgconfig rpm-build ninja-build python 
+              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
+              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
@@ -413,7 +439,7 @@ jobs:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
             dnf -y groupinstall \"C Development Tools and Libraries\" && 
             dnf -y install git pkgconfig rpm-build ninja-build python 
-              mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
+              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
@@ -439,7 +465,7 @@ jobs:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
             dnf -y groupinstall \"C Development Tools and Libraries\" && 
             dnf -y install git pkgconfig rpm-build ninja-build python 
-              mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
+              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
@@ -465,7 +491,7 @@ jobs:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
             zypper -n install -t pattern devel_C_C++ && 
             zypper -n install git rpm-build ninja python 
-              Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel
+              Mesa-libGL-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
@@ -491,7 +517,7 @@ jobs:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
             zypper -n install -t pattern devel_C_C++ && 
             zypper -n install git rpm-build ninja python 
-              Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel
+              Mesa-libGL-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
