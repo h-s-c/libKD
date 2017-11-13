@@ -77,6 +77,7 @@
 #endif
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include "stb_dxt.h"  // for stb_compress_dxt_block, STB_DXT_NORMAL
