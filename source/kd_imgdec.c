@@ -105,6 +105,7 @@
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
 #elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
