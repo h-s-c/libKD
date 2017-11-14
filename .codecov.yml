@@ -1,2 +1,5 @@
+codecov:
+  branch: develop
+
 ignore:
   - "source/stb_*.h"
