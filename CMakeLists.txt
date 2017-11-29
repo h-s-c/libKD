@@ -27,11 +27,11 @@
 # Emscripten: $EMSCRIPTEN/cmake/Modules/Platform/Emscripten.cmake
 ###############################################################################
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 cmake_policy(SET CMP0025 NEW)
 cmake_policy(SET CMP0054 NEW)
 cmake_policy(SET CMP0069 NEW)
-cmake_policy(SET CMP0072 NEW)
+#cmake_policy(SET CMP0072 NEW)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
