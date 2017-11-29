@@ -2894,10 +2894,8 @@ static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED stru
     if(format == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1)
     {
         KDchar *keymap_string = mmap(KD_NULL, size, PROT_READ, MAP_SHARED, fd, 0);
-        xkb_keymap_unref(window->xkb.keymap);
         window->xkb.keymap = xkb_keymap_new_from_string(window->xkb.context, keymap_string, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
         munmap(keymap_string, size);
-        xkb_state_unref(window->xkb.state);
         window->xkb.state = xkb_state_new(window->xkb.keymap);
     }
 }

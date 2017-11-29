@@ -214,6 +214,10 @@ Example *exampleInit(void)
 
 void exampleRun(Example *example)
 {
+    if(!example->run)
+    {
+        return;
+    }
     if(eglSwapBuffers(example->egl.display, example->egl.surface) == EGL_FALSE)
     {
         EGLint egl_error = eglGetError();

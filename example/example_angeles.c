@@ -1186,7 +1186,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    example->run = 0;
+                    example->run = KD_FALSE;
                     break;
                 }
                 default:
