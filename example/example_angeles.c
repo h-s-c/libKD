@@ -283,7 +283,7 @@ static GLuint createVBO(GLOBJECT **superShapes, KDint superShapeCount,
         fadeQuad->normalArraySize;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, totalSize, 0, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, totalSize, 0, GL_DYNAMIC_DRAW);
     GLint offset = 0;
     for(a = 0; a < superShapeCount; ++a)
         appendObjectVBO(superShapes[a], &offset);
@@ -357,15 +357,13 @@ KDint initShaderPrograms()
     exampleMatrixIdentity(sModelView);
     exampleMatrixIdentity(sProjection);
 
-    sShaderFlat.program = exampleCreateProgram(sFlatVertexSource,
-        sFlatFragmentSource);
-    sShaderLit.program = exampleCreateProgram(sLitVertexSource,
-        sFlatFragmentSource);
-    sShaderFade.program = exampleCreateProgram(sFadeVertexSource,
-        sFlatFragmentSource);
-    if(sShaderFlat.program == 0 || sShaderLit.program == 0 ||
-        sShaderFade.program == 0)
+    sShaderFlat.program = exampleCreateProgram(sFlatVertexSource, sFlatFragmentSource, KD_TRUE);
+    sShaderLit.program = exampleCreateProgram(sLitVertexSource, sFlatFragmentSource, KD_TRUE);
+    sShaderFade.program = exampleCreateProgram(sFadeVertexSource, sFlatFragmentSource, KD_TRUE);
+    if(sShaderFlat.program == 0 || sShaderLit.program == 0 || sShaderFade.program == 0)
+    {
         return 0;
+    }
 
     return getLocations();
 }

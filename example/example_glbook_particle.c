@@ -90,7 +90,10 @@ KDboolean Init(Example *example)
         "}                                                    \n";
 
     // Store the program object
-    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr);
+    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr, KD_TRUE);
+
+    // Use the program object
+    glUseProgram(userData->programObject);
 
     // Get the attribute locations
     userData->lifetimeLoc = glGetAttribLocation(userData->programObject, "a_lifetime");
@@ -198,9 +201,6 @@ void Draw(Example *example)
 
     // Clear the color buffer
     glClear(GL_COLOR_BUFFER_BIT);
-
-    // Use the program object
-    glUseProgram(userData->programObject);
 
     // Load the vertex attributes
     glBindBuffer(GL_ARRAY_BUFFER, userData->vertexObject);

@@ -28,7 +28,6 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -61,6 +60,10 @@ typedef struct Example {
     {
         KDWindow *window;
     } kd;
+    struct
+    {
+        KDboolean enable;
+    } shadercache;
 } Example;
 
 Example *exampleInit(void);
@@ -73,7 +76,7 @@ KDint exampleDestroy(Example *example);
 
 static GLuint exampleLoadTexture(const KDchar *filename);
 static GLuint exampleCreateShader(GLenum type, const KDchar *shadersrc);
-static GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc);
+static GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc, KDboolean link);
 
 /****************************************************************************** 
  * 4x4 Matrix
@@ -184,8 +187,8 @@ Example *exampleInit(void)
     {
         glEnable(GL_DEBUG_OUTPUT_KHR);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-        PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
-        glDebugMessageCallback(&exampleCallbackGL, KD_NULL);
+        PFNGLDEBUGMESSAGECALLBACKKHRPROC  glDebugMessageCallbackKHR = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
+        glDebugMessageCallbackKHR(&exampleCallbackGL, KD_NULL);
     }
 #endif
 
@@ -204,6 +207,61 @@ Example *exampleInit(void)
     kdLogMessagefKHR("Version: %s\n", (const KDchar *)glGetString(GL_VERSION));
     kdLogMessagefKHR("Renderer: %s\n", (const KDchar *)glGetString(GL_RENDERER));
     kdLogMessagefKHR("Extensions: %s\n", (const KDchar *)glGetString(GL_EXTENSIONS));
+#if defined(GL_OES_get_program_binary)
+    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_get_program_binary"))
+    {
+        example->shadercache.enable = KD_TRUE;
+
+        static const GLchar *dummyvertexsrc=\
+            "void main()"
+            "{"
+            "   gl_Position = gl_Vertex;"
+            "}";
+
+        static const GLchar *dummyfragmentsrc=\
+            "void main()"
+            "{"
+            "   gl_FragColor=vec4(1.0, 1.0, 1.0, 1.0);"
+            "}";
+
+        GLuint dummyprogram = glCreateProgram();
+
+        GLuint dummyvertex = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(dummyvertex, 1, &dummyvertexsrc, 0);
+        glCompileShader(dummyvertex);
+        glAttachShader(dummyprogram, dummyvertex);
+
+        GLuint dummyfragment = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(dummyfragment, 1, &dummyfragmentsrc, 0);
+        glCompileShader(dummyfragment);
+        glAttachShader(dummyprogram, dummyfragment);
+
+        glLinkProgram(dummyprogram);
+        glUseProgram(dummyprogram);
+
+        GLint formats = 0;
+        glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &formats);
+        if(formats > 0)
+        {
+            kdLogMessage("Shader binary formats: ");
+            GLint *binary_formats = kdMalloc(sizeof(GLint) * formats);
+            glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, binary_formats);
+            for (KDint i = 0; i < formats; ++i)
+            {
+#if defined(GL_MESA_program_binary_formats)
+                if(binary_formats[i] == GL_PROGRAM_BINARY_FORMAT_MESA)
+                {
+                    kdLogMessage("Mesa ");
+                }
+#endif
+                kdLogMessagefKHR("%d ", binary_formats[i]);
+            }
+            kdFree(binary_formats);
+            kdLogMessage("\n");
+        }
+        glUseProgram(0);
+    }
+#endif
     kdLogMessage("---------------\n");
 
     kdInstallCallback(&exampleCallbackKD, KD_EVENT_QUIT, example);
@@ -338,7 +396,7 @@ GLuint exampleCreateShader(GLenum type, const KDchar *shadersrc)
     return shader;
 }
 
-GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc)
+GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc, KDboolean link)
 {
     GLuint program = glCreateProgram();
     if(program == 0)
@@ -364,7 +422,27 @@ GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc)
     glAttachShader(program, fragmentshader);
     glDeleteShader(fragmentshader);
 
-    glLinkProgram(program);
+    if(link)
+    {
+        GLint linked = 0;
+        glLinkProgram(program);
+        glGetProgramiv(program, GL_LINK_STATUS, &linked);
+
+        if(!linked)
+        {
+            GLint len = 0;
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+
+            if(len > 1)
+            {
+                KDchar *log = kdMalloc(sizeof(KDchar) * len);
+                glGetProgramInfoLog(program, len, KD_NULL, log);
+                kdLogMessagefKHR("%s\n", log);
+                kdFree(log);
+            }
+            return 0;
+        }
+    }
     return program;
 }
 

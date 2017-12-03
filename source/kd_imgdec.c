@@ -344,15 +344,14 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
 
-    image->buffer = stbi_load_from_memory(filedata, (KDint)st.st_size, &image->width, &image->height, (int[]){0}, channels);
+    image->buffer = stbi_load_from_memory(filedata, (KDint)st.st_size, &image->width, &image->height, (KDint[]){0}, channels);
+    kdFree(filedata);
     if(image->buffer == KD_NULL)
     {
-        kdFree(filedata);
         kdFree(image);
         kdSetError(KD_EILSEQ);
         return KD_NULL;
     }
-    kdFree(filedata);
 
     image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
     return image;

@@ -43,10 +43,11 @@ KDboolean Init(Example *example)
         "}                                            \n";
 
     // Store the program object
-    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr);
-
+    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr, KD_FALSE);
+    
     // Bind vPosition to attribute 0
     glBindAttribLocation(userData->programObject, 0, "vPosition");
+    glLinkProgram(userData->programObject);
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     return KD_TRUE;

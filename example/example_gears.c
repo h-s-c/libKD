@@ -519,9 +519,10 @@ gears_init(void)
     glEnable(GL_DEPTH_TEST);
 
     /* Create and link the shader program */
-    program = exampleCreateProgram(vertex_shader, fragment_shader);
+    program = exampleCreateProgram(vertex_shader, fragment_shader, KD_FALSE);
     glBindAttribLocation(program, 0, "position");
     glBindAttribLocation(program, 1, "normal");
+    glLinkProgram(program);
 
     /* Enable the shaders */
     glUseProgram(program);
