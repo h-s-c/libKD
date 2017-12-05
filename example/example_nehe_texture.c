@@ -43,20 +43,20 @@ const KDchar* g_strVertexShader =
 
 
 const KDchar* g_strFragmentShader = 
-"#ifdef GL_FRAGMENT_PRECISION_HIGH				\n"
-"   precision highp float;					\n"
-"#else							\n"
-"   precision mediump float;				\n"
-"#endif							\n"
-"								\n"
-"uniform sampler2D s_texture;				\n"
-"varying   vec3      g_vVSColor;				\n"
-"varying   vec2 g_vVSTexCoord;				\n"
-"								\n"
-"void main()						\n"
-"{								\n"
-"    gl_FragColor = texture2D(s_texture,g_vVSTexCoord);	\n"
-"}								\n";
+	"#ifdef GL_FRAGMENT_PRECISION_HIGH						\n"
+	"   precision highp float;								\n"
+	"#else													\n"
+	"   precision mediump float;							\n"
+	"#endif													\n"
+	"														\n"
+	"uniform sampler2D s_texture;							\n"
+	"varying   vec3      g_vVSColor;						\n"
+	"varying   vec2 g_vVSTexCoord;							\n"
+	"														\n"
+	"void main()											\n"
+	"{														\n"
+	"    gl_FragColor = texture2D(s_texture,g_vVSTexCoord);	\n"
+	"}														\n";
 
 KDfloat32 VertexPositions[]={
 	/* Draw A Quad */
@@ -269,7 +269,6 @@ KDint init(void)
 	// Init attributes BEFORE linking
 	glBindAttribLocation( g_hShaderProgram, g_hVertexLoc,   "g_vPosition" );
 	glBindAttribLocation( g_hShaderProgram, g_hColorLoc,    "g_vColor" );
-
 	glBindAttribLocation( g_hShaderProgram, g_hVertexTexLoc,   "g_vTexCoord" );
 
 	// Link the vertex shader and fragment shader together
