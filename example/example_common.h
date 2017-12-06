@@ -53,7 +53,7 @@ typedef struct Example {
         EGLConfig config;
         EGLSurface surface;
         EGLContext context;
-        EGLint *attrib_list;
+        EGLint attrib_list[8];
         EGLNativeWindowType window;
         const KDchar *extensions;
     } egl;
@@ -163,9 +163,7 @@ Example *exampleInit(void)
 
     example->egl.surface = eglCreateWindowSurface(example->egl.display, example->egl.config, example->egl.window, KD_NULL);
     
-    example->egl.attrib_list = kdMalloc(sizeof(EGLint)*16);
     KDint offset = 0;
-
     const EGLint context_attributes[] =
     {
         EGL_CONTEXT_CLIENT_VERSION,
@@ -188,7 +186,7 @@ Example *exampleInit(void)
 #endif
 
 #if defined(EGL_IMG_context_priority)
-    const EGLint context_attributes_ext2[2] =
+    const EGLint context_attributes_ext2[] =
     {
         EGL_CONTEXT_PRIORITY_LEVEL_IMG,
         EGL_CONTEXT_PRIORITY_HIGH_IMG
@@ -200,7 +198,7 @@ Example *exampleInit(void)
     }
 #endif
 
-    const EGLint context_attributes_end[1] =
+    const EGLint context_attributes_end[] =
     {
         EGL_NONE
     };
@@ -361,7 +359,6 @@ KDint exampleDestroy(Example *example)
     eglDestroySurface(example->egl.display, example->egl.surface);
     eglTerminate(example->egl.display);
     kdDestroyWindow(example->kd.window);
-    kdFree(example->egl.attrib_list);
     kdFree(example);
     return 0;
 }
