@@ -55,6 +55,7 @@ typedef struct Example {
         EGLContext context;
         EGLint *attrib_list;
         EGLNativeWindowType window;
+        const KDchar *extensions;
     } egl;
     struct
     {
@@ -133,6 +134,15 @@ Example *exampleInit(void)
 {
     Example *example = (Example *)kdMalloc(sizeof (Example));
 
+    example->egl.display = eglGetDisplay(kdGetDisplayVEN());
+    kdAssert(example->egl.display != EGL_NO_DISPLAY);
+
+    eglInitialize(example->egl.display, 0, 0);
+    eglBindAPI(EGL_OPENGL_ES_API);
+
+    example->egl.extensions = eglQueryString(example->egl.display, EGL_EXTENSIONS); 
+
+    EGLint egl_num_configs = 0;
     const EGLint egl_attributes[] =
     {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -146,33 +156,56 @@ Example *exampleInit(void)
         EGL_NONE
     };
 
-    const EGLint context_attributes[] =
-    {
-        EGL_CONTEXT_CLIENT_VERSION,
-        2,
-#if defined(EGL_KHR_create_context)
-        EGL_CONTEXT_FLAGS_KHR,
-        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
-#endif
-        EGL_NONE,
-    };
-    
-    example->egl.attrib_list = kdMalloc(sizeof(context_attributes));
-    kdMemcpy(example->egl.attrib_list, context_attributes, sizeof(context_attributes));
-
-    example->egl.display = eglGetDisplay(kdGetDisplayVEN());
-    kdAssert(example->egl.display != EGL_NO_DISPLAY);
-
-    eglInitialize(example->egl.display, 0, 0);
-    eglBindAPI(EGL_OPENGL_ES_API);
-
-    EGLint egl_num_configs = 0;
     eglChooseConfig(example->egl.display, egl_attributes, &example->egl.config, 1, &egl_num_configs);
 
     example->kd.window = kdCreateWindow(example->egl.display, example->egl.config, KD_NULL);
     kdRealizeWindow(example->kd.window, &example->egl.window);
 
     example->egl.surface = eglCreateWindowSurface(example->egl.display, example->egl.config, example->egl.window, KD_NULL);
+    
+    example->egl.attrib_list = kdMalloc(sizeof(EGLint)*16);
+    KDint offset = 0;
+
+    const EGLint context_attributes[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION,
+        2
+    };
+    kdMemcpy(example->egl.attrib_list + offset, context_attributes, sizeof(context_attributes));
+    offset += (sizeof(context_attributes) /sizeof (context_attributes[0]));
+
+#if !defined(KD_NDEBUG) && defined(EGL_KHR_create_context)
+    const EGLint context_attributes_ext1[] =
+    {
+        EGL_CONTEXT_FLAGS_KHR,
+        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR
+    };
+    if(kdStrstrVEN(example->egl.extensions, "EGL_KHR_create_context"))
+    {
+        kdMemcpy(example->egl.attrib_list+offset, context_attributes_ext1, sizeof(context_attributes_ext1));
+        offset += (sizeof(context_attributes_ext1) /sizeof (context_attributes_ext1[0]));
+    }
+#endif
+
+#if defined(EGL_IMG_context_priority)
+    const EGLint context_attributes_ext2[2] =
+    {
+        EGL_CONTEXT_PRIORITY_LEVEL_IMG,
+        EGL_CONTEXT_PRIORITY_HIGH_IMG
+    };
+    if(kdStrstrVEN(example->egl.extensions, "EGL_IMG_context_priority"))
+    {
+        kdMemcpy(example->egl.attrib_list+offset, context_attributes_ext2, sizeof(context_attributes_ext2));
+        offset += (sizeof(context_attributes_ext2) /sizeof (context_attributes_ext2[0]));
+    }
+#endif
+
+    const EGLint context_attributes_end[1] =
+    {
+        EGL_NONE
+    };
+    kdMemcpy(example->egl.attrib_list+offset, context_attributes_end, sizeof(context_attributes_end));
+
     example->egl.context = eglCreateContext(example->egl.display, example->egl.config, EGL_NO_CONTEXT, example->egl.attrib_list);
     kdAssert(example->egl.context != EGL_NO_CONTEXT);
 
@@ -201,7 +234,7 @@ Example *exampleInit(void)
     kdLogMessagefKHR("Vendor: %s\n", eglQueryString(example->egl.display, EGL_VENDOR));
     kdLogMessagefKHR("Version: %s\n", eglQueryString(example->egl.display, EGL_VERSION));
     kdLogMessagefKHR("Client APIs: %s\n", eglQueryString(example->egl.display, EGL_CLIENT_APIS));
-    kdLogMessagefKHR("Extensions: %s\n", eglQueryString(example->egl.display, EGL_EXTENSIONS));
+    kdLogMessagefKHR("Extensions: %s\n", example->egl.extensions);
     kdLogMessage("-----GLES2-----\n");
     kdLogMessagefKHR("Vendor: %s\n", (const KDchar *)glGetString(GL_VENDOR));
     kdLogMessagefKHR("Version: %s\n", (const KDchar *)glGetString(GL_VERSION));
@@ -211,39 +244,33 @@ Example *exampleInit(void)
     if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_get_program_binary"))
     {
         example->shadercache.enable = KD_TRUE;
+        kdLogMessage("GL_OES_get_program_binary formats: ");
 
-        static const GLchar *dummyvertexsrc=\
-            "void main()"
-            "{"
-            "   gl_Position = gl_Vertex;"
-            "}";
+        const KDchar *dummyvertexsrc =
+            "void main()                    \n"
+            "{                          \n"
+            "   gl_Position = gl_Vertex;    \n"
+            "}                              \n";
 
-        static const GLchar *dummyfragmentsrc=\
-            "void main()"
-            "{"
-            "   gl_FragColor=vec4(1.0, 1.0, 1.0, 1.0);"
-            "}";
+        const KDchar *dummyfragmentsrc =
+            "#ifdef GL_FRAGMENT_PRECISION_HIGH              \n"
+            "   precision highp float;                      \n"
+            "#else                                          \n"
+            "   precision mediump float;                    \n"
+            "#endif                                         \n"
+            "                                               \n"
+            "void main()                                    \n"
+            "{                                              \n"
+            "  gl_FragColor = vec4 ( 1.0, 0.0, 0.0, 1.0 );  \n"
+            "}                                              \n";
 
-        GLuint dummyprogram = glCreateProgram();
-
-        GLuint dummyvertex = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(dummyvertex, 1, &dummyvertexsrc, 0);
-        glCompileShader(dummyvertex);
-        glAttachShader(dummyprogram, dummyvertex);
-
-        GLuint dummyfragment = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(dummyfragment, 1, &dummyfragmentsrc, 0);
-        glCompileShader(dummyfragment);
-        glAttachShader(dummyprogram, dummyfragment);
-
-        glLinkProgram(dummyprogram);
+        GLuint dummyprogram = exampleCreateProgram(dummyvertexsrc, dummyfragmentsrc, KD_TRUE);
         glUseProgram(dummyprogram);
 
         GLint formats = 0;
         glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &formats);
         if(formats > 0)
         {
-            kdLogMessage("Shader binary formats: ");
             GLint *binary_formats = kdMalloc(sizeof(GLint) * formats);
             glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, binary_formats);
             for (KDint i = 0; i < formats; ++i)
@@ -259,7 +286,13 @@ Example *exampleInit(void)
             kdFree(binary_formats);
             kdLogMessage("\n");
         }
+        else
+        {
+            kdLogMessage("None");
+        }
+        kdLogMessage("\n");
         glUseProgram(0);
+        glDeleteProgram(dummyprogram);
     }
 #endif
     kdLogMessage("---------------\n");
