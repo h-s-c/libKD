@@ -209,7 +209,7 @@ Example *exampleInit(void)
 
     eglMakeCurrent(example->egl.display, example->egl.surface, example->egl.surface, example->egl.context);
 
-    eglSwapInterval(example->egl.display, 0);
+    eglSwapInterval(example->egl.display, 1);
 
     kdAssert(eglGetError() == EGL_SUCCESS);
 

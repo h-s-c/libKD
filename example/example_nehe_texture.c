@@ -17,6 +17,9 @@ GLuint       g_hProjMatrixLoc      = 0;
 GLuint       g_hVertexLoc          = 0;
 GLuint       g_hVertexTexLoc       = 2;
 GLuint       g_hColorLoc           = 1;
+GLuint       g_hVertexBuf          = 0;
+GLuint       g_hVertexTexBuf       = 0;
+GLuint       g_hColorBuf           = 0;
 
 //--------------------------------------------------------------------------------------
 // Name: g_strVertexShader / g_strFragmentShader
@@ -199,7 +202,7 @@ GLuint texture[1]; /* Storage For One Texture ( NEW ) */
 void render(KDfloat32 w, KDfloat32 h)
 {
 	static KDfloat32 fAngle = 0.0f;
-	fAngle += 0.0005f;
+	fAngle += 0.01f;
 
 	// Rotate and translate the model view matrix
 	KDfloat32 matModelView[16] = {0};
@@ -235,13 +238,16 @@ void render(KDfloat32 w, KDfloat32 h)
 	glUniformMatrix4fv( g_hProjMatrixLoc,      1, 0, matProj );
 
 	// Bind the vertex attributes
-	glVertexAttribPointer( g_hVertexLoc, 3, GL_FLOAT, 0, 0, VertexPositions );
+	glBindBuffer(GL_ARRAY_BUFFER, g_hVertexBuf);
+	glVertexAttribPointer( g_hVertexLoc, 3, GL_FLOAT, 0, 0, KD_NULL );
 	glEnableVertexAttribArray( g_hVertexLoc );
 
-	glVertexAttribPointer( g_hColorLoc, 4, GL_FLOAT, 0, 0, VertexColors );
+	glBindBuffer(GL_ARRAY_BUFFER, g_hColorBuf);
+	glVertexAttribPointer( g_hColorLoc, 4, GL_FLOAT, 0, 0, KD_NULL );
 	glEnableVertexAttribArray( g_hColorLoc );
 
-	glVertexAttribPointer( g_hVertexTexLoc, 2, GL_FLOAT, 0, 0, VertexTexCoords );
+	glBindBuffer(GL_ARRAY_BUFFER, g_hVertexTexBuf);
+	glVertexAttribPointer( g_hVertexTexLoc, 2, GL_FLOAT, 0, 0, KD_NULL );
 	glEnableVertexAttribArray( g_hVertexTexLoc );
 
 	/* Select Our Texture */
@@ -273,6 +279,18 @@ KDint init(void)
 
 	// Link the vertex shader and fragment shader together
 	glLinkProgram( g_hShaderProgram );
+
+	glGenBuffers(1, &g_hVertexBuf);
+	glBindBuffer(GL_ARRAY_BUFFER, g_hVertexBuf);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexPositions), VertexPositions, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &g_hColorBuf);
+	glBindBuffer(GL_ARRAY_BUFFER, g_hColorBuf);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexColors), VertexColors, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &g_hVertexTexBuf);
+	glBindBuffer(GL_ARRAY_BUFFER, g_hVertexTexBuf);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(VertexTexCoords), VertexTexCoords, GL_STATIC_DRAW);
 
 	// Get uniform locations
 	g_hModelViewMatrixLoc = glGetUniformLocation( g_hShaderProgram, "g_matModelView" );
