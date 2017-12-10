@@ -365,8 +365,8 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             struct PVR_Texture_Header header;
             kdMemcpy(&header, filedata, sizeof(KDuint) * 13);
 
-            image->height = header.dwHeight;
-            image->width = header.dwWidth;
+            image->height = (KDint)header.dwHeight;
+            image->width = (KDint)header.dwWidth;
             image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint);
             image->buffer = kdMalloc(image->size);
             /* PVRCT2/4 RGB/RGBA compressed formats for now */
