@@ -87,4 +87,4 @@ extern KDThreadMutex *__kd_tls_mutex;
 extern KDint errno;
 #endif
 
-KDint __kdDecompressPVRTC(const void* pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8* pResultImage);
+KDint __kdDecompressPVRTC(const KDuint8* pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8* pResultImage);

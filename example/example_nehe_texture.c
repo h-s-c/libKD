@@ -297,7 +297,7 @@ KDint init(void)
 	g_hProjMatrixLoc      = glGetUniformLocation( g_hShaderProgram, "g_matProj" );
 
 	//gen textures
-	texture[0] = exampleLoadTexture("data/nehe.png");
+	texture[0] = exampleLoadTexture("data/lenna.png");
 	return 1;
 }
 

@@ -678,7 +678,7 @@ static KDint pvrtcDecompress(const KDuint8 *pCompressedData,
     return (KDint)(ui32Width * ui32Height / (ui32WordWidth / 2));
 }
 
-KDint __kdDecompressPVRTC(const void *pCompressedData,
+KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData,
     KDint Do2bitMode,
     KDint XDim,
     KDint YDim,
