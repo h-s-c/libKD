@@ -199,7 +199,7 @@ KDfloat32 VertexColors[] ={
 
 GLuint texture[1]; /* Storage For One Texture ( NEW ) */
 
-void render(KDfloat32 w, KDfloat32 h)
+void render(KDint w, KDint h)
 {
 	static KDfloat32 fAngle = 0.0f;
 	fAngle += 0.01f;

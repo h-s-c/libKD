@@ -172,7 +172,7 @@ Example *exampleInit(void)
     kdMemcpy(example->egl.attrib_list + offset, context_attributes, sizeof(context_attributes));
     offset += (sizeof(context_attributes) /sizeof (context_attributes[0]));
 
-#if !defined(KD_NDEBUG) && defined(EGL_KHR_create_context)
+/*#if !defined(KD_NDEBUG) && defined(EGL_KHR_create_context)
     const EGLint context_attributes_ext1[] =
     {
         EGL_CONTEXT_FLAGS_KHR,
@@ -183,7 +183,7 @@ Example *exampleInit(void)
         kdMemcpy(example->egl.attrib_list+offset, context_attributes_ext1, sizeof(context_attributes_ext1));
         offset += (sizeof(context_attributes_ext1) /sizeof (context_attributes_ext1[0]));
     }
-#endif
+#endif*/
 
 #if defined(EGL_IMG_context_priority)
     const EGLint context_attributes_ext2[] =
@@ -211,7 +211,7 @@ Example *exampleInit(void)
 
     eglSwapInterval(example->egl.display, 1);
 
-    kdAssert(eglGetError() == EGL_SUCCESS);
+ /*kdAssert(eglGetError() == EGL_SUCCESS);
 
 #if defined(GL_KHR_debug)
     if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
@@ -221,7 +221,7 @@ Example *exampleInit(void)
         PFNGLDEBUGMESSAGECALLBACKKHRPROC  glDebugMessageCallbackKHR = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
         glDebugMessageCallbackKHR(&exampleCallbackGL, KD_NULL);
     }
-#endif
+#endif*/
 
     /* Debug message */
     kdLogMessage("-----KD-----\n");
@@ -518,36 +518,36 @@ void exampleMatrixCopy(Matrix4x4 dst, Matrix4x4 src)
     }
 }
 
-void exampleMatrixFrustum(Matrix4x4 m, KDfloat32 left, KDfloat32 right, KDfloat32 bottom, KDfloat32 top, KDfloat32 near, KDfloat32 far)
+void exampleMatrixFrustum(Matrix4x4 m, KDfloat32 left, KDfloat32 right, KDfloat32 bottom, KDfloat32 top, KDfloat32 _near, KDfloat32 _far)
 {
     KDfloat32 dx = right - left;
     KDfloat32 dy = top - bottom;
-    KDfloat32 dz = far - near;
+    KDfloat32 dz = _far - _near;
     Matrix4x4 frust;
 
-    if (near <= 0.f || far <= 0.f || dx <= 0.f || dy <= 0.f || dz <= 0.f)
+    if (_near <= 0.f || _far <= 0.f || dx <= 0.f || dy <= 0.f || dz <= 0.f)
     {
         return;
     }
 
-    frust[0*4 + 0] = 2.f * near / dx;
+    frust[0*4 + 0] = 2.f * _near / dx;
     frust[0*4 + 1] = 0.f;
     frust[0*4 + 2] = 0.f;
     frust[0*4 + 3] = 0.f;
 
     frust[1*4 + 0] = 0.f;
-    frust[1*4 + 1] = 2.f * near / dy;
+    frust[1*4 + 1] = 2.f * _near / dy;
     frust[1*4 + 2] = 0.f;
     frust[1*4 + 3] = 0.f;
 
     frust[2*4 + 0] = (right + left) / dx;
     frust[2*4 + 1] = (top + bottom) / dy;
-    frust[2*4 + 2] = -(near + far) / dz;
+    frust[2*4 + 2] = -(_near + _far) / dz;
     frust[2*4 + 3] = -1.f;
 
     frust[3*4 + 0] = 0.f;
     frust[3*4 + 1] = 0.f;
-    frust[3*4 + 2] = -2.f * near * far / dz;
+    frust[3*4 + 2] = -2.f * _near * _far / dz;
     frust[3*4 + 3] = 0.f;
 
     exampleMatrixMultiply(m, frust);

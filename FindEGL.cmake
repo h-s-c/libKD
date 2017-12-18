@@ -21,16 +21,15 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
-
-find_path(GLES2_INCLUDE_DIR NAMES GLES2/gl2.h PATHS $ENV{KHRONOS_HEADERS})
-find_library(GLES2_LIBRARY NAMES GLESv2 libGLESv2 PATHS $ENV{OPENGLES_LIBDIR})
+find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h PATHS $ENV{KHRONOS_HEADERS})
+find_library(EGL_LIBRARY NAMES egl EGL libEGL PATHS $ENV{OPENGLES_LIBDIR})
 
 if(EMSCRIPTEN)
-    set(GLES2_FOUND TRUE)
-    SET(GLES2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
-    set(GLES2_LIBRARY "nul")
+    set(EGL_FOUND TRUE)
+    SET(EGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+    set(EGL_LIBRARY "nul")
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_LIBRARY)
-mark_as_advanced(GLES2_INCLUDE_DIR GLES2_LIBRARY)
+find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY)
+mark_as_advanced(EGL_INCLUDE_DIR EGL_LIBRARY)
