@@ -1,5 +1,6 @@
 /.idea
 /.scannerwork
+/.vs
 /build
 /ci/build
 /thirdparty/gles_amd
@@ -9,8 +10,3 @@
 /*.rpm
 /*.deb
 /cmake-build-debug
-libKD\.srctrlbm
-
-libKD\.srctrldb
-
-libKD\.srctrlprj

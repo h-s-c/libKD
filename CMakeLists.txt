@@ -27,7 +27,7 @@
 # Emscripten: $EMSCRIPTEN/cmake/Modules/Platform/Emscripten.cmake
 ###############################################################################
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.9)
 cmake_policy(SET CMP0025 NEW)
 cmake_policy(SET CMP0054 NEW)
 cmake_policy(SET CMP0069 NEW)
@@ -74,7 +74,7 @@ project (KD C)
     target_include_directories(KD PUBLIC ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
 
     if(MSVC)
-        target_compile_options(KD PRIVATE /W4 /WX /wd4100 /wd4127 /wd4204)
+        target_compile_options(KD PRIVATE /W3 /WX /wd4100 /wd4127 /wd4204)
         if(KD_BUILD_OPTIMIZATONS)
             target_compile_options(KD PRIVATE /arch:SSE4.2)
         endif()
@@ -162,6 +162,7 @@ project (KD C)
     if(WIN32)
         target_link_libraries(KD PRIVATE ws2_32)
         target_compile_definitions(KD PRIVATE "_WIN32_WINNT=0x0601")
+        set_target_properties(KD PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
     endif()
 
     if(EMSCRIPTEN)
