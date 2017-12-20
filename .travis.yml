@@ -215,10 +215,6 @@ jobs:
       services: docker
       install:
         - docker pull $DOCKER_IMAGE;
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
@@ -230,10 +226,6 @@ jobs:
       install: 
         - brew update
         - brew install ninja ccache cppcheck
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -243,10 +235,6 @@ jobs:
       install: 
         - brew update
         - brew install ninja ccache cppcheck
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 
@@ -256,10 +244,6 @@ jobs:
       install: 
         - brew update
         - brew install ninja ccache valgrind cppcheck
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/egl.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglext.h
-        - wget -q -P include/EGL https://www.khronos.org/registry/egl/api/EGL/eglplatform.h
-        - wget -q -P include/KHR https://www.khronos.org/registry/egl/api/KHR/khrplatform.h
         - python ci-tools/install_cmake.py   
       script: python ci-tools/run_ctest.py
 

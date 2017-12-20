@@ -53,8 +53,10 @@
 #pragma clang diagnostic pop
 #endif
 
+#if defined(KD_WINDOW_SUPPORTED)
 #include <EGL/egl.h>     // for EGLConfig, EGLDisplay, EGL_...
 #include <EGL/eglext.h>  // for EGL_PLATFORM_WAYLAND_KHR
+#endif
 
 #include "kd_internal.h"  // for _KDCallback, KDThread, __kd...
 

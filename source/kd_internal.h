@@ -23,7 +23,7 @@
 
 struct KDFile {
 #if defined(_WIN32)
-    HANDLE nativefile;
+    void* nativefile;
 #else
     KDint nativefile;
     KDint8 padding[4];
