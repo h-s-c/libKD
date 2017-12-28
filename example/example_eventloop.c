@@ -68,5 +68,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         exampleRun(example);
     }
 
+    kdCancelTimer(kd_timer);
     return exampleDestroy(example);
 }

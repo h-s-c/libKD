@@ -343,7 +343,7 @@ void perspective(GLfloat *m, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloa
     KDfloat64KHR sine, cosine;
     GLfloat radians = fovy / 2 * KD_PI_F / 180;
 
-	GLfloat deltaZ = zFar - zNear;
+    GLfloat deltaZ = zFar - zNear;
     sine = kdSinKHR(radians);
     cosine = kdSinKHR(radians);
 
