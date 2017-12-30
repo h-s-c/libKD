@@ -202,7 +202,6 @@ project (KD C)
     file(GLOB KD_HEADERS "${CMAKE_SOURCE_DIR}/include/KD/*.h")
     list(APPEND KD_HEADERS ${CMAKE_BINARY_DIR}/include/KD/kdplatform.h)
     install(FILES ${KD_HEADERS} DESTINATION include/KD)
-    source_group("KD" FILES ${KD_HEADERS})
 
     # Tests
     if(KD_BUILD_TESTS)

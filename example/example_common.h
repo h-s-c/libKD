@@ -170,9 +170,9 @@ Example *exampleInit(void)
         2
     };
     kdMemcpy(example->egl.attrib_list + offset, context_attributes, sizeof(context_attributes));
-    offset += (sizeof(context_attributes) /sizeof (context_attributes[0]));
+    offset += (sizeof(context_attributes) / sizeof (context_attributes[0]));
 
-/*#if !defined(KD_NDEBUG) && defined(EGL_KHR_create_context)
+#if !defined(KD_NDEBUG) && defined(EGL_KHR_create_context)
     const EGLint context_attributes_ext1[] =
     {
         EGL_CONTEXT_FLAGS_KHR,
@@ -180,10 +180,10 @@ Example *exampleInit(void)
     };
     if(kdStrstrVEN(example->egl.extensions, "EGL_KHR_create_context"))
     {
-        kdMemcpy(example->egl.attrib_list+offset, context_attributes_ext1, sizeof(context_attributes_ext1));
-        offset += (sizeof(context_attributes_ext1) /sizeof (context_attributes_ext1[0]));
+        kdMemcpy(example->egl.attrib_list + offset, context_attributes_ext1, sizeof(context_attributes_ext1));
+        offset += (sizeof(context_attributes_ext1) / sizeof (context_attributes_ext1[0]));
     }
-#endif*/
+#endif
 
 #if defined(EGL_IMG_context_priority)
     const EGLint context_attributes_ext2[] =
@@ -193,8 +193,8 @@ Example *exampleInit(void)
     };
     if(kdStrstrVEN(example->egl.extensions, "EGL_IMG_context_priority"))
     {
-        kdMemcpy(example->egl.attrib_list+offset, context_attributes_ext2, sizeof(context_attributes_ext2));
-        offset += (sizeof(context_attributes_ext2) /sizeof (context_attributes_ext2[0]));
+        kdMemcpy(example->egl.attrib_list + offset, context_attributes_ext2, sizeof(context_attributes_ext2));
+        offset += (sizeof(context_attributes_ext2) / sizeof (context_attributes_ext2[0]));
     }
 #endif
 
@@ -202,7 +202,7 @@ Example *exampleInit(void)
     {
         EGL_NONE
     };
-    kdMemcpy(example->egl.attrib_list+offset, context_attributes_end, sizeof(context_attributes_end));
+    kdMemcpy(example->egl.attrib_list + offset, context_attributes_end, sizeof(context_attributes_end));
 
     example->egl.context = eglCreateContext(example->egl.display, example->egl.config, EGL_NO_CONTEXT, example->egl.attrib_list);
     kdAssert(example->egl.context != EGL_NO_CONTEXT);
@@ -211,7 +211,7 @@ Example *exampleInit(void)
 
     eglSwapInterval(example->egl.display, 1);
 
- /*kdAssert(eglGetError() == EGL_SUCCESS);
+    kdAssert(eglGetError() == EGL_SUCCESS);
 
 #if defined(GL_KHR_debug)
     if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
@@ -221,7 +221,7 @@ Example *exampleInit(void)
         PFNGLDEBUGMESSAGECALLBACKKHRPROC  glDebugMessageCallbackKHR = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
         glDebugMessageCallbackKHR(&exampleCallbackGL, KD_NULL);
     }
-#endif*/
+#endif
 
     /* Debug message */
     kdLogMessage("-----KD-----\n");

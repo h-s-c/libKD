@@ -600,6 +600,7 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff leng
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     HANDLE file = FindFirstFileA(pathname, &data);
     retval = (KDint)SetFileValidData(file, (LONGLONG)length);
     FindClose(file);
@@ -624,6 +625,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -700,6 +702,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
@@ -771,14 +774,23 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
+    dir->dirent->d_name = (const KDchar *)kdMalloc(sizeof(KDchar) * 256);
+    if (dir->dirent->d_name == KD_NULL)
+    {
+        kdFree(dir->dirent);
+        kdFree(dir);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
 #if defined(_WIN32)
     KDchar dirpath[MAX_PATH];
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     if(kdStrcmp(pathname, ".") == 0)
     {
         GetCurrentDirectoryA(MAX_PATH, dirpath);
     }
-    kdStrncat_s(dirpath, MAX_PATH, "\\*", 2);
+    kdStrncat_s(dirpath, MAX_PATH, "/*", 2);
 #if defined(_MSC_VER)
 #pragma warning(suppress : 6102)
 #endif
@@ -793,6 +805,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
+        kdFree((void*)dir->dirent->d_name);
         kdFree(dir->dirent);
         kdFree(dir);
         return KD_NULL;
@@ -806,10 +819,10 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-
-    if(FindNextFileA(dir->nativedir, &data) != 0)
+    kdMemset(&data, 0, sizeof(data));
+    if(FindNextFileA(dir->nativedir, &data))
     {
-        dir->dirent->d_name = data.cFileName;
+        kdMemcpy((void*)dir->dirent->d_name, data.cFileName, 256);
     }
     else
     {
@@ -822,7 +835,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     struct dirent *de = readdir(dir->nativedir);
     if(de != KD_NULL)
     {
-        dir->dirent->d_name = de->d_name;
+        kdMemcpy((void*)dir->dirent->d_name, de->d_name, 256);
     }
     else if(errno == 0)
     {
