@@ -752,6 +752,7 @@ struct KDDir {
     DIR *nativedir;
 #endif
     KDDirent *dirent;
+    void *dirent_d_name;
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
@@ -774,14 +775,15 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    dir->dirent->d_name = (const KDchar *)kdMalloc(sizeof(KDchar) * 256);
-    if (dir->dirent->d_name == KD_NULL)
+    dir->dirent_d_name = kdMalloc(sizeof(KDchar) * 256);
+    if (dir->dirent_d_name == KD_NULL)
     {
         kdFree(dir->dirent);
         kdFree(dir);
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
+    dir->dirent->d_name = dir->dirent_d_name;
 #if defined(_WIN32)
     KDchar dirpath[MAX_PATH];
     WIN32_FIND_DATA data;
@@ -805,7 +807,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
-        kdFree((void*)dir->dirent->d_name);
+        kdFree(dir->dirent_d_name);
         kdFree(dir->dirent);
         kdFree(dir);
         return KD_NULL;
@@ -822,7 +824,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     kdMemset(&data, 0, sizeof(data));
     if(FindNextFileA(dir->nativedir, &data))
     {
-        kdMemcpy((void*)dir->dirent->d_name, data.cFileName, 256);
+        kdMemcpy(dir->dirent_d_name, data.cFileName, 256);
     }
     else
     {
@@ -835,7 +837,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     struct dirent *de = readdir(dir->nativedir);
     if(de != KD_NULL)
     {
-        kdMemcpy((void*)dir->dirent->d_name, de->d_name, 256);
+        kdMemcpy(dir->dirent_d_name, de->d_name, 256);
     }
     else if(errno == 0)
     {
@@ -859,6 +861,7 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 #else
     closedir(dir->nativedir);
 #endif
+    kdFree(dir->dirent_d_name);
     kdFree(dir->dirent);
     kdFree(dir);
     return 0;
