@@ -81,6 +81,9 @@
 #define STBI_MALLOC kdMalloc
 #define STBI_REALLOC kdRealloc
 #define STBI_FREE kdFree
+#define STBI_MEMCPY kdMemcpy
+#define STBI_MEMSET kdMemset
+#define STBI_ABS kdAbs
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #if defined(_MSC_VER)

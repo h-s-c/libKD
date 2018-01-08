@@ -260,7 +260,7 @@ static void *__kdThreadRun(void *init)
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     /* Set the thread name */
     KD_UNUSED const KDchar *threadname = thread->internal->attr ? thread->internal->attr->debugname : "KDThread";
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(KD_FREESTANDING)
     typedef HRESULT(WINAPI * SETTHREADDESCRIPTION)(HANDLE hThread, PCWSTR lpThreadDescription);
     SETTHREADDESCRIPTION __SetThreadDescription = KD_NULL;
     HMODULE kernel32 = GetModuleHandle("Kernel32.dll");
@@ -270,7 +270,7 @@ static void *__kdThreadRun(void *init)
     }
     if(__SetThreadDescription)
     {
-        WCHAR wthreadname[256] = L"KDThread";
+        WCHAR wthreadname[256] = L"KDThread"; /* implicit memset */
         MultiByteToWideChar(0, 0, threadname, -1, wthreadname, 256);
         __SetThreadDescription(GetCurrentThread(), (const WCHAR *)wthreadname);
     }

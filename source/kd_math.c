@@ -1400,7 +1400,7 @@ static KDint __kdRemPio2Kernel(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0,
         twon24 = 5.96046447753906250000e-08; /* 0x3E700000, 0x00000000 */
 
     KDint32 jz, jx, jv, jk, carry, n, iq[20], i, j, k, m, q0, ih;
-    KDfloat64KHR z, fw, f[20] = {0}, fq[20], q[20];
+    KDfloat64KHR z, fw, f[20], fq[20], q[20];
 
     /* initialize jk*/
     jk = 3;

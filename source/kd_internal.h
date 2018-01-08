@@ -87,4 +87,8 @@ extern KDThreadMutex *__kd_tls_mutex;
 extern KDint errno;
 #endif
 
+#if defined(_WIN32) && defined(KD_FREESTANDING)
+KDint _fltused;
+#endif
+
 KDint __kdDecompressPVRTC(const KDuint8* pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8* pResultImage);

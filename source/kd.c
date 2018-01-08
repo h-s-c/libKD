@@ -2257,7 +2257,9 @@ static void __kd_AndroidOnInputQueueDestroyed(KD_UNUSED ANativeActivity *activit
 static KDint __kdPreMain(KDint argc, KDchar **argv)
 {
 #if defined(_WIN32)
-    if(WSAStartup(0x202, (WSADATA[]){{0}}) != 0)
+    WSADATA wsadata;
+    kdMemset(&wsadata, 0, sizeof(WSADATA));
+    if(WSAStartup(0x202, &wsadata) != 0)
     {
         kdLogMessage("Winsock2 error.\n");
         kdExit(-1);
@@ -2366,28 +2368,39 @@ void ANativeActivity_onCreate(ANativeActivity *activity, KD_UNUSED void *savedSt
 }
 #endif
 
-
-#if defined(_WIN32)
-int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED LPSTR lpCmdLine, KD_UNUSED int nShowCmd)
-{
-    return __kdPreMain(__argc, __argv);
-}
-#if defined(KD_FREESTANDING) && !defined(__MINGW32__)
-int WINAPI WinMainCRTStartup(void)
-{
-    return __kdPreMain(__argc, __argv);
-}
-int WINAPI mainCRTStartup(void)
-{
-    return __kdPreMain(__argc, __argv);
-}
-#endif
-#endif
 KD_API int main(int argc, char **argv)
 {
     KDint result = __kdPreMain(argc, argv);
     return result;
 }
+
+
+#if defined(_WIN32)
+int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInstance, KD_UNUSED LPSTR lpCmdLine, KD_UNUSED int nShowCmd)
+{
+    return __kdPreMain(0, KD_NULL); /* (__argc, __argv) */
+}
+#if defined(KD_FREESTANDING) && !defined(__MINGW32__)
+void WINAPI WinMainCRTStartup(void)
+{
+    KDint result = WinMain(GetModuleHandle(0), 0, 0, 0);
+    ExitProcess(result);
+}
+BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpReserved)
+{
+    return 1;
+}
+BOOL WINAPI _DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
+{
+    return DllMain(hinstDLL,fdwReason,lpReserved);
+}
+void WINAPI mainCRTStartup(void)
+{
+    KDint result = main(0, KD_NULL); /* (__argc, __argv) */
+    ExitProcess(result);
+}
+#endif
+#endif
 
 /* kdExit: Exit the application. */
 KD_API KD_NORETURN void KD_APIENTRY kdExit(KDint status)
