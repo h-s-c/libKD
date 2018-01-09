@@ -238,6 +238,9 @@ __attribute__((__format__(__printf__, 1, 2)))
 KD_API KDint KD_APIENTRY
 kdLogMessagefKHR(const KDchar *format, ...)
 {
+#ifdef KD_NDEBUG
+    return 0;
+#endif
     KDint result = 0;
     KDVaListKHR ap;
     KD_VA_START_KHR(ap, format);

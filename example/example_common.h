@@ -224,16 +224,16 @@ Example *exampleInit(void)
 #endif
 
     /* Debug message */
-    kdLogMessage("-----KD-----\n");
+    kdLogMessage("-----KD-----");
     kdLogMessagefKHR("Vendor: %s\n", kdQueryAttribcv(KD_ATTRIB_VENDOR));
     kdLogMessagefKHR("Version: %s\n", kdQueryAttribcv(KD_ATTRIB_VERSION));
     kdLogMessagefKHR("Platform: %s\n", kdQueryAttribcv(KD_ATTRIB_PLATFORM));
-    kdLogMessage("-----EGL-----\n");
+    kdLogMessage("-----EGL-----");
     kdLogMessagefKHR("Vendor: %s\n", eglQueryString(example->egl.display, EGL_VENDOR));
     kdLogMessagefKHR("Version: %s\n", eglQueryString(example->egl.display, EGL_VERSION));
     kdLogMessagefKHR("Client APIs: %s\n", eglQueryString(example->egl.display, EGL_CLIENT_APIS));
     kdLogMessagefKHR("Extensions: %s\n", example->egl.extensions);
-    kdLogMessage("-----GLES2-----\n");
+    kdLogMessage("-----GLES2-----");
     kdLogMessagefKHR("Vendor: %s\n", (const KDchar *)glGetString(GL_VENDOR));
     kdLogMessagefKHR("Version: %s\n", (const KDchar *)glGetString(GL_VERSION));
     kdLogMessagefKHR("Renderer: %s\n", (const KDchar *)glGetString(GL_RENDERER));
@@ -242,7 +242,7 @@ Example *exampleInit(void)
     if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_get_program_binary"))
     {
         example->shadercache.enable = KD_TRUE;
-        kdLogMessage("GL_OES_get_program_binary formats: ");
+        kdLogMessagefKHR("GL_OES_get_program_binary formats: ");
 
         const KDchar *dummyvertexsrc =
             "void main()                    \n"
@@ -276,24 +276,23 @@ Example *exampleInit(void)
 #if defined(GL_MESA_program_binary_formats)
                 if(binary_formats[i] == GL_PROGRAM_BINARY_FORMAT_MESA)
                 {
-                    kdLogMessage("Mesa ");
+                    kdLogMessagefKHR("Mesa ");
                 }
 #endif
                 kdLogMessagefKHR("%d ", binary_formats[i]);
             }
             kdFree(binary_formats);
-            kdLogMessage("\n");
+            kdLogMessagefKHR("\n");
         }
         else
         {
             kdLogMessage("None");
         }
-        kdLogMessage("\n");
         glUseProgram(0);
         glDeleteProgram(dummyprogram);
     }
 #endif
-    kdLogMessage("---------------\n");
+    kdLogMessage("---------------");
 
     kdInstallCallback(&exampleCallbackKD, KD_EVENT_QUIT, example);
 

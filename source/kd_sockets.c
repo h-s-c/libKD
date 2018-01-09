@@ -152,7 +152,7 @@ KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *ev
     {
         if(kdGetError() == KD_ENOSYS)
         {
-            kdLogMessage("kdNameLookup() needs a threading implementation.\n");
+            kdLogMessage("kdNameLookup() needs a threading implementation.");
             return -1;
         }
         kdSetError(KD_ENOMEM);

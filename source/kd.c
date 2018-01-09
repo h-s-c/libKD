@@ -2261,7 +2261,7 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     kdMemset(&wsadata, 0, sizeof(WSADATA));
     if(WSAStartup(0x202, &wsadata) != 0)
     {
-        kdLogMessage("Winsock2 error.\n");
+        kdLogMessage("Winsock2 error.");
         kdExit(-1);
     }
 #endif
@@ -2297,7 +2297,7 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
     if(kdmain == KD_NULL)
     {
-        kdLogMessage("Unable to locate kdMain.\n");
+        kdLogMessage("Unable to locate kdMain.");
         kdExit(-1);
     }
     result = kdmain(argc, (const KDchar *const *)argv);
@@ -2306,7 +2306,7 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     void *rawptr = dlsym(app, "kdMain");
     if(dlerror())
     {
-        kdLogMessage("Unable to locate kdMain.\n");
+        kdLogMessage("Unable to locate kdMain.");
         kdExit(-1);
     }
     /* ISO C forbids assignment between function pointer and ‘void *’ */

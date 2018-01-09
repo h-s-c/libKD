@@ -487,6 +487,6 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     {
         return;
     }
-    kdLogMessagefKHR("%s", string);
+    kdLogMessagefKHR("%s\n", string);
 }
 #endif
