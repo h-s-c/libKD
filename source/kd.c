@@ -2383,16 +2383,16 @@ int WINAPI WinMain(KD_UNUSED HINSTANCE hInstance, KD_UNUSED HINSTANCE hPrevInsta
 #if defined(KD_FREESTANDING) && !defined(__MINGW32__)
 void WINAPI WinMainCRTStartup(void)
 {
-    KDint result = WinMain(GetModuleHandle(0), 0, 0, 0);
+    KDint result = WinMain(GetModuleHandle(KD_NULL), KD_NULL, GetCommandLine(), SW_SHOWDEFAULT);
     ExitProcess(result);
 }
-BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpReserved)
+BOOL WINAPI DllMain(KD_UNUSED HINSTANCE hInstDll, KD_UNUSED DWORD fdwReason, KD_UNUSED LPVOID lpReserved)
 {
     return 1;
 }
-BOOL WINAPI _DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
+BOOL WINAPI _DllMainCRTStartup(HINSTANCE hInstDll, DWORD fdwReason, LPVOID lpReserved)
 {
-    return DllMain(hinstDLL,fdwReason,lpReserved);
+    return DllMain(hInstDll,fdwReason,lpReserved);
 }
 void WINAPI mainCRTStartup(void)
 {

@@ -51,7 +51,7 @@
 #endif
 
 #if defined(__SSE4_2__)
-#include <smmintrin.h>
+#include <nmmintrin.h>
 #elif defined(__SSE4_1__)
 #include <smmintrin.h>
 #endif
@@ -380,9 +380,9 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
         const __m128i a = _mm_loadu_si128(ptr1);
         const __m128i b = _mm_loadu_si128(ptr2);
 
-        if(_mm_cmpestrc(a, len, b, len, mode))
+        if(_mm_cmpestrc(a, (KDint)len, b, (KDint)len, mode))
         {
-            const KDint idx = _mm_cmpestri(a, len, b, len, mode);
+            const KDint idx = _mm_cmpestri(a, (KDint)len, b, (KDint)len, mode);
             const KDuint8 b1 = (KDuint8)(((KDchar *)ptr1)[idx]);
             const KDuint8 b2 = (KDuint8)(((KDchar *)ptr2)[idx]);
 
