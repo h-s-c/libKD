@@ -279,7 +279,7 @@ Example *exampleInit(void)
                     kdLogMessagefKHR("Mesa ");
                 }
 #endif
-                kdLogMessagefKHR("%d ", binary_formats[i]);
+                kdLogMessagefKHR("%#x ", binary_formats[i]);
             }
             kdFree(binary_formats);
             kdLogMessagefKHR("\n");
