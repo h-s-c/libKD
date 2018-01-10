@@ -543,7 +543,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     if(retval == 0)
     {
         error = GetLastError();
-        if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK)
+        if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK || error == ERROR_SHARING_VIOLATION)
         {
             kdSetError(KD_EINVAL);
         }
@@ -553,13 +553,9 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     if(retval == -1)
     {
         error = errno;
-        if(error == ENOTDIR)
+        if(error == ENOTDIR || error == ENOTEMPTY || error == EISDIR)
         {
             kdSetError(KD_EINVAL);
-        }
-        else if(error == ENOTEMPTY)
-        {
-            kdSetError(KD_EACCES);
         }
         else
 #endif

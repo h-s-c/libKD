@@ -132,6 +132,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDint error, KDint allowed)
         case(ERROR_INVALID_DATA):
         case(ERROR_INVALID_PARAMETER):
         case(ERROR_INVALID_SIGNAL_NUMBER):
+        case(ERROR_INVALID_USER_BUFFER):
         case(ERROR_META_EXPANSION_TOO_LONG):
         case(ERROR_NEGATIVE_SEEK):
         case(ERROR_NO_TOKEN):
