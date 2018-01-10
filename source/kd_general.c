@@ -311,7 +311,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     }
     else if(attribute == KD_ATTRIB_VERSION)
     {
-        return "1.0.3 (libKD 0.1.0)";
+        return "1.0.3";
     }
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
