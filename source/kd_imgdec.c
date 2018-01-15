@@ -84,6 +84,7 @@
 #define STBI_MEMCPY kdMemcpy
 #define STBI_MEMSET kdMemset
 #define STBI_ABS kdAbs
+#define STBI_FAILURE_USERMSG
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #if defined(_MSC_VER)
@@ -110,6 +111,7 @@
 #endif
 #elif defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
@@ -389,6 +391,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     kdFree(filedata);
     if(image->buffer == KD_NULL)
     {
+        kdLogMessagefKHR("%s.\n", stbi_failure_reason());
         kdFree(image);
         kdSetError(KD_EILSEQ);
         return KD_NULL;
