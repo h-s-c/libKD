@@ -396,65 +396,6 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 }
 
 /******************************************************************************
- * Memory allocation
- ******************************************************************************/
-
-/* kdMalloc: Allocate memory. */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((__malloc__))
-#endif
-KD_API void *KD_APIENTRY
-kdMalloc(KDsize size)
-{
-    void *result = KD_NULL;
-#if defined(_WIN32)
-    result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
-#else
-    result = malloc(size);
-#endif
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    return result;
-}
-
-/* kdFree: Free allocated memory block. */
-KD_API void KD_APIENTRY kdFree(void *ptr)
-{
-    if(ptr)
-    {
-#if defined(_WIN32)
-        HeapFree(GetProcessHeap(), 0, ptr);
-#else
-        free(ptr);
-#endif
-    }
-}
-
-/* kdRealloc: Resize memory block. */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((__malloc__))
-#endif
-KD_API void *KD_APIENTRY
-kdRealloc(void *ptr, KDsize size)
-{
-    void *result = KD_NULL;
-#if defined(_WIN32)
-    result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
-#else
-    result = realloc(ptr, size);
-#endif
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    return result;
-}
-
-/******************************************************************************
  * Assertions and logging
  ******************************************************************************/
 
