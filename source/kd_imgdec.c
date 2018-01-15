@@ -42,6 +42,7 @@
 #include <KD/kd.h>              // for kdFree, kdSetError, KD_NULL, KDint, kdMalloc
 #include <KD/kdext.h>           // for kdStrstrVEN
 #include "KD/ATX_imgdec.h"      // for KDImageATX, KD_IMAGE_FORMAT_LUMALPHA88_ATX
+#include "KD/KHR_formatted.h"   // for kdLogMessagefKHR
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

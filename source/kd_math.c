@@ -116,12 +116,10 @@
  ******************************************************************************/
 
 #if defined(_MSC_VER)
-#pragma warning(push)
 #pragma warning(disable : 4204)
 #pragma warning(disable : 4723)
 #pragma warning(disable : 4756)
 #elif defined(__clang__)
-#pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-qual"
 #pragma clang diagnostic ignored "-Wfloat-equal"
 #pragma clang diagnostic ignored "-Wsign-conversion"
@@ -5455,9 +5453,3 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
     }
     return x; /* exact output */
 }
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
-#pragma clang diagnostic pop
-#endif
