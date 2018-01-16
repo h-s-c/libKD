@@ -53,12 +53,14 @@
 #define USE_DL_PREFIX 1
 #define HAVE_MORECORE 0
 #define NO_MALLOC_STATS 1
+#define NO_MALLINFO 1
 #define DLMALLOC_EXPORT
 DLMALLOC_EXPORT void* dlmalloc(size_t);
 DLMALLOC_EXPORT void  dlfree(void*);
 DLMALLOC_EXPORT void* dlrealloc(void*, size_t);
 
 #if defined(_MSC_VER)
+#pragma warning(disable : 6001)
 #pragma warning(disable : 6239)
 #pragma warning(disable : 6285)
 #pragma warning(disable : 6297)
@@ -66,6 +68,10 @@ DLMALLOC_EXPORT void* dlrealloc(void*, size_t);
 #pragma warning(disable : 28112)
 #pragma warning(disable : 28159)
 #pragma warning(disable : 28182)
+#elif defined(__clang__)
+#pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wpadded"
 #endif
 
 /* kdMalloc: Allocate memory. */
@@ -1111,7 +1117,7 @@ DLMALLOC_EXPORT size_t dlmalloc_max_footprint(void);
   guarantee that this number of bytes can actually be obtained from
   the system.
 */
-DLMALLOC_EXPORT size_t dlmalloc_footprint_limit();
+DLMALLOC_EXPORT size_t dlmalloc_footprint_limit(void);
 
 /*
   malloc_set_footprint_limit();
@@ -1793,8 +1799,6 @@ static void* win32direct_mmap(size_t size) {
 static int win32munmap(void* ptr, size_t size) {
   MEMORY_BASIC_INFORMATION minfo;
   char* cptr = (char*)ptr;
-  if(!cptr)
-    return -1;
   while (size) {
     if (VirtualQuery(cptr, &minfo, sizeof(minfo)) == 0)
       return -1;
