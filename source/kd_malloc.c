@@ -47,6 +47,12 @@
  * Notes:
  * - Based on DLMALLOC by Doug Lea
  ******************************************************************************/
+/******************************************************************************
+ * This is a version (aka dlmalloc) of malloc/free/realloc written by
+ * Doug Lea and released to the public domain, as explained at
+ * http://creativecommons.org/publicdomain/zero/1.0/ Send questions,
+ * comments, complaints, performance data, etc to dl@cs.oswego.edu
+ ******************************************************************************/
 
 #define ABORT kdExit(-1)
 #define USE_LOCKS 1
@@ -70,8 +76,12 @@ DLMALLOC_EXPORT void* dlrealloc(void*, size_t);
 #pragma warning(disable : 28182)
 #elif defined(__clang__)
 #pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #pragma clang diagnostic ignored "-Wsign-conversion"
 #pragma clang diagnostic ignored "-Wpadded"
+#pragma clang diagnostic ignored "-Wunreachable-code"
+#pragma clang diagnostic ignored "-Wunreachable-code-break"
+#pragma clang diagnostic ignored "-Wunused-macros"
 #endif
 
 /* kdMalloc: Allocate memory. */
@@ -672,7 +682,6 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #define LACKS_STRING_H
 #define LACKS_STRINGS_H
 #define LACKS_SYS_TYPES_H
-#define LACKS_ERRNO_H
 #define LACKS_SCHED_H
 #ifndef MALLOC_FAILURE_ACTION
 #define MALLOC_FAILURE_ACTION
