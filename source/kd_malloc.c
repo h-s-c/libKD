@@ -67,6 +67,7 @@ DLMALLOC_EXPORT void* dlrealloc(void*, size_t);
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 6001)
+#pragma warning(disable : 6102)
 #pragma warning(disable : 6239)
 #pragma warning(disable : 6285)
 #pragma warning(disable : 6297)
@@ -81,6 +82,7 @@ DLMALLOC_EXPORT void* dlrealloc(void*, size_t);
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wunreachable-code"
 #pragma clang diagnostic ignored "-Wunreachable-code-break"
+#pragma clang diagnostic ignored "-Wunreachable-code-return"
 #pragma clang diagnostic ignored "-Wunused-macros"
 #endif
 
