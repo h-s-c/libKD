@@ -46,6 +46,16 @@ struct KDThread {
     void *tlsptr;
 };
 
+typedef struct _KDMutexAttr _KDMutexAttr;
+struct _KDMutexAttr {
+    /* This is useful for our kdMalloc implementation. */
+    KDThreadMutex *staticmutex;
+};
+struct KDThreadMutex {
+    void *nativemutex;
+    const _KDMutexAttr *mutexattr;
+};
+
 typedef struct _KDImageATX _KDImageATX;
 struct _KDImageATX {
     KDuint8 *buffer;

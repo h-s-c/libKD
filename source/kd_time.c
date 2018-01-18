@@ -126,7 +126,10 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
     largeuint.HighPart = filetime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
     KDtime time = (KDtime)((largeuint.QuadPart / 10000000LL) - 11644473600LL);
-    (*timep) = time;
+    if(timep)
+    {
+        (*timep) = time;
+    }
     return time;
 #else
     return time((time_t *)timep);
