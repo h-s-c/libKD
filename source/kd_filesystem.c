@@ -772,7 +772,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         return KD_NULL;
     }
     dir->dirent_d_name = kdMalloc(sizeof(KDchar) * 256);
-    if (dir->dirent_d_name == KD_NULL)
+    if(dir->dirent_d_name == KD_NULL)
     {
         kdFree(dir->dirent);
         kdFree(dir);

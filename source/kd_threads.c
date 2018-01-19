@@ -559,7 +559,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
         const _KDMutexAttr *attr = (const _KDMutexAttr *)mutex->mutexattr;
         if(attr && attr->staticmutex)
         {
-            return 0;         
+            return 0;
         }
         kdFree(mutex);
     }

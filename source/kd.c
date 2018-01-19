@@ -2392,7 +2392,7 @@ BOOL WINAPI DllMain(KD_UNUSED HINSTANCE hInstDll, KD_UNUSED DWORD fdwReason, KD_
 }
 BOOL WINAPI _DllMainCRTStartup(HINSTANCE hInstDll, DWORD fdwReason, LPVOID lpReserved)
 {
-    return DllMain(hInstDll,fdwReason,lpReserved);
+    return DllMain(hInstDll, fdwReason, lpReserved);
 }
 void WINAPI mainCRTStartup(void)
 {

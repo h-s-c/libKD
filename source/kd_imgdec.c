@@ -38,11 +38,11 @@
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
 #define _GNU_SOURCE /* O_CLOEXEC */
 #endif
-#include "kdplatform.h"         // for kdAssert, KD_API, KD_APIENTRY, KDsize
-#include <KD/kd.h>              // for kdFree, kdSetError, KD_NULL, KDint, kdMalloc
-#include <KD/kdext.h>           // for kdStrstrVEN
-#include "KD/ATX_imgdec.h"      // for KDImageATX, KD_IMAGE_FORMAT_LUMALPHA88_ATX
-#include "KD/KHR_formatted.h"   // for kdLogMessagefKHR
+#include "kdplatform.h"        // for kdAssert, KD_API, KD_APIENTRY, KDsize
+#include <KD/kd.h>             // for kdFree, kdSetError, KD_NULL, KDint, kdMalloc
+#include <KD/kdext.h>          // for kdStrstrVEN
+#include "KD/ATX_imgdec.h"     // for KDImageATX, KD_IMAGE_FORMAT_LUMALPHA88_ATX
+#include "KD/KHR_formatted.h"  // for kdLogMessagefKHR
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
@@ -352,21 +352,20 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         if(channels == 4)
         {
             /* PVR v2 only*/
-            struct PVR_Texture_Header
-            {
-                KDuint dwHeaderSize;        /* size of the structure */
-                KDuint dwHeight;            /* height of surface to be created */
-                KDuint dwWidth;             /* width of input surface */
-                KDuint dwMipMapCount;       /* number of mip-map levels requested */
-                KDuint dwpfFlags;           /* pixel format flags */
-                KDuint dwTextureDataSize;   /* Total size in bytes */
-                KDuint dwBitCount;          /* number of bits per pixel  */
-                KDuint dwRBitMask;          /* mask for red bit */
-                KDuint dwGBitMask;          /* mask for green bits */
-                KDuint dwBBitMask;          /* mask for blue bits */
-                KDuint dwAlphaBitMask;      /* mask for alpha channel */
-                KDuint dwPVR;               /* magic number identifying pvr file */
-                KDuint dwNumSurfs;          /* the number of surfaces present in the pvr */
+            struct PVR_Texture_Header {
+                KDuint dwHeaderSize;      /* size of the structure */
+                KDuint dwHeight;          /* height of surface to be created */
+                KDuint dwWidth;           /* width of input surface */
+                KDuint dwMipMapCount;     /* number of mip-map levels requested */
+                KDuint dwpfFlags;         /* pixel format flags */
+                KDuint dwTextureDataSize; /* Total size in bytes */
+                KDuint dwBitCount;        /* number of bits per pixel  */
+                KDuint dwRBitMask;        /* mask for red bit */
+                KDuint dwGBitMask;        /* mask for green bits */
+                KDuint dwBBitMask;        /* mask for blue bits */
+                KDuint dwAlphaBitMask;    /* mask for alpha channel */
+                KDuint dwPVR;             /* magic number identifying pvr file */
+                KDuint dwNumSurfs;        /* the number of surfaces present in the pvr */
             };
             struct PVR_Texture_Header header;
             kdMemcpy(&header, filedata, sizeof(KDuint) * 13);
@@ -376,7 +375,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint);
             image->buffer = kdMalloc(image->size);
             /* PVRCT2/4 RGB/RGBA compressed formats for now */
-            __kdDecompressPVRTC((const KDuint8*)filedata + header.dwHeaderSize, 0, image->width, image->height, image->buffer);
+            __kdDecompressPVRTC((const KDuint8 *)filedata + header.dwHeaderSize, 0, image->width, image->height, image->buffer);
         }
     }
     else
