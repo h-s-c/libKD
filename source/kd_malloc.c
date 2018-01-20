@@ -1457,9 +1457,13 @@ static msegmentptr segment_holding(mstate m, char *addr)
     for(;;)
     {
         if(addr >= sp->base && addr < sp->base + sp->size)
+        {
             return sp;
+        }
         if((sp = sp->next) == 0)
+        {
             return 0;
+        }
     }
 }
 
@@ -1470,9 +1474,13 @@ static int has_segment_link(mstate m, msegmentptr ss)
     for(;;)
     {
         if((char *)sp >= ss->base && (char *)sp < ss->base + ss->size)
+        {
             return 1;
+        }
         if((sp = sp->next) == 0)
+        {
             return 0;
+        }
     }
 }
 
@@ -1496,10 +1504,12 @@ static int has_segment_link(mstate m, msegmentptr ss)
 */
 
 #define PREACTION(M) ((use_lock(M)) ? kdThreadMutexLock((M)->mutex) : 0)
-#define POSTACTION(M)                        \
-    {                                        \
-        if(use_lock(M))                      \
-            kdThreadMutexUnlock((M)->mutex); \
+#define POSTACTION(M)                           \
+    {                                           \
+        if(use_lock(M))                         \
+        {                                       \
+            kdThreadMutexUnlock((M)->mutex);    \
+        }                                       \
     }
 
     /*
@@ -1580,69 +1590,85 @@ static size_t traverse_and_check(mstate m);
 
 /* assign tree index for size S to variable I. Use x86 asm if possible  */
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
-#define compute_tree_index(S, I)                                                                  \
-    {                                                                                             \
-        unsigned int X = S >> TREEBIN_SHIFT;                                                      \
-        if(X == 0)                                                                                \
-            I = 0;                                                                                \
-        else if(X > 0xFFFF)                                                                       \
-            I = NTREEBINS - 1;                                                                    \
-        else                                                                                      \
-        {                                                                                         \
-            unsigned int K = (unsigned)sizeof(X) * __CHAR_BIT__ - 1 - (unsigned)__builtin_clz(X); \
-            I = (bindex_t)((K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1)));                    \
-        }                                                                                         \
+#define compute_tree_index(S, I)                                                                    \
+    {                                                                                               \
+        unsigned int X = S >> TREEBIN_SHIFT;                                                        \
+        if(X == 0)                                                                                  \
+        {                                                                                           \
+            I = 0;                                                                                  \
+        }                                                                                           \
+        else if(X > 0xFFFF)                                                                         \
+        {                                                                                           \
+            I = NTREEBINS - 1;                                                                      \
+        }                                                                                           \
+        else                                                                                        \
+        {                                                                                           \
+            unsigned int K = (unsigned)sizeof(X) * __CHAR_BIT__ - 1 - (unsigned)__builtin_clz(X);   \
+            I = (bindex_t)((K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1)));                      \
+        }                                                                                           \
     }
 
 #elif defined(__INTEL_COMPILER)
-#define compute_tree_index(S, I)                                               \
-    {                                                                          \
-        size_t X = S >> TREEBIN_SHIFT;                                         \
-        if(X == 0)                                                             \
-            I = 0;                                                             \
-        else if(X > 0xFFFF)                                                    \
-            I = NTREEBINS - 1;                                                 \
-        else                                                                   \
-        {                                                                      \
-            unsigned int K = _bit_scan_reverse(X);                             \
-            I = (bindex_t)((K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1))); \
-        }                                                                      \
+#define compute_tree_index(S, I)                                                \
+    {                                                                           \
+        size_t X = S >> TREEBIN_SHIFT;                                          \
+        if(X == 0)                                                              \
+        {                                                                       \
+            I = 0;                                                              \
+        }                                                                       \
+        else if(X > 0xFFFF)                                                     \
+        {                                                                       \
+            I = NTREEBINS - 1;                                                  \
+        }                                                                       \
+        else                                                                    \
+        {                                                                       \
+            unsigned int K = _bit_scan_reverse(X);                              \
+            I = (bindex_t)((K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1)));  \
+        }                                                                       \
     }
 
 #elif defined(_MSC_VER) && _MSC_VER >= 1300
-#define compute_tree_index(S, I)                                               \
-    {                                                                          \
-        size_t X = S >> TREEBIN_SHIFT;                                         \
-        if(X == 0)                                                             \
-            I = 0;                                                             \
-        else if(X > 0xFFFF)                                                    \
-            I = NTREEBINS - 1;                                                 \
-        else                                                                   \
-        {                                                                      \
-            unsigned int K;                                                    \
-            _BitScanReverse((DWORD *)&K, (DWORD)X);                            \
-            I = (bindex_t)((K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1))); \
-        }                                                                      \
+#define compute_tree_index(S, I)                                                \
+    {                                                                           \
+        size_t X = S >> TREEBIN_SHIFT;                                          \
+        if(X == 0)                                                              \
+        {                                                                       \
+            I = 0;                                                              \
+        }                                                                       \
+        else if(X > 0xFFFF)                                                     \
+        {                                                                       \
+            I = NTREEBINS - 1;                                                  \
+        }                                                                       \
+        else                                                                    \
+        {                                                                       \
+            unsigned int K;                                                     \
+            _BitScanReverse((DWORD *)&K, (DWORD)X);                             \
+            I = (bindex_t)((K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1)));  \
+        }                                                                       \
     }
 
 #else /* GNUC */
-#define compute_tree_index(S, I)                                   \
-    {                                                              \
-        size_t X = S >> TREEBIN_SHIFT;                             \
-        if(X == 0)                                                 \
-            I = 0;                                                 \
-        else if(X > 0xFFFF)                                        \
-            I = NTREEBINS - 1;                                     \
-        else                                                       \
-        {                                                          \
-            unsigned int Y = (unsigned int)X;                      \
-            unsigned int N = ((Y - 0x100) >> 16) & 8;              \
-            unsigned int K = (((Y <<= N) - 0x1000) >> 16) & 4;     \
-            N += K;                                                \
-            N += K = (((Y <<= K) - 0x4000) >> 16) & 2;             \
-            K = 14 - N + ((Y <<= K) >> 15);                        \
-            I = (K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1)); \
-        }                                                          \
+#define compute_tree_index(S, I)                                    \
+    {                                                               \
+        size_t X = S >> TREEBIN_SHIFT;                              \
+        if(X == 0)                                                  \
+        {                                                           \
+            I = 0;                                                  \
+        }                                                           \
+        else if(X > 0xFFFF)                                         \
+        {                                                           \
+            I = NTREEBINS - 1;                                      \
+        }                                                           \
+        else                                                        \
+        {                                                           \
+            unsigned int Y = (unsigned int)X;                       \
+            unsigned int N = ((Y - 0x100) >> 16) & 8;               \
+            unsigned int K = (((Y <<= N) - 0x1000) >> 16) & 4;      \
+            N += K;                                                 \
+            N += K = (((Y <<= K) - 0x4000) >> 16) & 2;              \
+            K = 14 - N + ((Y <<= K) >> 15);                         \
+            I = (K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1));  \
+        }                                                           \
     }
 #endif /* GNUC */
 
@@ -1885,7 +1911,9 @@ static int init_mparams(void)
             ((MCHUNK_SIZE & (MCHUNK_SIZE - SIZE_T_ONE)) != 0) ||
             ((gsize & (gsize - SIZE_T_ONE)) != 0) ||
             ((psize & (psize - SIZE_T_ONE)) != 0))
+        {
             ABORT;
+        }
         mparams.granularity = gsize;
         mparams.page_size = psize;
         mparams.mmap_threshold = DEFAULT_MMAP_THRESHOLD;
@@ -1929,21 +1957,31 @@ static int change_mparam(int param_number, int value)
     switch(param_number)
     {
         case M_TRIM_THRESHOLD:
+        {
             mparams.trim_threshold = val;
             return 1;
+        }
         case M_GRANULARITY:
+        {
             if(val >= mparams.page_size && ((val & (val - 1)) == 0))
             {
                 mparams.granularity = val;
                 return 1;
             }
             else
+            {
                 return 0;
+            }
+        }
         case M_MMAP_THRESHOLD:
+        {
             mparams.mmap_threshold = val;
             return 1;
+        }
         default:
+        {
             return 0;
+        }
     }
 }
 
@@ -1996,7 +2034,9 @@ static void do_check_inuse_chunk(mstate m, mchunkptr p)
     /* If not pinuse and not mmapped, previous chunk has OK offset */
     kdAssert(is_mmapped(p) || pinuse(p) || next_chunk(prev_chunk(p)) == p);
     if(is_mmapped(p))
+    {
         do_check_mmapped_chunk(m, p);
+    }
 }
 
 /* Check properties of free chunks */
@@ -2021,7 +2061,9 @@ static void do_check_free_chunk(mstate m, mchunkptr p)
             kdAssert(p->bk->fd == p);
         }
         else /* markers are always of size SIZE_T_SIZE */
+        {
             kdAssert(sz == SIZE_T_SIZE);
+        }
     }
 }
 
@@ -2106,9 +2148,13 @@ static void do_check_treebin(mstate m, bindex_t i)
     tchunkptr t = *tb;
     int empty = (m->treemap & (1U << i)) == 0;
     if(t == 0)
+    {
         kdAssert(empty);
+    }
     if(!empty)
+    {
         do_check_tree(m, t);
+    }
 }
 
 /*  Check all the chunks in a smallbin.  */
@@ -2118,7 +2164,9 @@ static void do_check_smallbin(mstate m, bindex_t i)
     mchunkptr p = b->bk;
     unsigned int empty = (m->smallmap & (1U << i)) == 0;
     if(p == b)
+    {
         kdAssert(empty);
+    }
     if(!empty)
     {
         for(; p != b; p = p->bk)
@@ -2133,7 +2181,9 @@ static void do_check_smallbin(mstate m, bindex_t i)
             /* chunk is followed by an inuse chunk */
             q = next_chunk(p);
             if(q->head != FENCEPOST_HEAD)
+            {
                 do_check_inuse_chunk(m, q);
+            }
         }
     }
 }
@@ -2152,7 +2202,9 @@ static int bin_find(mstate m, mchunkptr x)
             do
             {
                 if(p == x)
+                {
                     return 1;
+                }
             } while((p = p->fd) != b);
         }
     }
@@ -2175,7 +2227,9 @@ static int bin_find(mstate m, mchunkptr x)
                 do
                 {
                     if(u == (tchunkptr)x)
+                    {
                         return 1;
+                    }
                 } while((u = u->fd) != t);
             }
         }
@@ -2196,8 +2250,7 @@ static size_t traverse_and_check(mstate m)
             mchunkptr q = align_as_chunk(s->base);
             mchunkptr lastq = 0;
             kdAssert(pinuse(q));
-            while(segment_holds(s, q) &&
-                q != m->top && q->head != FENCEPOST_HEAD)
+            while(segment_holds(s, q) && q != m->top && q->head != FENCEPOST_HEAD)
             {
                 sum += chunksize(q);
                 if(is_inuse(q))
@@ -2228,9 +2281,13 @@ static void do_check_malloc_state(mstate m)
     size_t total;
     /* check bins */
     for(i = 0; i < NSMALLBINS; ++i)
+    {
         do_check_smallbin(m, i);
+    }
     for(i = 0; i < NTREEBINS; ++i)
+    {
         do_check_treebin(m, i);
+    }
 
     if(m->dvsize != 0)
     { /* check dv chunk */
@@ -2264,24 +2321,28 @@ static void do_check_malloc_state(mstate m)
 */
 
 /* Link a free chunk into a smallbin  */
-#define insert_small_chunk(M, P, S)            \
-    {                                          \
-        bindex_t I = small_index(S);           \
-        mchunkptr B = smallbin_at(M, I);       \
-        mchunkptr F = B;                       \
-        kdAssert(S >= MIN_CHUNK_SIZE);         \
-        if(!smallmap_is_marked(M, I))          \
-            mark_smallmap(M, I);               \
-        else if(RTCHECK(ok_address(M, B->fd))) \
-            F = B->fd;                         \
-        else                                   \
-        {                                      \
-            CORRUPTION_ERROR_ACTION(M);        \
-        }                                      \
-        B->fd = P;                             \
-        F->bk = P;                             \
-        P->fd = F;                             \
-        P->bk = B;                             \
+#define insert_small_chunk(M, P, S)             \
+    {                                           \
+        bindex_t I = small_index(S);            \
+        mchunkptr B = smallbin_at(M, I);        \
+        mchunkptr F = B;                        \
+        kdAssert(S >= MIN_CHUNK_SIZE);          \
+        if(!smallmap_is_marked(M, I))           \
+        {                                       \
+            mark_smallmap(M, I);                \
+        }                                       \
+        else if(RTCHECK(ok_address(M, B->fd)))  \
+        {                                       \
+            F = B->fd;                          \
+        }                                       \
+        else                                    \
+        {                                       \
+            CORRUPTION_ERROR_ACTION(M);         \
+        }                                       \
+        B->fd = P;                              \
+        F->bk = P;                              \
+        P->fd = F;                              \
+        P->bk = B;                              \
     }
 
 /* Unlink a chunk from a smallbin  */
@@ -2382,7 +2443,9 @@ static void do_check_malloc_state(mstate m)
                     tchunkptr *C = &(T->child[(K >> (SIZE_T_BITSIZE - SIZE_T_ONE)) & 1]); \
                     K <<= 1;                                                              \
                     if(*C != 0)                                                           \
+                    {                                                                     \
                         T = *C;                                                           \
+                    }                                                                     \
                     else if(RTCHECK(ok_address(M, C)))                                    \
                     {                                                                     \
                         *C = X;                                                           \
@@ -2563,7 +2626,9 @@ static void *mmap_alloc(mstate m, size_t nb)
     {
         size_t fp = m->footprint + mmsize;
         if(fp <= m->footprint || fp > m->footprint_limit)
+        {
             return 0;
+        }
     }
     if(mmsize > nb)
     { /* Check for wrap around 0 */
@@ -2580,9 +2645,13 @@ static void *mmap_alloc(mstate m, size_t nb)
             chunk_plus_offset(p, psize + SIZE_T_SIZE)->head = 0;
 
             if(m->least_addr == 0 || mm < m->least_addr)
+            {
                 m->least_addr = mm;
+            }
             if((m->footprint += mmsize) > m->max_footprint)
+            {
                 m->max_footprint = m->footprint;
+            }
             kdAssert(is_aligned(chunk2mem(p)));
             check_mmapped_chunk(m, p);
             return chunk2mem(p);
@@ -2597,11 +2666,14 @@ static mchunkptr mmap_resize(mstate m, mchunkptr oldp, size_t nb, int flags)
     size_t oldsize = chunksize(oldp);
     (void)flags;     /* placate people compiling -Wunused */
     if(is_small(nb)) /* Can't shrink mmap regions below small size */
+    {
         return 0;
+    }
     /* Keep old chunk if big enough but not too big */
-    if(oldsize >= nb + SIZE_T_SIZE &&
-        (oldsize - nb) <= (mparams.granularity << 1))
+    if(oldsize >= nb + SIZE_T_SIZE && (oldsize - nb) <= (mparams.granularity << 1))
+    {
         return oldp;
+    }
     else
     {
         size_t offset = oldp->prev_foot;
@@ -2619,9 +2691,13 @@ static mchunkptr mmap_resize(mstate m, mchunkptr oldp, size_t nb, int flags)
             chunk_plus_offset(newp, psize + SIZE_T_SIZE)->head = 0;
 
             if(cp < m->least_addr)
+            {
                 m->least_addr = cp;
+            }
             if((m->footprint += newmmsize - oldmmsize) > m->max_footprint)
+            {
                 m->max_footprint = m->footprint;
+            }
             check_mmapped_chunk(m, newp);
             return newp;
         }
@@ -2675,7 +2751,9 @@ static void reset_on_error(mstate m)
     m->seg.next = 0;
     m->top = m->dv = 0;
     for(i = 0; i < NTREEBINS; ++i)
+    {
         *treebin_at(m, i) = 0;
+    }
     init_bins(m);
 }
 #endif /* PROCEED_ON_ERROR */
@@ -2764,9 +2842,13 @@ static void add_segment(mstate m, char *tbase, size_t tsize, flag_t mmapped)
         p->head = FENCEPOST_HEAD;
         ++nfences;
         if((char *)(&(nextp->head)) < old_end)
+        {
             p = nextp;
+        }
         else
+        {
             break;
+        }
     }
     kdAssert(nfences >= 2);
 
@@ -2800,7 +2882,9 @@ static void *sys_alloc(mstate m, size_t nb)
     {
         void *mem = mmap_alloc(m, nb);
         if(mem != 0)
+        {
             return mem;
+        }
     }
 
     asize = granularity_align(nb + SYS_ALLOC_PADDING);
@@ -2810,7 +2894,9 @@ static void *sys_alloc(mstate m, size_t nb)
     {
         size_t fp = m->footprint + asize;
         if(fp <= m->footprint || fp > m->footprint_limit)
+        {
             return 0;
+        }
     }
 
     if(HAVE_MMAP && tbase == CMFAIL)
@@ -2833,7 +2919,9 @@ static void *sys_alloc(mstate m, size_t nb)
         if(!is_initialized(m))
         { /* first-time initialization */
             if(m->least_addr == 0 || tbase < m->least_addr)
+            {
                 m->least_addr = tbase;
+            }
             m->seg.base = tbase;
             m->seg.size = tsize;
             m->seg.sflags = mmap_flag;
@@ -2841,7 +2929,9 @@ static void *sys_alloc(mstate m, size_t nb)
             m->release_checks = MAX_RELEASE_CHECK_RATE;
             init_bins(m);
             if(is_global(m))
+            {
                 init_top(m, (mchunkptr)tbase, tsize - TOP_FOOT_SIZE);
+            }
             else
             {
                 /* Offset top by embedded malloc_state */
@@ -2856,7 +2946,9 @@ static void *sys_alloc(mstate m, size_t nb)
             msegmentptr sp = &m->seg;
             /* Only consider most recent segment if traversal suppressed */
             while(sp != 0 && tbase != sp->base + sp->size)
+            {
                 sp = (NO_SEGMENT_TRAVERSAL) ? 0 : sp->next;
+            }
             if(sp != 0 &&
                 !is_extern_segment(sp) &&
                 (sp->sflags & USE_MMAP_BIT) == mmap_flag &&
@@ -2868,10 +2960,14 @@ static void *sys_alloc(mstate m, size_t nb)
             else
             {
                 if(tbase < m->least_addr)
+                {
                     m->least_addr = tbase;
+                }
                 sp = &m->seg;
                 while(sp != 0 && sp->base != tbase + tsize)
+                {
                     sp = (NO_SEGMENT_TRAVERSAL) ? 0 : sp->next;
+                }
                 if(sp != 0 &&
                     !is_extern_segment(sp) &&
                     (sp->sflags & USE_MMAP_BIT) == mmap_flag)
@@ -2882,7 +2978,9 @@ static void *sys_alloc(mstate m, size_t nb)
                     return prepend_alloc(m, tbase, oldbase, nb);
                 }
                 else
+                {
                     add_segment(m, tbase, tsize, mmap_flag);
+                }
             }
         }
 
@@ -2951,7 +3049,9 @@ static size_t release_unused_segments(mstate m)
             }
         }
         if(NO_SEGMENT_TRAVERSAL) /* scan only first segment */
+        {
             break;
+        }
         pred = sp;
         sp = next;
     }
@@ -2974,18 +3074,14 @@ static int sys_trim(mstate m, size_t pad)
         {
             /* Shrink top space in granularity-size units, keeping at least one */
             size_t unit = mparams.granularity;
-            size_t extra = ((m->topsize - pad + (unit - SIZE_T_ONE)) / unit -
-                               SIZE_T_ONE) *
-                unit;
+            size_t extra = ((m->topsize - pad + (unit - SIZE_T_ONE)) / unit - SIZE_T_ONE) * unit;
             msegmentptr sp = segment_holding(m, (char *)m->top);
 
             if(!is_extern_segment(sp))
             {
                 if(is_mmapped_segment(sp))
                 {
-                    if(HAVE_MMAP &&
-                        sp->size >= extra &&
-                        !has_segment_link(m, sp))
+                    if(HAVE_MMAP && sp->size >= extra && !has_segment_link(m, sp))
                     { /* can't shrink if pinned */
                         size_t newsize = sp->size - extra;
                         (void)newsize; /* placate people compiling -Wunused-variable */
@@ -3010,11 +3106,15 @@ static int sys_trim(mstate m, size_t pad)
 
         /* Unmap any unused mmapped segments */
         if(HAVE_MMAP)
+        {
             released += release_unused_segments(m);
+        }
 
         /* On failure, disable autotrim to avoid repeated failed future calls */
         if(released == 0 && m->topsize > m->trim_check)
+        {
             m->trim_check = MAX_SIZE_T;
+        }
     }
 
     return (released != 0) ? 1 : 0;
@@ -3034,7 +3134,9 @@ static void dispose_chunk(mstate m, mchunkptr p, size_t psize)
         {
             psize += prevsize + MMAP_FOOT_PAD;
             if(CALL_MUNMAP((char *)p - prevsize, psize) == 0)
+            {
                 m->footprint -= psize;
+            }
             return;
         }
         prev = chunk_minus_offset(p, prevsize);
@@ -3130,12 +3232,16 @@ static void *tmalloc_large(mstate m, size_t nb)
             {
                 v = t;
                 if((rsize = trem) == 0)
+                {
                     break;
+                }
             }
             rt = t->child[1];
             t = t->child[(sizebits >> (SIZE_T_BITSIZE - SIZE_T_ONE)) & 1];
             if(rt != 0 && rt != t)
+            {
                 rst = rt;
+            }
             if(t == 0)
             {
                 t = rst; /* set t to least subtree holding sizes > nb */
@@ -3178,7 +3284,9 @@ static void *tmalloc_large(mstate m, size_t nb)
             {
                 unlink_large_chunk(m, v);
                 if(rsize < MIN_CHUNK_SIZE)
+                {
                     set_inuse_and_pinuse(m, v, (rsize + nb));
+                }
                 else
                 {
                     set_size_and_pinuse_of_inuse_chunk(m, v, nb);
@@ -3222,7 +3330,9 @@ static void *tmalloc_small(mstate m, size_t nb)
         {
             unlink_large_chunk(m, v);
             if(rsize < MIN_CHUNK_SIZE)
+            {
                 set_inuse_and_pinuse(m, v, (rsize + nb));
+            }
             else
             {
                 set_size_and_pinuse_of_inuse_chunk(m, v, nb);
@@ -3313,7 +3423,9 @@ kdMalloc(KDsize size)
                     rsize = small_index2size(i) - nb;
                     /* Fit here cannot be remainderless if 4byte sizes */
                     if(SIZE_T_SIZE != 4 && rsize < MIN_CHUNK_SIZE)
+                    {
                         set_inuse_and_pinuse(gm, p, small_index2size(i));
+                    }
                     else
                     {
                         set_size_and_pinuse_of_inuse_chunk(gm, p, nb);
@@ -3428,7 +3540,9 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
                     {
                         psize += prevsize + MMAP_FOOT_PAD;
                         if(CALL_MUNMAP((char *)p - prevsize, psize) == 0)
+                        {
                             fm->footprint -= psize;
+                        }
                         goto postaction;
                     }
                     else
@@ -3450,7 +3564,9 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
                             }
                         }
                         else
+                        {
                             goto erroraction;
+                        }
                     }
                 }
 
@@ -3469,7 +3585,9 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
                                 fm->dvsize = 0;
                             }
                             if(should_trim(fm, tsize))
+                            {
                                 sys_trim(fm, 0);
+                            }
                             goto postaction;
                         }
                         else if(next == fm->dv)
@@ -3506,7 +3624,9 @@ KD_API void KD_APIENTRY kdFree(void *ptr)
                         insert_large_chunk(fm, tp, psize);
                         check_free_chunk(fm, p);
                         if(--fm->release_checks == 0)
+                        {
                             release_unused_segments(fm);
+                        }
                     }
                     goto postaction;
                 }
@@ -3624,12 +3744,16 @@ static void *internal_memalign(mstate m, size_t alignment, size_t bytes)
 {
     void *mem = 0;
     if(alignment < MIN_CHUNK_SIZE) /* must be at least a minimum chunk size */
+    {
         alignment = MIN_CHUNK_SIZE;
+    }
     if((alignment & (alignment - SIZE_T_ONE)) != 0)
     { /* Ensure a power of 2 */
         size_t a = MALLOC_ALIGNMENT << 1;
         while(a < alignment)
+        {
             a <<= 1;
+        }
         alignment = a;
     }
     if(bytes >= MAX_REQUEST - alignment)
@@ -3648,7 +3772,9 @@ static void *internal_memalign(mstate m, size_t alignment, size_t bytes)
         {
             mchunkptr p = mem2chunk(mem);
             if(PREACTION(m))
+            {
                 return 0;
+            }
             if((((size_t)(mem)) & (alignment - 1)) != 0)
             { /* misaligned */
                 /*
@@ -3738,7 +3864,9 @@ static void **ialloc(mstate m,
     if(chunks != 0)
     {
         if(n_elements == 0)
+        {
             return chunks; /* nothing to do */
+        }
         marray = chunks;
         array_size = 0;
     }
@@ -3746,7 +3874,9 @@ static void **ialloc(mstate m,
     {
         /* if empty req, must still return chunk representing empty array */
         if(n_elements == 0)
+        {
             return (void **)internal_malloc(m, 0);
+        }
         marray = 0;
         array_size = request2size(n_elements * (sizeof(void *)));
     }
@@ -3762,7 +3892,9 @@ static void **ialloc(mstate m,
         element_size = 0;
         contents_size = 0;
         for(i = 0; i != n_elements; ++i)
+        {
             contents_size += request2size(sizes[i]);
+        }
     }
 
     size = contents_size + array_size;
@@ -3776,12 +3908,18 @@ static void **ialloc(mstate m,
     disable_mmap(m);
     mem = internal_malloc(m, size - CHUNK_OVERHEAD);
     if(was_enabled)
+    {
         enable_mmap(m);
+    }
     if(mem == 0)
+    {
         return 0;
+    }
 
     if(PREACTION(m))
+    {
         return 0;
+    }
     p = mem2chunk(mem);
     remainder_size = chunksize(p);
 
@@ -3810,9 +3948,13 @@ static void **ialloc(mstate m,
         if(i != n_elements - 1)
         {
             if(element_size != 0)
+            {
                 size = element_size;
+            }
             else
+            {
                 size = request2size(sizes[i]);
+            }
             remainder_size -= size;
             set_size_and_pinuse_of_inuse_chunk(m, p, size);
             p = chunk_plus_offset(p, size);
@@ -3888,7 +4030,9 @@ static size_t internal_bulk_free(mstate m, void *array[], size_t nelem)
                         *b = chunk2mem(p);
                     }
                     else
+                    {
                         dispose_chunk(m, p, psize);
+                    }
                 }
                 else
                 {
