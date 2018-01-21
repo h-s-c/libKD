@@ -703,9 +703,9 @@ KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mutex)
 {
 #if defined(KD_THREAD_C11)
-    cnd_wait(&cond->nativecond, &mutex->nativemutex);
+    cnd_wait(&cond->nativecond, (mtx_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
-    pthread_cond_wait(&cond->nativecond, &mutex->nativemutex);
+    pthread_cond_wait(&cond->nativecond, (pthread_mutex_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_WIN32)
     SleepConditionVariableSRW(&cond->nativecond, (SRWLOCK *)&mutex->nativemutex, INFINITE, 0);
 #else
