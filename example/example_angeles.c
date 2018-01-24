@@ -31,8 +31,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
+#if defined(__EMSCRIPTEN__)
+#include <AL/al.h>
+#include <AL/alc.h>
+#else
 #include <al.h>
 #include <alc.h>
+#endif
 
 #define EXAMPLE_COMMON_IMPLEMENTATION
 #include "example_common.h"
