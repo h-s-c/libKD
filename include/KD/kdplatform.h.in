@@ -70,9 +70,12 @@
 #endif
 
 #if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN_PTHREADS__)
+#define KD_ATOMIC_EMSCRIPTEN
+#define KD_THREAD_POSIX
+#else
 #define KD_ATOMIC_MUTEX
-//#   define KD_THREAD_EMSCRIPTEN
-//#   define KD_THREAD_POSIX
+#endif
 #elif defined(_WIN32)
 #define KD_ATOMIC_WIN32
 #define KD_THREAD_WIN32
