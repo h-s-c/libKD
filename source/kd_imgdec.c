@@ -78,6 +78,7 @@
 #define STBI_NO_LINEAR
 #define STBI_NO_HDR
 #define STBI_NO_STDIO
+#define STBI_NO_GIF
 #define STBI_ASSERT kdAssert
 #define STBI_MALLOC kdMalloc
 #define STBI_REALLOC kdRealloc

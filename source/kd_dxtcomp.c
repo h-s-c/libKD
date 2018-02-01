@@ -55,6 +55,7 @@
 #define STBD_ABS kdAbs
 #define STBD_FABS kdFabsKHR
 #define STBD_MEMSET kdMemset
+#define STBD_MEMCPY kdMemcpy
 #define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
 #if defined(_MSC_VER)
