@@ -1576,26 +1576,26 @@ static KDsize traverse_and_check(mstate m);
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 #define compute_tree_index(S, I)                                                                    \
     {                                                                                               \
-        unsigned int X = S >> TREEBIN_SHIFT;                                                        \
+        unsigned int X = (S) >> TREEBIN_SHIFT;                                                        \
         if(X == 0)                                                                                  \
         {                                                                                           \
-            I = 0;                                                                                  \
+            (I) = 0;                                                                                  \
         }                                                                                           \
         else if(X > 0xFFFF)                                                                         \
         {                                                                                           \
-            I = NTREEBINS - 1;                                                                      \
+            (I) = NTREEBINS - 1;                                                                      \
         }                                                                                           \
         else                                                                                        \
         {                                                                                           \
             unsigned int K = (unsigned)sizeof(X) * __CHAR_BIT__ - 1 - (unsigned)__builtin_clz(X);   \
-            I = (bindex_t)((K << 1) + ((S >> (K + (TREEBIN_SHIFT - 1)) & 1)));                      \
+            (I) = (bindex_t)((K << 1) + (((S) >> (K + (TREEBIN_SHIFT - 1)) & 1)));                      \
         }                                                                                           \
     }
 
 #elif defined(__INTEL_COMPILER)
 #define compute_tree_index(S, I)                                                \
     {                                                                           \
-        size_t X = S >> TREEBIN_SHIFT;                                          \
+        KDsize X = S >> TREEBIN_SHIFT;                                          \
         if(X == 0)                                                              \
         {                                                                       \
             I = 0;                                                              \
@@ -1614,7 +1614,7 @@ static KDsize traverse_and_check(mstate m);
 #elif defined(_MSC_VER) && _MSC_VER >= 1300
 #define compute_tree_index(S, I)                                                \
     {                                                                           \
-        size_t X = S >> TREEBIN_SHIFT;                                          \
+        KDsize X = S >> TREEBIN_SHIFT;                                          \
         if(X == 0)                                                              \
         {                                                                       \
             I = 0;                                                              \
@@ -1634,7 +1634,7 @@ static KDsize traverse_and_check(mstate m);
 #else /* GNUC */
 #define compute_tree_index(S, I)                                    \
     {                                                               \
-        size_t X = S >> TREEBIN_SHIFT;                              \
+        KDsize X = S >> TREEBIN_SHIFT;                              \
         if(X == 0)                                                  \
         {                                                           \
             I = 0;                                                  \
@@ -2309,7 +2309,7 @@ static void do_check_malloc_state(mstate m)
         bindex_t I = small_index(S);            \
         mchunkptr B = smallbin_at(M, I);        \
         mchunkptr F = B;                        \
-        kdAssert(S >= MIN_CHUNK_SIZE);          \
+        kdAssert((S) >= MIN_CHUNK_SIZE);          \
         if(!smallmap_is_marked(M, I))           \
         {                                       \
             mark_smallmap(M, I);                \
@@ -2324,8 +2324,8 @@ static void do_check_malloc_state(mstate m)
         }                                       \
         B->fd = P;                              \
         F->bk = P;                              \
-        P->fd = F;                              \
-        P->bk = B;                              \
+        (P)->fd = F;                              \
+        (P)->bk = B;                              \
     }
 
 /* Unlink a chunk from a smallbin  */
@@ -3066,8 +3066,8 @@ static int sys_trim(mstate m, KDsize pad)
         if(m->topsize > pad)
         {
             /* Shrink top space in granularity-size units, keeping at least one */
-            size_t unit = mparams.granularity;
-            size_t extra = ((m->topsize - pad + (unit - SIZE_T_ONE)) / unit - SIZE_T_ONE) * unit;
+            KDsize unit = mparams.granularity;
+            KDsize extra = ((m->topsize - pad + (unit - SIZE_T_ONE)) / unit - SIZE_T_ONE) * unit;
             msegmentptr sp = segment_holding(m, (char *)m->top);
 
             if(!is_extern_segment(sp))
@@ -3772,7 +3772,7 @@ static void *internal_memalign(mstate m, KDsize alignment, KDsize bytes)
             {
                 return 0;
             }
-            if((((size_t)(mem)) & (alignment - 1)) != 0)
+            if((((KDsize)(mem)) & (alignment - 1)) != 0)
             { /* misaligned */
                 /*
           Find an aligned spot inside chunk.  Since we need to give
