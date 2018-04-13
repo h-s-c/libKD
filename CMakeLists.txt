@@ -198,7 +198,7 @@ project (KD C)
         message(STATUS "pvs-studio-analyzer found: ${PVS_STUDIO}")
         include(PVS-Studio.cmake)
         pvs_studio_add_target(TARGET ALL OUTPUT FORMAT errorfile
-            LOG "${CMAKE_BINARY_DIR}/pvs-report.log" ANALYZE KD)
+            LOG "${CMAKE_BINARY_DIR}/pvs-report.log" ANALYZE KD )
     endif()
     mark_as_advanced(CLANG_TIDY CPPLINT CPPCHECK INCLUDE_WHAT_YOU_USE PVS_STUDIO)
 
