@@ -36,17 +36,23 @@ KDboolean Init(Example *example)
         "}                            \n";
 
     const KDchar *fShaderStr =
-        "precision mediump float;\n"
-        "void main()                                  \n"
-        "{                                            \n"
-        "  gl_FragColor = vec4 ( 1.0, 0.0, 0.0, 1.0 );\n"
-        "}                                            \n";
+        "#ifdef GL_FRAGMENT_PRECISION_HIGH              \n"
+        "   precision highp float;                      \n"
+        "#else                                          \n"
+        "   precision mediump float;                    \n"
+        "#endif                                         \n"
+        "                                               \n"
+        "void main()                                    \n"
+        "{                                              \n"
+        "  gl_FragColor = vec4 ( 1.0, 0.0, 0.0, 1.0 );  \n"
+        "}                                              \n";
 
     // Store the program object
-    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr);
-
+    userData->programObject = exampleCreateProgram(vShaderStr, fShaderStr, KD_FALSE);
+    
     // Bind vPosition to attribute 0
     glBindAttribLocation(userData->programObject, 0, "vPosition");
+    glLinkProgram(userData->programObject);
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     return KD_TRUE;

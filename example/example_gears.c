@@ -140,10 +140,10 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 
     /* Calculate the radii used in the gear */
     r0 = inner_radius;
-    r1 = outer_radius - tooth_depth / 2.0;
-    r2 = outer_radius + tooth_depth / 2.0;
+    r1 = outer_radius - tooth_depth / 2.0f;
+    r2 = outer_radius + tooth_depth / 2.0f;
 
-    da = 2.0 * KD_PI_F / teeth / 4.0;
+    da = 2.0f * KD_PI_F / teeth / 4.0f;
 
     /* Allocate memory for the triangle strip information */
     gear->nstrips = STRIPS_PER_TOOTH * teeth;
@@ -170,7 +170,7 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 /* A set of macros for making the creation of the gears easier */
 #define GEAR_POINT(r, da)          \
     {                              \
-        (r) * c[(da)], (r)*s[(da)] \
+        (r) * (GLfloat)c[(da)], (r) * (GLfloat)s[(da)] \
     }
 #define SET_NORMAL(x, y, z) \
     do                      \
@@ -180,18 +180,18 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
         normal[2] = (z);    \
     } while(0)
 
-#define GEAR_VERT(v, point, sign) vert((v), p[(point)].x, p[(point)].y, (sign)*width * 0.5, normal)
+#define GEAR_VERT(v, point, sign) vert((v), p[(point)].x, p[(point)].y, (sign)*width * 0.5f, normal)
 
 #define START_STRIP                                         \
     do                                                      \
     {                                                       \
-        gear->strips[cur_strip].first = v - gear->vertices; \
+        gear->strips[cur_strip].first = (GLint)(v - gear->vertices); \
     } while(0);
 
 #define END_STRIP                                                             \
     do                                                                        \
     {                                                                         \
-        KDint _tmp = (v - gear->vertices);                                    \
+        KDint _tmp = (KDint)(v - gear->vertices);                                    \
         gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first; \
         cur_strip++;                                                          \
     } while(0)
@@ -224,7 +224,7 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 
         /* Front face */
         START_STRIP;
-        SET_NORMAL(0, 0, 1.0);
+        SET_NORMAL(0.0f, 0.0f, 1.0f);
         v = GEAR_VERT(v, 0, +1);
         v = GEAR_VERT(v, 1, +1);
         v = GEAR_VERT(v, 2, +1);
@@ -241,7 +241,7 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 
         /* Back face */
         START_STRIP;
-        SET_NORMAL(0, 0, -1.0);
+        SET_NORMAL(0.0f, 0.0f, -1.0f);
         v = GEAR_VERT(v, 6, -1);
         v = GEAR_VERT(v, 5, -1);
         v = GEAR_VERT(v, 4, -1);
@@ -269,7 +269,7 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
         END_STRIP;
     }
 
-    gear->nvertices = (v - gear->vertices);
+    gear->nvertices = (KDint)(v - gear->vertices);
 
     /* Store the vertices in a vertex buffer object (VBO) */
     glGenBuffers(1, &gear->vbo);
@@ -340,17 +340,17 @@ void perspective(GLfloat *m, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloa
     GLfloat tmp[16];
     exampleMatrixIdentity(tmp);
 
-    KDfloat64KHR sine, cosine, cotangent, deltaZ;
+    KDfloat64KHR sine, cosine;
     GLfloat radians = fovy / 2 * KD_PI_F / 180;
 
-    deltaZ = zFar - zNear;
+    GLfloat deltaZ = zFar - zNear;
     sine = kdSinKHR(radians);
     cosine = kdSinKHR(radians);
 
     if((deltaZ == 0) || (sine == 0) || (aspect == 0))
         return;
 
-    cotangent = cosine / sine;
+    GLfloat cotangent = (GLfloat)(cosine / sine);
 
     tmp[0] = cotangent / aspect;
     tmp[5] = cotangent;
@@ -433,9 +433,9 @@ draw_gear(struct gear *gear, GLfloat *transform,
 static void
 gears_draw(GLfloat angle)
 {
-    const static GLfloat red[4] = {0.8, 0.1, 0.0, 1.0};
-    const static GLfloat green[4] = {0.0, 0.8, 0.2, 1.0};
-    const static GLfloat blue[4] = {0.2, 0.2, 1.0, 1.0};
+    const static GLfloat red[4] = {0.8f, 0.1f, 0.0f, 1.0f};
+    const static GLfloat green[4] = {0.0f, 0.8f, 0.2f, 1.0f};
+    const static GLfloat blue[4] = {0.2f, 0.2f, 1.0f, 1.0f};
     GLfloat transform[16];
     exampleMatrixIdentity(transform);
 
@@ -449,9 +449,9 @@ gears_draw(GLfloat angle)
     exampleMatrixRotate(transform, view_rot[2], 0, 0, 1);
 
     /* Draw the gears */
-    draw_gear(gear1, transform, -3.0, -2.0, angle, red);
-    draw_gear(gear2, transform, 3.1, -2.0, -2 * angle - 9.0, green);
-    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
+    draw_gear(gear1, transform, -3.0f, -2.0f, angle, red);
+    draw_gear(gear2, transform, 3.1f, -2.0f, -2 * angle - 9.0f, green);
+    draw_gear(gear3, transform, -3.1f, 4.2f, -2 * angle - 25.0f, blue);
 }
 
 /** 
@@ -500,28 +500,30 @@ static const char vertex_shader[] =
     "}";
 
 static const char fragment_shader[] =
-    "precision mediump float;\n"
-    "varying vec4 Color;\n"
-    "\n"
-    "void main(void)\n"
-    "{\n"
-    "    gl_FragColor = Color;\n"
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH  \n"
+    "   precision highp float;          \n"
+    "#else                              \n"
+    "   precision mediump float;        \n"
+    "#endif                             \n"
+    "                                   \n"
+    "varying vec4 Color;                \n"
+    "                                   \n"
+    "void main(void)                    \n"
+    "{                                  \n"
+    "    gl_FragColor = Color;          \n"
     "}";
 
 static void
 gears_init(void)
 {
-    GLuint v, f, program;
-    const char *p;
-    char msg[512];
-
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
     /* Create and link the shader program */
-    program = exampleCreateProgram(vertex_shader, fragment_shader);
+    GLuint program = exampleCreateProgram(vertex_shader, fragment_shader, KD_FALSE);
     glBindAttribLocation(program, 0, "position");
     glBindAttribLocation(program, 1, "normal");
+    glLinkProgram(program);
 
     /* Enable the shaders */
     glUseProgram(program);
@@ -536,9 +538,9 @@ gears_init(void)
     glUniform4fv(LightSourcePosition_location, 1, LightSourcePosition);
 
     /* make the gears */
-    gear1 = create_gear(1.0, 4.0, 1.0, 20, 0.7);
-    gear2 = create_gear(0.5, 2.0, 2.0, 10, 0.7);
-    gear3 = create_gear(1.3, 2.0, 0.5, 10, 0.7);
+    gear1 = create_gear(1.0f, 4.0f, 1.0f, 20, 0.7f);
+    gear2 = create_gear(0.5f, 2.0f, 2.0f, 10, 0.7f);
+    gear3 = create_gear(1.3f, 2.0f, 0.5f, 10, 0.7f);
 }
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
@@ -611,10 +613,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         t1 = t2;
 
         /* advance rotation for next frame */
-        angle += 70.0 * deltatime; /* 70 degrees per second */
-        if(angle > 3600.0)
+        angle += 70.0f * deltatime; /* 70 degrees per second */
+        if(angle > 3600.0f)
         {
-            angle -= 3600.0;
+            angle -= 3600.0f;
         }
         gears_draw(angle);
         exampleRun(example);

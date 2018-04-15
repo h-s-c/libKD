@@ -21,20 +21,15 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
-set(CTEST_CUSTOM_COVERAGE_EXCLUDE
-    "/example/"
-    "/include/"
-    "/test/"
-    "/thirdparty/"
-    "/cov-int/"
-    "/CMakeFiles/"
-    "/usr/")
+find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h PATHS $ENV{KHRONOS_HEADERS})
+find_library(EGL_LIBRARY NAMES egl EGL libEGL PATHS $ENV{OPENGLES_LIBDIR})
 
-set(CTEST_CUSTOM_ERROR_EXCEPTION
-    "clang: error: .* 'linker' input unused")
+if(EMSCRIPTEN)
+    set(EGL_FOUND TRUE)
+    SET(EGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+    set(EGL_LIBRARY "nul")
+endif()
 
-set(CTEST_CUSTOM_WARNING_EXCEPTION
-    "warning LNK4044"
-    "warning LNK4031"
-    "warning MSB8029"
-    "warning D9025")
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY)
+mark_as_advanced(EGL_INCLUDE_DIR EGL_LIBRARY)

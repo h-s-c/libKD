@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -55,6 +55,7 @@
 #define STBD_ABS kdAbs
 #define STBD_FABS kdFabsKHR
 #define STBD_MEMSET kdMemset
+#define STBD_MEMCPY kdMemcpy
 #define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
 #if defined(_MSC_VER)

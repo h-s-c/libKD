@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -260,7 +260,7 @@ static void *__kdThreadRun(void *init)
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     /* Set the thread name */
     KD_UNUSED const KDchar *threadname = thread->internal->attr ? thread->internal->attr->debugname : "KDThread";
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(KD_FREESTANDING)
     typedef HRESULT(WINAPI * SETTHREADDESCRIPTION)(HANDLE hThread, PCWSTR lpThreadDescription);
     SETTHREADDESCRIPTION __SetThreadDescription = KD_NULL;
     HMODULE kernel32 = GetModuleHandle("Kernel32.dll");
@@ -270,7 +270,7 @@ static void *__kdThreadRun(void *init)
     }
     if(__SetThreadDescription)
     {
-        WCHAR wthreadname[256] = L"KDThread";
+        WCHAR wthreadname[256] = L"KDThread"; /* implicit memset */
         MultiByteToWideChar(0, 0, threadname, -1, wthreadname, 256);
         __SetThreadDescription(GetCurrentThread(), (const WCHAR *)wthreadname);
     }
@@ -494,21 +494,19 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #endif /* ndef KD_NO_STATIC_DATA */
 
 /* kdThreadMutexCreate: Create a mutex. */
-struct KDThreadMutex {
-#if defined(KD_THREAD_C11)
-    mtx_t nativemutex;
-#elif defined(KD_THREAD_POSIX)
-    pthread_mutex_t nativemutex;
-#elif defined(KD_THREAD_WIN32)
-    SRWLOCK nativemutex;
-#else
-    KDboolean nativemutex;
-#endif
-};
-KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mutexattr)
+KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
 {
-    /* TODO: Write KDThreadMutexAttr extension */
-    KDThreadMutex *mutex = (KDThreadMutex *)kdMalloc(sizeof(KDThreadMutex));
+    KDThreadMutex *mutex = KD_NULL;
+    const _KDMutexAttr *attr = (const _KDMutexAttr *)mutexattr;
+    if(attr && attr->staticmutex)
+    {
+        mutex = attr->staticmutex;
+        mutex->mutexattr = attr;
+    }
+    else
+    {
+        mutex = (KDThreadMutex *)kdMalloc(sizeof(KDThreadMutex));
+    }
     if(mutex == KD_NULL)
     {
         kdSetError(KD_ENOMEM);
@@ -516,23 +514,31 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(KD_UNUSED const void *mute
     }
     KDint error = 0;
 #if defined(KD_THREAD_C11)
-    error = mtx_init(&mutex->nativemutex, mtx_plain);
+    error = mtx_init((mtx_t *)&mutex->nativemutex, mtx_plain);
 #elif defined(KD_THREAD_POSIX)
-    error = pthread_mutex_init(&mutex->nativemutex, KD_NULL);
+    error = pthread_mutex_init((pthread_mutex_t *)&mutex->nativemutex, KD_NULL);
     if(error == ENOMEM)
     {
         kdSetError(KD_ENOMEM);
+        if(attr && attr->staticmutex)
+        {
+            return KD_NULL;
+        }
         kdFree(mutex);
         return KD_NULL;
     }
 #elif defined(KD_THREAD_WIN32)
-    InitializeSRWLock(&mutex->nativemutex);
+    InitializeSRWLock((SRWLOCK *)&mutex->nativemutex);
 #else
-    mutex->nativemutex = KD_FALSE;
+    mutex->nativemutex = (void *)KD_FALSE;
 #endif
     if(error != 0)
     {
         kdSetError(KD_EAGAIN);
+        if(attr && attr->staticmutex)
+        {
+            return KD_NULL;
+        }
         kdFree(mutex);
         return KD_NULL;
     }
@@ -546,10 +552,15 @@ KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
     {
 /* No need to free anything on WIN32*/
 #if defined(KD_THREAD_C11)
-        mtx_destroy(&mutex->nativemutex);
+        mtx_destroy((mtx_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
-        pthread_mutex_destroy(&mutex->nativemutex);
+        pthread_mutex_destroy((pthread_mutex_t *)&mutex->nativemutex);
 #endif
+        const _KDMutexAttr *attr = (const _KDMutexAttr *)mutex->mutexattr;
+        if(attr && attr->staticmutex)
+        {
+            return 0;
+        }
         kdFree(mutex);
     }
     return 0;
@@ -559,13 +570,13 @@ KD_API KDint KD_APIENTRY kdThreadMutexFree(KDThreadMutex *mutex)
 KD_API KDint KD_APIENTRY kdThreadMutexLock(KDThreadMutex *mutex)
 {
 #if defined(KD_THREAD_C11)
-    mtx_lock(&mutex->nativemutex);
+    mtx_lock((mtx_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
-    pthread_mutex_lock(&mutex->nativemutex);
+    pthread_mutex_lock((pthread_mutex_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_WIN32)
-    AcquireSRWLockExclusive(&mutex->nativemutex);
+    AcquireSRWLockExclusive((SRWLOCK *)&mutex->nativemutex);
 #else
-    mutex->nativemutex = KD_TRUE;
+    mutex->nativemutex = (void *)KD_TRUE;
 #endif
     return 0;
 }
@@ -574,13 +585,13 @@ KD_API KDint KD_APIENTRY kdThreadMutexLock(KDThreadMutex *mutex)
 KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 {
 #if defined(KD_THREAD_C11)
-    mtx_unlock(&mutex->nativemutex);
+    mtx_unlock((mtx_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
-    pthread_mutex_unlock(&mutex->nativemutex);
+    pthread_mutex_unlock((pthread_mutex_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_WIN32)
-    ReleaseSRWLockExclusive(&mutex->nativemutex);
+    ReleaseSRWLockExclusive((SRWLOCK *)&mutex->nativemutex);
 #else
-    mutex->nativemutex = KD_FALSE;
+    mutex->nativemutex = (void *)KD_FALSE;
 #endif
     return 0;
 }
@@ -692,11 +703,11 @@ KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mutex)
 {
 #if defined(KD_THREAD_C11)
-    cnd_wait(&cond->nativecond, &mutex->nativemutex);
+    cnd_wait(&cond->nativecond, (mtx_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_POSIX)
-    pthread_cond_wait(&cond->nativecond, &mutex->nativemutex);
+    pthread_cond_wait(&cond->nativecond, (pthread_mutex_t *)&mutex->nativemutex);
 #elif defined(KD_THREAD_WIN32)
-    SleepConditionVariableSRW(&cond->nativecond, &mutex->nativemutex, INFINITE, 0);
+    SleepConditionVariableSRW(&cond->nativecond, (SRWLOCK *)&mutex->nativemutex, INFINITE, 0);
 #else
     KD_UNUSED KDThreadCond *dummycond = cond;
     KD_UNUSED KDThreadMutex *dummymutex = mutex;

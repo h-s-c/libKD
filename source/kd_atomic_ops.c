@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -162,7 +162,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object)
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_load_u32(&object->value);
+    return (KDint)emscripten_atomic_load_u32(&object->value);
 #endif
 }
 
@@ -171,7 +171,7 @@ KD_API void *KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
 #if defined(KD_ATOMIC_C11)
     return (void *)atomic_load(&object->value);
 #elif defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_SYNC) || defined(KD_ATOMIC_MUTEX)
-    void *value = 0;
+    void *value = KD_NULL;
     do
     {
         value = object->value;
@@ -180,7 +180,7 @@ KD_API void *KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return (void *)emscripten_atomic_load_u32(&object->value);
+    return (void*)(KDuint32)emscripten_atomic_load_u32(&object->value);
 #endif
 }
 
@@ -199,7 +199,7 @@ KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value)
     object->value = value;
     kdThreadMutexUnlock(object->mutex);
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    emscripten_atomic_store_u32(&object->value, value);
+    emscripten_atomic_store_u32(&object->value, (KDuint32)value);
 #endif
 }
 
@@ -241,7 +241,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint va
     kdThreadMutexUnlock(object->mutex);
     return retval;
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_add_u32(&object->value, value);
+    return (KDint)emscripten_atomic_add_u32(&object->value, (KDuint32)value);
 #endif
 }
 
@@ -263,7 +263,7 @@ KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint va
     kdThreadMutexUnlock(object->mutex);
     return retval;
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_sub_u32(&object->value, value);
+    return (KDint)emscripten_atomic_sub_u32(&object->value, (KDuint32)value);
 #endif
 }
 
@@ -288,7 +288,7 @@ KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *objec
     kdThreadMutexUnlock(object->mutex);
     return retval;
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_cas_u32(&object->value, expected, desired);
+    return (emscripten_atomic_cas_u32(&object->value, (KDuint32)expected, (KDuint32)desired) == (KDuint32)expected);
 #endif
 }
 
@@ -315,6 +315,6 @@ KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *objec
     kdThreadMutexUnlock(object->mutex);
     return retval;
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return emscripten_atomic_cas_u32(&object->value, (KDuint32)expected, (KDuint32)desired);
+    return (emscripten_atomic_cas_u32(&object->value, (KDuint32)expected, (KDuint32)desired) == (KDuint32)expected);
 #endif
 }

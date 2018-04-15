@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -52,7 +52,6 @@
 #if !defined(_WIN32) && !defined(KD_FREESTANDING)
 #include <errno.h>   // for EACCES, EAGAIN, EBADF, EBUSY, EEXIST
 #include <locale.h>  // for setlocale, LC_ALL, LC_CTYPE
-#include <stdlib.h>  // for free, malloc, realloc
 #endif
 
 /******************************************************************************
@@ -132,6 +131,7 @@ KD_API void KD_APIENTRY kdSetErrorPlatformVEN(KDint error, KDint allowed)
         case(ERROR_INVALID_DATA):
         case(ERROR_INVALID_PARAMETER):
         case(ERROR_INVALID_SIGNAL_NUMBER):
+        case(ERROR_INVALID_USER_BUFFER):
         case(ERROR_META_EXPANSION_TOO_LONG):
         case(ERROR_NEGATIVE_SEEK):
         case(ERROR_NO_TOKEN):
@@ -311,7 +311,7 @@ KD_API const KDchar *KD_APIENTRY kdQueryAttribcv(KDint attribute)
     }
     else if(attribute == KD_ATTRIB_VERSION)
     {
-        return "1.0.3 (libKD 0.1.0)";
+        return "1.0.3";
     }
     else if(attribute == KD_ATTRIB_PLATFORM)
     {
@@ -369,8 +369,8 @@ KD_API const KDchar *KD_APIENTRY kdQueryIndexedAttribcv(KD_UNUSED KDint attribut
 KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
 {
     /* TODO: Add ISO 3166-1 part.*/
-    static KDchar localestore[5] = "";
-    kdMemset(&localestore, 0, sizeof(localestore));
+    static KDchar localestore[5];
+    kdMemset(localestore, 0, sizeof(localestore));
 #if defined(_WIN32)
     KDint localesize = GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SISO639LANGNAME, KD_NULL, 0);
     KDchar *locale = (KDchar *)kdMalloc(localesize);
@@ -392,65 +392,6 @@ KD_API const KDchar *KD_APIENTRY kdGetLocale(void)
     kdMemcpy(localestore, locale, 2 /* 5 */);
 #endif
     return (const KDchar *)localestore;
-}
-
-/******************************************************************************
- * Memory allocation
- ******************************************************************************/
-
-/* kdMalloc: Allocate memory. */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((__malloc__))
-#endif
-KD_API void *KD_APIENTRY
-kdMalloc(KDsize size)
-{
-    void *result = KD_NULL;
-#if defined(_WIN32)
-    result = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
-#else
-    result = malloc(size);
-#endif
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    return result;
-}
-
-/* kdFree: Free allocated memory block. */
-KD_API void KD_APIENTRY kdFree(void *ptr)
-{
-    if(ptr)
-    {
-#if defined(_WIN32)
-        HeapFree(GetProcessHeap(), 0, ptr);
-#else
-        free(ptr);
-#endif
-    }
-}
-
-/* kdRealloc: Resize memory block. */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((__malloc__))
-#endif
-KD_API void *KD_APIENTRY
-kdRealloc(void *ptr, KDsize size)
-{
-    void *result = KD_NULL;
-#if defined(_WIN32)
-    result = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
-#else
-    result = realloc(ptr, size);
-#endif
-    if(result == KD_NULL)
-    {
-        kdSetError(KD_ENOMEM);
-        return KD_NULL;
-    }
-    return result;
 }
 
 /******************************************************************************
@@ -487,6 +428,6 @@ KD_API void KD_APIENTRY kdLogMessage(const KDchar *string)
     {
         return;
     }
-    kdLogMessagefKHR("%s", string);
+    kdLogMessagefKHR("%s\n", string);
 }
 #endif

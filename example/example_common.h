@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -28,7 +28,6 @@
 #include <KD/kdext.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -54,13 +53,18 @@ typedef struct Example {
         EGLConfig config;
         EGLSurface surface;
         EGLContext context;
-        EGLint *attrib_list;
+        EGLint attrib_list[8];
         EGLNativeWindowType window;
+        const KDchar *extensions;
     } egl;
     struct
     {
         KDWindow *window;
     } kd;
+    struct
+    {
+        KDboolean enable;
+    } shadercache;
 } Example;
 
 Example *exampleInit(void);
@@ -73,7 +77,7 @@ KDint exampleDestroy(Example *example);
 
 static GLuint exampleLoadTexture(const KDchar *filename);
 static GLuint exampleCreateShader(GLenum type, const KDchar *shadersrc);
-static GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc);
+static GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc, KDboolean link);
 
 /****************************************************************************** 
  * 4x4 Matrix
@@ -130,6 +134,15 @@ Example *exampleInit(void)
 {
     Example *example = (Example *)kdMalloc(sizeof (Example));
 
+    example->egl.display = eglGetDisplay(kdGetDisplayVEN());
+    kdAssert(example->egl.display != EGL_NO_DISPLAY);
+
+    eglInitialize(example->egl.display, 0, 0);
+    eglBindAPI(EGL_OPENGL_ES_API);
+
+    example->egl.extensions = eglQueryString(example->egl.display, EGL_EXTENSIONS); 
+
+    EGLint egl_num_configs = 0;
     const EGLint egl_attributes[] =
     {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -143,39 +156,60 @@ Example *exampleInit(void)
         EGL_NONE
     };
 
-    const EGLint context_attributes[] =
-    {
-        EGL_CONTEXT_CLIENT_VERSION,
-        2,
-#if defined(EGL_KHR_create_context)
-        EGL_CONTEXT_FLAGS_KHR,
-        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
-#endif
-        EGL_NONE,
-    };
-    
-    example->egl.attrib_list = kdMalloc(sizeof(context_attributes));
-    kdMemcpy(example->egl.attrib_list, context_attributes, sizeof(context_attributes));
-
-    example->egl.display = eglGetDisplay(kdGetDisplayVEN());
-    kdAssert(example->egl.display != EGL_NO_DISPLAY);
-
-    eglInitialize(example->egl.display, 0, 0);
-    eglBindAPI(EGL_OPENGL_ES_API);
-
-    EGLint egl_num_configs = 0;
     eglChooseConfig(example->egl.display, egl_attributes, &example->egl.config, 1, &egl_num_configs);
 
     example->kd.window = kdCreateWindow(example->egl.display, example->egl.config, KD_NULL);
     kdRealizeWindow(example->kd.window, &example->egl.window);
 
     example->egl.surface = eglCreateWindowSurface(example->egl.display, example->egl.config, example->egl.window, KD_NULL);
+    
+    KDint offset = 0;
+    const EGLint context_attributes[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION,
+        2
+    };
+    kdMemcpy(example->egl.attrib_list + offset, context_attributes, sizeof(context_attributes));
+    offset += (sizeof(context_attributes) / sizeof (context_attributes[0]));
+
+#if !defined(KD_NDEBUG) && defined(EGL_KHR_create_context)
+    const EGLint context_attributes_ext1[] =
+    {
+        EGL_CONTEXT_FLAGS_KHR,
+        EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR
+    };
+    if(kdStrstrVEN(example->egl.extensions, "EGL_KHR_create_context"))
+    {
+        kdMemcpy(example->egl.attrib_list + offset, context_attributes_ext1, sizeof(context_attributes_ext1));
+        offset += (sizeof(context_attributes_ext1) / sizeof (context_attributes_ext1[0]));
+    }
+#endif
+
+#if defined(EGL_IMG_context_priority)
+    const EGLint context_attributes_ext2[] =
+    {
+        EGL_CONTEXT_PRIORITY_LEVEL_IMG,
+        EGL_CONTEXT_PRIORITY_HIGH_IMG
+    };
+    if(kdStrstrVEN(example->egl.extensions, "EGL_IMG_context_priority"))
+    {
+        kdMemcpy(example->egl.attrib_list + offset, context_attributes_ext2, sizeof(context_attributes_ext2));
+        offset += (sizeof(context_attributes_ext2) / sizeof (context_attributes_ext2[0]));
+    }
+#endif
+
+    const EGLint context_attributes_end[] =
+    {
+        EGL_NONE
+    };
+    kdMemcpy(example->egl.attrib_list + offset, context_attributes_end, sizeof(context_attributes_end));
+
     example->egl.context = eglCreateContext(example->egl.display, example->egl.config, EGL_NO_CONTEXT, example->egl.attrib_list);
     kdAssert(example->egl.context != EGL_NO_CONTEXT);
 
     eglMakeCurrent(example->egl.display, example->egl.surface, example->egl.surface, example->egl.context);
 
-    eglSwapInterval(example->egl.display, 0);
+    eglSwapInterval(example->egl.display, 1);
 
     kdAssert(eglGetError() == EGL_SUCCESS);
 
@@ -184,27 +218,81 @@ Example *exampleInit(void)
     {
         glEnable(GL_DEBUG_OUTPUT_KHR);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-        PFNGLDEBUGMESSAGECALLBACKKHRPROC glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
-        glDebugMessageCallback(&exampleCallbackGL, KD_NULL);
+        PFNGLDEBUGMESSAGECALLBACKKHRPROC  glDebugMessageCallbackKHR = (PFNGLDEBUGMESSAGECALLBACKKHRPROC)eglGetProcAddress("glDebugMessageCallbackKHR");
+        glDebugMessageCallbackKHR(&exampleCallbackGL, KD_NULL);
     }
 #endif
 
     /* Debug message */
-    kdLogMessage("-----KD-----\n");
+    kdLogMessage("-----KD-----");
     kdLogMessagefKHR("Vendor: %s\n", kdQueryAttribcv(KD_ATTRIB_VENDOR));
     kdLogMessagefKHR("Version: %s\n", kdQueryAttribcv(KD_ATTRIB_VERSION));
     kdLogMessagefKHR("Platform: %s\n", kdQueryAttribcv(KD_ATTRIB_PLATFORM));
-    kdLogMessage("-----EGL-----\n");
+    kdLogMessage("-----EGL-----");
     kdLogMessagefKHR("Vendor: %s\n", eglQueryString(example->egl.display, EGL_VENDOR));
     kdLogMessagefKHR("Version: %s\n", eglQueryString(example->egl.display, EGL_VERSION));
     kdLogMessagefKHR("Client APIs: %s\n", eglQueryString(example->egl.display, EGL_CLIENT_APIS));
-    kdLogMessagefKHR("Extensions: %s\n", eglQueryString(example->egl.display, EGL_EXTENSIONS));
-    kdLogMessage("-----GLES2-----\n");
+    kdLogMessagefKHR("Extensions: %s\n", example->egl.extensions);
+    kdLogMessage("-----GLES2-----");
     kdLogMessagefKHR("Vendor: %s\n", (const KDchar *)glGetString(GL_VENDOR));
     kdLogMessagefKHR("Version: %s\n", (const KDchar *)glGetString(GL_VERSION));
     kdLogMessagefKHR("Renderer: %s\n", (const KDchar *)glGetString(GL_RENDERER));
     kdLogMessagefKHR("Extensions: %s\n", (const KDchar *)glGetString(GL_EXTENSIONS));
-    kdLogMessage("---------------\n");
+#if defined(GL_OES_get_program_binary)
+    if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_OES_get_program_binary"))
+    {
+        example->shadercache.enable = KD_TRUE;
+        kdLogMessagefKHR("GL_OES_get_program_binary formats: ");
+
+        const KDchar *dummyvertexsrc =
+            "void main()                    \n"
+            "{                          \n"
+            "   gl_Position = gl_Vertex;    \n"
+            "}                              \n";
+
+        const KDchar *dummyfragmentsrc =
+            "#ifdef GL_FRAGMENT_PRECISION_HIGH              \n"
+            "   precision highp float;                      \n"
+            "#else                                          \n"
+            "   precision mediump float;                    \n"
+            "#endif                                         \n"
+            "                                               \n"
+            "void main()                                    \n"
+            "{                                              \n"
+            "  gl_FragColor = vec4 ( 1.0, 0.0, 0.0, 1.0 );  \n"
+            "}                                              \n";
+
+        GLuint dummyprogram = exampleCreateProgram(dummyvertexsrc, dummyfragmentsrc, KD_TRUE);
+        glUseProgram(dummyprogram);
+
+        GLint formats = 0;
+        glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &formats);
+        if(formats > 0)
+        {
+            GLint *binary_formats = kdMalloc(sizeof(GLint) * formats);
+            glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, binary_formats);
+            for (KDint i = 0; i < formats; ++i)
+            {
+#if defined(GL_MESA_program_binary_formats)
+                if(binary_formats[i] == GL_PROGRAM_BINARY_FORMAT_MESA)
+                {
+                    kdLogMessagefKHR("Mesa ");
+                }
+#endif
+                kdLogMessagefKHR("%#x ", binary_formats[i]);
+            }
+            kdFree(binary_formats);
+            kdLogMessagefKHR("\n");
+        }
+        else
+        {
+            kdLogMessage("None");
+        }
+        glUseProgram(0);
+        glDeleteProgram(dummyprogram);
+    }
+#endif
+    kdLogMessage("---------------");
 
     kdInstallCallback(&exampleCallbackKD, KD_EVENT_QUIT, example);
 
@@ -214,6 +302,10 @@ Example *exampleInit(void)
 
 void exampleRun(Example *example)
 {
+    if(!example->run)
+    {
+        return;
+    }
     if(eglSwapBuffers(example->egl.display, example->egl.surface) == EGL_FALSE)
     {
         EGLint egl_error = eglGetError();
@@ -266,7 +358,6 @@ KDint exampleDestroy(Example *example)
     eglDestroySurface(example->egl.display, example->egl.surface);
     eglTerminate(example->egl.display);
     kdDestroyWindow(example->kd.window);
-    kdFree(example->egl.attrib_list);
     kdFree(example);
     return 0;
 }
@@ -277,7 +368,7 @@ KDint exampleDestroy(Example *example)
 
 GLuint exampleLoadTexture(const KDchar *filename)
 {
-    KDImageATX image = kdGetImageATX(filename, KD_IMAGE_FORMAT_RGB888_ATX, 0);
+    KDImageATX image = kdGetImageATX(filename, KD_IMAGE_FORMAT_RGBA8888_ATX, 0);
     if(!image)
     {
         kdLogMessagefKHR("Error loading (%s) image.\n", filename);
@@ -291,7 +382,7 @@ GLuint exampleLoadTexture(const KDchar *filename)
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -334,7 +425,7 @@ GLuint exampleCreateShader(GLenum type, const KDchar *shadersrc)
     return shader;
 }
 
-GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc)
+GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc, KDboolean link)
 {
     GLuint program = glCreateProgram();
     if(program == 0)
@@ -360,7 +451,27 @@ GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc)
     glAttachShader(program, fragmentshader);
     glDeleteShader(fragmentshader);
 
-    glLinkProgram(program);
+    if(link)
+    {
+        GLint linked = 0;
+        glLinkProgram(program);
+        glGetProgramiv(program, GL_LINK_STATUS, &linked);
+
+        if(!linked)
+        {
+            GLint len = 0;
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+
+            if(len > 1)
+            {
+                KDchar *log = kdMalloc(sizeof(KDchar) * len);
+                glGetProgramInfoLog(program, len, KD_NULL, log);
+                kdLogMessagefKHR("%s\n", log);
+                kdFree(log);
+            }
+            return 0;
+        }
+    }
     return program;
 }
 
@@ -406,36 +517,36 @@ void exampleMatrixCopy(Matrix4x4 dst, Matrix4x4 src)
     }
 }
 
-void exampleMatrixFrustum(Matrix4x4 m, KDfloat32 left, KDfloat32 right, KDfloat32 bottom, KDfloat32 top, KDfloat32 near, KDfloat32 far)
+void exampleMatrixFrustum(Matrix4x4 m, KDfloat32 left, KDfloat32 right, KDfloat32 bottom, KDfloat32 top, KDfloat32 _near, KDfloat32 _far)
 {
     KDfloat32 dx = right - left;
     KDfloat32 dy = top - bottom;
-    KDfloat32 dz = far - near;
+    KDfloat32 dz = _far - _near;
     Matrix4x4 frust;
 
-    if (near <= 0.f || far <= 0.f || dx <= 0.f || dy <= 0.f || dz <= 0.f)
+    if (_near <= 0.f || _far <= 0.f || dx <= 0.f || dy <= 0.f || dz <= 0.f)
     {
         return;
     }
 
-    frust[0*4 + 0] = 2.f * near / dx;
+    frust[0*4 + 0] = 2.f * _near / dx;
     frust[0*4 + 1] = 0.f;
     frust[0*4 + 2] = 0.f;
     frust[0*4 + 3] = 0.f;
 
     frust[1*4 + 0] = 0.f;
-    frust[1*4 + 1] = 2.f * near / dy;
+    frust[1*4 + 1] = 2.f * _near / dy;
     frust[1*4 + 2] = 0.f;
     frust[1*4 + 3] = 0.f;
 
     frust[2*4 + 0] = (right + left) / dx;
     frust[2*4 + 1] = (top + bottom) / dy;
-    frust[2*4 + 2] = -(near + far) / dz;
+    frust[2*4 + 2] = -(_near + _far) / dz;
     frust[2*4 + 3] = -1.f;
 
     frust[3*4 + 0] = 0.f;
     frust[3*4 + 1] = 0.f;
-    frust[3*4 + 2] = -2.f * near * far / dz;
+    frust[3*4 + 2] = -2.f * _near * _far / dz;
     frust[3*4 + 3] = 0.f;
 
     exampleMatrixMultiply(m, frust);

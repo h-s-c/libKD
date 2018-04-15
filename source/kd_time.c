@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -126,7 +126,10 @@ KD_API KDtime KD_APIENTRY kdTime(KDtime *timep)
     largeuint.HighPart = filetime.dwHighDateTime;
     /* See RtlTimeToSecondsSince1970 */
     KDtime time = (KDtime)((largeuint.QuadPart / 10000000LL) - 11644473600LL);
-    (*timep) = time;
+    if(timep)
+    {
+        (*timep) = time;
+    }
     return time;
 #else
     return time((time_t *)timep);

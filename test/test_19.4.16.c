@@ -83,37 +83,27 @@ void test()
     // can't overwrite a folder with a file
     err = kdRename("file", "dir");
     TEST_EQ(err, -1);
-#ifndef _MSC_VER
-    TEST_EQ(kdGetError(), KD_EACCES);
-#endif
+    TEST_EQ(kdGetError(), KD_EINVAL);
 
     // can't overwrite a file with a folder
     err = kdRename("dir", "file");
     TEST_EQ(err, -1);
-#ifndef _MSC_VER
     TEST_EQ(kdGetError(), KD_EINVAL);
-#endif
 
     // can't overwrite a non-empty folder
     err = kdRename("dir", "dir-nonempty");
     TEST_EQ(err, -1);
-#ifndef _MSC_VER
-    TEST_EQ(kdGetError(), KD_EACCES);
-#endif
+    TEST_EQ(kdGetError(), KD_EINVAL);
 
     // source should not be ancestor of target
     err = kdRename("dir", "dir/somename");
     TEST_EQ(err, -1);
-#ifndef _MSC_VER
     TEST_EQ(kdGetError(), KD_EINVAL);
-#endif
 
     // target should not be an ancestor of source
     err = kdRename("dir/subdir", "dir");
     TEST_EQ(err, -1);
-#ifndef _MSC_VER
-    TEST_EQ(kdGetError(), KD_EACCES);
-#endif
+    TEST_EQ(kdGetError(), KD_EINVAL);
 
     // do some valid renaming
     err = kdRename("dir/file", "dir/file1");

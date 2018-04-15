@@ -2,7 +2,7 @@
 # libKD
 # zlib/libpng License
 ###############################################################################
-# Copyright (c) 2014-2017 Kevin Schmidt
+# Copyright (c) 2014-2018 Kevin Schmidt
 #
 # This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
@@ -21,22 +21,9 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(ARCH_SUFFIX "-64")
-else()
-    set(ARCH_SUFFIX "")
-endif()
 
-find_path(GLES2_INCLUDE_DIR NAMES GLES2/gl2.h PATHS $ENV{KHRONOS_HEADERS}
-                                                    ${CMAKE_SOURCE_DIR}/thirdparty/gles_angle/include
-                                                    ${CMAKE_SOURCE_DIR}/thirdparty/gles_amd/include
-                                                    ${CMAKE_SOURCE_DIR}/thirdparty/gles_mali/include)
-
-find_library(GLES2_LIBRARY NAMES GLESv2 libGLESv2 PATHS $ENV{OPENGLES_LIBDIR}
-                                                        ${CMAKE_SOURCE_DIR}/thirdparty/gles_angle/lib
-                                                        ${CMAKE_SOURCE_DIR}/thirdparty/gles_amd/x86${ARCH_SUFFIX}
-                                                        ${CMAKE_SOURCE_DIR}/thirdparty/gles_mali
-                                                        ${CMAKE_SOURCE_DIR}/thirdparty/gles_mali/lib)
+find_path(GLES2_INCLUDE_DIR NAMES GLES2/gl2.h PATHS $ENV{KHRONOS_HEADERS})
+find_library(GLES2_LIBRARY NAMES GLESv2 libGLESv2 PATHS $ENV{OPENGLES_LIBDIR})
 
 if(EMSCRIPTEN)
     set(GLES2_FOUND TRUE)

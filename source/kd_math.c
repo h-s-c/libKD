@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -116,12 +116,10 @@
  ******************************************************************************/
 
 #if defined(_MSC_VER)
-#pragma warning(push)
 #pragma warning(disable : 4204)
 #pragma warning(disable : 4723)
 #pragma warning(disable : 4756)
 #elif defined(__clang__)
-#pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-qual"
 #pragma clang diagnostic ignored "-Wfloat-equal"
 #pragma clang diagnostic ignored "-Wsign-conversion"
@@ -1400,7 +1398,8 @@ static KDint __kdRemPio2Kernel(const KDfloat64KHR *x, KDfloat64KHR *y, KDint e0,
         twon24 = 5.96046447753906250000e-08; /* 0x3E700000, 0x00000000 */
 
     KDint32 jz, jx, jv, jk, carry, n, iq[20], i, j, k, m, q0, ih;
-    KDfloat64KHR z, fw, f[20] = {0}, fq[20], q[20];
+    KDfloat64KHR z, fw, f[20], fq[20], q[20];
+    kdMemset(f, 0, sizeof(f));
 
     /* initialize jk*/
     jk = 3;
@@ -5454,9 +5453,3 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
     }
     return x; /* exact output */
 }
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
-#pragma clang diagnostic pop
-#endif

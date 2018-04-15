@@ -31,8 +31,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
+#if defined(__EMSCRIPTEN__)
 #include <AL/al.h>
 #include <AL/alc.h>
+#else
+#include <al.h>
+#include <alc.h>
+#endif
 
 #define EXAMPLE_COMMON_IMPLEMENTATION
 #include "example_common.h"
@@ -193,14 +198,14 @@ static GLOBJECT *newGLObject(KDint64 vertices, KDint vertexComponents,
     result = (GLOBJECT *)kdMalloc(sizeof(GLOBJECT));
     if(result == KD_NULL)
         return KD_NULL;
-    result->count = vertices;
+    result->count = (GLsizei)vertices;
     result->vertexComponents = vertexComponents;
-    result->vertexArraySize = vertices * vertexComponents * sizeof(GLfloat);
+    result->vertexArraySize = (GLint)(vertices * vertexComponents * sizeof(GLfloat));
     result->vertexArray = kdMalloc(result->vertexArraySize);
     result->vertexArrayOffset = 0;
     if(useColorArray)
     {
-        result->colorArraySize = vertices * 4 * sizeof(GLubyte);
+        result->colorArraySize = (GLint)(vertices * 4 * sizeof(GLubyte));
         result->colorArray = kdMalloc(result->colorArraySize);
     }
     else
@@ -212,7 +217,7 @@ static GLOBJECT *newGLObject(KDint64 vertices, KDint vertexComponents,
         result->vertexArraySize;
     if(useNormalArray)
     {
-        result->normalArraySize = vertices * 3 * sizeof(GLfloat);
+        result->normalArraySize = (GLint)(vertices * 3 * sizeof(GLfloat));
         result->normalArray = kdMalloc(result->normalArraySize);
     }
     else
@@ -283,7 +288,7 @@ static GLuint createVBO(GLOBJECT **superShapes, KDint superShapeCount,
         fadeQuad->normalArraySize;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, totalSize, 0, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, totalSize, 0, GL_DYNAMIC_DRAW);
     GLint offset = 0;
     for(a = 0; a < superShapeCount; ++a)
         appendObjectVBO(superShapes[a], &offset);
@@ -357,15 +362,13 @@ KDint initShaderPrograms()
     exampleMatrixIdentity(sModelView);
     exampleMatrixIdentity(sProjection);
 
-    sShaderFlat.program = exampleCreateProgram(sFlatVertexSource,
-        sFlatFragmentSource);
-    sShaderLit.program = exampleCreateProgram(sLitVertexSource,
-        sFlatFragmentSource);
-    sShaderFade.program = exampleCreateProgram(sFadeVertexSource,
-        sFlatFragmentSource);
-    if(sShaderFlat.program == 0 || sShaderLit.program == 0 ||
-        sShaderFade.program == 0)
+    sShaderFlat.program = exampleCreateProgram(sFlatVertexSource, sFlatFragmentSource, KD_TRUE);
+    sShaderLit.program = exampleCreateProgram(sLitVertexSource, sFlatFragmentSource, KD_TRUE);
+    sShaderFade.program = exampleCreateProgram(sFadeVertexSource, sFlatFragmentSource, KD_TRUE);
+    if(sShaderFlat.program == 0 || sShaderLit.program == 0 || sShaderFade.program == 0)
+    {
         return 0;
+    }
 
     return getLocations();
 }
@@ -533,7 +536,7 @@ static GLOBJECT *createSuperShape(const KDfloat32 *params)
                 VECTOR3 pa, pb, pc, pd;
                 VECTOR3 v1, v2, n;
                 KDfloat32 ca;
-                KDint i;
+                KDint64 i;
                 //float lenSq, invLenSq;
 
                 superShapeMap(&pa, r0, r1, t1, p1);
@@ -585,8 +588,8 @@ static GLOBJECT *createSuperShape(const KDfloat32 *params)
                     i < (currentVertex + 6) * 4;
                     i += 4)
                 {
-                    KDint a, color[3];
-                    for(a = 0; a < 3; ++a)
+                    KDint color[3];
+                    for(KDint a = 0; a < 3; ++a)
                     {
                         color[a] = (KDint)(ca * baseColor[a] * 255);
                         if(color[a] > 255)
@@ -627,7 +630,7 @@ static GLOBJECT *createSuperShape(const KDfloat32 *params)
     }      // longitude
 
     // Set number of vertices in object to the actual amount created.
-    result->count = currentVertex;
+    result->count = (GLsizei)currentVertex;
     result->shaderProgram = sShaderLit.program;
     return result;
 }
@@ -656,9 +659,8 @@ static GLOBJECT *createGroundPlane()
         for(x = xBegin; x < xEnd; ++x)
         {
             GLubyte color;
-            KDint i, a;
             color = (GLubyte)((randomUInt() & 0x5f) + 81);  // 101 1111
-            for(i = currentVertex * 4; i < (currentVertex + 6) * 4; i += 4)
+            for(KDint64 i = currentVertex * 4; i < (currentVertex + 6) * 4; i += 4)
             {
                 result->colorArray[i] = color;
                 result->colorArray[i + 1] = color;
@@ -669,11 +671,11 @@ static GLOBJECT *createGroundPlane()
             // Axis bits for quad triangles:
             // x: 011100 (0x1c), y: 110001 (0x31)  (clockwise)
             // x: 001110 (0x0e), y: 100011 (0x23)  (counter-clockwise)
-            for(a = 0; a < 6; ++a)
+            for(KDint a = 0; a < 6; ++a)
             {
                 const KDint xm = x + ((0x1c >> a) & 1);
                 const KDint ym = y + ((0x31 >> a) & 1);
-                const KDfloat32 m = (kdCosf(xm * 2) * kdSinf(ym * 4) * 0.75f);
+                const KDfloat32 m =(kdCosf((KDfloat32)(xm * 2)) * kdSinf((KDfloat32)(ym * 4)) * 0.75f);
                 result->vertexArray[currentVertex * 2] = xm * scale + m;
                 result->vertexArray[currentVertex * 2 + 1] = ym * scale + m;
                 ++currentVertex;
@@ -727,9 +729,9 @@ static GLOBJECT *createFadeQuad()
 
 static void drawFadeQuad()
 {
-    const KDint beginFade = sTick - sCurrentCamTrackStartTick;
-    const KDint endFade = sNextCamTrackStartTick - sTick;
-    const KDint minFade = beginFade < endFade ? beginFade : endFade;
+    const KDust beginFade = sTick - sCurrentCamTrackStartTick;
+    const KDust endFade = sNextCamTrackStartTick - sTick;
+    const KDust minFade = beginFade < endFade ? beginFade : endFade;
 
     if(minFade < 1024)
     {
@@ -860,8 +862,8 @@ static void drawModels(KDfloat32 zScale)
             KDint curShape = randomUInt() % SUPERSHAPE_COUNT;
             buildingScale = sSuperShapeParams[curShape][SUPERSHAPE_PARAMS - 1];
             kdMemcpy(tmp, sModelView, sizeof(sModelView));
-            exampleMatrixTranslate(sModelView, x * translationScale, y * translationScale, 0);
-            exampleMatrixRotate(sModelView, randomUInt() % 360, 0, 0, 1.f);
+            exampleMatrixTranslate(sModelView, (KDfloat32)(x * translationScale), (KDfloat32)(y * translationScale), 0);
+            exampleMatrixRotate(sModelView, (KDfloat32)(randomUInt() % 360), 0, 0, 1.f);
             exampleMatrixScale(sModelView, buildingScale, buildingScale, buildingScale);
 
             drawGLObject(sSuperShapeObjects[curShape]);
@@ -1085,13 +1087,18 @@ void AudioStreamDeinit(AUDIOSTREAM *self)
 
 KDboolean AudioStreamStream(AUDIOSTREAM *self, ALuint buffer)
 {
-    ALshort pcm[self->bufferSize];
+    //Uncomment this to avoid VLAs
+#define BUFFER_SIZE 4096*32
+#ifndef BUFFER_SIZE//VLAs ftw
+#define BUFFER_SIZE (self->bufferSize)
+#endif
+    ALshort pcm[BUFFER_SIZE];
     KDint size = 0;
     KDint result = 0;
 
-    while(size < self->bufferSize)
+    while(size < BUFFER_SIZE)
     {
-        result = stb_vorbis_get_samples_short_interleaved(self->stream, self->info.channels, pcm + size, self->bufferSize - size);
+        result = stb_vorbis_get_samples_short_interleaved(self->stream, self->info.channels, pcm + size, BUFFER_SIZE - size);
         if(result > 0)
             size += result * self->info.channels;
         else
@@ -1103,6 +1110,7 @@ KDboolean AudioStreamStream(AUDIOSTREAM *self, ALuint buffer)
 
     alBufferData(buffer, self->format, pcm, size * sizeof(ALshort), self->info.sample_rate);
     self->totalSamplesLeft -= size;
+#undef BUFFER_SIZE
 
     return KD_TRUE;
 }
@@ -1186,7 +1194,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 case(KD_EVENT_WINDOW_CLOSE):
                 {
-                    example->run = 0;
+                    example->run = KD_FALSE;
                     break;
                 }
                 default:

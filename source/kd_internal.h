@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -23,7 +23,7 @@
 
 struct KDFile {
 #if defined(_WIN32)
-    HANDLE nativefile;
+    void* nativefile;
 #else
     KDint nativefile;
     KDint8 padding[4];
@@ -44,6 +44,16 @@ struct KDThread {
     KDint callbackindex;
     _KDCallback **callbacks;
     void *tlsptr;
+};
+
+typedef struct _KDMutexAttr _KDMutexAttr;
+struct _KDMutexAttr {
+    /* This is useful for our kdMalloc implementation. */
+    KDThreadMutex *staticmutex;
+};
+struct KDThreadMutex {
+    void *nativemutex;
+    const _KDMutexAttr *mutexattr;
 };
 
 typedef struct _KDImageATX _KDImageATX;
@@ -87,4 +97,8 @@ extern KDThreadMutex *__kd_tls_mutex;
 extern KDint errno;
 #endif
 
-KDint __kdDecompressPVRTC(const void* pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8* pResultImage);
+#if defined(_WIN32) && defined(KD_FREESTANDING)
+KDint _fltused;
+#endif
+
+KDint __kdDecompressPVRTC(const KDuint8* pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8* pResultImage);

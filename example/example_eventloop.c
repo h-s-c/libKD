@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -68,5 +68,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         exampleRun(example);
     }
 
+    kdCancelTimer(kd_timer);
     return exampleDestroy(example);
 }

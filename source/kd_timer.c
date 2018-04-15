@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -95,7 +95,7 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
 {
     if(periodic != KD_TIMER_ONESHOT && periodic != KD_TIMER_PERIODIC_AVERAGE && periodic != KD_TIMER_PERIODIC_MINIMUM)
     {
-        kdLogMessage("kdSetTimer() encountered unknown periodic value.\n");
+        kdLogMessage("kdSetTimer() encountered unknown periodic value.");
         return KD_NULL;
     }
 
@@ -124,7 +124,7 @@ KD_API KDTimer *KD_APIENTRY kdSetTimer(KDint64 interval, KDint periodic, void *e
         kdFree(payload);
         if(kdGetError() == KD_ENOSYS)
         {
-            kdLogMessage("kdSetTimer() needs a threading implementation.\n");
+            kdLogMessage("kdSetTimer() needs a threading implementation.");
             return KD_NULL;
         }
         kdSetError(KD_ENOMEM);

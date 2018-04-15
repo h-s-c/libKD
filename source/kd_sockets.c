@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -152,7 +152,7 @@ KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *ev
     {
         if(kdGetError() == KD_ENOSYS)
         {
-            kdLogMessage("kdNameLookup() needs a threading implementation.\n");
+            kdLogMessage("kdNameLookup() needs a threading implementation.");
             return -1;
         }
         kdSetError(KD_ENOMEM);

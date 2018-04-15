@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -70,9 +70,12 @@
 #endif
 
 #if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN_PTHREADS__)
+#define KD_ATOMIC_EMSCRIPTEN
+#define KD_THREAD_POSIX
+#else
 #define KD_ATOMIC_MUTEX
-//#   define KD_THREAD_EMSCRIPTEN
-//#   define KD_THREAD_POSIX
+#endif
 #elif defined(_WIN32)
 #define KD_ATOMIC_WIN32
 #define KD_THREAD_WIN32

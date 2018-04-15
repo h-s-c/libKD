@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -678,7 +678,7 @@ static KDint pvrtcDecompress(const KDuint8 *pCompressedData,
     return (KDint)(ui32Width * ui32Height / (ui32WordWidth / 2));
 }
 
-KDint __kdDecompressPVRTC(const void *pCompressedData,
+KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData,
     KDint Do2bitMode,
     KDint XDim,
     KDint YDim,

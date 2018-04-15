@@ -1,7 +1,15 @@
 # 2006-2008 (c) Viva64.com Team
-# 2008-2016 (c) OOO "Program Verification Systems"
+# 2008-2018 (c) OOO "Program Verification Systems"
 #
-# Version 2
+# Version 7
+
+cmake_minimum_required(VERSION 2.8.12)
+cmake_policy(SET CMP0054 NEW)
+
+if(__PVS_STUDIO_INCLUDED)
+	return()
+endif()
+set(__PVS_STUDIO_INCLUDED TRUE)
 
 function (pvs_studio_relative_path VAR ROOT FILEPATH)
     set("${VAR}" "${FILEPATH}" PARENT_SCOPE)
@@ -25,8 +33,27 @@ macro (pvs_studio_append_flags_from_property CXX C DIR PREFIX)
     if (NOT "${PROPERTY}" STREQUAL "NOTFOUND" AND NOT "${PROPERTY}" STREQUAL "PROPERTY-NOTFOUND")
         foreach (PROP ${PROPERTY})
             pvs_studio_join_path(PROP "${DIR}" "${PROP}")
-            list(APPEND "${CXX}" "${PREFIX}${PROP}")
-            list(APPEND "${C}" "${PREFIX}${PROP}")
+
+            if (APPLE AND "${PREFIX}" STREQUAL "-I" AND IS_ABSOLUTE "${PROP}" AND "${PROP}" MATCHES "\\.framework$")
+                get_filename_component(FRAMEWORK "${PROP}" DIRECTORY)
+                list(APPEND "${CXX}" "-iframework")
+                list(APPEND "${CXX}" "${FRAMEWORK}")
+                list(APPEND "${C}" "-iframework")
+                list(APPEND "${C}" "${FRAMEWORK}")
+                if (PVS_STUDIO_DEBUG)
+                    message("PVS-Studio: framework: ${FRAMEWORK}")
+                endif ()
+            elseif ("${PROP}" MATCHES "^\\$<.*>")
+                if (PVS_STUDIO_DEBUG)
+                    message("PVS-Studio: warning: ignored ${PREFIX}${PROP}")
+                endif ()
+            elseif (NOT "${PROP}" STREQUAL "")
+                list(APPEND "${CXX}" "${PREFIX}${PROP}")
+                list(APPEND "${C}" "${PREFIX}${PROP}")
+                if (PVS_STUDIO_DEBUG)
+                    message("PVS-Studio: compile flag: ${PREFIX}${PROP}")
+                endif ()
+            endif()
         endforeach ()
     endif ()
 endmacro ()
@@ -53,6 +80,26 @@ function (pvs_studio_set_directory_flags DIRECTORY CXX C)
     set("${C}" "${C_FLAGS}" PARENT_SCOPE)
 endfunction ()
 
+function (pvs_studio_get_target_dependencies TARGET RES_VAR)
+    set(RES)
+    get_target_property(LIBS "${TARGET}" LINK_LIBRARIES)
+    foreach (LIB IN LISTS LIBS)
+        if (TARGET "${LIB}")
+            list(FIND RES "${LIB}" INDEX)
+            if ("${INDEX}" LESS 0)
+                list(APPEND RES "${LIB}")
+                get_target_property(LIB_LIBS "${LIB}" INTERFACE_LINK_LIBRARIES)
+                if (LIB_LIBS)
+                    list(APPEND RES "${LIB_LIBS}")
+                    list(REMOVE_DUPLICATES RES)
+                endif()
+            endif()
+        endif()
+	endforeach()
+
+    set("${RES_VAR}" "${RES}" PARENT_SCOPE)
+endfunction()
+
 function (pvs_studio_set_target_flags TARGET CXX C)
     set(CXX_FLAGS "${${CXX}}")
     set(C_FLAGS "${${C}}")
@@ -65,6 +112,16 @@ function (pvs_studio_set_target_flags TARGET CXX C)
 
     get_target_property(PROPERTY "${TARGET}" CXX_STANDARD)
     pvs_studio_append_standard_flag(CXX_FLAGS "${PROPERTY}")
+
+    pvs_studio_get_target_dependencies("${TARGET}" LIBS)
+    foreach (LIB IN LISTS LIBS)
+        get_target_property(PROPERTY "${LIB}" INTERFACE_INCLUDE_DIRECTORIES)
+        pvs_studio_append_flags_from_property(CXX_FLAGS C_FLAGS "${DIRECTORY}" "-I")
+        get_target_property(PROPERTY "${LIB}" INTERFACE_SYSTEM_INCLUDE_DIRECTORIES)
+        pvs_studio_append_flags_from_property(CXX_FLAGS C_FLAGS "${DIRECTORY}" "-I")
+        get_target_property(PROPERTY "${LIB}" INTERFACE_COMPILE_DEFINITIONS)
+        pvs_studio_append_flags_from_property(CXX_FLAGS C_FLAGS "" "-D")
+    endforeach ()
 
     set("${CXX}" "${CXX_FLAGS}" PARENT_SCOPE)
     set("${C}" "${C_FLAGS}" PARENT_SCOPE)
@@ -115,6 +172,7 @@ function (pvs_studio_analyze_file SOURCE SOURCE_DIR BINARY_DIR)
                                                        --cl-params ${PVS_STUDIO_CL_PARAMS} "${SOURCE}"
                            WORKING_DIRECTORY "${BINARY_DIR}"
                            DEPENDS "${SOURCE}" "${PVS_STUDIO_CONFIG}"
+                           IMPLICIT_DEPENDS "${PVS_STUDIO_LANGUAGE}" "${SOURCE}"
                            VERBATIM
                            COMMENT "Analyzing ${PVS_STUDIO_LANGUAGE} file ${SOURCE_RELATIVE}")
         list(APPEND PLOGS "${LOG}")
@@ -150,7 +208,60 @@ function (pvs_studio_analyze_target TARGET DIR)
     set(PVS_STUDIO_PLOGS "${PVS_STUDIO_PLOGS}" PARENT_SCOPE)
 endfunction ()
 
+set(PVS_STUDIO_RECURSIVE_TARGETS)
+set(PVS_STUDIO_RECURSIVE_TARGETS_NEW)
+
+macro(pvs_studio_get_recursive_targets TARGET)
+    get_target_property(libs "${TARGET}" LINK_LIBRARIES)
+    foreach (lib IN LISTS libs)
+        list(FIND PVS_STUDIO_RECURSIVE_TARGETS "${lib}" index)
+        if (TARGET "${lib}" AND "${index}" STREQUAL -1)
+            get_target_property(target_type "${lib}" TYPE)
+            if (NOT "${target_type}" STREQUAL "INTERFACE_LIBRARY")
+                list(APPEND PVS_STUDIO_RECURSIVE_TARGETS "${lib}")
+                list(APPEND PVS_STUDIO_RECURSIVE_TARGETS_NEW "${lib}")
+                pvs_studio_get_recursive_targets("${lib}")
+            endif ()
+        endif ()
+    endforeach ()
+endmacro()
+
+option(PVS_STUDIO_DISABLE OFF "Disable PVS-Studio targets")
+option(PVS_STUDIO_DEBUG OFF "Add debug info")
+
+# pvs_studio_add_target
+# Target options:
+# ALL                           add this target to default build (default: off)
+# TARGET target                 name of analysis target (default: pvs)
+# ANALYZE targets...            targets to analyze
+# RECURSIVE                     analyze target's dependencies (requires CMake 3.5+)
+#
+# Output options:
+# OUTPUT                        prints report to stdout
+# LOG path                      path to report (default: ${CMAKE_CURRENT_BINARY_DIR}/PVS-Studio.log)
+# FORMAT format                 format of report
+# MODE mode                     analyzers/levels filter (default: GA:1,2)
+#
+# Analyzer options:
+# PLATFORM name                 linux32/linux64 (default: linux64)
+# PREPROCESSOR name             preprocessor type: gcc/clang (default: auto detected)
+# LICENSE path                  path to PVS-Studio.lic (default: ~/.config/PVS-Studio/PVS-Studio.lic)
+# CONFIG path                   path to PVS-Studio.cfg
+# CFG_TEXT text                 embedded PVS-Studio.cfg
+#
+# Misc options:
+# DEPENDS targets..             additional target dependencies
+# SOURCES path...               list of source files to analyze
+# BIN path                      path to pvs-studio-analyzer (default: pvs-studio-analyzer)
+# CONVERTER path                path to plog-converter (default: plog-converter)
+# C_FLAGS flags...              additional C_FLAGS
+# CXX_FLAGS flags...            additional CXX_FLAGS
+# ARGS args...                  additional pvs-studio-analyzer flags
 function (pvs_studio_add_target)
+    if (WIN32)
+        return()
+    endif ()
+
     macro (default VAR VALUE)
         if ("${${VAR}}" STREQUAL "")
             set("${VAR}" "${VALUE}")
@@ -158,15 +269,15 @@ function (pvs_studio_add_target)
     endmacro ()
 
     set(PVS_STUDIO_SUPPORTED_PREPROCESSORS "gcc|clang")
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
         set(DEFAULT_PREPROCESSOR "clang")
     else ()
         set(DEFAULT_PREPROCESSOR "gcc")
     endif ()
 
-    set(OPTIONAL OUTPUT ALL)
+    set(OPTIONAL OUTPUT ALL RECURSIVE)
     set(SINGLE LICENSE CONFIG TARGET LOG FORMAT BIN CONVERTER PLATFORM PREPROCESSOR CFG_TEXT)
-    set(MULTI SOURCES C_FLAGS CXX_FLAGS ARGS DEPENDS ANALYZE)
+    set(MULTI SOURCES C_FLAGS CXX_FLAGS ARGS DEPENDS ANALYZE MODE)
     cmake_parse_arguments(PVS_STUDIO "${OPTIONAL}" "${SINGLE}" "${MULTI}" ${ARGN})
 
     if ("${PVS_STUDIO_CFG}" STREQUAL "" OR NOT "${PVS_STUDIO_CFG_TEXT}" STREQUAL "")
@@ -175,7 +286,7 @@ function (pvs_studio_add_target)
         set(PVS_STUDIO_EMPTY_CONFIG OFF)
     endif ()
 
-    default(PVS_STUDIO_CFG_TEXT "analysis-mode=4")
+    default(PVS_STUDIO_CFG_TEXT "analysis-mode=31")
     default(PVS_STUDIO_CONFIG "${CMAKE_BINARY_DIR}/PVS-Studio.cfg")
     default(PVS_STUDIO_C_FLAGS "")
     default(PVS_STUDIO_CXX_FLAGS "")
@@ -183,12 +294,14 @@ function (pvs_studio_add_target)
     default(PVS_STUDIO_LOG "PVS-Studio.log")
     default(PVS_STUDIO_BIN "pvs-studio-analyzer")
     default(PVS_STUDIO_CONVERTER "plog-converter")
+    default(PVS_STUDIO_MODE "GA:1,2")
     default(PVS_STUDIO_PREPROCESSOR "${DEFAULT_PREPROCESSOR}")
     default(PVS_STUDIO_PLATFORM "linux64")
 
+    string(REPLACE ";" "/" PVS_STUDIO_MODE "${PVS_STUDIO_MODE}")
+
     if (PVS_STUDIO_EMPTY_CONFIG)
-        set(PVS_STUDIO_CONFIG_COMMAND echo "${PVS_STUDIO_CFG_TEXT}" > "${PVS_STUDIO_CONFIG}" &&
-            echo "exclude-path=${CMAKE_SOURCE_DIR}/source/stb_*.h" >> "${PVS_STUDIO_CONFIG}")
+        set(PVS_STUDIO_CONFIG_COMMAND echo "${PVS_STUDIO_CFG_TEXT}" > "${PVS_STUDIO_CONFIG}")
     else ()
         set(PVS_STUDIO_CONFIG_COMMAND touch "${PVS_STUDIO_CONFIG}")
     endif ()
@@ -197,7 +310,6 @@ function (pvs_studio_add_target)
                        COMMAND ${PVS_STUDIO_CONFIG_COMMAND}
                        WORKING_DIRECTORY "${BINARY_DIR}"
                        COMMENT "Generating PVS-Studio.cfg")
-
 
     if (NOT "${PVS_STUDIO_PREPROCESSOR}" MATCHES "^${PVS_STUDIO_SUPPORTED_PREPROCESSORS}$")
         message(FATAL_ERROR "Preprocessor ${PVS_STUDIO_PREPROCESSOR} isn't supported. Available options: ${PVS_STUDIO_SUPPORTED_PREPROCESSORS}.")
@@ -216,6 +328,15 @@ function (pvs_studio_add_target)
 
     set(PVS_STUDIO_PLOGS "")
 
+    set(PVS_STUDIO_RECURSIVE_TARGETS_NEW)
+    if (${PVS_STUDIO_RECURSIVE})
+        foreach (TARGET IN LISTS PVS_STUDIO_ANALYZE)
+            list(APPEND PVS_STUDIO_RECURSIVE_TARGETS_NEW "${TARGET}")
+            pvs_studio_get_recursive_targets("${TARGET}")
+        endforeach ()
+        set(PVS_STUDIO_ANALYZE "${PVS_STUDIO_RECURSIVE_TARGETS_NEW}")
+    endif ()
+
     foreach (TARGET ${PVS_STUDIO_ANALYZE})
         set(DIR "${CMAKE_CURRENT_SOURCE_DIR}")
         string(FIND "${TARGET}" ":" DELIM)
@@ -224,6 +345,11 @@ function (pvs_studio_add_target)
             string(SUBSTRING "${TARGET}" "${DELIMI}" "-1" DIR)
             string(SUBSTRING "${TARGET}" "0" "${DELIM}" TARGET)
             pvs_studio_join_path(DIR "${CMAKE_CURRENT_SOURCE_DIR}" "${DIR}")
+        else ()
+          get_target_property(TARGET_SOURCE_DIR "${TARGET}" SOURCE_DIR)
+          if (EXISTS "${TARGET_SOURCE_DIR}")
+            set(DIR "${TARGET_SOURCE_DIR}")
+          endif ()
         endif ()
         pvs_studio_analyze_target("${TARGET}" "${DIR}")
         list(APPEND PVS_STUDIO_DEPENDS "${TARGET}")
@@ -245,7 +371,7 @@ function (pvs_studio_add_target)
             endif ()
             list(APPEND COMMANDS
                  COMMAND mv "${PVS_STUDIO_LOG}" "${PVS_STUDIO_LOG}.pvs.raw"
-                 COMMAND "${PVS_STUDIO_CONVERTER}" -t "${PVS_STUDIO_FORMAT}" "${PVS_STUDIO_LOG}.pvs.raw" -o "${PVS_STUDIO_LOG}"
+                 COMMAND "${PVS_STUDIO_CONVERTER}" -t "${PVS_STUDIO_FORMAT}" "${PVS_STUDIO_LOG}.pvs.raw" -o "${PVS_STUDIO_LOG}" -a "${PVS_STUDIO_MODE}"
                  COMMAND rm -f "${PVS_STUDIO_LOG}.pvs.raw")
         endif ()
     else ()

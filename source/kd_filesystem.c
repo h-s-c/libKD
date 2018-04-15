@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2017 Kevin Schmidt
+ * Copyright (c) 2014-2018 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -543,7 +543,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     if(retval == 0)
     {
         error = GetLastError();
-        if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK)
+        if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK || error == ERROR_SHARING_VIOLATION)
         {
             kdSetError(KD_EINVAL);
         }
@@ -553,13 +553,9 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     if(retval == -1)
     {
         error = errno;
-        if(error == ENOTDIR)
+        if(error == ENOTDIR || error == ENOTEMPTY || error == EISDIR)
         {
             kdSetError(KD_EINVAL);
-        }
-        else if(error == ENOTEMPTY)
-        {
-            kdSetError(KD_EACCES);
         }
         else
 #endif
@@ -600,6 +596,7 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff leng
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     HANDLE file = FindFirstFileA(pathname, &data);
     retval = (KDint)SetFileValidData(file, (LONGLONG)length);
     FindClose(file);
@@ -624,6 +621,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -700,6 +698,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     if(FindFirstFileA(pathname, &data) != INVALID_HANDLE_VALUE)
     {
         if(data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
@@ -749,6 +748,7 @@ struct KDDir {
     DIR *nativedir;
 #endif
     KDDirent *dirent;
+    void *dirent_d_name;
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
@@ -771,14 +771,24 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
+    dir->dirent_d_name = kdMalloc(sizeof(KDchar) * 256);
+    if(dir->dirent_d_name == KD_NULL)
+    {
+        kdFree(dir->dirent);
+        kdFree(dir);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    dir->dirent->d_name = dir->dirent_d_name;
 #if defined(_WIN32)
     KDchar dirpath[MAX_PATH];
     WIN32_FIND_DATA data;
+    kdMemset(&data, 0, sizeof(data));
     if(kdStrcmp(pathname, ".") == 0)
     {
         GetCurrentDirectoryA(MAX_PATH, dirpath);
     }
-    kdStrncat_s(dirpath, MAX_PATH, "\\*", 2);
+    kdStrncat_s(dirpath, MAX_PATH, "/*", 2);
 #if defined(_MSC_VER)
 #pragma warning(suppress : 6102)
 #endif
@@ -793,6 +803,7 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
         error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
+        kdFree(dir->dirent_d_name);
         kdFree(dir->dirent);
         kdFree(dir);
         return KD_NULL;
@@ -806,10 +817,10 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
-
-    if(FindNextFileA(dir->nativedir, &data) != 0)
+    kdMemset(&data, 0, sizeof(data));
+    if(FindNextFileA(dir->nativedir, &data))
     {
-        dir->dirent->d_name = data.cFileName;
+        kdMemcpy(dir->dirent_d_name, data.cFileName, 256);
     }
     else
     {
@@ -822,7 +833,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     struct dirent *de = readdir(dir->nativedir);
     if(de != KD_NULL)
     {
-        dir->dirent->d_name = de->d_name;
+        kdMemcpy(dir->dirent_d_name, de->d_name, 256);
     }
     else if(errno == 0)
     {
@@ -846,6 +857,7 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 #else
     closedir(dir->nativedir);
 #endif
+    kdFree(dir->dirent_d_name);
     kdFree(dir->dirent);
     kdFree(dir);
     return 0;

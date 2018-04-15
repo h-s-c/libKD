@@ -44,9 +44,15 @@ static const KDchar *sFlatVertexSource =
     "}\n";
 
 static const KDchar *sFlatFragmentSource =
-    "varying lowp vec4 color;\n"
-    "void main() {\n"
-    "  gl_FragColor = vec4(color.rgb, 1.0);\n"
+    "#ifdef GL_FRAGMENT_PRECISION_HIGH      \n"
+    "   precision highp float;              \n"
+    "#else                                  \n"
+    "   precision mediump float;            \n"
+    "#endif                                 \n"
+    "                                       \n"
+    "varying lowp vec4 color;               \n"
+    "void main() {                          \n"
+    "  gl_FragColor = vec4(color.rgb, 1.0); \n"
     "}\n";
 
 static const KDchar *sLitVertexSource =
@@ -68,12 +74,11 @@ static const KDchar *sLitVertexSource =
     "uniform lowp vec3 light_2_direction;\n"
     "uniform lowp vec4 light_2_diffuse;\n"
     "\n"
-    "highp vec3 worldNormal;\n"
-    "\n"
     "lowp vec4 SpecularLight(highp vec3 direction,\n"
     "                        lowp vec4 diffuseColor,\n"
     "                        lowp vec4 specularColor) {\n"
     "  lowp vec3 lightDir = normalize(direction);\n"
+    "  highp vec3 worldNormal = normalize(normalMatrix * normal);\n"
     "  lowp float diffuse = max(0., dot(worldNormal, lightDir));\n"
     "  lowp float specular = 0.;\n"
     "  if (diffuse > 0.) {\n"
@@ -85,13 +90,12 @@ static const KDchar *sLitVertexSource =
     "\n"
     "lowp vec4 DiffuseLight(highp vec3 direction, lowp vec4 diffuseColor) {\n"
     "  highp vec3 lightDir = normalize(direction);\n"
+    "  highp vec3 worldNormal = normalize(normalMatrix * normal);\n"
     "  lowp float diffuse = max(0., dot(worldNormal, lightDir));\n"
     "  return diffuse * diffuseColor * colorIn;\n"
     "}\n"
     "\n"
     "void main() {\n"
-    "  worldNormal = normalize(normalMatrix * normal);\n"
-    "\n"
     "  gl_Position = mvp * vec4(pos, 1.);\n"
     "\n"
     "  color = ambient * colorIn;\n"
