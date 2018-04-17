@@ -394,32 +394,6 @@ jobs:
             python ci-tools/run_cpack.py;"
 
     - os: linux
-      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=28
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.rpm"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
-            dnf -y groupinstall \"C Development Tools and Libraries\" && 
-            dnf -y install git pkgconfig rpm-build ninja-build python 
-              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
-              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/install_cmake.py;
-            python ci-tools/run_cpack.py;"
-
-    - os: linux
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=27
       dist: trusty
       sudo: required
