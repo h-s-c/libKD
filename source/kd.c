@@ -2818,6 +2818,17 @@ static EM_BOOL __kd_EmscriptenVisibilityCallback(KD_UNUSED KDint type, const Ems
     return 1;
 }
 
+static EM_BOOL __kd_EmscriptenResizeCallback(KD_UNUSED KDint type, KD_UNUSED const EmscriptenUiEvent* event, KD_UNUSED void* user) 
+{
+    KDfloat64KHR width = 0.0;
+    KDfloat64KHR height = 0.0;
+    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR*)&height);
+    __kd_window->properties.width = (KDint32)width;
+    __kd_window->properties.height = (KDint32)height;
+    emscripten_set_canvas_element_size("#canvas", __kd_window->properties.width, __kd_window->properties.height);
+    return 1;
+}
+
 #elif defined(KD_WINDOW_WAYLAND)
 static void __kdWaylandPointerHandleEnter(void *data, KD_UNUSED struct wl_pointer *pointer, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED wl_fixed_t sx, KD_UNUSED wl_fixed_t sy)
 {
@@ -3126,9 +3137,14 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 
 #if defined(KD_WINDOW_ANDROID)
     eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &window->format);
-#endif
-
-#if defined(KD_WINDOW_WIN32)
+#elif defined(KD_WINDOW_EMSCRIPTEN)
+    KDfloat64KHR width = 0.0;
+    KDfloat64KHR height = 0.0;
+    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR*)&height);
+    window->properties.width = (KDint32)width;
+    window->properties.height = (KDint32)height;
+    emscripten_set_canvas_element_size("#canvas", window->properties.width, window->properties.height);
+#elif defined(KD_WINDOW_WIN32)
     WNDCLASS windowclass = {0};
     HINSTANCE instance = GetModuleHandle(KD_NULL);
     GetClassInfo(instance, "", &windowclass);
@@ -3516,6 +3532,7 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
     emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
     emscripten_set_visibilitychange_callback(0, 1, __kd_EmscriptenVisibilityCallback);
+    emscripten_set_resize_callback(0, 0, 1, __kd_EmscriptenResizeCallback);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
