@@ -398,6 +398,9 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #pragma clang diagnostic ignored "-Wunreachable-code-break"
 #pragma clang diagnostic ignored "-Wunreachable-code-return"
 #pragma clang diagnostic ignored "-Wunused-macros"
+#if(__clang_major__ > 5)
+#pragma clang diagnostic ignored "-Wnull-pointer-arithmetic"
+#endif
 #endif
 
 #ifndef WIN32
