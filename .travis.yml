@@ -123,7 +123,7 @@ jobs:
         apt:
           sources: 
             - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main'
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main'
               key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
           packages: ['clang-7', 'llvm-7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
