@@ -288,15 +288,6 @@ jobs:
 
     - os: osx
       compiler: clang
-      osx_image: xcode8.3
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind cppcheck
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
       osx_image: xcode7.3
       install: 
         - brew update

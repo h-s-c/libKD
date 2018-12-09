@@ -399,7 +399,13 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #pragma clang diagnostic ignored "-Wunreachable-code-return"
 #pragma clang diagnostic ignored "-Wunused-macros"
 #if(__clang_major__ > 5)
+#if defined (__APPLE__)
+#if(__clang_major__ > 9)
 #pragma clang diagnostic ignored "-Wnull-pointer-arithmetic"
+#endif
+#else
+#pragma clang diagnostic ignored "-Wnull-pointer-arithmetic"
+#endif
 #endif
 #endif
 
