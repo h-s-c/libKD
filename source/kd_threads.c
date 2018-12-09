@@ -346,7 +346,18 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 
         KDint error = 0;
 #if defined(KD_THREAD_C11)
+#if defined(__GNUC__)
+#if(__GNUC__ > 7)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
+#endif
         error = thrd_create(&thread->internal->nativethread, (thrd_start_t)__kdThreadRun, thread);
+#if defined(__GNUC__)
+#if(__GNUC__ > 7)
+#pragma GCC diagnostic pop
+#endif
+#endif
 #elif defined(KD_THREAD_POSIX)
         error = pthread_create(&thread->internal->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
 #elif defined(KD_THREAD_WIN32)

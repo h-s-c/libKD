@@ -24,7 +24,7 @@
 set(CPACK_CMAKE_GENERATOR "Ninja")
 
 set(CPACK_PACKAGE_NAME "libkd")
-set(CPACK_PACKAGE_CONTACT "h-s-c@users.noreply.github.com")
+set(CPACK_PACKAGE_CONTACT "kevin.patrick.schmidt@googlemail.com")
 set(CPACK_PACKAGE_VENDOR "Kevin Schmidt")
 set(CPACK_PACKAGE_DESCRIPTION "OpenKODE Core implementation")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OpenKODE Core implementation")
