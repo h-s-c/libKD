@@ -447,7 +447,7 @@ KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
     WSABUF wsabuf;
     wsabuf.len = len;
     wsabuf.buf = buf;
-    KDint retval = WSARecv(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, KD_NULL, KD_NULL);
+    KDint retval = WSARecv(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]) {0}, KD_NULL, KD_NULL);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();
@@ -476,7 +476,7 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
     WSABUF wsabuf;
     wsabuf.len = len;
     wsabuf.buf = buf;
-    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]){0}, (struct sockaddr *)&address, &addresssize, KD_NULL, KD_NULL);
+    KDint retval = WSARecvFrom(socket->nativesocket, &wsabuf, 1, (DWORD *)&result, (DWORD[]) {0}, (struct sockaddr *)&address, &addresssize, KD_NULL, KD_NULL);
     if(retval == SOCKET_ERROR)
     {
         error = WSAGetLastError();

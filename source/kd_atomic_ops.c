@@ -180,7 +180,7 @@ KD_API void *KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object)
 #elif defined(KD_ATOMIC_BUILTIN)
     return __atomic_load_n(&object->value, __ATOMIC_SEQ_CST);
 #elif defined(KD_ATOMIC_EMSCRIPTEN)
-    return (void*)(KDuint32)emscripten_atomic_load_u32(&object->value);
+    return (void *)(KDuint32)emscripten_atomic_load_u32(&object->value);
 #endif
 }
 

@@ -351,7 +351,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     KDint error = 0;
     KDuint8 byte = c & 0xFF;
 #if defined(_WIN32)
-    BOOL success = WriteFile(file->nativefile, &byte, 1, (DWORD[]){0}, KD_NULL);
+    BOOL success = WriteFile(file->nativefile, &byte, 1, (DWORD[]) {0}, KD_NULL);
     if(success == FALSE)
     {
         error = GetLastError();

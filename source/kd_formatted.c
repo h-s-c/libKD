@@ -214,7 +214,7 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
 {
 #if defined(_WIN32)
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-    WriteFile(out, buf, len, (DWORD[]){0}, KD_NULL);
+    WriteFile(out, buf, len, (DWORD[]) {0}, KD_NULL);
 #else
     KDssize result = __kdWrite(STDOUT_FILENO, buf, (KDsize)len);
     if(result != len)
