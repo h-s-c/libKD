@@ -96,7 +96,6 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         return KD_NULL;
     }
     file->pathname = pathname;
-    KDint error = 0;
 #if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
@@ -140,7 +139,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     }
     else
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     KDint access = 0;
     mode_t create = 0;
@@ -179,7 +178,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     file->nativefile = __kdOpen(pathname, access | O_CLOEXEC, create);
     if(file->nativefile == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdFree(file);
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
@@ -193,17 +192,16 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
     KDint retval = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     retval = CloseHandle(file->nativefile);
     if(retval == 0)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     retval = close(file->nativefile);
     if(retval == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         kdFree(file);
@@ -232,7 +230,6 @@ KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDssize retval = 0;
-    KDint error = 0;
     KDsize length = count * size;
 #if defined(_WIN32)
     BOOL success = ReadFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
@@ -242,7 +239,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     }
     else if(success == FALSE)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     KDchar *temp = buffer;
     while(length != 0 && (retval = __kdRead(file->nativefile, temp, length)) != 0)
@@ -264,7 +261,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     }
     else if((KDsize)retval != length)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
@@ -276,13 +273,12 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
 KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
     KDssize retval = 0;
-    KDint error = 0;
     KDsize length = count * size;
 #if defined(_WIN32)
     BOOL success = WriteFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
     if(success == FALSE)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     KDchar *temp = kdMalloc(length);
     KDchar *_temp = temp;
@@ -303,7 +299,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     length = count * size;
     if((KDsize)retval != length)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
@@ -315,7 +311,6 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 {
     KDuint8 byte = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     DWORD byteswritten = 0;
     BOOL success = ReadFile(file->nativefile, &byte, 1, &byteswritten, KD_NULL);
@@ -326,7 +321,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     }
     else if(success == FALSE)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     KDint success = (KDint)__kdRead(file->nativefile, &byte, 1);
     if(success == 0)
@@ -336,7 +331,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     }
     else if(success == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
@@ -348,18 +343,17 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
 /* kdPutc: Write a byte to an open file. */
 KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
 {
-    KDint error = 0;
     KDuint8 byte = c & 0xFF;
 #if defined(_WIN32)
     BOOL success = WriteFile(file->nativefile, &byte, 1, (DWORD[]) {0}, KD_NULL);
     if(success == FALSE)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     KDint success = (KDint)__kdWrite(file->nativefile, &byte, 1);
     if(success == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
@@ -471,17 +465,16 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
 KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 {
     KDoff position = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     position = (KDoff)SetFilePointer(file->nativefile, 0, KD_NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     position = lseek(file->nativefile, 0, SEEK_CUR);
     if(position == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EOVERFLOW);
         return -1;
@@ -493,17 +486,16 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
 KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 {
     KDint retval = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     retval = CreateDirectoryA(pathname, KD_NULL);
     if(retval == 0)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     retval = mkdir(pathname, 0777);
     if(retval == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return -1;
@@ -515,17 +507,16 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 {
     KDint retval = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     retval = RemoveDirectoryA(pathname);
     if(retval == 0)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     retval = rmdir(pathname);
     if(retval == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
@@ -537,12 +528,11 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 {
     KDint retval = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     retval = MoveFileA(src, dest);
     if(retval == 0)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
         if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK || error == ERROR_SHARING_VIOLATION)
         {
             kdSetError(KD_EINVAL);
@@ -552,7 +542,7 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     retval = rename(src, dest);
     if(retval == -1)
     {
-        error = errno;
+        KDint error = errno;
         if(error == ENOTDIR || error == ENOTEMPTY || error == EISDIR)
         {
             kdSetError(KD_EINVAL);
@@ -571,17 +561,16 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
 KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 {
     KDint retval = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     retval = DeleteFileA(pathname);
     if(retval == 0)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     retval = remove(pathname);
     if(retval == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
@@ -593,7 +582,6 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
 KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff length)
 {
     KDint retval = 0;
-    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     kdMemset(&data, 0, sizeof(data));
@@ -602,12 +590,12 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff leng
     FindClose(file);
     if(retval == 0)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     retval = truncate(pathname, (off_t)length);
     if(retval == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
@@ -618,7 +606,6 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff leng
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
-    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     kdMemset(&data, 0, sizeof(data));
@@ -650,7 +637,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     }
     else
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     struct stat posixstat;
     kdMemset(&posixstat, 0, sizeof(posixstat));
@@ -679,7 +666,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     }
     else
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_EOVERFLOW);
         return -1;
@@ -695,7 +682,6 @@ KD_API KDint KD_APIENTRY kdFstat(KDFile *file, struct KDStat *buf)
 /* kdAccess: Determine whether the application can access a file or directory. */
 KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 {
-    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     kdMemset(&data, 0, sizeof(data));
@@ -715,7 +701,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     }
     else
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     typedef struct _KDAccessMode {
         KDint accessmode_kd;
@@ -732,7 +718,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     }
     if(access(pathname, accessmode) == -1)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
@@ -752,7 +738,6 @@ struct KDDir {
 };
 KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 {
-    KDint error = 0;
     if(kdStrcmp(pathname, "/") == 0)
     {
         kdSetError(KD_EACCES);
@@ -795,12 +780,12 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
     dir->nativedir = FindFirstFileA((const KDchar *)dirpath, &data);
     if(dir->nativedir == INVALID_HANDLE_VALUE)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     dir->nativedir = opendir(pathname);
     if(dir->nativedir == KD_NULL)
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         kdFree(dir->dirent_d_name);
@@ -814,7 +799,6 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
 /* kdReadDir: Return the next file in a directory. */
 KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
 {
-    KDint error = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     kdMemset(&data, 0, sizeof(data));
@@ -824,7 +808,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     }
     else
     {
-        error = GetLastError();
+        KDint error = GetLastError();
         if(error == ERROR_NO_MORE_FILES)
         {
             return KD_NULL;
@@ -841,7 +825,7 @@ KD_API KDDirent *KD_APIENTRY kdReadDir(KDDir *dir)
     }
     else
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EIO | KD_ENOMEM);
         return KD_NULL;
@@ -866,13 +850,12 @@ KD_API KDint KD_APIENTRY kdCloseDir(KDDir *dir)
 /* kdGetFree: Get free space on a drive. */
 KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 {
-    KDint error = 0;
     KDoff freespace = 0;
     const KDchar *temp = pathname;
 #if defined(_WIN32)
     if(GetDiskFreeSpaceEx(temp, (PULARGE_INTEGER)&freespace, KD_NULL, KD_NULL) == 0)
     {
-        error = GetLastError();
+        KDint error = GetLastError();
 #else
     struct statfs buf;
     kdMemset(&buf, 0, sizeof(buf));
@@ -883,7 +866,7 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
     }
     else
     {
-        error = errno;
+        KDint error = errno;
 #endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSYS | KD_EOVERFLOW);
         return (KDoff)-1;

@@ -1574,7 +1574,7 @@ static KDsize traverse_and_check(mstate m);
 
 #define is_small(s) (((s) >> SMALLBIN_SHIFT) < NSMALLBINS)
 #define small_index(s) (bindex_t)((s) >> SMALLBIN_SHIFT)
-#define small_index2size(i) ((i) << SMALLBIN_SHIFT)
+#define small_index2size(i) (((KDuint64)(i)) << SMALLBIN_SHIFT)
 #define MIN_SMALL_INDEX (small_index(MIN_CHUNK_SIZE))
 
 /* addressing by index. See above about smallbin repositioning */
