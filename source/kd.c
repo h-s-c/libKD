@@ -2293,23 +2293,23 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     typedef KDint(KD_APIENTRY * KDMAIN)(KDint, const KDchar *const *);
     KDMAIN kdmain = KD_NULL;
 #if defined(_WIN32)
-    HMODULE handle = GetModuleHandle(0);
-    kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
-    if(kdmain == KD_NULL)
+    HMODULE app = GetModuleHandle(KD_NULL);
+    FARPROC rawptr = GetProcAddress(app, "kdMain");
+    if(rawptr == KD_NULL)
     {
         kdLogMessage("Unable to locate kdMain.");
         kdExit(-1);
     }
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     result = kdmain(argc, (const KDchar *const *)argv);
 #else
-    void *app = dlopen(NULL, RTLD_NOW);
+    void *app = dlopen(KD_NULL, RTLD_NOW);
     void *rawptr = dlsym(app, "kdMain");
     if(dlerror())
     {
         kdLogMessage("Unable to locate kdMain.");
         kdExit(-1);
     }
-    /* ISO C forbids assignment between function pointer and ‘void *’ */
     kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);

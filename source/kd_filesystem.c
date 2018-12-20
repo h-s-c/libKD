@@ -533,7 +533,11 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
     if(retval == 0)
     {
         KDint error = GetLastError();
+#if defined(__MINGW32__)
+        if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK || error == ERROR_SHARING_VIOLATION || error == ERROR_ACCESS_DENIED)
+#else
         if(error == ERROR_ALREADY_EXISTS || error == ERROR_SEEK || error == ERROR_SHARING_VIOLATION)
+#endif
         {
             kdSetError(KD_EINVAL);
         }
