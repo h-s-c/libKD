@@ -834,12 +834,13 @@ KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *s
 /* kdStrstrVEN: Locate substring. */
 KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 {
-    KDchar c, sc;
+    KDchar c;
     if((c = *str2++) != '\0')
     {
         KDsize len = kdStrlen(str2);
         do
         {
+            KDchar sc;
             do
             {
                 if((sc = *str1++) == '\0')
