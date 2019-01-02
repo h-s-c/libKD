@@ -64,7 +64,9 @@ project (KD C)
 
     set_target_properties(KD PROPERTIES C_STANDARD 11 C_EXTENSIONS "OFF")
     set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE "True")
-    set_target_properties(KD PROPERTIES LINK_WHAT_YOU_USE "True") 
+    if(NOT CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
+        set_target_properties(KD PROPERTIES LINK_WHAT_YOU_USE "True")
+    endif()
 
     if(KD_BUILD_OPTIMIZATONS AND NOT MSVC)
         check_ipo_supported()
