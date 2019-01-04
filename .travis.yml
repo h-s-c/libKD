@@ -11,10 +11,16 @@ linux_template: &linux_template
   dist: trusty
   sudo: required
 
-macos_template: &macos_template
-  os: osx
-  compiler: clang
-  before_install: brew update && brew install ninja ccache valgrind cppcheck
+linux_compiler_template: &linux_compiler_template
+  <<: *linux_template
+  compiler: $COMPILER
+  addons:
+    apt:
+      sources: ['ubuntu-toolchain-r-test']
+      packages: ['$COMPILER', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
+                 'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                 'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
+                 'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
 
 docker_template: &docker_template
   <<: *linux_template
@@ -46,6 +52,11 @@ packagecloud_rpm_template: &packagecloud_rpm_template
   deploy:
     package_glob: "*.rpm"
 
+macos_template: &macos_template
+  os: osx
+  compiler: clang
+  before_install: brew update && brew install ninja ccache valgrind cppcheck
+
 stages:
   - name: 'Testing (linux)'
     if: branch = develop
@@ -59,15 +70,8 @@ stages:
 jobs:
   include:
     - stage: 'Testing (linux)'
-      <<: *linux_template
-      compiler: gcc-8
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      <<: *linux_compiler_template
+      env: COMPILER=gcc-8
 
     - <<: *linux_template
       compiler: gcc-7
