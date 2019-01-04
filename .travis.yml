@@ -11,13 +11,12 @@ linux_template: &linux_template
   dist: trusty
   sudo: required
 
-linux_compiler_template: &linux_compiler_template
+linux_apt_template: &linux_apt_template
   <<: *linux_template
-  compiler: $COMPILER
   addons:
     apt:
       sources: ['ubuntu-toolchain-r-test']
-      packages: ['$COMPILER', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
+      packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
                  'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                  'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                  'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -70,8 +69,9 @@ stages:
 jobs:
   include:
     - stage: 'Testing (linux)'
-      <<: *linux_compiler_template
-      env: COMPILER=gcc-8
+      <<: *linux_apt_template
+      compiler: gcc-8
+      before_install: sudo apt-get install -y gcc-8
 
     - <<: *linux_template
       compiler: gcc-7
