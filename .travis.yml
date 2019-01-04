@@ -13,8 +13,6 @@ cache:
 stages:
   - name: 'Testing (linux)'
     if: branch = develop
-  - name: 'Testing (macos)'
-    if: branch = develop
   - name: 'Testing (coverity)'
     if: branch = coverity
   - name: 'Deployment (packagecloud)'
