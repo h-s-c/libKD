@@ -175,14 +175,13 @@ jobs:
       <<: *linux_apt_template
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
-        - COVERITY_SCAN_PROJECT_NAME="h-s-c/libKD"
-        - COVERITY_SCAN_NOTIFICATION_EMAIL="h-s-c@users.noreply.github.com"
-        - COVERITY_SCAN_BRANCH_PATTERN="coverity"
-        - COVERITY_SCAN_BUILD_COMMAND="python ci-tools/run_ctest.py"
-      before_install: sudo apt-get install -y ca-certificates
-      before_script: echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-      script: curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
-
+      coverity_scan:
+        project:
+          name: h-s-c/libKD
+        notification_email: kevin.patrick.schmidt@googlemail.com
+        build_command: python ci-tools/run_ctest.py
+        branch_pattern: coverity
+ 
     - stage: 'Deployment (packagecloud)'
       <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=bionic
