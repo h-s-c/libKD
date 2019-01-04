@@ -1,5 +1,11 @@
 language: c
 
+os: linux
+dist: trusty
+sudo: required
+install: python ci-tools/install_cmake.py   
+script: python ci-tools/run_ctest.py
+
 cache:
   directories:
     - 'ci-tools/cache'
@@ -17,10 +23,7 @@ stages:
 jobs:
   include:
     - stage: 'Testing (linux)'
-      os: linux
       compiler: gcc-8
-      dist: trusty
-      sudo: required
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -28,13 +31,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: gcc-7
-      dist: trusty
-      sudo: required
+    - compiler: gcc-7
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -42,13 +40,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: gcc-6
-      dist: trusty
-      sudo: required
+    - compiler: gcc-6
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -56,13 +49,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: gcc-5
-      dist: trusty
-      sudo: required
+    - compiler: gcc-5
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -70,13 +58,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: gcc-4.9
-      dist: trusty
-      sudo: required
+    - compiler: gcc-4.9
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -84,13 +67,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: gcc-4.8
-      dist: trusty
-      sudo: required
+    - compiler: gcc-4.8
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -98,13 +76,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: gcc-4.7
-      dist: trusty
-      sudo: required
+    - compiler: gcc-4.7
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -112,13 +85,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: clang-7
-      dist: trusty
-      sudo: required
+    - compiler: clang-7
       addons:
         apt:
           sources: 
@@ -129,13 +97,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: clang-6.0
-      dist: trusty
-      sudo: required
+    - compiler: clang-6.0
       addons:
         apt:
           sources: 
@@ -146,13 +109,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: clang-5.0
-      dist: trusty
-      sudo: required
+    - compiler: clang-5.0
       addons:
         apt:
           sources: 
@@ -163,13 +121,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: clang-4.0
-      dist: trusty
-      sudo: required
+    - compiler: clang-4.0
       addons:
         apt:
           sources: 
@@ -180,13 +133,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: clang-3.8
-      dist: trusty
-      sudo: required
+    - compiler: clang-3.8
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -194,13 +142,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: clang-3.6
-      dist: trusty
-      sudo: required
+    - compiler: clang-3.6
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -208,13 +151,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: clang-3.5
-      dist: trusty
-      sudo: required
+    - compiler: clang-3.5
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -222,13 +160,8 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: icc
-      dist: trusty
-      sudo: required
+    - compiler: icc
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -236,16 +169,10 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: 
-        - python ci-tools/install_cmake.py 
-        - python ci-tools/install_icc.py
+      before_install: python ci-tools/install_icc.py
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      compiler: tcc
-      dist: trusty
-      sudo: required
+    - compiler: tcc
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
@@ -253,85 +180,32 @@ jobs:
                      'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/windows-x64
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=dockcross/windows-x64
       services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
+      before_install: docker pull $DOCKER_IMAGE;
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/windows-x64-posix
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=dockcross/windows-x64-posix
       services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
+      before_install: docker pull $DOCKER_IMAGE;
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/windows-x86
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=dockcross/windows-x86
       services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
+      before_install: docker pull $DOCKER_IMAGE;
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/browser-asmjs
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=dockcross/browser-asmjs
       services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
+      before_install: docker pull $DOCKER_IMAGE;
       script:
         - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
-
-    - stage: 'Testing (macos)'
-      os: osx
-      compiler: clang
-      osx_image: xcode10.1
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind cppcheck
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
-      osx_image: xcode9.4
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind cppcheck
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
-
-    - os: osx
-      compiler: clang
-      osx_image: xcode7.3
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind cppcheck
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
     - stage: 'Testing (coverity)'
-      os: linux
-      dist: trusty
-      sudo: required
       addons:
         apt:
           packages: ['ca-certificates', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
@@ -345,14 +219,10 @@ jobs:
         - COVERITY_SCAN_BRANCH_PATTERN="coverity"
         - COVERITY_SCAN_BUILD_COMMAND="python ci-tools/run_ctest.py"
       before_install: echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-      install: python ci-tools/install_cmake.py
       script: curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
 
     - stage: 'Deployment (packagecloud)'
-      os: linux
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=bionic
-      dist: trusty
-      sudo: required
       services: docker
       deploy:
         provider: packagecloud
@@ -374,10 +244,7 @@ jobs:
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
-      env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
       services: docker
       deploy:
         provider: packagecloud
@@ -399,10 +266,7 @@ jobs:
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
-      env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
       services: docker
       deploy:
         provider: packagecloud
@@ -424,10 +288,7 @@ jobs:
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
-      env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
       services: docker
       deploy:
         provider: packagecloud
@@ -449,10 +310,7 @@ jobs:
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
-      env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
       services: docker
       deploy:
         provider: packagecloud
@@ -474,10 +332,7 @@ jobs:
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
-      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=27
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=27
       services: docker
       deploy:
         provider: packagecloud
@@ -500,10 +355,7 @@ jobs:
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
-      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=26
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=26
       services: docker
       deploy:
         provider: packagecloud
@@ -526,10 +378,7 @@ jobs:
             python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
-      env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.3
-      dist: trusty
-      sudo: required
+    - env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.3
       services: docker
       deploy:
         provider: packagecloud
