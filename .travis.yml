@@ -1,23 +1,60 @@
 language: c
+install: python ci-tools/install_cmake.py   
+script: python ci-tools/run_ctest.py
 
 cache:
   directories:
     - 'ci-tools/cache'
 
+linux_template: &linux_template
+  os: linux
+  dist: trusty
+  sudo: required
+
+macos_template: &macos_template
+  os: osx
+  compiler: clang
+  before_install: brew update && brew install ninja ccache valgrind cppcheck
+
+docker_template: &docker_template
+  <<: *linux_template
+  services: docker
+  before_install: docker pull $DOCKER_IMAGE;
+  script: docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
+
+packagecloud_template: &packagecloud_template
+  <<: *docker_template
+  before_install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+  deploy:
+    provider: packagecloud
+    dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+    repository: "libKD"
+    username: "h-s-c"
+    token:
+      secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+    skip_cleanup: true
+    on:
+      tags: true
+
+packagecloud_deb_template: &packagecloud_deb_template
+  <<: *packagecloud_template
+  deploy:
+    package_glob: "*.deb"
+
+packagecloud_rpm_template: &packagecloud_rpm_template
+  <<: *packagecloud_template
+  deploy:
+    package_glob: "*.rpm"
+
 stages:
   - name: 'Testing (linux)'
+    if: branch = develop
+  - name: 'Testing (macos)'
     if: branch = develop
   - name: 'Testing (coverity)'
     if: branch = coverity
   - name: 'Deployment (packagecloud)'
     if: tag IS present
-
-linux_template: &linux_template
-  os: linux
-  dist: trusty
-  sudo: required
-  install: python ci-tools/install_cmake.py   
-  script: python ci-tools/run_ctest.py
 
 jobs:
   include:
@@ -196,33 +233,27 @@ jobs:
                      'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                      'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
 
-    - <<: *linux_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-x64
-      services: docker
-      before_install: docker pull $DOCKER_IMAGE;
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - <<: *linux_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-x64-posix
-      services: docker
-      before_install: docker pull $DOCKER_IMAGE;
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - <<: *linux_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-x86
-      services: docker
-      before_install: docker pull $DOCKER_IMAGE;
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-    - <<: *linux_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/browser-asmjs
-      services: docker
-      before_install: docker pull $DOCKER_IMAGE;
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
+
+    - stage: 'Testing (macos)'
+      <<: *macos_template
+      osx_image: xcode10.1
+
+    - <<: *macos_template
+      osx_image: xcode9.4
+
+    - <<: *macos_template
+      osx_image: xcode7.3
 
     - stage: 'Testing (coverity)'
       <<: *linux_template
@@ -242,189 +273,77 @@ jobs:
       script: curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
 
     - stage: 'Deployment (packagecloud)'
-      <<: *linux_template
+      <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=bionic
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
+    - <<: *packagecloud_rpm_template
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=27
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.rpm"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
             dnf -y groupinstall \"C Development Tools and Libraries\" && 
             dnf -y install git pkgconfig rpm-build ninja-build python 
               mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
+    - <<: *packagecloud_rpm_template
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=26
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.rpm"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
             dnf -y groupinstall \"C Development Tools and Libraries\" && 
             dnf -y install git pkgconfig rpm-build ninja-build python 
               mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
+    - <<: *packagecloud_rpm_template
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.3
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.rpm"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
             zypper -n install -t pattern devel_C_C++ && 
             zypper -n install git rpm-build ninja python 
               Mesa-libGL-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
