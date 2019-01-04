@@ -15,7 +15,22 @@ linux_apt_template: &linux_apt_template
   <<: *linux_template
   addons:
     apt:
-      sources: ['ubuntu-toolchain-r-test']
+      sources: 
+        - sourceline: "ppa:ubuntu-toolchain-r/test"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.6 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.5 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
                  'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                  'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
@@ -73,169 +88,66 @@ jobs:
       compiler: gcc-8
       before_install: sudo apt-get install -y gcc-8
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: gcc-7
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y gcc-7
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: gcc-6
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y gcc-6
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: gcc-5
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y gcc-5
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: gcc-4.9
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y gcc-4.9
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: gcc-4.8
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y gcc-4.8
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: gcc-4.7
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y gcc-4.7
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: clang-7
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-7', 'llvm-7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y clang-7 llvm-7
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: clang-6.0
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-6.0', 'llvm-6.0', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y clang-6.0 llvm-6.0
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: clang-5.0
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-5.0', 'llvm-5.0', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y clang-5.0 llvm-5.0
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: clang-4.0
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-4.0', 'llvm-4.0', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y clang-4.0 llvm-4.0
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: clang-3.8
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.8', 'llvm-3.8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: clang-3.6
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.6', 'llvm-3.6', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y clang-3.6 llvm-3.6
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: clang-3.5
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.5', 'llvm-3.5', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y clang-3.5 llvm-3.5
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: icc
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
       before_install: python ci-tools/install_icc.py
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
 
-    - <<: *linux_template
+    - <<: *linux_apt_template
       compiler: tcc
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['tcc', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      before_install: sudo apt-get install -y tcc
 
     - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-x64
@@ -260,20 +172,15 @@ jobs:
       osx_image: xcode7.3
 
     - stage: 'Testing (coverity)'
-      <<: *linux_template
-      addons:
-        apt:
-          packages: ['ca-certificates', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      <<: *linux_apt_template
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
         - COVERITY_SCAN_PROJECT_NAME="h-s-c/libKD"
         - COVERITY_SCAN_NOTIFICATION_EMAIL="h-s-c@users.noreply.github.com"
         - COVERITY_SCAN_BRANCH_PATTERN="coverity"
         - COVERITY_SCAN_BUILD_COMMAND="python ci-tools/run_ctest.py"
-      before_install: echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+      before_install: sudo apt-get install -y ca-certificates
+      before_script: echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
       script: curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
 
     - stage: 'Deployment (packagecloud)'
