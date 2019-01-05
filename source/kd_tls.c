@@ -156,6 +156,7 @@ KD_API KDint KD_APIENTRY KD_APIENTRY kdSetThreadStorageKHR(KDThreadStorageKeyKHR
     retval = 0;
     __kd_tls[key - 1].nativekey = data;
 #endif
+    /* cppcheck-suppress knownConditionTrueFalse */
     if(retval == -1)
     {
         kdSetError(KD_ENOMEM);

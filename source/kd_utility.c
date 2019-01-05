@@ -555,6 +555,7 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
     kdLogMessage("No cryptographic RNG available.");
     kdAssert(0);
 #endif
+    /* cppcheck-suppress knownConditionTrueFalse */
     if(retval == -1)
     {
         kdSetError(KD_ENOMEM);

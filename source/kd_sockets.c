@@ -505,6 +505,7 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
 KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
 {
     union {
+        /* cppcheck-suppress unusedStructMember */
         KDint i;
         KDchar c;
     } u = {1};
@@ -523,6 +524,7 @@ KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
 KD_API KDuint16 KD_APIENTRY kdHtons(KDuint16 hostshort)
 {
     union {
+        /* cppcheck-suppress unusedStructMember */
         KDint i;
         KDchar c;
     } u = {1};
