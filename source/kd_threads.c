@@ -56,7 +56,7 @@
 #include <threads.h>
 #endif
 
-#if !defined(_WIN32) && !defined(KD_FREESTANDING)
+#if defined(KD_THREAD_POSIX)
 #include <errno.h>  // for EINVAL, ENOMEM, ESRCH
 #include <time.h>   // for nanosleep
 #endif
