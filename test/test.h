@@ -7,6 +7,12 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...);
         kdExit(-1);\
 }} while (0)
 
+#define TEST_EXPR(expr) do {\
+    if(!(expr)) {\
+        kdLogMessagefKHR("%s:%d (%d)\n", __FILE__, __LINE__, (#expr));\
+        kdExit(-1);\
+}} while (0)
+
 #define TEST_STREQ(a, b) do {\
     if(!(kdStrcmp(a, b) == 0)) {\
         kdLogMessagefKHR("%s:%d (%s != %s)\n", __FILE__, __LINE__, (a), (b));\
