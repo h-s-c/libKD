@@ -90,6 +90,13 @@ KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b);
 KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env);
 
 /*******************************************************
+ * Memory allocation
+ *******************************************************/
+
+/* kdCallocVEN: Allocate and zero-initialize memory. */
+KD_API void *KD_APIENTRY kdCallocVEN(KDsize num, KDsize size);
+
+/*******************************************************
  * String and memory functions (extensions)
  *******************************************************/
 
@@ -98,6 +105,9 @@ KD_API KDchar* KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2);
 
 /* kdStrcspnVEN:  Get span until character in string. */
 KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2);
+
+/* kdStrdupVEN:  Duplicate a string. */
+KD_API KDchar* KD_APIENTRY kdStrdupVEN(const KDchar *str);
 
 /*******************************************************
  * Windowing (extensions)

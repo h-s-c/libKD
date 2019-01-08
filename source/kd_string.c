@@ -875,3 +875,17 @@ KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2)
     }
     return retval;
 }
+
+/* kdStrdupVEN:  Duplicate a string. */
+KD_API KDchar* KD_APIENTRY kdStrdupVEN(const KDchar *str)
+{
+    KDsize len = kdStrlen(str) + 1;
+    KDchar *dup = (KDchar *)kdMalloc(len);
+    if(dup == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    kdStrcpy_s(dup, len, str);
+    return dup;
+}
