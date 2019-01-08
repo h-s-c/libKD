@@ -40,6 +40,7 @@
 #endif
 #include "kdplatform.h"
 #include <KD/kd.h>
+#include <KD/kdext.h>
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
