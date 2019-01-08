@@ -713,8 +713,17 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 }
 
 /* kdStrncat_s: Concatenate two strings. */
-KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
+KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srcmaxlen)
 {
+    if(buflen == 0)
+    {
+        return -1;
+    }
+    if(buflen <= srcmaxlen)
+    {
+        return -1;
+    }
+
     KDchar *d = buf;
     const KDchar *s = src;
     KDsize n = buflen;
@@ -730,7 +739,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
 
     if(n == 0)
     {
-        return (KDint)(dlen + kdStrlen(s));
+        return 0;
     }
     while(*s != '\0')
     {
@@ -743,7 +752,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     }
     *d = '\0';
 
-    return (KDint)(dlen + (KDsize)(s - src)); /* count does not include NUL */
+    return 0;
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
