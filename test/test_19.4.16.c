@@ -34,7 +34,7 @@ void create_file(const char *path, const char *buffer)
     }
 
     KDsize length = kdStrlen(buffer);
-    KDsize retval = kdFwrite(buffer, length, 1, file);
+    KDsize retval = kdFwrite(buffer, 1, length, file);
     TEST_EQ(retval, length);
 
     kdFclose(file);
