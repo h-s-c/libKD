@@ -9,7 +9,7 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...);
 
 #define TEST_EXPR(expr) do {\
     if(!(expr)) {\
-        kdLogMessagefKHR("%s:%d (%d)\n", __FILE__, __LINE__, (#expr));\
+        kdLogMessagefKHR("%s:%d (%s)\n", __FILE__, __LINE__, (#expr));\
         kdExit(-1);\
 }} while (0)
 
