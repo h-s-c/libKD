@@ -233,16 +233,16 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
     KDsize length = count * size;
 #if defined(_WIN32)
     BOOL success = ReadFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
-    if(success == TRUE && retval == 0)
+    if(success == TRUE)
     {
-        file->eof = KD_TRUE;
+        length -= (KDsize)retval;
     }
-    else if(success == FALSE)
+    else
     {
         KDint error = GetLastError();
 #else
     KDchar *temp = buffer;
-    while(length != 0 && (retval = __kdRead(file->nativefile, temp, length)) != 0)
+    while(length != 0 && (retval = __kdRead(file->nativefile, temp, size)) != 0)
     {
         if(retval == -1)
         {
@@ -254,19 +254,18 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
         length -= (KDsize)retval;
         temp += retval;
     }
-    length = count * size;
-    if(retval == 0)
-    {
-        file->eof = KD_TRUE;
-    }
-    else if((KDsize)retval != length)
+    if(retval == -1)
     {
         KDint error = errno;
 #endif
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
     }
-    return (KDsize)retval;
+    if(length == 0)
+    {
+        file->eof = KD_TRUE;
+    }
+    return (KDsize)(count - (length / size));
 }
 
 /* kdFwrite: Write to a file. */
@@ -276,14 +275,18 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     KDsize length = count * size;
 #if defined(_WIN32)
     BOOL success = WriteFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
-    if(success == FALSE)
+    if(success == TRUE)
+    {
+        length -= (KDsize)retval;
+    }
+    else
     {
         KDint error = GetLastError();
 #else
     KDchar *temp = kdMalloc(length);
     KDchar *_temp = temp;
     kdMemcpy(temp, buffer, length);
-    while(length != 0 && (retval = __kdWrite(file->nativefile, temp, length)) != 0)
+    while(length != 0 && (retval = __kdWrite(file->nativefile, temp, size)) != 0)
     {
         if(retval == -1)
         {
@@ -296,15 +299,18 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
         temp += retval;
     }
     kdFree(_temp);
-    length = count * size;
-    if((KDsize)retval != length)
+    if(retval == -1)
     {
         KDint error = errno;
 #endif
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
     }
-    return (KDsize)retval;
+    if(length == 0)
+    {
+        file->eof = KD_TRUE;
+    }
+    return (KDsize)(count - (length / size));
 }
 
 /* kdGetc: Read next byte from an open file. */
