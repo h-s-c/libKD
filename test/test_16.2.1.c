@@ -36,7 +36,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdMemchr("\0", 'x', 0) == KD_NULL);
     TEST_EXPR(kdMemchr("\0", 'x', 1) == KD_NULL);
 
-    while (i <= 14) {
+    while(i <= 14)
+    {
 
         TEST_EQ(kdMemchr(buf, 'a', i), buf + 0);
         TEST_EQ(kdMemchr(buf, 'b', i), buf + 1);

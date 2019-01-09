@@ -28,14 +28,14 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     const KDchar *mode[] = {"r", "r+", "w", "w+", "a", "a+"};
 #if defined(_WIN32)
-    const KDchar *path = "NUL";   
+    const KDchar *path = "NUL";
 #else
     const KDchar *path = "/dev/null";
 #endif
 
     KDsize i;
     KDFile *f;
-    
+
     for(i = 0; i < (sizeof(mode) / sizeof(mode[0])); i++)
     {
         f = kdFopen(path, mode[i]);

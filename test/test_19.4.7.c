@@ -37,7 +37,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     f = kdFopen("putc", "w+");
     TEST_EXPR(f != KD_NULL);
 
-    while (str[i] != 'x') {
+    while(str[i] != 'x')
+    {
         TEST_EXPR(kdPutc(str[i], f) == str[i]);
         i++;
     }

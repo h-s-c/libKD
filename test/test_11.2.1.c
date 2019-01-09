@@ -29,18 +29,18 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     static const struct {
         KDint val;
         KDint res;
-    } 
+    }
 
     table[] = {
-        { 0,            0           },
-        { +0,           0           },
-        { -0,           0           },
-        { -0x1010,      0x1010      },
-        { KDINT32_MAX,  KDINT32_MAX },
-        { -KDINT32_MAX, KDINT32_MAX },
+        {0, 0},
+        {+0, 0},
+        {-0, 0},
+        {-0x1010, 0x1010},
+        {KDINT32_MAX, KDINT32_MAX},
+        {-KDINT32_MAX, KDINT32_MAX},
     };
 
-    for (KDsize i = 0; i < (sizeof(table) / sizeof(table[0])); i++)
+    for(KDsize i = 0; i < (sizeof(table) / sizeof(table[0])); i++)
     {
         TEST_EQ(kdAbs(table[i].val), table[i].res);
     }

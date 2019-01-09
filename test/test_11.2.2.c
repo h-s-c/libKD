@@ -30,7 +30,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     static const KDsize n = 1024 * 1000;
 
-    for (KDsize i = 1; i < n; i = i + 1024) 
+    for(KDsize i = 1; i < n; i = i + 1024)
     {
         KDchar buf[512];
         kdSnprintfKHR(buf, sizeof(buf), "%zu.%zu", i, i + 1);

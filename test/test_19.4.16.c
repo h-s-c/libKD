@@ -25,7 +25,7 @@
 #include <KD/kdext.h>
 #include "test.h"
 
-void create_file(const char *path, const char *buffer) 
+void create_file(const char *path, const char *buffer)
 {
     KDFile *file = kdFopen(path, "w");
     if(file == KD_NULL)
@@ -40,7 +40,7 @@ void create_file(const char *path, const char *buffer)
     kdFclose(file);
 }
 
-void setup() 
+void setup()
 {
     create_file("file", "abcdef");
     kdMkdir("dir");
@@ -52,7 +52,7 @@ void setup()
     create_file("dir-nonempty/file", "abcdef");
 }
 
-void cleanup() 
+void cleanup()
 {
     // we're hulk-smashing and removing original + renamed files to
     // make sure we get it all regardless of anything failing
@@ -71,7 +71,7 @@ void cleanup()
     kdRmdir("dir-nonempty");
 }
 
-void test() 
+void test()
 {
     KDint err;
 

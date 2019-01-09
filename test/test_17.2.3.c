@@ -65,7 +65,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EQ(tm.tm_yday, 0);
     TEST_EQ(tm.tm_isdst, 0);
 
-    time = 60*60;
+    time = 60 * 60;
     kdGmtime_r(&time, &tm);
     TEST_EQ(tm.tm_year, 70);
     TEST_EQ(tm.tm_mon, 0);
@@ -77,7 +77,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EQ(tm.tm_yday, 0);
     TEST_EQ(tm.tm_isdst, 0);
 
-    time = 60*60*24;
+    time = 60 * 60 * 24;
     kdGmtime_r(&time, &tm);
     TEST_EQ(tm.tm_year, 70);
     TEST_EQ(tm.tm_mon, 0);
@@ -89,12 +89,12 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EQ(tm.tm_yday, 1);
     TEST_EQ(tm.tm_isdst, 0);
 
-    time = 60*60*24*31;
+    time = 60 * 60 * 24 * 31;
     kdGmtime_r(&time, &tm);
     TEST_EQ(tm.tm_year, 70);
     TEST_EQ(tm.tm_mon, 1);
 
-    time = 60*60*24*31*12;
+    time = 60 * 60 * 24 * 31 * 12;
     kdGmtime_r(&time, &tm);
     TEST_EQ(tm.tm_year, 71);
     TEST_EQ(tm.tm_mon, 0);
