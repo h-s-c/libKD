@@ -175,12 +175,13 @@ jobs:
       <<: *linux_apt_template
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
-      coverity_scan:
-        project:
-          name: h-s-c/libKD
-        notification_email: kevin.patrick.schmidt@googlemail.com
-        build_command: python ci-tools/run_ctest.py
-        branch_pattern: coverity
+      addons:
+        coverity_scan:
+          project:
+            name: h-s-c/libKD
+          notification_email: kevin.patrick.schmidt@googlemail.com
+          build_command: python ci-tools/run_ctest.py
+          branch_pattern: coverity
  
     - stage: 'Deployment (packagecloud)'
       <<: *packagecloud_deb_template
