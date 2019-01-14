@@ -44,12 +44,12 @@
 #define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.c"
 
-#include "angeles/cams.h"
-#include "angeles/shaders.h"
+#include "data/cams.h"
+#include "data/shaders.h"
 #if !defined(__EMSCRIPTEN__)
 #define SUPERSHAPE_HIGH_RES
 #endif
-#include "angeles/shapes.h"
+#include "data/shapes.h"
 
 
 // Total run length is 20 * camera track base unit length (see cams.h).
