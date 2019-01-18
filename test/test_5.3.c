@@ -24,21 +24,15 @@
 #include <KD/kd.h>
 #include "test.h"
 
-/* "" is a valid return if no locale info can be gathered but this shouldn't happen */
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    const KDchar *locale = kdGetLocale();
-    if(kdStrcmp(locale, "en") == 0 || kdStrcmp(locale, "en_") == 0 || kdStrcmp(locale, "en_US") == 0)
-    {
-        return 0;
-    }
-    else if(kdStrlen(locale) == 2 || kdStrlen(locale) == 3 || kdStrlen(locale) == 5)
-    {
-        return 0;
-    }
-    else
-    {
-        TEST_FAIL();
-    }
+    TEST_EXPR(kdGetError() == 0);
+
+    kdSetError(KD_EACCES);
+    TEST_EXPR(kdGetError() == KD_EACCES);
+    TEST_EXPR(kdGetError() == KD_EACCES);
+
+    kdSetError(KDINT32_MAX);
+    TEST_EXPR(kdGetError() == KDINT32_MAX);
     return 0;
 }
