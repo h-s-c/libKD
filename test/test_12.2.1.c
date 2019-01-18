@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/kdext.h>
+#include "test.h"
 
 /* "" is a valid return if no locale info can be gathered but this shouldn't happen */
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
@@ -38,7 +38,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     }
     else
     {
-        return -1;
+        TEST_FAIL();
     }
     return 0;
 }

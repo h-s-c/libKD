@@ -26,43 +26,28 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDint retval = kdNameLookup(KD_AF_INET, "www.icann.org", (void *)1234);
-    if(retval == -1)
+    const KDchar *mode[] = {"r", "r+", "w", "w+", "a", "a+"};
+#if defined(_WIN32)
+    const KDchar *path = "NUL";
+#else
+    const KDchar *path = "/dev/null";
+#endif
+
+    KDsize i;
+    KDFile *f;
+
+    for(i = 0; i < (sizeof(mode) / sizeof(mode[0])); i++)
     {
-        if(kdGetError() == KD_ENOSYS)
+        f = kdFopen(path, mode[i]);
+        if(f == KD_NULL)
         {
-            return 0;
+            TEST_FAIL();
         }
-        TEST_FAIL();
-    }
-
-    for(;;)
-    {
-        const KDEvent *event = kdWaitEvent(-1);
-        if(event)
+        else
         {
-            if(event->type == KD_EVENT_NAME_LOOKUP_COMPLETE)
-            {
-                KDEventNameLookup lookupevent = event->data.namelookup;
-                if(lookupevent.error == KD_EHOST_NOT_FOUND)
-                {
-                    /* No internet. */
-                    break;
-                }
-
-                KDInAddr address;
-                kdMemset(&address, 0, sizeof(address));
-                address.s_addr = ((const KDSockaddr *)lookupevent.result)->data.sin.address;
-                TEST_EQ(kdNtohl(address.s_addr), 3221233671);
-
-                KDchar c_addr[sizeof("255.255.255.255")] = "";
-                kdInetNtop(KD_AF_INET, &address, c_addr, sizeof(c_addr));
-                TEST_STREQ(c_addr, "192.0.32.7");
-
-                break;
-            }
-            kdDefaultEvent(event);
+            kdFclose(f);
         }
     }
+
     return 0;
 }

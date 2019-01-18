@@ -385,7 +385,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         {
             stbi_set_flip_vertically_on_load(1);
         }
-        image->buffer = stbi_load_from_memory(filedata, (KDint)st.st_size, &image->width, &image->height, (KDint[]){0}, channels);
+        image->buffer = stbi_load_from_memory(filedata, (KDint)st.st_size, &image->width, &image->height, (KDint[]) {0}, channels);
         image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint);
     }
 

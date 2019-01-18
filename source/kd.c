@@ -2293,23 +2293,23 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     typedef KDint(KD_APIENTRY * KDMAIN)(KDint, const KDchar *const *);
     KDMAIN kdmain = KD_NULL;
 #if defined(_WIN32)
-    HMODULE handle = GetModuleHandle(0);
-    kdmain = (KDMAIN)GetProcAddress(handle, "kdMain");
-    if(kdmain == KD_NULL)
+    HMODULE app = GetModuleHandle(KD_NULL);
+    FARPROC rawptr = GetProcAddress(app, "kdMain");
+    if(rawptr == KD_NULL)
     {
         kdLogMessage("Unable to locate kdMain.");
         kdExit(-1);
     }
+    kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     result = kdmain(argc, (const KDchar *const *)argv);
 #else
-    void *app = dlopen(NULL, RTLD_NOW);
+    void *app = dlopen(KD_NULL, RTLD_NOW);
     void *rawptr = dlsym(app, "kdMain");
     if(dlerror())
     {
         kdLogMessage("Unable to locate kdMain.");
         kdExit(-1);
     }
-    /* ISO C forbids assignment between function pointer and ‘void *’ */
     kdMemcpy(&kdmain, &rawptr, sizeof(rawptr));
     result = kdmain(argc, (const KDchar *const *)argv);
     dlclose(app);
@@ -2631,7 +2631,7 @@ KD_API KDint KD_APIENTRY kdOutputSetf(KD_UNUSED KDint startidx, KD_UNUSED KDuint
     return -1;
 }
 
-    /******************************************************************************
+/******************************************************************************
  * Windowing
  ******************************************************************************/
 
@@ -2818,11 +2818,11 @@ static EM_BOOL __kd_EmscriptenVisibilityCallback(KD_UNUSED KDint type, const Ems
     return 1;
 }
 
-static EM_BOOL __kd_EmscriptenResizeCallback(KD_UNUSED KDint type, KD_UNUSED const EmscriptenUiEvent* event, KD_UNUSED void* user) 
+static EM_BOOL __kd_EmscriptenResizeCallback(KD_UNUSED KDint type, KD_UNUSED const EmscriptenUiEvent *event, KD_UNUSED void *user)
 {
     KDfloat64KHR width = 0.0;
     KDfloat64KHR height = 0.0;
-    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR*)&height);
+    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR *)&height);
     __kd_window->properties.width = (KDint32)width;
     __kd_window->properties.height = (KDint32)height;
     emscripten_set_canvas_element_size("#canvas", __kd_window->properties.width, __kd_window->properties.height);
@@ -3140,7 +3140,7 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #elif defined(KD_WINDOW_EMSCRIPTEN)
     KDfloat64KHR width = 0.0;
     KDfloat64KHR height = 0.0;
-    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR*)&height);
+    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR *)&height);
     window->properties.width = (KDint32)width;
     window->properties.height = (KDint32)height;
     emscripten_set_canvas_element_size("#canvas", window->properties.width, window->properties.height);

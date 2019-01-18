@@ -26,7 +26,7 @@
 
 /* Test if we can can communicate properly with event loops in different threads. */
 #define THREAD_COUNT 10
-static void* test_func( void *arg)
+static void *test_func(void *arg)
 {
     for(;;)
     {
@@ -45,8 +45,8 @@ static void* test_func( void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    static KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
+    static KDThread *threads[THREAD_COUNT] = {KD_NULL};
+    for(KDint i = 0; i < THREAD_COUNT; i++)
     {
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
         if(threads[i] == KD_NULL)
@@ -58,16 +58,16 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             TEST_FAIL();
         }
     }
-    for(KDint k = 0 ; k < THREAD_COUNT ;k++)
+    for(KDint k = 0; k < THREAD_COUNT; k++)
     {
         KDEvent *event = kdCreateEvent();
-        event->type      = KD_EVENT_QUIT;
+        event->type = KD_EVENT_QUIT;
         if(kdPostThreadEvent(event, threads[k]) == -1)
         {
             TEST_FAIL();
         }
     }
-    for(KDint j = 0 ; j < THREAD_COUNT ;j++)
+    for(KDint j = 0; j < THREAD_COUNT; j++)
     {
         kdThreadJoin(threads[j], KD_NULL);
     }

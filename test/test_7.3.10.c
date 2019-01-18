@@ -27,16 +27,16 @@
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
-KDAtomicIntVEN* test_once_count = KD_NULL;
+KDAtomicIntVEN *test_once_count = KD_NULL;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func(void)
 {
     kdAtomicIntFetchAddVEN(test_once_count, 1);
 }
 
-void* test_func( void *arg)
+void *test_func(void *arg)
 {
-    for(KDint i = 0 ; i < THREAD_COUNT ;i++)
+    for(KDint i = 0; i < THREAD_COUNT; i++)
     {
         kdThreadOnce(&test_once, test_once_func);
     }
@@ -46,8 +46,8 @@ void* test_func( void *arg)
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     test_once_count = kdAtomicIntCreateVEN(0);
-    KDThread* threads[THREAD_COUNT] = {KD_NULL};
-    for(KDint i = 0 ; i < THREAD_COUNT ; i++)
+    KDThread *threads[THREAD_COUNT] = {KD_NULL};
+    for(KDint i = 0; i < THREAD_COUNT; i++)
     {
         threads[i] = kdThreadCreate(KD_NULL, test_func, KD_NULL);
         if(threads[i] == KD_NULL)
@@ -59,7 +59,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
             TEST_FAIL();
         }
     }
-    for(KDint k = 0 ; k < THREAD_COUNT ; k++)
+    for(KDint k = 0; k < THREAD_COUNT; k++)
     {
         kdThreadJoin(threads[k], KD_NULL);
     }

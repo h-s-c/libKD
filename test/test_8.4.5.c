@@ -42,13 +42,13 @@ void KD_APIENTRY callback2(const KDEvent *event)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    kdInstallCallback(&callback1, KD_EVENT_QUIT, (void*)1234);
-    kdInstallCallback(&callback2, KD_EVENT_QUIT, (void*)1234);
+    kdInstallCallback(&callback1, KD_EVENT_QUIT, (void *)1234);
+    kdInstallCallback(&callback2, KD_EVENT_QUIT, (void *)1234);
     for(;;)
     {
         KDEvent *event = kdCreateEvent();
         event->type = KD_EVENT_QUIT;
-        event->userptr = (void*)1234;
+        event->userptr = (void *)1234;
         kdPostEvent(event);
         kdPumpEvents();
         if(quit)

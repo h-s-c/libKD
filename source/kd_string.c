@@ -713,8 +713,17 @@ KD_API KDsize KD_APIENTRY kdStrnlen(const KDchar *str, KDsize maxlen)
 }
 
 /* kdStrncat_s: Concatenate two strings. */
-KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KD_UNUSED KDsize srcmaxlen)
+KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *src, KDsize srcmaxlen)
 {
+    if(buflen == 0)
+    {
+        return -1;
+    }
+    if(buflen <= srcmaxlen)
+    {
+        return -1;
+    }
+
     KDchar *d = buf;
     const KDchar *s = src;
     KDsize n = buflen;
@@ -730,7 +739,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
 
     if(n == 0)
     {
-        return (KDint)(dlen + kdStrlen(s));
+        return 0;
     }
     while(*s != '\0')
     {
@@ -743,7 +752,7 @@ KD_API KDint KD_APIENTRY kdStrncat_s(KDchar *buf, KDsize buflen, const KDchar *s
     }
     *d = '\0';
 
-    return (KDint)(dlen + (KDsize)(s - src)); /* count does not include NUL */
+    return 0;
 }
 
 /* kdStrncmp: Compares two strings with length limit. */
@@ -834,12 +843,13 @@ KD_API KDint KD_APIENTRY kdStrncpy_s(KDchar *buf, KDsize buflen, const KDchar *s
 /* kdStrstrVEN: Locate substring. */
 KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
 {
-    KDchar c, sc;
+    KDchar c;
     if((c = *str2++) != '\0')
     {
         KDsize len = kdStrlen(str2);
         do
         {
+            KDchar sc;
             do
             {
                 if((sc = *str1++) == '\0')
@@ -873,4 +883,18 @@ KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2)
         }
     }
     return retval;
+}
+
+/* kdStrdupVEN:  Duplicate a string. */
+KD_API KDchar* KD_APIENTRY kdStrdupVEN(const KDchar *str)
+{
+    KDsize len = kdStrlen(str) + 1;
+    KDchar *dup = (KDchar *)kdMalloc(len);
+    if(dup == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+    kdStrcpy_s(dup, len, str);
+    return dup;
 }

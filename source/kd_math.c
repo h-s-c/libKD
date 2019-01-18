@@ -1802,7 +1802,7 @@ static KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
     /* set z = scalbn(|x|,ilogb(x)-23) */
     GET_LOW_WORD(low, x);
     e0 = (ix >> 20) - 1046; /* e0 = ilogb(z)-23; */
-    INSERT_WORDS(z, ix - ((KDint32)(e0 << 20)), low);
+    INSERT_WORDS(z, ix - ((KDint32)((KDuint32)e0 << 20)), low);
     for(i = 0; i < 2; i++)
     {
         tx[i] = (KDfloat64KHR)((KDint32)(z));
@@ -2523,7 +2523,7 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
     t = x * x;
     if(k >= -125)
     {
-        SET_FLOAT_WORD(twopk, 0x3f800000 + (k << 23));
+        SET_FLOAT_WORD(twopk, 0x3f800000 + ((KDuint32)k << 23));
     }
     else
     {
@@ -2972,7 +2972,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     r = (z * t1) / (t1 - 2.0f) - (w + z * w);
     z = 1.0f - (r - z);
     GET_FLOAT_WORD(j, z);
-    j += (n << 23);
+    j += ((KDuint32)n << 23);
     if((j >> 23) <= 0)
     {
         z = __kdScalbnf(z, n); /* subnormal output */
@@ -3758,6 +3758,10 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
             {
                 return -KD_PI_KHR - tiny; /* atan(-0,-anything) =-pi */
             }
+            default:
+            {
+
+            }
         }
     }
     /* when x = 0 */
@@ -3789,6 +3793,10 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
                 {
                     return -3.0 * KD_PI_4_KHR - tiny; /*atan(-INF,-INF)*/
                 }
+                default:
+                {
+
+                }
             }
         }
         else
@@ -3810,6 +3818,10 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
                 case 3:
                 {
                     return -KD_PI_KHR - tiny; /* atan(-...,-INF) */
+                }
+                default:
+                {
+
                 }
             }
         }
@@ -4220,7 +4232,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdExpKHR(KDfloat64KHR x)
     t = x * x;
     if(k >= -1021)
     {
-        INSERT_WORDS(twopk, 0x3ff00000 + (k << 20), 0);
+        INSERT_WORDS(twopk, 0x3ff00000 + ((KDuint32)k << 20), 0);
     }
     else
     {

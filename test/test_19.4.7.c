@@ -26,43 +26,32 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDint retval = kdNameLookup(KD_AF_INET, "www.icann.org", (void *)1234);
-    if(retval == -1)
+    const KDchar *path = "putc";
+    const KDchar *str = "1234567890x";
+    KDuint8 i = 0;
+    KDchar buf[10];
+    KDFile *f;
+
+    kdMemset(buf, 'x', sizeof(buf));
+
+    f = kdFopen("putc", "w+");
+    TEST_EXPR(f != KD_NULL);
+
+    while(str[i] != 'x')
     {
-        if(kdGetError() == KD_ENOSYS)
-        {
-            return 0;
-        }
-        TEST_FAIL();
+        TEST_EXPR(kdPutc(str[i], f) == str[i]);
+        i++;
     }
 
-    for(;;)
-    {
-        const KDEvent *event = kdWaitEvent(-1);
-        if(event)
-        {
-            if(event->type == KD_EVENT_NAME_LOOKUP_COMPLETE)
-            {
-                KDEventNameLookup lookupevent = event->data.namelookup;
-                if(lookupevent.error == KD_EHOST_NOT_FOUND)
-                {
-                    /* No internet. */
-                    break;
-                }
+    TEST_EXPR(kdFclose(f) == 0);
 
-                KDInAddr address;
-                kdMemset(&address, 0, sizeof(address));
-                address.s_addr = ((const KDSockaddr *)lookupevent.result)->data.sin.address;
-                TEST_EQ(kdNtohl(address.s_addr), 3221233671);
+    f = kdFopen(path, "r");
+    TEST_EXPR(f != KD_NULL);
 
-                KDchar c_addr[sizeof("255.255.255.255")] = "";
-                kdInetNtop(KD_AF_INET, &address, c_addr, sizeof(c_addr));
-                TEST_STREQ(c_addr, "192.0.32.7");
+    TEST_EXPR(kdFread(buf, 1, 10, f) == 10);
+    TEST_EXPR(kdStrncmp(buf, str, 10) == 0);
 
-                break;
-            }
-            kdDefaultEvent(event);
-        }
-    }
+    TEST_EXPR(kdFclose(f) == 0);
+
     return 0;
 }

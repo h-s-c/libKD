@@ -31,7 +31,8 @@ set(CTEST_CUSTOM_COVERAGE_EXCLUDE
     "/usr/")
 
 set(CTEST_CUSTOM_ERROR_EXCEPTION
-    "clang: error: .* 'linker' input unused")
+    "clang: error: .* 'linker' input unused"
+    "WARNING:root:emcc: cannot find library \"nul\"")
 
 set(CTEST_CUSTOM_WARNING_EXCEPTION
     "warning LNK4044"

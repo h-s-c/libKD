@@ -26,43 +26,29 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDint retval = kdNameLookup(KD_AF_INET, "www.icann.org", (void *)1234);
-    if(retval == -1)
+    KDchar buf[] = "abcdefg";
+    KDuint8 i = 7;
+
+    TEST_EXPR(kdMemchr(buf, 'a', 0) == KD_NULL);
+    TEST_EXPR(kdMemchr(buf, 'g', 0) == KD_NULL);
+    TEST_EXPR(kdMemchr(buf, 'x', 7) == KD_NULL);
+
+    TEST_EXPR(kdMemchr("\0", 'x', 0) == KD_NULL);
+    TEST_EXPR(kdMemchr("\0", 'x', 1) == KD_NULL);
+
+    while(i <= 14)
     {
-        if(kdGetError() == KD_ENOSYS)
-        {
-            return 0;
-        }
-        TEST_FAIL();
+
+        TEST_EQ(kdMemchr(buf, 'a', i), buf + 0);
+        TEST_EQ(kdMemchr(buf, 'b', i), buf + 1);
+        TEST_EQ(kdMemchr(buf, 'c', i), buf + 2);
+        TEST_EQ(kdMemchr(buf, 'd', i), buf + 3);
+        TEST_EQ(kdMemchr(buf, 'e', i), buf + 4);
+        TEST_EQ(kdMemchr(buf, 'f', i), buf + 5);
+        TEST_EQ(kdMemchr(buf, 'g', i), buf + 6);
+
+        i *= 2;
     }
 
-    for(;;)
-    {
-        const KDEvent *event = kdWaitEvent(-1);
-        if(event)
-        {
-            if(event->type == KD_EVENT_NAME_LOOKUP_COMPLETE)
-            {
-                KDEventNameLookup lookupevent = event->data.namelookup;
-                if(lookupevent.error == KD_EHOST_NOT_FOUND)
-                {
-                    /* No internet. */
-                    break;
-                }
-
-                KDInAddr address;
-                kdMemset(&address, 0, sizeof(address));
-                address.s_addr = ((const KDSockaddr *)lookupevent.result)->data.sin.address;
-                TEST_EQ(kdNtohl(address.s_addr), 3221233671);
-
-                KDchar c_addr[sizeof("255.255.255.255")] = "";
-                kdInetNtop(KD_AF_INET, &address, c_addr, sizeof(c_addr));
-                TEST_STREQ(c_addr, "192.0.32.7");
-
-                break;
-            }
-            kdDefaultEvent(event);
-        }
-    }
     return 0;
 }

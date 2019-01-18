@@ -1,8 +1,75 @@
 language: c
+install: python ci-tools/install_cmake.py   
+script: python ci-tools/run_ctest.py
 
 cache:
   directories:
     - 'ci-tools/cache'
+
+linux_template: &linux_template
+  os: linux
+  dist: trusty
+  sudo: required
+
+linux_apt_template: &linux_apt_template
+  <<: *linux_template
+  addons:
+    apt:
+      sources: 
+        - sourceline: "ppa:ubuntu-toolchain-r/test"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.6 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.5 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+      packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
+                 'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
+                 'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
+                 'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+
+docker_template: &docker_template
+  <<: *linux_template
+  services: docker
+  before_install: docker pull $DOCKER_IMAGE;
+  script: docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
+
+packagecloud_template: &packagecloud_template
+  <<: *docker_template
+  before_install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+  deploy:
+    provider: packagecloud
+    dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
+    repository: "libKD"
+    username: "h-s-c"
+    token:
+      secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
+    skip_cleanup: true
+    on:
+      tags: true
+
+packagecloud_deb_template: &packagecloud_deb_template
+  <<: *packagecloud_template
+  deploy:
+    package_glob: "*.deb"
+
+packagecloud_rpm_template: &packagecloud_rpm_template
+  <<: *packagecloud_template
+  deploy:
+    package_glob: "*.rpm"
+
+macos_template: &macos_template
+  os: osx
+  compiler: clang
+  before_install: brew update && brew install ninja ccache valgrind cppcheck
 
 stages:
   - name: 'Testing (linux)'
@@ -17,504 +84,177 @@ stages:
 jobs:
   include:
     - stage: 'Testing (linux)'
-      os: linux
+      <<: *linux_apt_template
       compiler: gcc-8
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y gcc-8
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: gcc-7
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y gcc-7
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: gcc-6
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y gcc-6
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: gcc-5
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y gcc-5
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: gcc-4.9
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y gcc-4.9
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: gcc-4.8
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y gcc-4.8
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: gcc-4.7
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y gcc-4.7
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: clang-7
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-7', 'llvm-7', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y clang-7 llvm-7
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: clang-6.0
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-6.0', 'llvm-6.0', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y clang-6.0 llvm-6.0
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: clang-5.0
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-5.0', 'llvm-5.0', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y clang-5.0 llvm-5.0
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: clang-4.0
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: 
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
-              key_url: 'http://llvm.org/apt/llvm-snapshot.gpg.key'
-          packages: ['clang-4.0', 'llvm-4.0', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y clang-4.0 llvm-4.0
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: clang-3.8
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.8', 'llvm-3.8', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: clang-3.6
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.6', 'llvm-3.6', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y clang-3.6 llvm-3.6
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: clang-3.5
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang-3.5', 'llvm-3.5', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y clang-3.5 llvm-3.5
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: icc
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: 
-        - python ci-tools/install_cmake.py 
-        - python ci-tools/install_icc.py
+      before_install: python ci-tools/install_icc.py
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
-      script: python ci-tools/run_ctest.py
 
-    - os: linux
+    - <<: *linux_apt_template
       compiler: tcc
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['tcc', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
-      install: python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
+      before_install: sudo apt-get install -y tcc
 
-    - os: linux
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-x64
-      dist: trusty
-      sudo: required
-      services: docker
-      install:
-        - docker pull $DOCKER_IMAGE;
-        - python ci-tools/install_cmake.py
-      script:
-        - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
+
+    - <<: *docker_template
+      env: DOCKER_IMAGE=dockcross/windows-x64-posix
+
+    - <<: *docker_template
+      env: DOCKER_IMAGE=dockcross/windows-x86
+
+    - <<: *docker_template
+      env: DOCKER_IMAGE=dockcross/browser-asmjs
 
     - stage: 'Testing (macos)'
-      os: osx
-      compiler: clang
+      <<: *macos_template
       osx_image: xcode10.1
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind cppcheck
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: osx
-      compiler: clang
+    - <<: *macos_template
       osx_image: xcode9.4
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind cppcheck
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
-    - os: osx
-      compiler: clang
+    - <<: *macos_template
       osx_image: xcode7.3
-      install: 
-        - brew update
-        - brew install ninja ccache valgrind cppcheck
-        - python ci-tools/install_cmake.py   
-      script: python ci-tools/run_ctest.py
 
     - stage: 'Testing (coverity)'
-      os: linux
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          packages: ['ca-certificates', 'ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
-                     'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
-                     'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
-                     'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
+      <<: *linux_apt_template
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
-        - COVERITY_SCAN_PROJECT_NAME="h-s-c/libKD"
-        - COVERITY_SCAN_NOTIFICATION_EMAIL="h-s-c@users.noreply.github.com"
-        - COVERITY_SCAN_BRANCH_PATTERN="coverity"
-        - COVERITY_SCAN_BUILD_COMMAND="python ci-tools/run_ctest.py"
-      before_install: echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-      install: python ci-tools/install_cmake.py
-      script: curl -s "https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh" | /bin/bash;
-
+      addons:
+        coverity_scan:
+          project:
+            name: h-s-c/libKD
+          notification_email: kevin.patrick.schmidt@googlemail.com
+          build_command: python ci-tools/run_ctest.py
+          branch_pattern: coverity
+ 
     - stage: 'Deployment (packagecloud)'
-      os: linux
+      <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=bionic
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
+    - <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.deb"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
+    - <<: *packagecloud_rpm_template
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=27
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.rpm"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
             dnf -y groupinstall \"C Development Tools and Libraries\" && 
             dnf -y install git pkgconfig rpm-build ninja-build python 
               mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
+    - <<: *packagecloud_rpm_template
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=26
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.rpm"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
             dnf -y groupinstall \"C Development Tools and Libraries\" && 
             dnf -y install git pkgconfig rpm-build ninja-build python 
               mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"
 
-    - os: linux
+    - <<: *packagecloud_rpm_template
       env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.3
-      dist: trusty
-      sudo: required
-      services: docker
-      deploy:
-        provider: packagecloud
-        dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
-        repository: "libKD"
-        username: "h-s-c"
-        token:
-          secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-        skip_cleanup: true
-        package_glob: "*.rpm"
-        on:
-          tags: true
-      install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
             zypper -n install -t pattern devel_C_C++ && 
             zypper -n install git rpm-build ninja python 
               Mesa-libGL-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel
               libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/install_cmake.py;
             python ci-tools/run_cpack.py;"

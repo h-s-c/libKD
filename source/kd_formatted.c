@@ -35,9 +35,10 @@
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
 #endif
-#include "kdplatform.h"  // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
-#include <KD/kd.h>       // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
-#include <KD/kdext.h>    // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
+#include "kdplatform.h"         // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
+#include <KD/kd.h>              // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
+#include "KD/KHR_formatted.h"   // for kdFprintfKHR, kdFscanfKHR, kdLogMessag...
+#include <KD/kdext.h>           // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
@@ -214,7 +215,7 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
 {
 #if defined(_WIN32)
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-    WriteFile(out, buf, len, (DWORD[]){0}, KD_NULL);
+    WriteFile(out, buf, len, (DWORD[]) {0}, KD_NULL);
 #else
     KDssize result = __kdWrite(STDOUT_FILENO, buf, (KDsize)len);
     if(result != len)

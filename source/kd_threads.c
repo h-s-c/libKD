@@ -56,7 +56,7 @@
 #include <threads.h>
 #endif
 
-#if !defined(_WIN32) && !defined(KD_FREESTANDING)
+#if defined(KD_THREAD_POSIX)
 #include <errno.h>  // for EINVAL, ENOMEM, ESRCH
 #include <time.h>   // for nanosleep
 #endif
@@ -345,19 +345,15 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         thread->internal->attr = attr;
 
         KDint error = 0;
-#if defined(KD_THREAD_C11)
 #if defined(__GNUC__)
 #if(__GNUC__ > 7)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 #endif
 #endif
+
+#if defined(KD_THREAD_C11)
         error = thrd_create(&thread->internal->nativethread, (thrd_start_t)__kdThreadRun, thread);
-#if defined(__GNUC__)
-#if(__GNUC__ > 7)
-#pragma GCC diagnostic pop
-#endif
-#endif
 #elif defined(KD_THREAD_POSIX)
         error = pthread_create(&thread->internal->nativethread, attr ? &attr->nativeattr : KD_NULL, __kdThreadRun, thread);
 #elif defined(KD_THREAD_WIN32)
@@ -365,6 +361,12 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
         error = thread->internal->nativethread ? 0 : 1;
 #endif
 
+#if defined(__GNUC__)
+#if(__GNUC__ > 7)
+#pragma GCC diagnostic pop
+#endif
+#endif
+        /* cppcheck-suppress knownConditionTrueFalse */
         if(error != 0)
         {
             __kdThreadFree(thread);
@@ -413,13 +415,16 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)
 {
+    /* cppcheck-suppress unreadVariable */
     KDint ipretvalinit = 0;
     KD_UNUSED KDint *ipretval = &ipretvalinit;
     if(retval)
     {
+        /* cppcheck-suppress unreadVariable */
         ipretval = *retval;
     }
 
+    /* cppcheck-suppress unreadVariable */
     KD_UNUSED KDint error = 0;
     KDint result = 0;
 #if defined(KD_THREAD_C11)
@@ -455,9 +460,11 @@ KD_API KDint KD_APIENTRY kdThreadDetach(KDThread *thread)
 #elif defined(KD_THREAD_WIN32)
     CloseHandle(thread->internal->nativethread);
 #else
+    /* cppcheck-suppress unreadVariable */
     KD_UNUSED KDThread *dummythread = thread;
     kdAssert(0);
 #endif
+    /* cppcheck-suppress knownConditionTrueFalse */
     if(error != 0)
     {
         kdSetError(KD_EINVAL);
@@ -543,6 +550,7 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
 #else
     mutex->nativemutex = (void *)KD_FALSE;
 #endif
+    /* cppcheck-suppress knownConditionTrueFalse */
     if(error != 0)
     {
         kdSetError(KD_EAGAIN);
@@ -651,6 +659,7 @@ KD_API KDThreadCond *KD_APIENTRY kdThreadCondCreate(KD_UNUSED const void *attr)
 #elif defined(KD_THREAD_WIN32)
         InitializeConditionVariable(&cond->nativecond);
 #endif
+        /* cppcheck-suppress knownConditionTrueFalse */
         if(error != 0)
         {
             kdSetError(KD_EAGAIN);
@@ -689,6 +698,7 @@ KD_API KDint KD_APIENTRY kdThreadCondSignal(KDThreadCond *cond)
 #elif defined(KD_THREAD_WIN32)
     WakeConditionVariable(&cond->nativecond);
 #else
+    /* cppcheck-suppress unreadVariable */
     KD_UNUSED KDThreadCond *dummycond = cond;
     kdAssert(0);
 #endif
@@ -704,6 +714,7 @@ KD_API KDint KD_APIENTRY kdThreadCondBroadcast(KDThreadCond *cond)
 #elif defined(KD_THREAD_WIN32)
     WakeAllConditionVariable(&cond->nativecond);
 #else
+    /* cppcheck-suppress unreadVariable */
     KD_UNUSED KDThreadCond *dummycond = cond;
     kdAssert(0);
 #endif
@@ -720,7 +731,9 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
 #elif defined(KD_THREAD_WIN32)
     SleepConditionVariableSRW(&cond->nativecond, (SRWLOCK *)&mutex->nativemutex, INFINITE, 0);
 #else
+    /* cppcheck-suppress unreadVariable */
     KD_UNUSED KDThreadCond *dummycond = cond;
+    /* cppcheck-suppress unreadVariable */
     KD_UNUSED KDThreadMutex *dummymutex = mutex;
     kdAssert(0);
 #endif
