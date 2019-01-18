@@ -259,7 +259,7 @@ jobs:
             python ci-tools/run_cpack.py;"
 
     - <<: *packagecloud_rpm_template
-      env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=15.1
+      env: DOCKER_IMAGE=opensuse/leap DOCKER_IMAGE_VERSION=15
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
             zypper -n install -t pattern devel_C_C++ && 
@@ -269,18 +269,7 @@ jobs:
             python ci-tools/run_cpack.py;"
 
     - <<: *packagecloud_rpm_template
-      env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=15
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
-            zypper -n install -t pattern devel_C_C++ && 
-            zypper -n install git rpm-build ninja python 
-              Mesa-libGL-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libX11-devel wayland-devel libwayland-egl-devel
-              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/run_cpack.py;"
-
-
-    - <<: *packagecloud_rpm_template
-      env: DOCKER_IMAGE=opensuse DOCKER_IMAGE_VERSION=42.3
+      env: DOCKER_IMAGE=opensuse/leap DOCKER_IMAGE_VERSION=42
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "zypper -n update &&
             zypper -n install -t pattern devel_C_C++ && 
