@@ -32,11 +32,17 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROXF(kdAcosf(0.0f), 2.0f * KD_PI_4_F);
     TEST_APPROXF(kdAcosf(KD_SQRT1_2_F), KD_PI_4_F);
     TEST_APPROXF(kdAcosf(1.0f), 0.0f);
+    TEST_EXPR(kdIsNan(kdAcosf(-1.1f)));
+    TEST_EXPR(kdIsNan(kdAcosf(1.1f)));
+    TEST_EXPR(kdIsNan(kdAcosf((1.0f - 1.0f) / (1.0f - 1.0f))));
 
     TEST_APPROX(kdAcosKHR(-1.0), 4.0 * KD_PI_4_KHR);
     TEST_APPROX(kdAcosKHR(-KD_SQRT1_2_KHR), 3.0 * KD_PI_4_KHR);
     TEST_APPROX(kdAcosKHR(0.0), 2.0 * KD_PI_4_KHR);
     TEST_APPROX(kdAcosKHR(KD_SQRT1_2_KHR), KD_PI_4_KHR);
-    TEST_APPROX(kdAcosKHR(1.0), 0.0);    
+    TEST_APPROX(kdAcosKHR(1.0), 0.0);
+    TEST_EXPR(kdIsNan(kdAcosKHR(-1.1)));
+    TEST_EXPR(kdIsNan(kdAcosKHR(1.1)));
+    TEST_EXPR(kdIsNan(kdAcosKHR((1.0 - 1.0) / (1.0 - 1.0)))); 
     return 0;
 }

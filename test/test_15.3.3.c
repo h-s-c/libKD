@@ -27,16 +27,19 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    TEST_APPROXF(kdAtanf(-KD_FLT_MAX), -KD_PI_2_F);
-    TEST_APPROXF(kdAtanf(-1.0), -KD_PI_4_F);
-    TEST_APPROXF(kdAtanf(0.0f), 0.0f);
+    TEST_APPROXF(kdAtanf(-1.0f), -KD_PI_4_F);
     TEST_APPROXF(kdAtanf(1.0f), KD_PI_4_F);
-    TEST_APPROXF(kdAtanf(KD_FLT_MAX), KD_PI_2_F);
+    TEST_EXPR(kdIsNan(kdAtanf((1.0f - 1.0f) / (1.0f - 1.0f))));
+    TEST_APPROXF(kdAtanf(0.0f), 0.0f);
+    TEST_APPROXF(kdAtanf(-0.0f), -0.0f);
+    TEST_APPROXF(kdAtanf(KD_INFINITY), KD_PI_2_F);
+    TEST_APPROXF(kdAtanf(-KD_INFINITY), -KD_PI_2_F);
 
-    TEST_APPROXF(kdAtanKHR(-KD_DBL_MAX_KHR), -KD_PI_2_KHR);
     TEST_APPROXF(kdAtanKHR(-1.0), -KD_PI_4_KHR);
-    TEST_APPROXF(kdAtanKHR(0.0f), 0.0f);
-    TEST_APPROXF(kdAtanKHR(1.0f), KD_PI_4_KHR);
-    TEST_APPROXF(kdAtanKHR(KD_DBL_MAX_KHR), KD_PI_2_KHR);
+    TEST_APPROXF(kdAtanKHR(1.0), KD_PI_4_KHR);
+    TEST_APPROXF(kdAtanf(0.0), 0.0);
+    TEST_APPROXF(kdAtanf(-0.0), -0.0);
+    TEST_APPROXF(kdAtanf(KD_INFINITY), KD_PI_2_KHR);
+    TEST_APPROXF(kdAtanf(-KD_INFINITY), -KD_PI_2_KHR);
     return 0;
 }
