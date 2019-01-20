@@ -1704,7 +1704,7 @@ static KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
             }
         }
     }
-    if(ix <= 0x401c463b)
+    if(ix <= 0x401c463b && !medium)
     { /* |x| ~<= 9pi/4 */
         if(ix <= 0x4015fdbc)
         {                        /* |x| ~<= 7pi/4 */
