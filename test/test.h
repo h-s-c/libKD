@@ -8,13 +8,13 @@ KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...);
 }} while (0)
 
 #define TEST_APPROXF(a, b) do {\
-    if(!(((b) ? kdFabsf(((b) - (a)) / (b)) : kdFabsf(a) ) < KD_FLT_EPSILON)) {\
+    if(!(((b) ? kdFabsf(((b) - (a)) / (b)) : kdFabsf(a) ) < (KD_FLT_EPSILON * 4))) {\
         kdLogMessagefKHR("%s:%d (%.9g != %.9g)\n", __FILE__, __LINE__, (a), (b));\
         kdExit(-1);\
 }} while (0)
 
 #define TEST_APPROX(a, b) do {\
-    if(!(((b) ? kdFabsKHR(((b) - (a)) / (b)) : kdFabsKHR(a) ) < KD_DBL_EPSILON_KHR)) {\
+    if(!(((b) ? kdFabsKHR(((b) - (a)) / (b)) : kdFabsKHR(a) ) < (KD_DBL_EPSILON_KHR * 4))) {\
         kdLogMessagefKHR("%s:%d (%.17g != %.17g)\n", __FILE__, __LINE__, (a), (b));\
         kdExit(-1);\
 }} while (0)

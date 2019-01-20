@@ -33,10 +33,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROXF(kdTanf(KD_PI_4_F), 1.0f);
     TEST_APPROXF(kdTanf(3.0f * KD_PI_4_F), -1.0f);
 
-    /*TEST_APPROX(kdTanKHR(-3.0 * KD_PI_4_KHR), 1.0);
+    TEST_APPROX(kdTanKHR(-3.0 * KD_PI_4_KHR), 1.0);
     TEST_APPROX(kdTanKHR(-KD_PI_4_KHR), -1.0);
     TEST_APPROX(kdTanKHR(0.0), 0.0);
     TEST_APPROX(kdTanKHR(KD_PI_4_KHR), 1.0);
-    TEST_APPROX(kdTanKHR(3.0 * KD_PI_4_KHR), -1.0);*/
+    TEST_APPROX(kdTanKHR(3.0 * KD_PI_4_KHR), -1.0);
     return 0;
 }
