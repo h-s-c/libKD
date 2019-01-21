@@ -43,7 +43,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
 #if !defined(_MSC_VER)
     TEST_EXPR(kdIsNan(kdAtanf((1.0f - 1.0f) / (1.0f - 1.0f))));
-    TEST_EXPR(kdIsNan(kdAtanKHR((1.0f - 1.0f) / (1.0f - 1.0f))));
+    TEST_EXPR(kdIsNan(kdAtanKHR((1.0 - 1.0) / (1.0 - 1.0))));
 #endif
     return 0;
 }
