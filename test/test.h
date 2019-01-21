@@ -1,6 +1,12 @@
 #include <KD/kd.h>
 KD_API KDint KD_APIENTRY kdLogMessagefKHR(const KDchar *format, ...);
 
+#if defined(__clang__)
+#if __has_warning("-Wliteral-conversion")
+#pragma clang diagnostic ignored "-Wliteral-conversion"
+#endif
+#endif
+
 #define TEST_EQ(a, b) do {\
     if(!((a) == (b))) {\
         kdLogMessagefKHR("%s:%d (%d != %d)\n", __FILE__, __LINE__, (a), (b));\
