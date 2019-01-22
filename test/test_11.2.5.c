@@ -23,24 +23,28 @@
 
 #include <KD/kd.h>
 #include <KD/KHR_float64.h>
-#include <KD/KHR_formatted.h>
 #include "test.h"
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    static const KDsize n = 1024 * 1000;
+    KDchar stringf[KD_FTOSTR_MAXLEN];
+    KDssize sizef = kdFtostr(stringf, KD_FTOSTR_MAXLEN, 1.23456789f);
+    KDfloat32 f = kdStrtof(stringf, KD_NULL);
+    TEST_APPROXF(f, 1.23456789f);
+    TEST_EXPR(sizef == 10);
+    sizef = kdFtostr(stringf, KD_FTOSTR_MAXLEN, -1.23456789f);
+    f = kdStrtof(stringf, KD_NULL);
+    TEST_APPROXF(f, -1.23456789f);
+    TEST_EXPR(sizef == 11);
 
-    for(KDsize i = 1; i < n; i = i + 1024)
-    {
-        KDchar buf[512];
-        kdSnprintfKHR(buf, sizeof(buf), "%zu.%zu", i, i + 1);
-
-        KDfloat32 f = kdStrtof(buf, KD_NULL);
-        TEST_EXPR(f > 0.0);
-
-        KDfloat64KHR d = kdStrtodKHR(buf, KD_NULL);
-        TEST_EXPR(d > 0.0);
-    }
-
+    KDchar string[KD_DTOSTR_MAXLEN_KHR];
+    KDssize size = kdDtostrKHR(string, KD_DTOSTR_MAXLEN_KHR, 1.2345678910111213);
+    KDfloat32 d = kdStrtodKHR(string, KD_NULL);
+    TEST_APPROX(d, 1.2345678910111213);
+    TEST_EXPR(size == 18);
+    size = kdDtostrKHR(string, KD_DTOSTR_MAXLEN_KHR, -1.2345678910111213);
+    d = kdStrtof(string, KD_NULL);
+    TEST_APPROX(d, -1.2345678910111213);
+    TEST_EXPR(size == 19);
     return 0;
 }

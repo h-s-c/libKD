@@ -22,7 +22,6 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/KHR_float64.h>
 #include <KD/KHR_formatted.h>
 #include "test.h"
 
@@ -33,13 +32,13 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     for(KDsize i = 1; i < n; i = i + 1024)
     {
         KDchar buf[512];
-        kdSnprintfKHR(buf, sizeof(buf), "%zu.%zu", i, i + 1);
+        kdSnprintfKHR(buf, sizeof(buf), "%d", i);
+        KDuint ul = kdStrtoul(buf, KD_NULL, 10);
+        TEST_EXPR(ul == i);
 
-        KDfloat32 f = kdStrtof(buf, KD_NULL);
-        TEST_EXPR(f > 0.0);
-
-        KDfloat64KHR d = kdStrtodKHR(buf, KD_NULL);
-        TEST_EXPR(d > 0.0);
+        kdSnprintfKHR(buf, sizeof(buf), "%d", -i);
+        KDint l = kdStrtol(buf, KD_NULL, 10);
+        TEST_EXPR(l == -i);
     }
 
     return 0;
