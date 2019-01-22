@@ -36,7 +36,7 @@
 #endif
 #endif
 #include "kdplatform.h"      // for KDint32, KDuint32, KD_API, KD_APIENTRY
-#include <KD/kd.h>           // for KDfloat32, KDINT32_MAX, KD_HUGE_VALF, KDint
+#include <KD/kd.h>           // for KDfloat32, KDINT32_MAX, KDint
 #include <KD/KHR_float64.h>  // for KDfloat64KHR, KD_PI_2_KHR, KD_PI_KHR
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -558,7 +558,7 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
 
     __KDFloatShape ix = {x};
     KDint32 k;
-    k = (ix.i & KD_HUGE_VALF) >> 23; /* extract exponent */
+    k = (ix.i & 0x7f800000) >> 23; /* extract exponent */
     if(k == 0)
     { /* 0 or subnormal x */
         if((ix.i & KDINT32_MAX) == 0)
@@ -566,7 +566,7 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
             return ix.f;
         } /* +-0 */
         ix.f *= two25;
-        k = ((ix.i & KD_HUGE_VALF) >> 23) - 25;
+        k = ((ix.i & 0x7f800000) >> 23) - 25;
         if(n < -50000)
         {
             return tiny * ix.f; /*underflow*/
@@ -1620,7 +1620,7 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
     /*
      * all other (large) arguments
      */
-    if(ix >= KD_HUGE_VALF)
+    if(ix >= 0x7f800000)
     { /* x is inf or NaN */
         *y = (KDfloat64KHR)(hx.f - hx.f);
         return 0;
@@ -1988,7 +1988,7 @@ KD_API KDfloat32 KD_APIENTRY kdAtanf(KDfloat32 x)
     ix = hx & KDINT32_MAX;
     if(ix >= 0x4c800000)
     { /* if |x| >= 2**26 */
-        if(ix > KD_HUGE_VALF)
+        if(ix > 0x7f800000)
         {
             return x + x;
         } /* NaN */
@@ -2072,7 +2072,7 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
     ix = hx & KDINT32_MAX;
     GET_FLOAT_WORD(hy, y);
     iy = hy & KDINT32_MAX;
-    if((ix > KD_HUGE_VALF) || (iy > KD_HUGE_VALF))
+    if((ix > 0x7f800000) || (iy > 0x7f800000))
     { /* x or y is NaN */
         return x + y;
     }
@@ -2113,9 +2113,9 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
     }
 
     /* when x is INF */
-    if(ix == KD_HUGE_VALF)
+    if(ix == 0x7f800000)
     {
-        if(iy == KD_HUGE_VALF)
+        if(iy == 0x7f800000)
         {
             switch(m)
             {
@@ -2169,7 +2169,7 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
         }
     }
     /* when y is INF */
-    if(iy == KD_HUGE_VALF)
+    if(iy == 0x7f800000)
     {
         return (hy < 0) ? -KD_PI_2_F - tiny : KD_PI_2_F + tiny;
     }
@@ -2265,7 +2265,7 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
         }
     }
     /* cos(Inf or NaN) is NaN */
-    else if(ix >= KD_HUGE_VALF)
+    else if(ix >= 0x7f800000)
     {
         return x - x;  //-V501
         /* general argument reduction needed */
@@ -2350,7 +2350,7 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
         }
     }
     /* sin(Inf or NaN) is NaN */
-    else if(ix >= KD_HUGE_VALF)
+    else if(ix >= 0x7f800000)
     {
         return x - x;  //-V501
         /* general argument reduction needed */
@@ -2421,7 +2421,7 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
         }
     }
     /* tan(Inf or NaN) is NaN */
-    else if(ix >= KD_HUGE_VALF)
+    else if(ix >= 0x7f800000)
     {
         return x - x;  //-V501
         /* general argument reduction needed */
@@ -2473,11 +2473,11 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
     /* filter out non-finite argument */
     if(hx >= 0x42b17218)
     { /* if |x|>=88.721... */
-        if(hx > KD_HUGE_VALF)
+        if(hx > 0x7f800000)
         {
             return x + x;
         } /* NaN */
-        if(hx == KD_HUGE_VALF)
+        if(hx == 0x7f800000)
         {
             return (xsb == 0) ? x : 0.0f; /* exp(+-inf)={inf,0} */
         }
@@ -2574,7 +2574,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     k = 0;
     if(ix < 0x00800000)
     { /* x < 2**-126  */
-        if((ix & KD_HUGE_VALF) == 0)
+        if((ix & 0x7f800000) == 0)
         { /* log(+-0)=-inf */
             return -two25 / vzero;
         }
@@ -2586,7 +2586,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
         x *= two25; /* subnormal number, scale up x */
         GET_FLOAT_WORD(ix, x);
     }
-    if(ix >= KD_HUGE_VALF)
+    if(ix >= 0x7f800000)
     {
         return x + x;
     }
@@ -2725,7 +2725,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         return 1.0f;
     }
     /* y!=zero: result is NaN if either arg is NaN */
-    if(ix > KD_HUGE_VALF || iy > KD_HUGE_VALF)
+    if(ix > 0x7f800000 || iy > 0x7f800000)
     {
         return (x + 0.0f) + (y + 0.0f);
     }
@@ -2752,7 +2752,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
         }
     }
     /* special value of y */
-    if(iy == KD_HUGE_VALF)
+    if(iy == 0x7f800000)
     { /* y is +-inf */
         if(ix == 0x3f800000)
         {
@@ -2791,7 +2791,7 @@ KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
     }
     ax = kdFabsf(x);
     /* special value of x */
-    if(ix == KD_HUGE_VALF || ix == 0 || ix == 0x3f800000)
+    if(ix == 0x7f800000 || ix == 0 || ix == 0x3f800000)
     {
         z = ax; /*x is +-0,+-inf,+-1*/
         if(hy < 0)
@@ -3000,7 +3000,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
 
     GET_FLOAT_WORD(ix, x);
     /* take care of Inf and NaN */
-    if((ix & KD_HUGE_VALF) == KD_HUGE_VALF)
+    if((ix & 0x7f800000) == 0x7f800000)
     {
         return x * x + x; /* sqrt(NaN)=NaN, sqrt(+inf)=+inf, sqrt(-inf)=sNaN */
     }
@@ -3210,7 +3210,7 @@ KD_API KDfloat32 KD_APIENTRY kdRoundf(KDfloat32 x)
     KDfloat32 t;
     KDuint32 hx;
     GET_FLOAT_WORD(hx, x);
-    if((hx & KDUINT32_MAX) == KD_HUGE_VALF)
+    if((hx & KDUINT32_MAX) == 0x7f800000)
     {
         return (x + x);
     }
@@ -3264,7 +3264,7 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
     hy &= KDINT32_MAX;    /* |y| */
     /* purge off exception values */
     /* y=0,or x not finite */
-    if(hy == 0 || (hx >= KD_HUGE_VALF) || (hy > KD_HUGE_VALF))
+    if(hy == 0 || (hx >= 0x7f800000) || (hy > 0x7f800000))
     { /* or y is NaN */
         return (x * y) / (x * y);
     }

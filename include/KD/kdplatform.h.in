@@ -242,7 +242,7 @@ typedef intptr_t KDssize;
 #define KDSIZE_MAX KDUINT_MAX
 #define KDUINTPTR_MAX KDUINT_MAX
 #endif
-#define KD_INFINITY 0x7f800000
+#define KD_INFINITY (1.0f/0.0f)
 
 
 /******************************************************************************
