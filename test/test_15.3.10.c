@@ -34,5 +34,12 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFabsKHR(-5.0f) == 5.0f);
     TEST_EXPR(kdFabsKHR(0.0f) == 0.0f);
     TEST_EXPR(kdFabsKHR(5.0f) == 5.0f);
+
+#if !defined(_MSC_VER)  
+#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
+#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
+    TEST_EXPR(kdIsNan(kdFabsf(KD_NANF)));
+    TEST_EXPR(kdIsNan(kdFabsKHR(KD_NAN)));
+#endif
     return 0;
 }

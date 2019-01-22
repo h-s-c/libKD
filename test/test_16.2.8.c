@@ -6,7 +6,7 @@
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
- * arikdSinfg from the use of this software.
+ * arising from the use of this software.
  *
  * Permission is granted to anyone to use this software for any purpose,
  * including commercial applications, and to alter it and redistribute it
@@ -22,25 +22,12 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
-#include <KD/KHR_float64.h>
 #include "test.h"
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    TEST_APPROXF(kdInvsqrtf(144.0f) , 1.0f / kdSqrtf(144.0f));
-    TEST_EXPR(kdIsNan(kdInvsqrtf(-144.0f)));
-
-    TEST_APPROX(kdInvsqrtKHR(144.0) , 1.0 / kdSqrtf(144.0));
-    TEST_EXPR(kdIsNan(kdInvsqrtKHR(-144.0f)));
-
-#if !defined(_MSC_VER)
-    TEST_EXPR(kdIsNan(kdInvsqrtf(-KD_INFINITY)));
-    TEST_EXPR(kdIsNan(kdInvsqrtKHR(-KD_HUGE_VAL_KHR)));
-
-#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
-#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
-    TEST_EXPR(kdIsNan(kdInvsqrtf(KD_NANF)));
-    TEST_EXPR(kdIsNan(kdInvsqrtKHR(KD_NAN)));
-#endif
+    static const KDchar abcde[] = "abcde";
+    TEST_EXPR(kdStrlen(abcde) == 5);
+    TEST_EXPR(kdStrlen("") == 0);
     return 0;
 }

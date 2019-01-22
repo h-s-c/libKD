@@ -26,7 +26,7 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    KDchar buf[] = "abcdefg";
+    static const KDchar buf[] = "abcdefg";
     KDuint8 i = 7;
 
     TEST_EXPR(kdMemchr(buf, 'a', 0) == KD_NULL);

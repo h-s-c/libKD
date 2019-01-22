@@ -27,6 +27,7 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
+    TEST_EXPR(kdRoundf(-0.0f) == -0.0f);
     TEST_EXPR(kdRoundf(-5.5f) == -6.0f);
     TEST_EXPR(kdRoundf(-5.0f) == -5.0f);
     TEST_EXPR(kdRoundf(-4.5f) == -5.0f);
@@ -35,12 +36,25 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdRoundf(5.0f) == 5.0f);
     TEST_EXPR(kdRoundf(5.5f) == 6.0f);
 
-    TEST_EXPR(kdRoundf(-5.5) == -6.0);
-    TEST_EXPR(kdRoundf(-5.0) == -5.0);
-    TEST_EXPR(kdRoundf(-4.5) == -5.0);
-    TEST_EXPR(kdRoundf(0.0f) == 0.0f);
-    TEST_EXPR(kdRoundf(4.5f) == 5.0f);
-    TEST_EXPR(kdRoundf(5.0f) == 5.0f);
-    TEST_EXPR(kdRoundf(5.5f) == 6.0f);
+    TEST_EXPR(kdRoundKHR(-0.0) == -0.0);
+    TEST_EXPR(kdRoundKHR(-5.5) == -6.0);
+    TEST_EXPR(kdRoundKHR(-5.0) == -5.0);
+    TEST_EXPR(kdRoundKHR(-4.5) == -5.0);
+    TEST_EXPR(kdRoundKHR(0.0) == 0.0);
+    TEST_EXPR(kdRoundKHR(4.5) == 5.0);
+    TEST_EXPR(kdRoundKHR(5.0) == 5.0);
+    TEST_EXPR(kdRoundKHR(5.5) == 6.0);
+
+#if !defined(_MSC_VER)
+    TEST_EXPR(kdRoundf(KD_INFINITY) == KD_INFINITY);
+    TEST_EXPR(kdRoundf(-KD_INFINITY) == -KD_INFINITY);
+    TEST_EXPR(kdRoundKHR(KD_HUGE_VAL_KHR) == KD_HUGE_VAL_KHR);
+    TEST_EXPR(kdRoundKHR(-KD_HUGE_VAL_KHR) == -KD_HUGE_VAL_KHR);
+   
+#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
+#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
+    TEST_EXPR(kdIsNan(kdRoundf(KD_NANF)));
+    TEST_EXPR(kdIsNan(kdRoundKHR(KD_NAN)));
+#endif
     return 0;
 }

@@ -27,6 +27,7 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
+    TEST_EXPR(kdFmodf(-0.0f, 3.0f) == -0.0f);
     TEST_EXPR(kdFmodf(-7.0f, 3.0f) == -1.0f);
     TEST_EXPR(kdFmodf(-3.0f, 3.0f) == 0.0f);
     TEST_EXPR(kdFmodf(-2.0f, 3.0f) == -2.0f);
@@ -34,7 +35,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFmodf(2.0f, 3.0f) == 2.0f);
     TEST_EXPR(kdFmodf(3.0f, 3.0f) == 0.0f);
     TEST_EXPR(kdFmodf(7.0f, 3.0f) == 1.0f);
+    TEST_EXPR(kdIsNan(kdFmodf(3.0f, 0.0f)));
 
+    TEST_EXPR(kdFmodKHR(-0.0, 3.0) == -0.0);
     TEST_EXPR(kdFmodKHR(-7.0, 3.0) == -1.0);
     TEST_EXPR(kdFmodKHR(-3.0, 3.0) == 0.0);
     TEST_EXPR(kdFmodKHR(-2.0, 3.0) == -2.0);
@@ -42,5 +45,21 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFmodKHR(2.0, 3.0) == 2.0);
     TEST_EXPR(kdFmodKHR(3.0, 3.0) == 0.0);
     TEST_EXPR(kdFmodKHR(7.0, 3.0) == 1.0);
+
+#if !defined(_MSC_VER)
+    TEST_EXPR(kdIsNan(kdFmodf(KD_INFINITY, 3.0f)));
+    TEST_EXPR(kdFmodf(3.0f, KD_INFINITY) == 3.0f);
+    TEST_EXPR(kdFmodf(3.0f, -KD_INFINITY) == 3.0f);
+    TEST_EXPR(kdIsNan(kdFmodKHR(KD_HUGE_VAL_KHR, 3.0)));
+    TEST_EXPR(kdFmodKHR(3.0, KD_HUGE_VAL_KHR) == 3.0);
+    TEST_EXPR(kdFmodKHR(3.0, -KD_HUGE_VAL_KHR) == 3.0);
+
+#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
+#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
+    TEST_EXPR(kdIsNan(kdFmodf(KD_NANF, 3.0f)));
+    TEST_EXPR(kdIsNan(kdFmodf(3.0f, KD_NANF)));
+    TEST_EXPR(kdIsNan(kdFmodKHR(KD_NAN, 3.0)));
+    TEST_EXPR(kdIsNan(kdFmodKHR(3.0, KD_NAN)));
+#endif    
     return 0;
 }

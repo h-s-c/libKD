@@ -38,5 +38,17 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROX(kdExpKHR(KD_LN2_KHR), 2.0);
     TEST_APPROX(kdExpKHR(1.0), KD_E_KHR);
     TEST_APPROX(kdExpKHR(3.0), KD_E_KHR * KD_E_KHR * KD_E_KHR);    
+
+#if !defined(_MSC_VER)
+    TEST_EXPR(kdExpf(-KD_INFINITY) == 0.0f);
+    TEST_EXPR(kdExpf(KD_INFINITY) == KD_INFINITY);
+    TEST_EXPR(kdExpKHR(-KD_HUGE_VAL_KHR) == 0.0);
+    TEST_EXPR(kdExpKHR(KD_HUGE_VAL_KHR) == KD_HUGE_VAL_KHR);
+    
+#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
+#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
+    TEST_EXPR(kdIsNan(kdExpf(KD_NANF)));
+    TEST_EXPR(kdIsNan(kdExpKHR(KD_NAN)));
+#endif
     return 0;
 }
