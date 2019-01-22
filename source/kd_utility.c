@@ -494,7 +494,8 @@ KD_API KDssize KD_APIENTRY kdFtostr(KDchar *buffer, KDsize buflen, KDfloat32 num
     {
         return -1;
     }
-    KDssize retval = (KDssize)kdSnprintfKHR(buffer, buflen, "%f", (KDfloat64KHR)number);
+
+    KDssize retval = (KDssize)kdSnprintfKHR(buffer, buflen, "%.9g", (KDfloat64KHR)number);
     if(retval > (KDssize)buflen)
     {
         return -1;
