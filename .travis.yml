@@ -71,10 +71,16 @@ macos_template: &macos_template
   compiler: clang
   before_install: brew update && brew install ninja ccache valgrind cppcheck
 
+windows_template: &windows_template
+  os: windows
+  before_install: cinst ninja opencppcoverage cppcheck
+
 stages:
   - name: 'Testing (linux)'
     if: branch = develop
   - name: 'Testing (macos)'
+    if: branch = develop
+  - name: 'Testing (windows)'
     if: branch = develop
   - name: 'Testing (coverity)'
     if: branch = coverity
@@ -170,6 +176,9 @@ jobs:
 
     - <<: *macos_template
       osx_image: xcode7.3
+
+    - stage: 'Testing (windows)'
+      <<: *windows_template
 
     - stage: 'Testing (coverity)'
       <<: *linux_apt_template
