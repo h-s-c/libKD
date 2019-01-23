@@ -73,7 +73,7 @@ macos_template: &macos_template
 
 windows_template: &windows_template
   os: windows
-  before_install: cinst ninja opencppcoverage cppcheck
+  before_install: cinst ninja opencppcoverage cppcheck && refreshenv
 
 stages:
   - name: 'Testing (linux)'
@@ -88,6 +88,8 @@ stages:
     if: tag IS present
 
 jobs:
+  allow_failures:
+    - os: windows
   include:
     - stage: 'Testing (linux)'
       <<: *linux_apt_template
