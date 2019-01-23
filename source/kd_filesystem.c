@@ -377,10 +377,6 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
         KDint character = kdGetc(file);
         if(character == KD_EOF)
         {
-            if(i == buflen - 1)
-            {
-                return KD_NULL;
-            }
             break;
         }
         *line++ = (KDchar)character;
@@ -389,6 +385,7 @@ KD_API KDchar *KD_APIENTRY kdFgets(KDchar *buffer, KDsize buflen, KDFile *file)
             break;
         }
     }
+    *line++ = (KDchar)'\0';
     return line;
 }
 
