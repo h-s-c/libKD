@@ -26,23 +26,17 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    const KDchar *path = "putc";
+    const KDchar *path = "fread";
     const KDchar *str = "1234567890x";
-    KDuint8 i = 0;
     KDchar buf[10];
     KDFile *f;
 
     kdMemset(buf, 'x', sizeof(buf));
 
-    f = kdFopen("putc", "w+");
+    f = kdFopen(path, "w+");
     TEST_EXPR(f != KD_NULL);
 
-    while(str[i] != 'x')
-    {
-        TEST_EXPR(kdPutc(str[i], f) == str[i]);
-        i++;
-    }
-
+    TEST_EXPR(kdFwrite(str, 1, 10, f) == 10);
     TEST_EXPR(kdFclose(f) == 0);
 
     f = kdFopen(path, "r");
@@ -50,7 +44,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     TEST_EXPR(kdFread(buf, 1, 10, f) == 10);
     TEST_EXPR(kdStrncmp(buf, str, 10) == 0);
-
     TEST_EXPR(kdFclose(f) == 0);
 
     return 0;

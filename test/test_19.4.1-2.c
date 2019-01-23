@@ -45,7 +45,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         }
         else
         {
-            kdFclose(f);
+            TEST_EXPR(kdFclose(f) == 0);
         }
     }
 
