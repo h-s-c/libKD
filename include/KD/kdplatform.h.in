@@ -228,7 +228,7 @@ typedef intptr_t KDssize;
 #define KDINT_MIN (-0x7fffffff - 1)
 #define KDINT_MAX 0x7fffffff
 #define KDUINT_MAX 0xffffffffU
-#define KDINT64_MIN (-0x8000000000000000 - 1)
+#define KDINT64_MIN (-0x7fffffffffffffff - 1)
 #define KDINT64_MAX 0x7fffffffffffffff
 #define KDUINT64_MAX 0xffffffffffffffffU
 #if defined(_WIN64) || defined(__LP64__) || defined(_LP64)

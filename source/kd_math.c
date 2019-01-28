@@ -131,31 +131,26 @@
  * int.
  */
 typedef union {
-    KDfloat32 value;
-    KDuint32 word;
-} ieee_float_shape_type;
-
-typedef union {
-    KDfloat32 f;
-    KDuint32 i;
+    KDfloat32 f32;
+    KDuint32 u32;
 } __KDFloatShape;
 
 /* Get a 32 bit int from a float.  */
-#define GET_FLOAT_WORD(i, d)        \
+#define GET_FLOAT_WORD(u, f) \
     do                              \
     {                               \
-        ieee_float_shape_type gf_u; \
-        gf_u.value = (d);           \
-        (i) = gf_u.word;            \
+        __KDFloatShape shape; \
+        shape.f32 = (f);           \
+        (u) = shape.u32;            \
     } while(0)
 
 /* Set a float from a 32 bit int.  */
-#define SET_FLOAT_WORD(d, i)        \
+#define SET_FLOAT_WORD(f, u)        \
     do                              \
     {                               \
-        ieee_float_shape_type sf_u; \
-        sf_u.word = (i);            \
-        (d) = sf_u.value;           \
+        __KDFloatShape shape; \
+        shape.u32 = (u);            \
+        (f) = shape.f32;           \
     } while(0)
 
 /*
@@ -180,6 +175,11 @@ typedef union {
         KDuint64 w;
     } xparts;
 } ieee_double_shape_type;
+
+typedef union {
+    KDfloat64KHR f64;
+    KDuint64 u64;
+} __KDFloat64Shape;
 
 /* Get two 32 bit ints from a double.  */
 #define EXTRACT_WORDS(ix0, ix1, d)   \
@@ -477,7 +477,7 @@ static KDfloat64KHR __kdTanKernel(KDfloat64KHR x, KDfloat64KHR y, KDint iy)
     KDint32 ix, hx;
 
     GET_HIGH_WORD(hx, x);
-    ix = hx & 0x7fffffff; /* high word of |x| */
+    ix = hx & KDINT32_MAX; /* high word of |x| */
     if(ix >= 0x3FE59428)
     { /* |x| >= 0.6744 */
         if(hx < 0)
@@ -533,19 +533,16 @@ static KDfloat64KHR __kdTanKernel(KDfloat64KHR x, KDfloat64KHR y, KDint iy)
 
 static KDfloat32 __kdCopysignf(KDfloat32 x, KDfloat32 y)
 {
-    __KDFloatShape ix = {x}, iy = {y};
-    ix.i = (ix.i & KDINT32_MAX) | (iy.i & 0x80000000);
-    return ix.f;
+    __KDFloatShape shape_x = {x}, shape_y = {y};
+    shape_x.u32 = (shape_x.u32 & KDINT32_MAX) | (shape_y.u32 & KDINT32_MIN);
+    return shape_x.f32;
 }
 
 static KDfloat64KHR __kdCopysign(KDfloat64KHR x, KDfloat64KHR y)
 {
-    union {
-        KDfloat64KHR f;
-        KDuint64 i;
-    } hx = {x}, hy = {y};
-    hx.i = (hx.i & KDINT32_MAX) | (hy.i & 0x80000000);
-    return hx.f;
+    __KDFloat64Shape shape_x = {x}, shape_y = {y};
+    shape_x.u64 = (shape_x.u64 & KDINT64_MAX) | (shape_y.u64 & KDINT64_MIN);
+    return shape_x.f64;
 }
 
 static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
@@ -556,50 +553,50 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
         huge = 1.0e+30f,
         tiny = 1.0e-30f;
 
-    __KDFloatShape ix = {x};
+    __KDFloatShape shape_x = {x};
     KDint32 k;
-    k = (ix.i & 0x7f800000) >> 23; /* extract exponent */
+    k = (shape_x.u32 & 0x7f800000) >> 23; /* extract exponent */
     if(k == 0)
     { /* 0 or subnormal x */
-        if((ix.i & KDINT32_MAX) == 0)
+        if((shape_x.u32 & KDINT32_MAX) == 0)
         {
-            return ix.f;
+            return shape_x.f32;
         } /* +-0 */
-        ix.f *= two25;
-        k = ((ix.i & 0x7f800000) >> 23) - 25;
+        shape_x.u32 *= two25;
+        k = ((shape_x.u32 & 0x7f800000) >> 23) - 25;
         if(n < -50000)
         {
-            return tiny * ix.f; /*underflow*/
+            return tiny * shape_x.f32; /*underflow*/
         }
     }
     if(k == 0xff)
     {
-        return ix.f + ix.f;
+        return shape_x.f32 + shape_x.f32;
     } /* NaN or Inf */
     k = k + n;
     if(k > 0xfe)
     {
-        return huge * __kdCopysignf(huge, ix.f); /* overflow  */
+        return huge * __kdCopysignf(huge, shape_x.f32); /* overflow  */
     }
     if(k > 0) /* normal result */
     {
-        ix.i = (ix.i & 0x807fffff) | ((KDuint32)k << 23);
-        return ix.f;
+        shape_x.u32 = (shape_x.u32 & 0x807fffff) | ((KDuint32)k << 23);
+        return shape_x.f32;
     }
     if(k <= -25)
     {
         if(n > 50000) /* in case integer overflow in n+k */
         {
-            return huge * __kdCopysignf(huge, ix.f); /*overflow*/
+            return huge * __kdCopysignf(huge, shape_x.f32); /*overflow*/
         }
         else
         {
-            return tiny * __kdCopysignf(tiny, ix.f); /*underflow*/
+            return tiny * __kdCopysignf(tiny, shape_x.f32); /*underflow*/
         }
     }
     k += 25; /* subnormal result */
-    ix.i = (ix.i & 0x807fffff) | ((KDuint32)k << 23);
-    return ix.f * twom25;
+    shape_x.u32 = (shape_x.u32 & 0x807fffff) | ((KDuint32)k << 23);
+    return shape_x.f32 * twom25;
 }
 
 static KDfloat64KHR __kdScalbn(KDfloat64KHR x, KDint n)
@@ -1601,20 +1598,20 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
         pio2_1t = 1.58932547735281966916e-08; /* 0x3E5110b4, 0x611A6263 */
 
 
-    __KDFloatShape hx = {x};
+    __KDFloatShape shape_x = {x};
     KDfloat64KHR tx[1], ty[1];
     KDint32 e0, n;
-    KDint32 ix = hx.i & KDINT32_MAX;
-    KDboolean sign = hx.i >> 31;
+    KDint32 ix = shape_x.u32 & KDINT32_MAX;
+    KDboolean sign = shape_x.u32 >> 31;
 
     /* 33+53 bit pi is good enough for medium size */
     if(ix < 0x4dc90fdb)
     { /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        KDfloat64KHR fn = (KDfloat64KHR)hx.f * KD_2_PI_KHR + 6.7553994410557440e+15;
+        KDfloat64KHR fn = (KDfloat64KHR)shape_x.f32 * KD_2_PI_KHR + 6.7553994410557440e+15;
         fn = fn - 6.7553994410557440e+15;
         n = __kdIrint(fn);
-        *y = (KDfloat64KHR)hx.f - fn * pio2_1 - fn * pio2_1t;
+        *y = (KDfloat64KHR)shape_x.f32 - fn * pio2_1 - fn * pio2_1t;
         return n;
     }
     /*
@@ -1622,13 +1619,13 @@ static inline KDint __kdRemPio2f(KDfloat32 x, KDfloat64KHR *y)
      */
     if(ix >= 0x7f800000)
     { /* x is inf or NaN */
-        *y = (KDfloat64KHR)(hx.f - hx.f);
+        *y = (KDfloat64KHR)(shape_x.f32 - shape_x.f32);
         return 0;
     }
 
     e0 = (ix >> 23) - 150; /* e0 = ilogb(|x|)-23; */
-    hx.i = (KDuint32)(ix - (e0 << 23));
-    tx[0] = (KDfloat64KHR)hx.f;
+    shape_x.u32 = (KDuint32)(ix - (e0 << 23));
+    tx[0] = (KDfloat64KHR)shape_x.f32;
     n = __kdRemPio2Kernel(tx, ty, e0, 1);
     if(sign)
     {
@@ -1659,7 +1656,7 @@ static KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
     KDboolean medium = KD_FALSE;
 
     GET_HIGH_WORD(hx, x); /* high word of x */
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT32_MAX;
     if(ix <= 0x400f6a7a)
     {                                 /* |x| ~<= 5pi/4 */
         if((ix & 0xfffff) == 0x921fb) /* |x| ~= pi/2 or 2pi/2 */
@@ -1841,10 +1838,10 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
         pS2 = -8.6563630030e-03f,
         qS1 = -7.0662963390e-01f;
 
-    __KDFloatShape hx = {x};
+    __KDFloatShape shape_x = {x};
     KDfloat32 z, p, q, r, w, s, c;
-    KDint32 ix = hx.i & KDINT32_MAX;
-    KDboolean sign = hx.i >> 31;
+    KDint32 ix = shape_x.u32 & KDINT32_MAX;
+    KDboolean sign = shape_x.u32 >> 31;
 
     if(ix >= 0x3f800000)
     { /* |x| >= 1 */
@@ -1859,7 +1856,7 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
                 return 0.0; /* acos(1) = 0 */
             }
         }
-        return (hx.f - hx.f) / (hx.f - hx.f); /* acos(|x|>1) is NaN */
+        return (shape_x.f32 - shape_x.f32) / (shape_x.f32 - shape_x.f32); /* acos(|x|>1) is NaN */
     }
     if(ix < 0x3f000000)
     { /* |x| < 0.5 */
@@ -1871,11 +1868,11 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
         p = z * (pS0 + z * (pS1 + z * pS2));
         q = 1.0f + z * qS1;
         r = p / q;
-        return KD_PI_2_F - (hx.f - (pio2_lo - hx.f * r));
+        return KD_PI_2_F - (shape_x.f32 - (pio2_lo - shape_x.f32 * r));
     }
     else if(sign)
     { /* x < -0.5 */
-        z = (1.0f + hx.f) * 0.5f;
+        z = (1.0f + shape_x.f32) * 0.5f;
         p = z * (pS0 + z * (pS1 + z * pS2));
         q = 1.0f + z * qS1;
         s = kdSqrtf(z);
@@ -1885,17 +1882,17 @@ KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
     }
     else
     { /* x > 0.5 */
-        z = (1.0f - hx.f) * 0.5f;
+        z = (1.0f - shape_x.f32) * 0.5f;
         s = kdSqrtf(z);
         __KDFloatShape df = {s};
-        __KDFloatShape idf = {df.f};
-        df.i = idf.i & 0xfffff000;
-        c = (z - df.f * df.f) / (s + df.f);
+        __KDFloatShape idf = {df.f32};
+        df.u32 = idf.u32 & 0xfffff000;
+        c = (z - df.f32 * df.f32) / (s + df.f32);
         p = z * (pS0 + z * (pS1 + z * pS2));
         q = 1.0f + z * qS1;
         r = p / q;
         w = r * s + c;
-        return 2.0f * (df.f + w);
+        return 2.0f * (df.f32 + w);
     }
 }
 
@@ -1910,36 +1907,36 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
         pS2 = -8.6563630030e-03f,
         qS1 = -7.0662963390e-01f;
 
-    __KDFloatShape hx = {x};
+    __KDFloatShape shape_x = {x};
     KDfloat32 t, w, p, q, s;
-    KDint32 ix = hx.i & KDINT32_MAX;
-    KDboolean sign = hx.i >> 31;
+    KDint32 ix = shape_x.u32 & KDINT32_MAX;
+    KDboolean sign = shape_x.u32 >> 31;
 
     if(ix >= 0x3f800000)
     { /* |x| >= 1 */
         if(ix == 0x3f800000)
         { /* |x| == 1 */
-            return hx.f * KD_PI_2_F;
+            return shape_x.f32 * KD_PI_2_F;
         }                                     /* asin(+-1) = +-pi/2 with inexact */
-        return (hx.f - hx.f) / (hx.f - hx.f); /* asin(|x|>1) is NaN */
+        return (shape_x.f32 - shape_x.f32) / (shape_x.f32 - shape_x.f32); /* asin(|x|>1) is NaN */
     }
     else if(ix < 0x3f000000)
     { /* |x|<0.5 */
         if(ix < 0x39800000)
         { /* |x| < 2**-12 */
-            if(huge + hx.f > 1.0f)
+            if(huge + shape_x.f32 > 1.0f)
             {
-                return hx.f;
+                return shape_x.f32;
             } /* return x with inexact if x!=0*/
         }
-        t = hx.f * hx.f;
+        t = shape_x.f32 * shape_x.f32;
         p = t * (pS0 + t * (pS1 + t * pS2));
         q = 1.0f + t * qS1;
         w = p / q;
-        return hx.f + hx.f * w;
+        return shape_x.f32 + shape_x.f32 * w;
     }
     /* 1> |x|>= 0.5 */
-    w = 1.0f - kdFabsf(hx.f);
+    w = 1.0f - kdFabsf(shape_x.f32);
     t = w * 0.5f;
     p = t * (pS0 + t * (pS1 + t * pS2));
     q = 1.0f + t * qS1;
@@ -2994,7 +2991,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
 #else
     const KDfloat32 tiny = 1.0e-30f;
     KDfloat32 z;
-    KDint32 sign = (KDint32)0x80000000;
+    KDint32 sign = (KDint32)KDINT32_MIN;
     KDint32 ix, s, q, m, i;
     KDuint32 r;
 
@@ -3095,7 +3092,7 @@ KD_API KDfloat32 KD_APIENTRY kdCeilf(KDfloat32 x)
             { /* return 0*sign(x) if |x|<1 */
                 if(i0 < 0)
                 {
-                    i0 = 0x80000000;
+                    i0 = KDINT32_MIN;
                 }
                 else if(i0 != 0)
                 {
@@ -3214,7 +3211,7 @@ KD_API KDfloat32 KD_APIENTRY kdRoundf(KDfloat32 x)
     {
         return (x + x);
     }
-    if(!(hx & 0x80000000))
+    if(!(hx & KDINT32_MIN))
     {
         t = kdFloorf(x);
         if(t - x <= -0.5f)
@@ -3259,7 +3256,7 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
 
     GET_FLOAT_WORD(hx, x);
     GET_FLOAT_WORD(hy, y);
-    sx = hx & 0x80000000; /* sign of x */
+    sx = hx & KDINT32_MIN; /* sign of x */
     hx ^= sx;             /* |x| */
     hy &= KDINT32_MAX;    /* |y| */
     /* purge off exception values */
@@ -3512,7 +3509,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
     KDfloat64KHR t = 0.0, w, p, q, s;
     KDint32 hx, ix;
     GET_HIGH_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT32_MAX;
     if(ix >= 0x3ff00000)
     { /* |x|>= 1 */
         KDuint32 lx;
@@ -3619,7 +3616,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtanKHR(KDfloat64KHR x)
     KDint32 ix, hx, id;
 
     GET_HIGH_WORD(hx, x);
-    ix = hx & 0x7fffffff;
+    ix = hx & KDINT32_MAX;
     if(ix >= 0x44100000)
     { /* if |x| >= 2^66 */
         KDint32 low;
@@ -3901,7 +3898,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
     GET_HIGH_WORD(ix, x);
 
     /* |x| ~< pi/4 */
-    ix &= 0x7fffffff;
+    ix &= KDINT32_MAX;
     if(ix <= 0x3fe921fb)
     {
         if(ix < 0x3e46a09e) /* if x < 2**-27 * sqrt(2) */
@@ -3978,7 +3975,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
     GET_HIGH_WORD(ix, x);
 
     /* |x| ~< pi/4 */
-    ix &= 0x7fffffff;
+    ix &= KDINT32_MAX;
     if(ix <= 0x3fe921fb)
     {
         if(ix < 0x3e500000) /* |x| < 2**-26 */
@@ -4054,7 +4051,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
     GET_HIGH_WORD(ix, x);
 
     /* |x| ~< pi/4 */
-    ix &= 0x7fffffff;
+    ix &= KDINT32_MAX;
     if(ix <= 0x3fe921fb)
     {
         if(ix < 0x3e400000) /* x < 2**-27 */
@@ -4077,8 +4074,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
     else
     {
         n = __kdRemPio2(x, y);
-        return __kdTanKernel(y[0], y[1], 1 - ((n & 1) << 1)); /*   1 -- n even
-                            -1 -- n odd */
+        return __kdTanKernel(y[0], y[1], 1 - ((n & 1) << 1)); /* 1 -- n even -1 -- n odd */
     }
 }
 
@@ -4170,7 +4166,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdExpKHR(KDfloat64KHR x)
 
     GET_HIGH_WORD(hx, x);
     xsb = (hx >> 31) & 1; /* sign bit of x */
-    hx &= 0x7fffffff;     /* high word of |x| */
+    hx &= KDINT32_MAX;     /* high word of |x| */
 
     /* filter out non-finite argument */
     if(hx >= 0x40862E42)
@@ -4329,7 +4325,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
     k = 0;
     if(hx < 0x00100000)
     { /* x < 2**-1022  */
-        if(((hx & 0x7fffffff) | lx) == 0)
+        if(((hx & KDINT32_MAX) | lx) == 0)
         {
             return -two54 / vzero; /* log(+-0)=-inf */
         }
@@ -4413,10 +4409,10 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
 
 KD_API KDfloat64KHR KD_APIENTRY kdFabsKHR(KDfloat64KHR x)
 {
-    KDuint32 high;
-    GET_HIGH_WORD(high, x);
-    SET_HIGH_WORD(x, high & 0x7fffffff);
-    return x;
+    __KDFloat64Shape shape;
+    shape.f64 = x;
+    shape.u64 &= KDINT64_MAX;
+    return shape.f64;
 }
 
 /* kdPowKHR
@@ -4504,8 +4500,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
 
     EXTRACT_WORDS(hx, lx, x);
     EXTRACT_WORDS(hy, ly, y);
-    ix = hx & 0x7fffffff;
-    iy = hy & 0x7fffffff;
+    ix = hx & KDINT32_MAX;
+    iy = hy & KDINT32_MAX;
 
     /* y==zero: x**0 = 1 */
     if((iy | ly) == 0)
@@ -4761,7 +4757,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
             }
         }
     }
-    else if((j & 0x7fffffff) >= 0x4090cc00)
+    else if((j & KDINT32_MAX) >= 0x4090cc00)
     {                                   /* z <= -1075 */
         if(((j - 0xc090cc00) | i) != 0) /* z < -1075 */
         {
@@ -4778,13 +4774,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     /*
      * compute 2**(p_h+p_l)
      */
-    i = j & 0x7fffffff;
+    i = j & KDINT32_MAX;
     k = (i >> 20) - 0x3ff;
     n = 0;
     if(i > 0x3fe00000)
     { /* if |z| > 0.5, set n = [z+0.5] */
         n = j + (0x00100000 >> (k + 1));
-        k = ((n & 0x7fffffff) >> 20) - 0x3ff; /* new k for n */
+        k = ((n & KDINT32_MAX) >> 20) - 0x3ff; /* new k for n */
         t = 0.0;
         SET_HIGH_WORD(t, n & ~(0x000fffff >> k));
         n = ((n & 0x000fffff) | 0x00100000) >> (20 - k);
@@ -4888,7 +4884,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
 #else
     const KDfloat64KHR tiny = 1.0e-300;
     KDfloat64KHR z;
-    KDint32 sign = (KDint)0x80000000;
+    KDint32 sign = (KDint)KDINT32_MIN;
     KDint32 ix0, s0, q, m, t, i;
     KDuint32 r, s1, ix1, q1;
 
@@ -5054,7 +5050,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCeilKHR(KDfloat64KHR x)
             { /* return 0*sign(x) if |x|<1 */
                 if(i0 < 0)
                 {
-                    i0 = 0x80000000;
+                    i0 = KDINT32_MIN;
                     i1 = 0;
                 }
                 else if((i0 | i1) != 0)
@@ -5241,7 +5237,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdRoundKHR(KDfloat64KHR x)
         return (x + x);
     }
 
-    if(!(hx & 0x80000000))
+    if(!(hx & KDINT32_MIN))
     {
         t = kdFloorKHR(x);
         if(t - x <= -0.5)
@@ -5283,7 +5279,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
 
     EXTRACT_WORDS(hx, lx, x);
     EXTRACT_WORDS(hy, ly, y);
-    sx = hx & 0x80000000; /* sign of x */
+    sx = hx & KDINT32_MIN; /* sign of x */
     hx ^= sx;             /* |x| */
     hy &= KDINT32_MAX;    /* |y| */
 
