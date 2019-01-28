@@ -25,6 +25,15 @@
 #include <KD/KHR_float64.h>
 #include "test.h"
 
+#if defined(__clang__)
+ #if defined(__has_feature) && defined(__has_attribute)
+  #if __has_feature(address_sanitizer)
+   #if __has_attribute(__no_sanitize__)
+    __attribute__((__no_sanitize__("float-divide-by-zero")))
+   #endif
+  #endif
+ #endif
+#endif
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     TEST_APPROXF(kdPowf(-2.5f, 2.0f), 6.25f);

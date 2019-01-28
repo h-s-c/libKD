@@ -1828,6 +1828,15 @@ static KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
 }
 
 /* kdAcosf: Arc cosine function. */
+#if defined(__clang__)
+ #if defined(__has_feature) && defined(__has_attribute)
+  #if __has_feature(address_sanitizer)
+   #if __has_attribute(__no_sanitize__)
+    __attribute__((__no_sanitize__("float-divide-by-zero")))
+   #endif
+  #endif
+ #endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
 {
     volatile KDfloat32
@@ -2663,6 +2672,15 @@ KD_API KDfloat32 KD_APIENTRY kdFabsf(KDfloat32 x)
 }
 
 /* kdPowf: Power function. */
+#if defined(__clang__)
+ #if defined(__has_feature) && defined(__has_attribute)
+  #if __has_feature(address_sanitizer)
+   #if __has_attribute(__no_sanitize__)
+    __attribute__((__no_sanitize__("float-divide-by-zero")))
+   #endif
+  #endif
+ #endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
 {
     static const KDfloat32
@@ -3385,6 +3403,15 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  *  if x is NaN, return x itself;
  *  if |x|>1, return NaN with invalid signal.
  */
+#if defined(__clang__)
+ #if defined(__has_feature) && defined(__has_attribute)
+  #if __has_feature(address_sanitizer)
+   #if __has_attribute(__no_sanitize__)
+    __attribute__((__no_sanitize__("float-divide-by-zero")))
+   #endif
+  #endif
+ #endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdAcosKHR(KDfloat64KHR x)
 {
     volatile KDfloat64KHR
@@ -4452,6 +4479,15 @@ KD_API KDfloat64KHR KD_APIENTRY kdFabsKHR(KDfloat64KHR x)
  *  always returns the correct integer provided it is 
  *  representable.
  */
+#if defined(__clang__)
+ #if defined(__has_feature) && defined(__has_attribute)
+  #if __has_feature(address_sanitizer)
+   #if __has_attribute(__no_sanitize__)
+    __attribute__((__no_sanitize__("float-divide-by-zero")))
+   #endif
+  #endif
+ #endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
 {
     const KDfloat64KHR
@@ -4875,6 +4911,15 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
  *  sqrt(-ve) = NaN     ... with invalid signal
  *  sqrt(NaN) = NaN     ... with invalid signal for signaling NaN
  */
+#if defined(__clang__)
+ #if defined(__has_feature) && defined(__has_attribute)
+  #if __has_feature(address_sanitizer)
+   #if __has_attribute(__no_sanitize__)
+    __attribute__((__no_sanitize__("float-divide-by-zero")))
+   #endif
+  #endif
+ #endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
 {
 #ifdef __SSE2__
