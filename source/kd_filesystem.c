@@ -99,24 +99,42 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 #if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
+#else
+    KDint access = 0;
+    mode_t create = 0;
+#endif
+
     switch(mode[0])
     {
         case 'w':
         {
+#if defined(_WIN32)
             access = GENERIC_WRITE;
             create = CREATE_ALWAYS;
+#else
+            access = O_WRONLY | O_CREAT;
+            create = S_IRUSR | S_IWUSR;
+#endif
             break;
         }
         case 'r':
         {
+#if defined(_WIN32)
             access = GENERIC_READ;
             create = OPEN_EXISTING;
+#else
+            access = O_RDONLY;
+#endif
             break;
         }
         case 'a':
         {
+#if defined(_WIN32)
             access = GENERIC_READ | GENERIC_WRITE;
             create = OPEN_ALWAYS;
+#else
+            access = O_WRONLY | O_CREAT | O_APPEND;
+#endif
             break;
         }
         default:
@@ -125,10 +143,34 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
             return KD_NULL;
         }
     }
-    if(mode[1] == '+' || mode[2] == '+')
+
+    for(KDint i = 1; mode[i] != (KDchar)'\0'; i++)
     {
-        access = GENERIC_READ | GENERIC_WRITE;
-    }
+        switch(mode[i])
+        {
+            case 'b':
+            {
+                break;
+            }
+            case '+':
+            {
+#if defined(_WIN32)
+                access = GENERIC_READ | GENERIC_WRITE;
+#else
+                access = O_RDWR | O_CREAT;
+                create = S_IRUSR | S_IWUSR;
+#endif
+                break;
+            }
+            default:
+            {
+                kdSetError(KD_EINVAL);
+                return KD_NULL;
+            }
+        }
+    }    
+
+#if defined(_WIN32)
     file->nativefile = CreateFileA(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
     if(file->nativefile != INVALID_HANDLE_VALUE)
     {
@@ -141,40 +183,6 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         KDint error = GetLastError();
 #else
-    KDint access = 0;
-    mode_t create = 0;
-    switch(mode[0])
-    {
-        case 'w':
-        {
-            access = O_WRONLY | O_CREAT;
-            create = S_IRUSR | S_IWUSR;
-            break;
-        }
-        case 'r':
-        {
-            access = O_RDONLY;
-            create = 0;
-            break;
-        }
-        case 'a':
-        {
-            access = O_WRONLY | O_CREAT | O_APPEND;
-            create = 0;
-            break;
-        }
-        default:
-        {
-            kdFree(file);
-            kdSetError(KD_EINVAL);
-            return KD_NULL;
-        }
-    }
-    if(mode[1] == '+' || mode[2] == '+')
-    {
-        access = O_RDWR | O_CREAT;
-        create = S_IRUSR | S_IWUSR;
-    }
     file->nativefile = __kdOpen(pathname, access | O_CLOEXEC, create);
     if(file->nativefile == -1)
     {

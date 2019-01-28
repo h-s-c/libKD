@@ -33,7 +33,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     KDFile *fp;
 
     fp = kdFopen(path, "w");
-    TEST_EXPR(fp != NULL);
+    TEST_EXPR(fp != KD_NULL);
     TEST_EXPR(kdFwrite(str, 1, 11, fp) == 11);
 
     kdClearerr(fp);
@@ -42,7 +42,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFclose(fp) != KD_EOF);
 
     fp = kdFopen(path, "r");
-    TEST_EXPR(fp != NULL);
+    TEST_EXPR(fp != KD_NULL);
     TEST_EXPR(kdFread(buf, 1, 11, fp) == 11);
     TEST_EXPR(kdFEOF(fp) == KD_EOF);
 
