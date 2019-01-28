@@ -32,11 +32,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     for(KDsize i = 1; i < n; i = i + 1024)
     {
         KDchar buf[512];
-        kdSnprintfKHR(buf, sizeof(buf), "%d", i);
+        kdSnprintfKHR(buf, sizeof(buf), "%u", i);
         KDuint ul = kdStrtoul(buf, KD_NULL, 10);
         TEST_EXPR(ul == i);
 
-        kdSnprintfKHR(buf, sizeof(buf), "%d", -i);
+        kdSnprintfKHR(buf, sizeof(buf), "%d", -(KDint)i);
         KDint l = kdStrtol(buf, KD_NULL, 10);
         TEST_EXPR(l == -i);
     }

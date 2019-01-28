@@ -36,14 +36,14 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROXF(kdFloorf(5.0f), 5.0f);
     TEST_APPROXF(kdFloorf(5.1f), 5.0f);
 
-    TEST_APPROXF(kdFloorKHR(-0.0), -0.0);
-    TEST_APPROXF(kdFloorKHR(-5.1), -6.0);
-    TEST_APPROXF(kdFloorKHR(-5.0), -5.0);
-    TEST_APPROXF(kdFloorKHR(-4.9), -5.0);
-    TEST_APPROXF(kdFloorKHR(0.0), 0.0);
-    TEST_APPROXF(kdFloorKHR(4.9), 4.0);
-    TEST_APPROXF(kdFloorKHR(5.0), 5.0);
-    TEST_APPROXF(kdFloorKHR(5.1), 5.0);
+    TEST_APPROX(kdFloorKHR(-0.0), -0.0);
+    TEST_APPROX(kdFloorKHR(-5.1), -6.0);
+    TEST_APPROX(kdFloorKHR(-5.0), -5.0);
+    TEST_APPROX(kdFloorKHR(-4.9), -5.0);
+    TEST_APPROX(kdFloorKHR(0.0), 0.0);
+    TEST_APPROX(kdFloorKHR(4.9), 4.0);
+    TEST_APPROX(kdFloorKHR(5.0), 5.0);
+    TEST_APPROX(kdFloorKHR(5.1), 5.0);
 
 #if !defined(_MSC_VER)
     TEST_EXPR(kdFloorf(KD_INFINITY) == KD_INFINITY);
