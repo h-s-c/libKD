@@ -99,6 +99,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 #if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
+    KDboolean append = 0;
 #else
     KDint access = 0;
     mode_t create = 0;
@@ -132,6 +133,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 #if defined(_WIN32)
             access = GENERIC_READ | GENERIC_WRITE;
             create = OPEN_ALWAYS;
+            append = 1;
 #else
             access = O_WRONLY | O_CREAT | O_APPEND;
 #endif
@@ -174,7 +176,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     file->nativefile = CreateFileA(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
     if(file->nativefile != INVALID_HANDLE_VALUE)
     {
-        if(mode[0] == 'a')
+        if(append)
         {
             SetFilePointer(file->nativefile, 0, KD_NULL, FILE_END);
         }
