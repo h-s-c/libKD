@@ -31,9 +31,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFabsf(0.0f) == 0.0f);
     TEST_EXPR(kdFabsf(5.0f) == 5.0f);
     
-    TEST_EXPR(kdFabsKHR(-5.0f) == 5.0f);
-    TEST_EXPR(kdFabsKHR(0.0f) == 0.0f);
-    TEST_EXPR(kdFabsKHR(5.0f) == 5.0f);
+    TEST_EXPR(kdFabsKHR(-5.0) == 5.0);
+    TEST_EXPR(kdFabsKHR(0.0) == 0.0);
+    TEST_EXPR(kdFabsKHR(5.0) == 5.0);
 
 #if !defined(_MSC_VER)  
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))

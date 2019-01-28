@@ -39,11 +39,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     KDchar string[KD_DTOSTR_MAXLEN_KHR];
     KDssize size = kdDtostrKHR(string, KD_DTOSTR_MAXLEN_KHR, 1.2345678910111213);
-    KDfloat32 d = kdStrtodKHR(string, KD_NULL);
+    KDfloat64KHR d = kdStrtodKHR(string, KD_NULL);
     TEST_APPROX(d, 1.2345678910111213);
     TEST_EXPR(size == 18);
     size = kdDtostrKHR(string, KD_DTOSTR_MAXLEN_KHR, -1.2345678910111213);
-    d = kdStrtof(string, KD_NULL);
+    d = kdStrtodKHR(string, KD_NULL);
     TEST_APPROX(d, -1.2345678910111213);
     TEST_EXPR(size == 19);
     return 0;
