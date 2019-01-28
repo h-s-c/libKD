@@ -562,7 +562,7 @@ static KDfloat32 __kdScalbnf(KDfloat32 x, KDint n)
         {
             return shape_x.f32;
         } /* +-0 */
-        shape_x.u32 *= two25;
+        shape_x.f32 *= two25;
         k = ((shape_x.u32 & 0x7f800000) >> 23) - 25;
         if(n < -50000)
         {
