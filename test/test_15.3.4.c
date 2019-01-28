@@ -47,9 +47,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROX(kdAtan2KHR(1.0, 0.0) , KD_PI_2_KHR);
     TEST_APPROX(kdAtan2KHR(1.0, -1.0) , 3.0 * KD_PI_4_KHR);
     TEST_APPROX(kdAtan2KHR(0.0, -1.0) , KD_PI_KHR);
-    TEST_APPROXF(kdAtan2KHR(0.0, -0.0) , KD_PI_KHR);
-    TEST_APPROXF(kdAtan2KHR(0.0, 0.0) , 0.0);
-    TEST_APPROXF(kdAtan2KHR(-0.0, -0.0) , -KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(0.0, -0.0) , KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(0.0, 0.0) , 0.0);
+    TEST_APPROX(kdAtan2KHR(-0.0, -0.0) , -KD_PI_KHR);
 
 #if !defined(_MSC_VER)
     TEST_APPROXF(kdAtan2f(1.0f, -KD_INFINITY) , KD_PI_F);
@@ -60,13 +60,13 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROXF(kdAtan2f(KD_INFINITY, -KD_INFINITY), 3.0f * KD_PI_4_F);
     TEST_APPROXF(kdAtan2f(KD_INFINITY, KD_INFINITY), KD_PI_4_F);
 
-    TEST_APPROXF(kdAtan2KHR(1.0, -KD_HUGE_VAL_KHR) , KD_PI_KHR);
-    TEST_APPROXF(kdAtan2KHR(-1.0, -KD_HUGE_VAL_KHR) , -KD_PI_KHR);
-    TEST_APPROXF(kdAtan2KHR(1.0, KD_HUGE_VAL_KHR) , 0.0);
-    TEST_APPROXF(kdAtan2KHR(-1.0, KD_HUGE_VAL_KHR) , -0.0);
-    TEST_APPROXF(kdAtan2KHR(KD_HUGE_VAL_KHR, 1.0), KD_PI_2_KHR);
-    TEST_APPROXF(kdAtan2KHR(KD_HUGE_VAL_KHR, -KD_HUGE_VAL_KHR), 3.0 * KD_PI_4_KHR);
-    TEST_APPROXF(kdAtan2KHR(KD_HUGE_VAL_KHR, KD_HUGE_VAL_KHR), KD_PI_4_KHR);
+    TEST_APPROX(kdAtan2KHR(1.0, -KD_HUGE_VAL_KHR) , KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(-1.0, -KD_HUGE_VAL_KHR) , -KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(1.0, KD_HUGE_VAL_KHR) , 0.0);
+    TEST_APPROX(kdAtan2KHR(-1.0, KD_HUGE_VAL_KHR) , -0.0);
+    TEST_APPROX(kdAtan2KHR(KD_HUGE_VAL_KHR, 1.0), KD_PI_2_KHR);
+    TEST_APPROX(kdAtan2KHR(KD_HUGE_VAL_KHR, -KD_HUGE_VAL_KHR), 3.0 * KD_PI_4_KHR);
+    TEST_APPROX(kdAtan2KHR(KD_HUGE_VAL_KHR, KD_HUGE_VAL_KHR), KD_PI_4_KHR);
 
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))

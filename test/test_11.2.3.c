@@ -38,7 +38,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
         kdSnprintfKHR(buf, sizeof(buf), "%d", -(KDint)i);
         KDint l = kdStrtol(buf, KD_NULL, 10);
-        TEST_EXPR(l == -i);
+        TEST_EXPR(l == -(KDint)i);
     }
 
     return 0;

@@ -32,17 +32,17 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROXF(kdAtanf(0.0f), 0.0f);
     TEST_APPROXF(kdAtanf(-0.0f), -0.0f);
 
-    TEST_APPROXF(kdAtanKHR(-1.0), -KD_PI_4_KHR);
-    TEST_APPROXF(kdAtanKHR(1.0), KD_PI_4_KHR);
-    TEST_APPROXF(kdAtanKHR(0.0), 0.0);
-    TEST_APPROXF(kdAtanKHR(-0.0), -0.0);
+    TEST_APPROX(kdAtanKHR(-1.0), -KD_PI_4_KHR);
+    TEST_APPROX(kdAtanKHR(1.0), KD_PI_4_KHR);
+    TEST_APPROX(kdAtanKHR(0.0), 0.0);
+    TEST_APPROX(kdAtanKHR(-0.0), -0.0);
 
 #if !defined(_MSC_VER)
     TEST_APPROXF(kdAtanf(KD_INFINITY), KD_PI_2_F);
     TEST_APPROXF(kdAtanf(-KD_INFINITY), -KD_PI_2_F);
 
-    TEST_APPROXF(kdAtanKHR(KD_HUGE_VAL_KHR), KD_PI_2_KHR);
-    TEST_APPROXF(kdAtanKHR(-KD_HUGE_VAL_KHR), -KD_PI_2_KHR);
+    TEST_APPROX(kdAtanKHR(KD_HUGE_VAL_KHR), KD_PI_2_KHR);
+    TEST_APPROX(kdAtanKHR(-KD_HUGE_VAL_KHR), -KD_PI_2_KHR);
     
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
