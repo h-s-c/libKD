@@ -64,9 +64,7 @@ project (KD C)
 
     set_target_properties(KD PROPERTIES C_STANDARD 11 C_EXTENSIONS "OFF")
     set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE "True")
-    if(APPLE OR CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
-        set_target_properties(KD PROPERTIES LINK_WHAT_YOU_USE "False")
-    else()
+    if(NOT APPLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "TinyCC" AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
         set_target_properties(KD PROPERTIES LINK_WHAT_YOU_USE "True")
     endif()
 
