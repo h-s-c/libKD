@@ -26,27 +26,28 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
-    TEST_APPROXF(kdSqrtf(0.0f) , 0.0f);
-    TEST_APPROXF(kdSqrtf(-0.0f) , -0.0f);
-    TEST_APPROXF(kdSqrtf(0.5f) , KD_SQRT1_2_F);
-    TEST_APPROXF(kdSqrtf(1.0f) , 1.0f);
-    TEST_APPROXF(kdSqrtf(2.0f) , 1.0f / KD_SQRT1_2_F);
+    TEST_APPROXF(kdSqrtf(0.0f), 0.0f);
+    TEST_APPROXF(kdSqrtf(-0.0f), -0.0f);
+    TEST_APPROXF(kdSqrtf(0.5f), KD_SQRT1_2_F);
+    TEST_APPROXF(kdSqrtf(1.0f), 1.0f);
+    TEST_APPROXF(kdSqrtf(2.0f), 1.0f / KD_SQRT1_2_F);
     TEST_APPROXF(kdSqrtf(144.0f), 12.0f);
     TEST_EXPR(kdIsNan(kdSqrtf(-1.0f)));
 
-    TEST_APPROX(kdSqrtKHR(0.0) , 0.0);
-    TEST_APPROX(kdSqrtKHR(-0.0) , -0.0);
-    TEST_APPROX(kdSqrtKHR(0.5) , KD_SQRT1_2_KHR);
-    TEST_APPROX(kdSqrtKHR(1.0) , 1.0);
-    TEST_APPROX(kdSqrtKHR(2.0) , 1.0 / KD_SQRT1_2_KHR);
+    TEST_APPROX(kdSqrtKHR(0.0), 0.0);
+    TEST_APPROX(kdSqrtKHR(-0.0), -0.0);
+    TEST_APPROX(kdSqrtKHR(0.5), KD_SQRT1_2_KHR);
+    TEST_APPROX(kdSqrtKHR(1.0), 1.0);
+    TEST_APPROX(kdSqrtKHR(2.0), 1.0 / KD_SQRT1_2_KHR);
     TEST_APPROX(kdSqrtKHR(144.0), 12.0);
     TEST_EXPR(kdIsNan(kdSqrtKHR(-1.0)));
 
@@ -55,7 +56,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdIsNan(kdSqrtf(-KD_INFINITY)));
     TEST_EXPR(kdSqrtKHR(KD_HUGE_VAL_KHR) == KD_HUGE_VAL_KHR);
     TEST_EXPR(kdIsNan(kdSqrtKHR(-KD_HUGE_VAL_KHR)));
-   
+
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdSqrtf(KD_NANF)));

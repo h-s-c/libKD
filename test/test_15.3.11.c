@@ -26,13 +26,14 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
     TEST_APPROXF(kdPowf(-2.5f, 2.0f), 6.25f);
     TEST_APPROXF(kdPowf(-2.0f, -3.0f), -0.125f);
@@ -106,6 +107,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdPowKHR(1.0, KD_NAN) == 1.0);
     TEST_EXPR(kdPowKHR(KD_NAN, 0.0) == 1.0);
     TEST_EXPR(kdPowKHR(KD_NAN, -0.0) == 1.0);
-#endif  
+#endif
     return 0;
 }

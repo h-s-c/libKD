@@ -26,21 +26,22 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
     TEST_EXPR(kdLogf(1.0f) == 0.0f);
-    TEST_APPROXF(kdLogf(KD_E_F) , 1.0f);
-    TEST_APPROXF(kdLogf(KD_E_F * KD_E_F * KD_E_F) , 3.0f);
+    TEST_APPROXF(kdLogf(KD_E_F), 1.0f);
+    TEST_APPROXF(kdLogf(KD_E_F * KD_E_F * KD_E_F), 3.0f);
 
     TEST_EXPR(kdLogKHR(1.0) == 0.0);
-    TEST_APPROX(kdLogKHR(KD_E_KHR) , 1.0);
-    TEST_APPROX(kdLogKHR(KD_E_KHR * KD_E_KHR * KD_E_KHR) , 3.0);   
+    TEST_APPROX(kdLogKHR(KD_E_KHR), 1.0);
+    TEST_APPROX(kdLogKHR(KD_E_KHR * KD_E_KHR * KD_E_KHR), 3.0);
 
 #if !defined(_MSC_VER)
     TEST_EXPR(kdIsNan(kdLogf(-1.0f)));
@@ -49,10 +50,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdLogf(-0.0f) == -KD_INFINITY);
 
     TEST_EXPR(kdIsNan(kdLogKHR(-1.0)));
-    TEST_EXPR(kdIsNan(kdLogKHR(-KD_HUGE_VAL_KHR))); 
+    TEST_EXPR(kdIsNan(kdLogKHR(-KD_HUGE_VAL_KHR)));
     TEST_EXPR(kdLogKHR(0.0f) == -KD_HUGE_VAL_KHR);
     TEST_EXPR(kdLogKHR(-0.0f) == -KD_HUGE_VAL_KHR);
-   
+
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdLogf(KD_NANF)));

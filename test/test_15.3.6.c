@@ -26,15 +26,16 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
-    TEST_APPROXF(kdSinf(-3.0f * KD_PI_4_F) , -KD_SQRT1_2_F);
+    TEST_APPROXF(kdSinf(-3.0f * KD_PI_4_F), -KD_SQRT1_2_F);
     TEST_APPROXF(kdSinf(-KD_PI_2_F), -1.0f);
     TEST_APPROXF(kdSinf(-KD_PI_4_F), -KD_SQRT1_2_F);
     TEST_APPROXF(kdSinf(0.0f), 0.0f);
@@ -43,7 +44,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROXF(kdSinf(3.0f * KD_PI_4_F), KD_SQRT1_2_F);
     TEST_APPROXF(kdSinf(KD_PI_F), 0.0f);
 
-    TEST_APPROX(kdSinKHR(-3.0 * KD_PI_4_KHR) , -KD_SQRT1_2_KHR);
+    TEST_APPROX(kdSinKHR(-3.0 * KD_PI_4_KHR), -KD_SQRT1_2_KHR);
     TEST_APPROX(kdSinKHR(-KD_PI_2_KHR), -1.0);
     TEST_APPROX(kdSinKHR(-KD_PI_4_KHR), -KD_SQRT1_2_KHR);
     TEST_APPROX(kdSinKHR(0.0), 0.0);

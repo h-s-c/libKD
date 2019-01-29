@@ -886,7 +886,7 @@ KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2)
 }
 
 /* kdStrdupVEN:  Duplicate a string. */
-KD_API KDchar* KD_APIENTRY kdStrdupVEN(const KDchar *str)
+KD_API KDchar *KD_APIENTRY kdStrdupVEN(const KDchar *str)
 {
     KDsize len = kdStrlen(str) + 1;
     KDchar *dup = (KDchar *)kdMalloc(len);

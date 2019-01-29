@@ -26,51 +26,52 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
-    TEST_APPROXF(kdAtan2f(-1.0f, -1.0f) , -3.0f * KD_PI_4_F);
-    TEST_APPROXF(kdAtan2f(-1.0f, 0.0f) , -KD_PI_2_F);
-    TEST_APPROXF(kdAtan2f(-1.0f, 1.0f) , -KD_PI_4_F);
-    TEST_APPROXF(kdAtan2f(0.0f, 1.0f) , 0.0f);
-    TEST_APPROXF(kdAtan2f(1.0f, 1.0f) , KD_PI_4_F);
-    TEST_APPROXF(kdAtan2f(1.0f, 0.0f) , KD_PI_2_F);
-    TEST_APPROXF(kdAtan2f(1.0f, -1.0f) , 3.0f * KD_PI_4_F);
-    TEST_APPROXF(kdAtan2f(0.0f, -1.0f) , KD_PI_F);
-    TEST_APPROXF(kdAtan2f(0.0f, -0.0f) , KD_PI_F);
-    TEST_APPROXF(kdAtan2f(0.0f, 0.0f) , 0.0f);
-    TEST_APPROXF(kdAtan2f(-0.0f, -0.0f) , -KD_PI_F);
+    TEST_APPROXF(kdAtan2f(-1.0f, -1.0f), -3.0f * KD_PI_4_F);
+    TEST_APPROXF(kdAtan2f(-1.0f, 0.0f), -KD_PI_2_F);
+    TEST_APPROXF(kdAtan2f(-1.0f, 1.0f), -KD_PI_4_F);
+    TEST_APPROXF(kdAtan2f(0.0f, 1.0f), 0.0f);
+    TEST_APPROXF(kdAtan2f(1.0f, 1.0f), KD_PI_4_F);
+    TEST_APPROXF(kdAtan2f(1.0f, 0.0f), KD_PI_2_F);
+    TEST_APPROXF(kdAtan2f(1.0f, -1.0f), 3.0f * KD_PI_4_F);
+    TEST_APPROXF(kdAtan2f(0.0f, -1.0f), KD_PI_F);
+    TEST_APPROXF(kdAtan2f(0.0f, -0.0f), KD_PI_F);
+    TEST_APPROXF(kdAtan2f(0.0f, 0.0f), 0.0f);
+    TEST_APPROXF(kdAtan2f(-0.0f, -0.0f), -KD_PI_F);
 
-    TEST_APPROX(kdAtan2KHR(-1.0, -1.0) , -3.0 * KD_PI_4_KHR);
-    TEST_APPROX(kdAtan2KHR(-1.0, 0.0) , -KD_PI_2_KHR);
-    TEST_APPROX(kdAtan2KHR(-1.0, 1.0) , -KD_PI_4_KHR);
-    TEST_APPROX(kdAtan2KHR(0.0, 1.0) , 0.0);
-    TEST_APPROX(kdAtan2KHR(1.0, 1.0) , KD_PI_4_KHR);
-    TEST_APPROX(kdAtan2KHR(1.0, 0.0) , KD_PI_2_KHR);
-    TEST_APPROX(kdAtan2KHR(1.0, -1.0) , 3.0 * KD_PI_4_KHR);
-    TEST_APPROX(kdAtan2KHR(0.0, -1.0) , KD_PI_KHR);
-    TEST_APPROX(kdAtan2KHR(0.0, -0.0) , KD_PI_KHR);
-    TEST_APPROX(kdAtan2KHR(0.0, 0.0) , 0.0);
-    TEST_APPROX(kdAtan2KHR(-0.0, -0.0) , -KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(-1.0, -1.0), -3.0 * KD_PI_4_KHR);
+    TEST_APPROX(kdAtan2KHR(-1.0, 0.0), -KD_PI_2_KHR);
+    TEST_APPROX(kdAtan2KHR(-1.0, 1.0), -KD_PI_4_KHR);
+    TEST_APPROX(kdAtan2KHR(0.0, 1.0), 0.0);
+    TEST_APPROX(kdAtan2KHR(1.0, 1.0), KD_PI_4_KHR);
+    TEST_APPROX(kdAtan2KHR(1.0, 0.0), KD_PI_2_KHR);
+    TEST_APPROX(kdAtan2KHR(1.0, -1.0), 3.0 * KD_PI_4_KHR);
+    TEST_APPROX(kdAtan2KHR(0.0, -1.0), KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(0.0, -0.0), KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(0.0, 0.0), 0.0);
+    TEST_APPROX(kdAtan2KHR(-0.0, -0.0), -KD_PI_KHR);
 
 #if !defined(_MSC_VER)
-    TEST_APPROXF(kdAtan2f(1.0f, -KD_INFINITY) , KD_PI_F);
-    TEST_APPROXF(kdAtan2f(-1.0f, -KD_INFINITY) , -KD_PI_F);
-    TEST_APPROXF(kdAtan2f(1.0f, KD_INFINITY) , 0.0f);
-    TEST_APPROXF(kdAtan2f(-1.0f, KD_INFINITY) , -0.0f);
+    TEST_APPROXF(kdAtan2f(1.0f, -KD_INFINITY), KD_PI_F);
+    TEST_APPROXF(kdAtan2f(-1.0f, -KD_INFINITY), -KD_PI_F);
+    TEST_APPROXF(kdAtan2f(1.0f, KD_INFINITY), 0.0f);
+    TEST_APPROXF(kdAtan2f(-1.0f, KD_INFINITY), -0.0f);
     TEST_APPROXF(kdAtan2f(KD_INFINITY, 1.0f), KD_PI_2_F);
     TEST_APPROXF(kdAtan2f(KD_INFINITY, -KD_INFINITY), 3.0f * KD_PI_4_F);
     TEST_APPROXF(kdAtan2f(KD_INFINITY, KD_INFINITY), KD_PI_4_F);
 
-    TEST_APPROX(kdAtan2KHR(1.0, -KD_HUGE_VAL_KHR) , KD_PI_KHR);
-    TEST_APPROX(kdAtan2KHR(-1.0, -KD_HUGE_VAL_KHR) , -KD_PI_KHR);
-    TEST_APPROX(kdAtan2KHR(1.0, KD_HUGE_VAL_KHR) , 0.0);
-    TEST_APPROX(kdAtan2KHR(-1.0, KD_HUGE_VAL_KHR) , -0.0);
+    TEST_APPROX(kdAtan2KHR(1.0, -KD_HUGE_VAL_KHR), KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(-1.0, -KD_HUGE_VAL_KHR), -KD_PI_KHR);
+    TEST_APPROX(kdAtan2KHR(1.0, KD_HUGE_VAL_KHR), 0.0);
+    TEST_APPROX(kdAtan2KHR(-1.0, KD_HUGE_VAL_KHR), -0.0);
     TEST_APPROX(kdAtan2KHR(KD_HUGE_VAL_KHR, 1.0), KD_PI_2_KHR);
     TEST_APPROX(kdAtan2KHR(KD_HUGE_VAL_KHR, -KD_HUGE_VAL_KHR), 3.0 * KD_PI_4_KHR);
     TEST_APPROX(kdAtan2KHR(KD_HUGE_VAL_KHR, KD_HUGE_VAL_KHR), KD_PI_4_KHR);

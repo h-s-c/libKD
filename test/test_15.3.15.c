@@ -26,13 +26,14 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
     TEST_EXPR(kdRoundf(-0.0f) == -0.0f);
     TEST_EXPR(kdRoundf(-5.5f) == -6.0f);
@@ -57,7 +58,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdRoundf(-KD_INFINITY) == -KD_INFINITY);
     TEST_EXPR(kdRoundKHR(KD_HUGE_VAL_KHR) == KD_HUGE_VAL_KHR);
     TEST_EXPR(kdRoundKHR(-KD_HUGE_VAL_KHR) == -KD_HUGE_VAL_KHR);
-   
+
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdRoundf(KD_NANF)));

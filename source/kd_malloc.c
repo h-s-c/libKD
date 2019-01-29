@@ -3910,11 +3910,11 @@ __attribute__((__malloc__))
 KD_API void *KD_APIENTRY
 kdCallocVEN(KDsize num, KDsize size)
 {
-  KDsize len = num * size;
-  void *ptr = kdMalloc(len);
-  if(!ptr) 
-  {
-    return KD_NULL;
-  }
-  return kdMemset(ptr, 0, len);
+    KDsize len = num * size;
+    void *ptr = kdMalloc(len);
+    if(!ptr)
+    {
+        return KD_NULL;
+    }
+    return kdMemset(ptr, 0, len);
 }

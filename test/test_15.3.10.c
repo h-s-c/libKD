@@ -26,23 +26,24 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
     TEST_EXPR(kdFabsf(-5.0f) == 5.0f);
     TEST_EXPR(kdFabsf(0.0f) == 0.0f);
     TEST_EXPR(kdFabsf(5.0f) == 5.0f);
-    
+
     TEST_EXPR(kdFabsKHR(-5.0) == 5.0);
     TEST_EXPR(kdFabsKHR(0.0) == 0.0);
     TEST_EXPR(kdFabsKHR(5.0) == 5.0);
 
-#if !defined(_MSC_VER)  
+#if !defined(_MSC_VER)
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdFabsf(KD_NANF)));

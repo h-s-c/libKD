@@ -29,7 +29,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     static const KDchar abcde[] = "abcde";
     static const KDchar abcdx[] = "abcdx";
     TEST_EXPR(kdMemcmp(abcde, abcdx, 5) != 0);
-    TEST_EXPR(kdMemcmp(abcde, abcdx, 4) == 0 );
+    TEST_EXPR(kdMemcmp(abcde, abcdx, 4) == 0);
 
     return 0;
 }

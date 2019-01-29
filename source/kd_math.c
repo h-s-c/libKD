@@ -136,21 +136,21 @@ typedef union {
 } __KDFloatShape;
 
 /* Get a 32 bit int from a float.  */
-#define GET_FLOAT_WORD(u, f) \
-    do                              \
-    {                               \
+#define GET_FLOAT_WORD(u, f)  \
+    do                        \
+    {                         \
         __KDFloatShape shape; \
-        shape.f32 = (f);           \
-        (u) = shape.u32;            \
+        shape.f32 = (f);      \
+        (u) = shape.u32;      \
     } while(0)
 
 /* Set a float from a 32 bit int.  */
-#define SET_FLOAT_WORD(f, u)        \
-    do                              \
-    {                               \
+#define SET_FLOAT_WORD(f, u)  \
+    do                        \
+    {                         \
         __KDFloatShape shape; \
-        shape.u32 = (u);            \
-        (f) = shape.f32;           \
+        shape.u32 = (u);      \
+        (f) = shape.f32;      \
     } while(0)
 
 /*
@@ -1829,13 +1829,14 @@ static KDint __kdRemPio2(KDfloat64KHR x, KDfloat64KHR *y)
 
 /* kdAcosf: Arc cosine function. */
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KD_API KDfloat32 KD_APIENTRY kdAcosf(KDfloat32 x)
+#endif
+#endif
+KD_API KDfloat32 KD_APIENTRY
+kdAcosf(KDfloat32 x)
 {
     volatile KDfloat32
         pio2_lo = 7.5497894159e-08f; /* 0x33a22168 */
@@ -1924,7 +1925,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
         if(ix == 0x3f800000)
         { /* |x| == 1 */
             return shape_x.f32 * KD_PI_2_F;
-        }                                     /* asin(+-1) = +-pi/2 with inexact */
+        }                                                                 /* asin(+-1) = +-pi/2 with inexact */
         return (shape_x.f32 - shape_x.f32) / (shape_x.f32 - shape_x.f32); /* asin(|x|>1) is NaN */
     }
     else if(ix < 0x3f000000)
@@ -2671,13 +2672,14 @@ KD_API KDfloat32 KD_APIENTRY kdFabsf(KDfloat32 x)
 
 /* kdPowf: Power function. */
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KD_API KDfloat32 KD_APIENTRY kdPowf(KDfloat32 x, KDfloat32 y)
+#endif
+#endif
+KD_API KDfloat32 KD_APIENTRY
+kdPowf(KDfloat32 x, KDfloat32 y)
 {
     static const KDfloat32
         bp[] = {
@@ -3271,8 +3273,8 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
     GET_FLOAT_WORD(hx, x);
     GET_FLOAT_WORD(hy, y);
     sx = hx & KDINT32_MIN; /* sign of x */
-    hx ^= sx;             /* |x| */
-    hy &= KDINT32_MAX;    /* |y| */
+    hx ^= sx;              /* |x| */
+    hy &= KDINT32_MAX;     /* |y| */
     /* purge off exception values */
     /* y=0,or x not finite */
     if(hy == 0 || (hx >= 0x7f800000) || (hy > 0x7f800000))
@@ -3400,13 +3402,14 @@ KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
  *  if |x|>1, return NaN with invalid signal.
  */
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-   #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdAcosKHR(KDfloat64KHR x)
+#endif
+#endif
+KD_API KDfloat64KHR KD_APIENTRY
+kdAcosKHR(KDfloat64KHR x)
 {
     volatile KDfloat64KHR
         pio2_lo = 6.12323399573676603587e-17; /* 0x3C91A626, 0x33145C07 */
@@ -3778,7 +3781,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
             }
             default:
             {
-
             }
         }
     }
@@ -3813,7 +3815,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
                 }
                 default:
                 {
-
                 }
             }
         }
@@ -3839,7 +3840,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
                 }
                 default:
                 {
-
                 }
             }
         }
@@ -4187,7 +4187,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdExpKHR(KDfloat64KHR x)
 
     GET_HIGH_WORD(hx, x);
     xsb = (hx >> 31) & 1; /* sign bit of x */
-    hx &= KDINT32_MAX;     /* high word of |x| */
+    hx &= KDINT32_MAX;    /* high word of |x| */
 
     /* filter out non-finite argument */
     if(hx >= 0x40862E42)
@@ -4474,13 +4474,14 @@ KD_API KDfloat64KHR KD_APIENTRY kdFabsKHR(KDfloat64KHR x)
  *  representable.
  */
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
+#endif
+#endif
+KD_API KDfloat64KHR KD_APIENTRY
+kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
 {
     const KDfloat64KHR
         bp[] = {
@@ -4904,13 +4905,14 @@ KD_API KDfloat64KHR KD_APIENTRY kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
  *  sqrt(NaN) = NaN     ... with invalid signal for signaling NaN
  */
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdSqrtKHR(KDfloat64KHR x)
+#endif
+#endif
+KD_API KDfloat64KHR KD_APIENTRY
+kdSqrtKHR(KDfloat64KHR x)
 {
 #ifdef __SSE2__
     KDfloat64KHR result = 0.0;
@@ -5315,8 +5317,8 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
     EXTRACT_WORDS(hx, lx, x);
     EXTRACT_WORDS(hy, ly, y);
     sx = hx & KDINT32_MIN; /* sign of x */
-    hx ^= sx;             /* |x| */
-    hy &= KDINT32_MAX;    /* |y| */
+    hx ^= sx;              /* |x| */
+    hy &= KDINT32_MAX;     /* |y| */
 
     /* purge off exception values */
     if((hy | ly) == 0 || (hx >= 0x7ff00000) ||           /* y=0,or x not finite */

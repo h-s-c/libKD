@@ -170,7 +170,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
                 return KD_NULL;
             }
         }
-    }    
+    }
 
 #if defined(_WIN32)
     file->nativefile = CreateFileA(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);

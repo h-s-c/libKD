@@ -26,18 +26,19 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
-    TEST_APPROXF(kdInvsqrtf(144.0f) , 1.0f / kdSqrtf(144.0f));
+    TEST_APPROXF(kdInvsqrtf(144.0f), 1.0f / kdSqrtf(144.0f));
     TEST_EXPR(kdIsNan(kdInvsqrtf(-144.0f)));
 
-    TEST_APPROX(kdInvsqrtKHR(144.0) , 1.0 / kdSqrtf(144.0));
+    TEST_APPROX(kdInvsqrtKHR(144.0), 1.0 / kdSqrtf(144.0));
     TEST_EXPR(kdIsNan(kdInvsqrtKHR(-144.0f)));
 
 #if !defined(_MSC_VER)

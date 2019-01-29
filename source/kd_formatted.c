@@ -35,10 +35,10 @@
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
 #endif
-#include "kdplatform.h"         // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
-#include <KD/kd.h>              // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
-#include "KD/KHR_formatted.h"   // for kdFprintfKHR, kdFscanfKHR, kdLogMessag...
-#include <KD/kdext.h>           // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
+#include "kdplatform.h"        // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
+#include <KD/kd.h>             // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
+#include "KD/KHR_formatted.h"  // for kdFprintfKHR, kdFscanfKHR, kdLogMessag...
+#include <KD/kdext.h>          // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

@@ -29,7 +29,7 @@
 KDAtomicIntVEN *test_count = KD_NULL;
 void *test_func(void *arg)
 {
-    KDint i = kdAtomicIntFetchAddVEN(test_count, 1);;
+    KDint i = kdAtomicIntFetchAddVEN(test_count, 1);
     kdSetTLS(&i);
     for(;;)
     {

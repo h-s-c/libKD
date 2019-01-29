@@ -51,11 +51,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     i = 0;
     while(str[i] != 'x')
     {
-        TEST_EXPR(kdGetc(f)  == str[i]);
+        TEST_EXPR(kdGetc(f) == str[i]);
         i++;
     }
 
-    TEST_EXPR(kdFseek(f, 0 , KD_SEEK_SET) == 0);
+    TEST_EXPR(kdFseek(f, 0, KD_SEEK_SET) == 0);
     TEST_EXPR(kdFgets(buf, 11, f) != KD_NULL);
     TEST_EXPR(kdStrncmp(buf, str, 10) == 0);
     TEST_EXPR(kdFclose(f) == 0);

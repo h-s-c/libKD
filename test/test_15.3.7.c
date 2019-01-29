@@ -26,13 +26,14 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
     TEST_APPROXF(kdTanf(-3.0f * KD_PI_4_F), 1.0f);
     TEST_APPROXF(kdTanf(-KD_PI_4_F), -1.0f);
@@ -51,7 +52,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 #if !defined(_MSC_VER)
     TEST_EXPR(kdIsNan(kdTanf(KD_INFINITY)));
     TEST_EXPR(kdIsNan(kdTanKHR(KD_HUGE_VAL_KHR)));
-    
+
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdTanf(KD_NANF)));

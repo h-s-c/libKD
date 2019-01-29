@@ -26,36 +26,37 @@
 #include "test.h"
 
 #if defined(__clang__)
- #if defined(__has_attribute)
-   #if __has_attribute(__no_sanitize__)
-    __attribute__((__no_sanitize__("float-divide-by-zero")))
-  #endif
- #endif
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
-    TEST_APPROXF(kdCosf(-3.0f * KD_PI_4_F) , -KD_SQRT1_2_F);
-    TEST_APPROXF(kdCosf(-KD_PI_2_F) , 0.0f);
-    TEST_APPROXF(kdCosf(-KD_PI_4_F) , KD_SQRT1_2_F);
-    TEST_APPROXF(kdCosf(0.0f) , 1.0f);
-    TEST_APPROXF(kdCosf(KD_PI_4_F) , KD_SQRT1_2_F);
-    TEST_APPROXF(kdCosf(KD_PI_2_F) , 0.0f);
-    TEST_APPROXF(kdCosf(3.0f * KD_PI_4_F) , -KD_SQRT1_2_F);
-    TEST_APPROXF(kdCosf(KD_PI_F) , -1.0f);
+    TEST_APPROXF(kdCosf(-3.0f * KD_PI_4_F), -KD_SQRT1_2_F);
+    TEST_APPROXF(kdCosf(-KD_PI_2_F), 0.0f);
+    TEST_APPROXF(kdCosf(-KD_PI_4_F), KD_SQRT1_2_F);
+    TEST_APPROXF(kdCosf(0.0f), 1.0f);
+    TEST_APPROXF(kdCosf(KD_PI_4_F), KD_SQRT1_2_F);
+    TEST_APPROXF(kdCosf(KD_PI_2_F), 0.0f);
+    TEST_APPROXF(kdCosf(3.0f * KD_PI_4_F), -KD_SQRT1_2_F);
+    TEST_APPROXF(kdCosf(KD_PI_F), -1.0f);
 
-    TEST_APPROX(kdCosKHR(-3.0 * KD_PI_4_KHR) , -KD_SQRT1_2_KHR);
-    TEST_APPROX(kdCosKHR(-KD_PI_2_KHR) , 0.0);
-    TEST_APPROX(kdCosKHR(-KD_PI_4_KHR) , KD_SQRT1_2_KHR);
-    TEST_APPROX(kdCosKHR(0.0) , 1.0);
-    TEST_APPROX(kdCosKHR(KD_PI_4_KHR) , KD_SQRT1_2_KHR);
-    TEST_APPROX(kdCosKHR(KD_PI_2_KHR) , 0.0);
-    TEST_APPROX(kdCosKHR(3.0 * KD_PI_4_KHR) , -KD_SQRT1_2_KHR);
-    TEST_APPROX(kdCosKHR(KD_PI_KHR) , -1.0);
+    TEST_APPROX(kdCosKHR(-3.0 * KD_PI_4_KHR), -KD_SQRT1_2_KHR);
+    TEST_APPROX(kdCosKHR(-KD_PI_2_KHR), 0.0);
+    TEST_APPROX(kdCosKHR(-KD_PI_4_KHR), KD_SQRT1_2_KHR);
+    TEST_APPROX(kdCosKHR(0.0), 1.0);
+    TEST_APPROX(kdCosKHR(KD_PI_4_KHR), KD_SQRT1_2_KHR);
+    TEST_APPROX(kdCosKHR(KD_PI_2_KHR), 0.0);
+    TEST_APPROX(kdCosKHR(3.0 * KD_PI_4_KHR), -KD_SQRT1_2_KHR);
+    TEST_APPROX(kdCosKHR(KD_PI_KHR), -1.0);
 
 #if !defined(_MSC_VER)
-    TEST_EXPR(kdIsNan(kdCosf(KD_INFINITY)));  
-    TEST_EXPR(kdIsNan(kdCosKHR(KD_HUGE_VAL_KHR)));  
-    
+    TEST_EXPR(kdIsNan(kdCosf(KD_INFINITY)));
+    TEST_EXPR(kdIsNan(kdCosKHR(KD_HUGE_VAL_KHR)));
+
 #define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
 #define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdCosf(KD_NANF)));
