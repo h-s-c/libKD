@@ -1905,6 +1905,13 @@ kdAcosf(KDfloat32 x)
 }
 
 /* kdAsinf: Arc sine function. */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
 {
     const KDfloat32
@@ -2558,6 +2565,13 @@ KD_API KDfloat32 KD_APIENTRY kdExpf(KDfloat32 x)
 }
 
 /* kdLogf: Natural logarithm function. */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
 {
     const KDfloat32
@@ -3512,6 +3526,13 @@ kdAcosKHR(KDfloat64KHR x)
  *  if x is NaN, return x itself;
  *  if |x|>1, return NaN with invalid signal.
  */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
 {
     const KDfloat64KHR
@@ -4320,7 +4341,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdExpKHR(KDfloat64KHR x)
  *  according to an error analysis, the error is always less than
  *  1 ulp (unit in the last place).
  */
-
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
 {
     const KDfloat64KHR
