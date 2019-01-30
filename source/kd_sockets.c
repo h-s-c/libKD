@@ -512,7 +512,7 @@ KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
     if(u.c)
     {
         KDuint8 *s = (KDuint8 *)&hostlong;
-        return (KDuint32)(s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
+        return ((KDuint32)s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
     }
     else
     {

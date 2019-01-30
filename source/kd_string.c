@@ -663,7 +663,7 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         kdMemcpy(&y, &s[16], sizeof(__m128i));
         __m128i a = _mm_cmpeq_epi8(x, c16);
         __m128i b = _mm_cmpeq_epi8(y, c16);
-        mask = (KDuint32)((_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a));
+        mask = (((KDuint32)_mm_movemask_epi8(b) << 16) | _mm_movemask_epi8(a));
 #elif defined(__ARM_NEON__)
         uint8x16_t x;
         uint8x16_t y;

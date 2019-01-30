@@ -3765,6 +3765,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtanKHR(KDfloat64KHR x)
  *  ATAN2(+-INF,-INF ) is +-3pi/4;
  *  ATAN2(+-INF, (anything but,0,NaN, and INF)) is +-pi/2;
  */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("signed-integer-overflow")))
+#endif
+#endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
 {
     volatile KDfloat64KHR
@@ -4864,7 +4871,7 @@ kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     r = (z * t1) / (t1 - 2.0) - (w + z * w);
     z = 1.0 - (r - z);
     GET_HIGH_WORD(j, z);
-    j += (n << 20);
+    j += ((KDuint32)n << 20);
     if((j >> 20) <= 0)
     {
         z = __kdScalbn(z, n); /* subnormal output */
