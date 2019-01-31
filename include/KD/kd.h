@@ -134,9 +134,16 @@ KD_API KDThread *KD_APIENTRY kdThreadSelf(void);
 /* kdThreadOnce: Wrap initialization code so it is executed only once. */
 #ifndef KD_NO_STATIC_DATA
 typedef struct KDThreadOnce {
+    #if defined(__APPLE__)
+    long magic;
+    #endif
     void *impl;
 } KDThreadOnce;
+#if defined(__APPLE__)
+#define KD_THREAD_ONCE_INIT { 0x30B1BCBA, 0 }
+#else
 #define KD_THREAD_ONCE_INIT { 0 }
+#endif
 KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_routine)(void));
 #endif /* ndef KD_NO_STATIC_DATA */
 
