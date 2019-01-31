@@ -565,7 +565,7 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
 #elif defined(KD_THREAD_WIN32)
     InitializeSRWLock((SRWLOCK *)&mutex->nativemutex);
 #else
-    mutex->nativemutex = (void *)KD_FALSE;
+    mutex->nativemutex = KD_FALSE;
 #endif
     /* cppcheck-suppress knownConditionTrueFalse */
     if(error != 0)
