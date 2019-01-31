@@ -45,7 +45,20 @@
 #pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+/******************************************************************************
+ * Platform includes
+ ******************************************************************************/
+
+#if defined(KD_THREAD_C11)
+#include <threads.h>
+#elif defined(KD_THREAD_POSIX)
+#include <pthread.h>
+#elif defined(KD_THREAD_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
 
 /******************************************************************************
  * Memory allocation
@@ -792,6 +805,25 @@ static int win32munmap(void *ptr, KDsize size)
   The global lock_ensures that mparams.magic and other unique
   mparams values are initialized only once.
 */
+
+typedef struct _KDMutexAttr _KDMutexAttr;
+struct _KDMutexAttr {
+    /* This is useful for our kdMalloc implementation. */
+    KDThreadMutex *staticmutex;
+};
+struct KDThreadMutex {
+#if defined(KD_THREAD_C11)
+    mtx_t nativemutex;
+#elif defined(KD_THREAD_POSIX)
+    pthread_mutex_t nativemutex;
+#elif defined(KD_THREAD_WIN32)
+    SRWLOCK nativemutex;
+#else
+    KDboolean nativemutex;
+#endif
+    const _KDMutexAttr *mutexattr;
+};
+
 
 static KDThreadMutex *malloc_global_mutex;
 static KDThreadOnce malloc_global_mutex_status = KD_THREAD_ONCE_INIT;
