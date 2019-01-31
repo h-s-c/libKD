@@ -3229,11 +3229,6 @@ KD_API KDfloat32 KD_APIENTRY kdFloorf(KDfloat32 x)
 /* kdRoundf: Round value to nearest integer. */
 KD_API KDfloat32 KD_APIENTRY kdRoundf(KDfloat32 x)
 {
-#ifdef __SSE4_1__
-    KDfloat32 result = 0.0f;
-    _mm_store_ss(&result, _mm_round_ss(_mm_load_ss(&result), _mm_load_ss(&x), _MM_FROUND_TO_NEAREST_INT));
-    return result;
-#else
     KDfloat32 t;
     KDuint32 hx;
     GET_FLOAT_WORD(hx, x);
@@ -3259,7 +3254,6 @@ KD_API KDfloat32 KD_APIENTRY kdRoundf(KDfloat32 x)
         }
         return (-t);
     }
-#endif
 }
 
 /* kdInvsqrtf: Inverse square root function. */
@@ -5301,11 +5295,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdFloorKHR(KDfloat64KHR x)
 
 KD_API KDfloat64KHR KD_APIENTRY kdRoundKHR(KDfloat64KHR x)
 {
-#ifdef __SSE4_1__
-    KDfloat64KHR result = 0.0;
-    _mm_store_sd(&result, _mm_round_sd(_mm_load_sd(&result), _mm_load_sd(&x), _MM_FROUND_TO_NEAREST_INT));
-    return result;
-#else
     KDfloat64KHR t;
     KDuint32 hx;
 
@@ -5333,7 +5322,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdRoundKHR(KDfloat64KHR x)
         }
         return (-t);
     }
-#endif
 }
 
 KD_API KDfloat64KHR KD_APIENTRY kdInvsqrtKHR(KDfloat64KHR x)

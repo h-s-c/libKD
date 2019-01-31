@@ -366,7 +366,7 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
     {
         return 0;
     }
-#if defined(__SSE4_2__)
+#if 0
     __m128i _ptr1;
     __m128i _ptr2;
     __m128i *ptr1 = &_ptr1;
@@ -475,7 +475,7 @@ KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 /* kdStrchr: Scan string for a byte value. */
 KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
 {
-#if defined(__SSE4_2__)
+#if 0
     kdAssert(ch >= 0);
     kdAssert(ch < 256);
 
