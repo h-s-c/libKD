@@ -131,7 +131,9 @@ static void *__kdNameLookupHandler(void *arg)
     event->data.namelookup = lookupevent;
     kdPostThreadEvent(event, payload->destination);
 
-    return 0;
+    /* Some combinations of valgrind with clang and glibc detect a leak otherwise */
+    kdThreadExit(KD_NULL);
+    return KD_NULL;
 }
 KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *eventuserptr)
 {
