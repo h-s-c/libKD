@@ -14,6 +14,35 @@
 }
 
 {
+   macos_libc_setlocale_1
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:loadlocale
+   fun:setlocale
+   ...
+}
+{
+   macos_libc_setlocale_2
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:realloc
+   ...
+   fun:loadlocale
+   fun:setlocale
+   ...
+}
+{
+   macos_libc_setlocale_3
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:currentlocale
+   ...
+}
+{
    macos_objc_malloc_1
    Memcheck:Leak
    match-leak-kinds: reachable
