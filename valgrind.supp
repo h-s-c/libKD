@@ -43,6 +43,16 @@
    ...
 }
 {
+   macos_libc_setlocale_4
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   ...
+   fun:loadlocale
+   fun:setlocale
+   ...
+}
+{
    macos_objc_malloc_1
    Memcheck:Leak
    match-leak-kinds: reachable
@@ -63,8 +73,8 @@
 {
    macos_objc_malloc_3
    Memcheck:Leak
-   match-leak-kinds: definite
-   fun:calloc
+   match-leak-kinds: indirect
+   fun:malloc
    ...
    fun:_dyld_objc_notify_register
 }
@@ -75,10 +85,18 @@
    fun:calloc
    ...
    fun:_dyld_objc_notify_register
-   fun:_objc_init
 }
 {
    macos_objc_calloc_2
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   ...
+   fun:_dyld_objc_notify_register
+   fun:_objc_init
+}
+{
+   macos_objc_calloc_3
    Memcheck:Leak
    match-leak-kinds: definite
    fun:calloc
@@ -87,7 +105,7 @@
    fun:_os_object_init
 }
 {
-   macos_objc_calloc_3
+   macos_objc_calloc_4
    Memcheck:Leak
    match-leak-kinds: definite
    fun:calloc
