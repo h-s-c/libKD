@@ -69,8 +69,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test("0.0       ", "%-10.1f", 0.);
     test("0.000001", "%f", 9.09834e-07);
 
+#if !defined(__EMSCRIPTEN__)
     const KDfloat64KHR pow_2_85 = 38685626227668133590597632.0;
     test("38685626227668133600000000.0", "%.1f", pow_2_85);
+#endif
     test("0.000000499999999999999978", "%.24f", 5e-7);
     test("0.000000000000000020000000", "%.24f", 2e-17);
     test("0.0000000100 100000000", "%.10f %.0f", 1e-8, 1e+8);
@@ -105,7 +107,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test("-0x1.AB0P-5", "%.3A", -0x1.abp-5);
 
     /* %p */
+#if !defined(__MINGW32__)
     test("0000000000000000", "%p", KD_NULL);
+#endif
 
     /* ' modifier. Non-standard, but supported by glibc. */
     test("1,200,000", "%'d", 1200000);
