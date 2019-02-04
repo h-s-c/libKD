@@ -253,8 +253,8 @@ KD_UNUSED static float __kd_onef = 1.0f;
 KD_UNUSED static float __kd_zerof = 0.0f;
 #define KD_INFINITY (__kd_onef/__kd_zerof)
 #define KD_NANF (__kd_zerof/__kd_zerof)
-KD_UNUSED static KDfloat64KHR __kd_one = 1.0;
-KD_UNUSED static KDfloat64KHR __kd_zero = 0.0;
+KD_UNUSED static double __kd_one = 1.0;
+KD_UNUSED static double __kd_zero = 0.0;
 #define KD_HUGE_VAL_KHR (__kd_one/__kd_zero)
 #define KD_NAN (__kd_zero/__kd_zero)
 #endif
