@@ -2223,6 +2223,13 @@ KD_API KDfloat32 KD_APIENTRY kdAtan2f(KDfloat32 y, KDfloat32 x)
 }
 
 /* kdCosf: Cosine function. */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
 {
     KDfloat64KHR y;
@@ -2308,6 +2315,13 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
 }
 
 /* kdSinf: Sine function. */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
 {
     KDfloat64KHR y;
@@ -2393,6 +2407,13 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
 }
 
 /* kdTanf: Tangent function. */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
 {
     KDfloat64KHR y;
@@ -3943,7 +3964,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
  * Accuracy:
  *  TRIG(x) returns trig(x) nearly rounded
  */
-
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
 {
     KDfloat64KHR y[2];
@@ -4021,6 +4048,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
  * Accuracy:
  *  TRIG(x) returns trig(x) nearly rounded
  */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
 {
     KDfloat64KHR y[2];
@@ -4097,6 +4131,13 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
  * Accuracy:
  *  TRIG(x) returns trig(x) nearly rounded
  */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
 {
     KDfloat64KHR y[2];
