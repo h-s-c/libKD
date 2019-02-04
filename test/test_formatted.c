@@ -100,11 +100,11 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     /* hex floats */
 #if !defined(_MSC_VER) || _MSC_VER >= 1912
     test("0x1.fedcbap+98", "%a", 0x1.fedcbap+98);
+    test("0x1.0p-1022", "%.1a", 0x1.ffp-1023);
+    test("-0x1.AB0P-5", "%.3A", -0x1.abp-5);
 #endif
     test("0x1.999999999999a0p-4", "%.14a", 0.1);
-    test("0x1.0p-1022", "%.1a", 0x1.ffp-1023);
     test("0x1.009117p-1022", "%a", 2.23e-308);
-    test("-0x1.AB0P-5", "%.3A", -0x1.abp-5);
 
     /* %p */
 #if !defined(__MINGW32__)
