@@ -242,11 +242,22 @@ typedef intptr_t KDssize;
 #define KDSIZE_MAX KDUINT_MAX
 #define KDUINTPTR_MAX KDUINT_MAX
 #endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#define KD_INFINITY (__builtin_inff())
+#define KD_NANF (__builtin_nanf(""))
+#define KD_HUGE_VAL_KHR (__builtin_huge_val())
+#define KD_NAN (__builtin_nan(""))
+#else
 KD_UNUSED static float __kd_onef = 1.0f;
 KD_UNUSED static float __kd_zerof = 0.0f;
 #define KD_INFINITY (__kd_onef/__kd_zerof)
 #define KD_NANF (__kd_zerof/__kd_zerof)
-
+KD_UNUSED static KDfloat64KHR __kd_one = 1.0;
+KD_UNUSED static KDfloat64KHR __kd_zero = 0.0;
+#define KD_HUGE_VAL_KHR (__kd_one/__kd_zero)
+#define KD_NAN (__kd_zero/__kd_zero)
+#endif
 
 /******************************************************************************
  * Extensions

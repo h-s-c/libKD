@@ -30,10 +30,6 @@ typedef double KDfloat64KHR;
 #define KD_DBL_EPSILON_KHR 2.2204460492503131e-16
 #define KD_DBL_MAX_KHR 1.7976931348623157e+308
 #define KD_DBL_MIN_KHR 2.2250738585072014e-308
-KD_UNUSED static KDfloat64KHR __kd_one = 1.0;
-KD_UNUSED static KDfloat64KHR __kd_zero = 0.0;
-#define KD_HUGE_VAL_KHR (__kd_one/__kd_zero)
-#define KD_NAN (__kd_zero/__kd_zero)
 #define KD_DEG_TO_RAD_KHR 0.01745329251994329577
 #define KD_RAD_TO_DEG_KHR 57.29577951308232088
 KD_API KDfloat64KHR KD_APIENTRY kdAcosKHR(KDfloat64KHR x);
