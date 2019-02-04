@@ -1864,7 +1864,7 @@ kdAcosf(KDfloat32 x)
                 return 0.0; /* acos(1) = 0 */
             }
         }
-        return (shape_x.f32 - shape_x.f32) / (shape_x.f32 - shape_x.f32); /* acos(|x|>1) is NaN */
+        return KD_NANF; /* acos(|x|>1) is NaN */
     }
     if(ix < 0x3f000000)
     { /* |x| < 0.5 */
@@ -1933,7 +1933,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
         { /* |x| == 1 */
             return shape_x.f32 * KD_PI_2_F;
         }                                                                 /* asin(+-1) = +-pi/2 with inexact */
-        return (shape_x.f32 - shape_x.f32) / (shape_x.f32 - shape_x.f32); /* asin(|x|>1) is NaN */
+        return KD_NANF; /* asin(|x|>1) is NaN */
     }
     else if(ix < 0x3f000000)
     { /* |x|<0.5 */
@@ -2279,7 +2279,7 @@ KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
     /* cos(Inf or NaN) is NaN */
     else if(ix >= 0x7f800000)
     {
-        return x - x;  //-V501
+        return KD_NANF;
         /* general argument reduction needed */
     }
     else
@@ -2364,7 +2364,7 @@ KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
     /* sin(Inf or NaN) is NaN */
     else if(ix >= 0x7f800000)
     {
-        return x - x;  //-V501
+        return KD_NANF;
         /* general argument reduction needed */
     }
     else
@@ -2435,7 +2435,7 @@ KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
     /* tan(Inf or NaN) is NaN */
     else if(ix >= 0x7f800000)
     {
-        return x - x;  //-V501
+        return KD_NANF;
         /* general argument reduction needed */
     }
     else
@@ -2584,8 +2584,6 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
         Lg3 = 2.8498786687850952e-01f, /* 0x91e9ee.0p-25f */
         Lg4 = 2.4279078841209412e-01f; /* 0xf89e26.0p-26f */
 
-    volatile KDfloat32 vzero = 0.0;
-
     KDfloat32 f, s, z, R, w, t1, t2, dk;
     KDint32 k, ix, i, j;
 
@@ -2595,11 +2593,11 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
     { /* x < 2**-126  */
         if((ix & 0x7f800000) == 0)
         { /* log(+-0)=-inf */
-            return -two25 / vzero;
+            return -KD_INFINITY;
         }
         if(ix < 0)
-        {                              /* log(-#) = NaN */
-            return (x - x) / (x - x);  //-V501
+        { /* log(-#) = NaN */
+            return KD_NANF; 
         }
         k -= 25;
         x *= two25; /* subnormal number, scale up x */
@@ -2829,7 +2827,7 @@ kdPowf(KDfloat32 x, KDfloat32 y)
         {
             if(((ix - 0x3f800000) | yisint) == 0)
             {
-                z = (z - z) / (z - z); /* (-1)**non-int is NaN */
+                z = KD_NANF; /* (-1)**non-int is NaN */
             }
             else if(yisint == 1)
             {
@@ -2842,7 +2840,7 @@ kdPowf(KDfloat32 x, KDfloat32 y)
     /* (x<0)**(non-int) is NaN */
     if((n | yisint) == 0)
     {
-        return (x - x) / (x - x);  //-V501
+        return KD_NANF;
     }
     sn = 1.0f; /* s (sign of result -ve**odd) = -1 else = 1 */
     if((n | (yisint - 1)) == 0)
@@ -3012,6 +3010,13 @@ kdPowf(KDfloat32 x, KDfloat32 y)
 }
 
 /* kdSqrtf: Square root function. */
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
 KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
 {
 #ifdef __SSE2__
@@ -3039,8 +3044,8 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
             return x;
         }
         else if(ix < 0)
-        {                              /* sqrt(-ve) = sNaN */
-            return (x - x) / (x - x);  //-V501
+        {   /* sqrt(-ve) = sNaN */
+            return KD_NANF;
         }
     }
     /* normalize x */
@@ -3460,7 +3465,7 @@ kdAcosKHR(KDfloat64KHR x)
             }
         }
         /* acos(|x|>1) is NaN */
-        return (x - x) / (x - x);  //-V501
+        return KD_NAN;
     }
     if(ix < 0x3fe00000)
     { /* |x| < 0.5 */
@@ -3566,7 +3571,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
             return x * KD_PI_2_KHR + x * pio2_lo;
         }
         /* asin(|x|>1) is NaN */
-        return (x - x) / (x - x);  //-V501
+        return KD_NAN;
     }
     else if(ix < 0x3fe00000)
     { /* |x|<0.5 */
@@ -3964,7 +3969,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
     /* cos(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x;  //-V501
+        return KD_NAN;
     }
 
     /* argument reduction needed */
@@ -4041,7 +4046,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
     /* sin(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x;  //-V501
+        return KD_NAN;
     }
     /* argument reduction needed */
     else
@@ -4117,7 +4122,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
     /* tan(Inf or NaN) is NaN */
     else if(ix >= 0x7ff00000)
     {
-        return x - x;  //-V501
+        return KD_NAN;
     }
 
     /* argument reduction needed */
@@ -4370,8 +4375,7 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
         Lg6 = 1.531383769920937332e-01,      /* 3FC39A09 D078C69F */
         Lg7 = 1.479819860511658591e-01;      /* 3FC2F112 DF3E5244 */
 
-    const KDfloat64KHR zero = 0.0;
-    volatile KDfloat64KHR vzero = 0.0;
+
     KDfloat64KHR f, s, z, R, w, t1, t2, dk;
     KDint32 k, hx, i, j;
     KDuint32 lx;
@@ -4383,11 +4387,11 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
     { /* x < 2**-1022  */
         if(((hx & KDINT32_MAX) | lx) == 0)
         {
-            return -two54 / vzero; /* log(+-0)=-inf */
+            return -KD_HUGE_VAL_KHR; /* log(+-0)=-inf */
         }
         if(hx < 0)
         {
-            return (x - x) / zero; /* log(-#) = NaN */
+            return KD_NAN; /* log(-#) = NaN */
         }
         k -= 54;
         x *= two54; /* subnormal number, scale up x */
@@ -4405,11 +4409,11 @@ KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
     f = x - 1.0;
     if((0x000fffff & (2 + hx)) < 3)
     { /* -2**-20 <= f < 2**-20 */
-        if(f == zero)
+        if(f == 0.0)
         {
             if(k == 0)
             {
-                return zero;
+                return 0.0;
             }
             else
             {
@@ -4676,7 +4680,7 @@ kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
             {
                 if(((ix - 0x3ff00000) | yisint) == 0)
                 {
-                    z = (z - z) / (z - z); /* (-1)**non-int is NaN */
+                    z = KD_NAN; /* (-1)**non-int is NaN */
                 }
                 else if(yisint == 1)
                 {
@@ -4692,7 +4696,7 @@ kdPowKHR(KDfloat64KHR x, KDfloat64KHR y)
     /* (x<0)**(non-int) is NaN */
     if((n | yisint) == 0)
     {
-        return (x - x) / (x - x);  //-V501
+        return KD_NAN;
     }
 
     s = 1.0; /* s (sign of result -ve**odd) = -1 else = 1 */
@@ -4976,9 +4980,9 @@ kdSqrtKHR(KDfloat64KHR x)
             return x; /* sqrt(+-0) = +-0 */
         }
         else if(ix0 < 0)
-        {
-            return (x - x) / (x - x);  //-V501
-        }                              /* sqrt(-ve) = sNaN */
+        {  
+            return KD_NAN; /* sqrt(-ve) = sNaN */
+        }
     }
     /* normalize x */
     m = (ix0 >> 20);

@@ -42,12 +42,8 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFabsKHR(-5.0) == 5.0);
     TEST_EXPR(kdFabsKHR(0.0) == 0.0);
     TEST_EXPR(kdFabsKHR(5.0) == 5.0);
-
-#if !defined(_MSC_VER)
-#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
-#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
+    
     TEST_EXPR(kdIsNan(kdFabsf(KD_NANF)));
     TEST_EXPR(kdIsNan(kdFabsKHR(KD_NAN)));
-#endif
     return 0;
 }

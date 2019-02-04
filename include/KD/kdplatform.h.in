@@ -242,7 +242,10 @@ typedef intptr_t KDssize;
 #define KDSIZE_MAX KDUINT_MAX
 #define KDUINTPTR_MAX KDUINT_MAX
 #endif
-#define KD_INFINITY (1.0f/0.0f)
+KD_UNUSED static float __kd_onef = 1.0f;
+KD_UNUSED static float __kd_zerof = 0.0f;
+#define KD_INFINITY (__kd_onef/__kd_zerof)
+#define KD_NANF (__kd_zerof/__kd_zerof)
 
 
 /******************************************************************************

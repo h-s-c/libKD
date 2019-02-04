@@ -53,16 +53,12 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdCeilKHR(5.0) == 5.0);
     TEST_EXPR(kdCeilKHR(5.1) == 6.0);
 
-#if !defined(_MSC_VER)
     TEST_EXPR(kdCeilf(KD_INFINITY) == KD_INFINITY);
     TEST_EXPR(kdCeilf(-KD_INFINITY) == -KD_INFINITY);
     TEST_EXPR(kdCeilKHR(KD_HUGE_VAL_KHR) == KD_HUGE_VAL_KHR);
     TEST_EXPR(kdCeilKHR(-KD_HUGE_VAL_KHR) == -KD_HUGE_VAL_KHR);
-
-#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
-#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
+    
     TEST_EXPR(kdIsNan(kdCeilf(KD_NANF)));
     TEST_EXPR(kdIsNan(kdCeilKHR(KD_NAN)));
-#endif
     return 0;
 }

@@ -45,17 +45,13 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROX(kdAtanKHR(0.0), 0.0);
     TEST_APPROX(kdAtanKHR(-0.0), -0.0);
 
-#if !defined(_MSC_VER)
     TEST_APPROXF(kdAtanf(KD_INFINITY), KD_PI_2_F);
     TEST_APPROXF(kdAtanf(-KD_INFINITY), -KD_PI_2_F);
 
     TEST_APPROX(kdAtanKHR(KD_HUGE_VAL_KHR), KD_PI_2_KHR);
     TEST_APPROX(kdAtanKHR(-KD_HUGE_VAL_KHR), -KD_PI_2_KHR);
-
-#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
-#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
+    
     TEST_EXPR(kdIsNan(kdAtanf(KD_NANF)));
     TEST_EXPR(kdIsNan(kdAtanKHR(KD_NAN)));
-#endif
     return 0;
 }

@@ -53,11 +53,7 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdIsNan(kdAsinKHR(-1.1)));
     TEST_EXPR(kdIsNan(kdAsinKHR(1.1)));
 
-#if !defined(_MSC_VER)
-#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
-#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdAsinf(KD_NANF)));
     TEST_EXPR(kdIsNan(kdAsinKHR(KD_NAN)));
-#endif
     return 0;
 }

@@ -51,16 +51,12 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROX(kdSqrtKHR(144.0), 12.0);
     TEST_EXPR(kdIsNan(kdSqrtKHR(-1.0)));
 
-#if !defined(_MSC_VER)
     TEST_EXPR(kdSqrtf(KD_INFINITY) == KD_INFINITY);
     TEST_EXPR(kdIsNan(kdSqrtf(-KD_INFINITY)));
     TEST_EXPR(kdSqrtKHR(KD_HUGE_VAL_KHR) == KD_HUGE_VAL_KHR);
     TEST_EXPR(kdIsNan(kdSqrtKHR(-KD_HUGE_VAL_KHR)));
 
-#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
-#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdSqrtf(KD_NANF)));
     TEST_EXPR(kdIsNan(kdSqrtKHR(KD_NAN)));
-#endif
     return 0;
 }

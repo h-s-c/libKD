@@ -59,7 +59,6 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_APPROX(kdPowKHR(1.0, 6.0), 1.0);
     TEST_EXPR(kdIsNan(kdPowKHR(-1.0, 1.5)));
 
-#if !defined(_MSC_VER)
     TEST_EXPR(kdPowf(-1.0f, KD_INFINITY) == 1.0f);
     TEST_EXPR(kdPowf(-1.0f, -KD_INFINITY) == 1.0f);
     TEST_EXPR(kdPowf(0.5f, -KD_INFINITY) == KD_INFINITY);
@@ -94,8 +93,6 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdPowKHR(0.0, -2.0) == KD_HUGE_VAL_KHR);
     TEST_EXPR(kdPowKHR(-0.0, -2.0) == KD_HUGE_VAL_KHR);
 
-#define KD_NANF ((1.0f - 1.0f) / (1.0f - 1.0f))
-#define KD_NAN ((1.0 - 1.0) / (1.0 - 1.0))
     TEST_EXPR(kdIsNan(kdPowf(KD_NANF, 3.0f)));
     TEST_EXPR(kdIsNan(kdPowf(3.0f, KD_NANF)));
     TEST_EXPR(kdPowf(1.0f, KD_NANF) == 1.0f);
@@ -107,6 +104,5 @@ kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdPowKHR(1.0, KD_NAN) == 1.0);
     TEST_EXPR(kdPowKHR(KD_NAN, 0.0) == 1.0);
     TEST_EXPR(kdPowKHR(KD_NAN, -0.0) == 1.0);
-#endif
     return 0;
 }
