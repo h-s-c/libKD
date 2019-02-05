@@ -329,10 +329,10 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             image->alpha = KD_TRUE;
             break;
         }
-        case(KD_IMAGE_FORMAT_ALPHA8_ATX):
+        case(KD_IMAGE_FORMAT_LUM8_ATX):
         {
             channels = 1;
-            image->alpha = KD_TRUE;
+            image->alpha = KD_FALSE;
             break;
         }
         case(KD_IMAGE_FORMAT_COMPRESSED_ATX):
