@@ -26,11 +26,7 @@
 #include "test.h"
 
 #define PNG_IMAGE_COUNT 162
-#if defined(_WIN32)
-#define PNG_IMAGE_PATH "data\\PngSuite\\"
-#else
 #define PNG_IMAGE_PATH "data/PngSuite/"
-#endif
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
