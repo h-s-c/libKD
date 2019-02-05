@@ -12,6 +12,15 @@
    fun:_dlerror_run
    fun:dlclose
 }
+{
+   glibc_pthread_create_alloc
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   ...
+   fun:pthread_create@@GLIBC_2.2.5
+   ...
+}
 
 {
    macos_libc_setlocale_1
