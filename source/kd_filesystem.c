@@ -790,6 +790,10 @@ KD_API KDDir *KD_APIENTRY kdOpenDir(const KDchar *pathname)
     {
         GetCurrentDirectoryA(MAX_PATH, dirpath);
     }
+    else
+    {
+        kdStrcpy_s(dirpath, MAX_PATH, pathname);
+    }
     kdStrncat_s(dirpath, MAX_PATH, "/*", 2);
 #if defined(_MSC_VER)
 #pragma warning(suppress : 6102)
