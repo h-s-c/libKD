@@ -80,9 +80,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test(" 1.23 %", "%*.*f %%", 5, 2, 1.23);
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
     test("-3.000000e+00", "%e", -3.0);
-#endif
     test("4.1E+00", "%.1E", 4.1);
     test("-5.20e+00", "%+4.2e", -5.2);
+#endif
     test("+0.3 -3", "%+g %+g", 0.3, -3.0);
     test("4", "%.1G", 4.1);
     test("-5.2", "%+4.2g", -5.2);
@@ -109,7 +109,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test("0x1.009117p-1022", "%a", 2.23e-308);
 
     /* %p */
-#if defined(__MINGW32__) || defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__)
     test("00000000", "%p", KD_NULL);
 #else
     test("0000000000000000", "%p", KD_NULL);
