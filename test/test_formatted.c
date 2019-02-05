@@ -129,9 +129,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test("123,4abc:", "%'x:", 0x1234ABC);
     test("100000000", "%b", 256);
     test("0b10 0B11", "%#b %#B", 2, 3);
-#if !defined(__EMSCRIPTEN__)
     test("2 3 4", "%I64d %I32d %Id", 2ll, 3, 4ll);
-#endif
     test("1k 2.54 M", "%$_d %$.2d", 1000, 2536000);
     test("2.42 Mi 2.4 M", "%$$.2d %$$$d", 2536000, 2536000);
     return 0;
