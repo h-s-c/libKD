@@ -41,75 +41,45 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          KDchar path[64] = IMAGE_PATH;
          kdStrncat_s(path, 64, dirent->d_name, 32);
 
-         dirent = kdReadDir(dir);
-         KDchar path2[64] = IMAGE_PATH;
-         kdStrncat_s(path2, 64, dirent->d_name, 32);
-
          KDImageATX image = kdGetImageATX(path, KD_IMAGE_FORMAT_RGBA8888_ATX, 0);
          TEST_EXPR(image != KD_NULL);
-         KDImageATX image2 = kdGetImageATX(path2, KD_IMAGE_FORMAT_RGBA8888_ATX, 0);
-         TEST_EXPR(image2 != KD_NULL);
-         void *ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr != KD_NULL);
-         void *ptr2 = kdGetImagePointerATX(image2, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr2 != KD_NULL);
          KDint w = kdGetImageIntATX(image, KD_IMAGE_WIDTH_ATX);
          KDint h = kdGetImageIntATX(image, KD_IMAGE_HEIGHT_ATX);
-         KDint w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
-         KDint h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
-         TEST_EXPR(w == w2 && h == h2);
+         TEST_EXPR(w != 0 && h != 0);
+         void *ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
+         TEST_EXPR(ptr != KD_NULL);
          kdFreeImageATX(image);
-         kdFreeImageATX(image2);
 
          image = kdGetImageATX(path, KD_IMAGE_FORMAT_RGB888_ATX, 0);
          TEST_EXPR(image != KD_NULL);
-         image2 = kdGetImageATX(path2, KD_IMAGE_FORMAT_RGB888_ATX, 0);
-         TEST_EXPR(image2 != KD_NULL);
-         ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr != KD_NULL);
-         ptr2 = kdGetImagePointerATX(image2, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr2 != KD_NULL);
          w = kdGetImageIntATX(image, KD_IMAGE_WIDTH_ATX);
          h = kdGetImageIntATX(image, KD_IMAGE_HEIGHT_ATX);
-         w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
-         h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
-         TEST_EXPR(w == w2 && h == h2);
+         TEST_EXPR(w != 0 && h != 0);
+         ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
+         TEST_EXPR(ptr != KD_NULL);
          kdFreeImageATX(image);
-         kdFreeImageATX(image2);
 
          image = kdGetImageATX(path, KD_IMAGE_FORMAT_LUMALPHA88_ATX, 0);
          TEST_EXPR(image != KD_NULL);
-         image2 = kdGetImageATX(path2, KD_IMAGE_FORMAT_LUMALPHA88_ATX, 0);
-         TEST_EXPR(image2 != KD_NULL);
-         ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr != KD_NULL);
-         ptr2 = kdGetImagePointerATX(image2, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr2 != KD_NULL);
          w = kdGetImageIntATX(image, KD_IMAGE_WIDTH_ATX);
          h = kdGetImageIntATX(image, KD_IMAGE_HEIGHT_ATX);
-         w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
-         h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
-         TEST_EXPR(w == w2 && h == h2);
+         TEST_EXPR(w != 0 && h != 0);
+         ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
+         TEST_EXPR(ptr != KD_NULL);
          kdFreeImageATX(image);
-         kdFreeImageATX(image2);
 
-         image = kdGetImageATX(path, KD_IMAGE_FORMAT_ALPHA8_ATX, 0);
+         kdLogMessagefKHR("%s\n", path);\
+
+         image = kdGetImageATX(path, KD_IMAGE_FORMAT_LUM8_ATX, 0);
          TEST_EXPR(image != KD_NULL);
-         image2 = kdGetImageATX(path2, KD_IMAGE_FORMAT_ALPHA8_ATX, 0);
-         TEST_EXPR(image2 != KD_NULL);
-         ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr != KD_NULL);
-         ptr2 = kdGetImagePointerATX(image2, KD_IMAGE_POINTER_BUFFER_ATX);
-         TEST_EXPR(ptr2 != KD_NULL);
          w = kdGetImageIntATX(image, KD_IMAGE_WIDTH_ATX);
          h = kdGetImageIntATX(image, KD_IMAGE_HEIGHT_ATX);
-         w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
-         h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
-         TEST_EXPR(w == w2 && h == h2);
+         TEST_EXPR(w != 0 && h != 0);
+         ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
+         TEST_EXPR(ptr != KD_NULL);
          kdFreeImageATX(image);
-         kdFreeImageATX(image2);
          
-         num = num + 2;
+         num++;
       }
    }
    kdCloseDir(dir);
