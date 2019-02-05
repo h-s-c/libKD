@@ -97,7 +97,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     /* %n */
     KDint n = 0;
     test("aaa ", "%.3s %n", "aaaaaaaaaaaaa", &n);
-    kdAssert(n == 4);
+    TEST_EXPR(n == 4);
 
     /* hex floats */
 #if !defined(_MSC_VER) || _MSC_VER >= 1912
