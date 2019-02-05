@@ -49,9 +49,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          TEST_EXPR(image != KD_NULL);
          KDImageATX image2 = kdGetImageATX(path2, KD_IMAGE_FORMAT_RGBA8888_ATX, 0);
          TEST_EXPR(image2 != KD_NULL);
-         KDuint8 *ptr = (KDuint8 *)kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
+         void *ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
          TEST_EXPR(ptr != KD_NULL);
-         KDuint8 *ptr2 = (KDuint8 *)kdGetImagePointerATX(image2, KD_IMAGE_POINTER_BUFFER_ATX);
+         void *ptr2 = kdGetImagePointerATX(image2, KD_IMAGE_POINTER_BUFFER_ATX);
          TEST_EXPR(ptr2 != KD_NULL);
          KDint w = kdGetImageIntATX(image, KD_IMAGE_WIDTH_ATX);
          KDint h = kdGetImageIntATX(image, KD_IMAGE_HEIGHT_ATX);
