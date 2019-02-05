@@ -58,6 +58,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          KDint w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
          KDint h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
          TEST_EXPR(w == w2 && h == h2);
+         kdFreeImageATX(image);
+         kdFreeImageATX(image2);
 
          image = kdGetImageATX(path, KD_IMAGE_FORMAT_RGB888_ATX, 0);
          TEST_EXPR(image != KD_NULL);
@@ -72,6 +74,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
          h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
          TEST_EXPR(w == w2 && h == h2);
+         kdFreeImageATX(image);
+         kdFreeImageATX(image2);
 
          image = kdGetImageATX(path, KD_IMAGE_FORMAT_LUMALPHA88_ATX, 0);
          TEST_EXPR(image != KD_NULL);
@@ -86,6 +90,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
          h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
          TEST_EXPR(w == w2 && h == h2);
+         kdFreeImageATX(image);
+         kdFreeImageATX(image2);
 
          image = kdGetImageATX(path, KD_IMAGE_FORMAT_ALPHA8_ATX, 0);
          TEST_EXPR(image != KD_NULL);
@@ -100,9 +106,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          w2 = kdGetImageIntATX(image2, KD_IMAGE_WIDTH_ATX);
          h2 = kdGetImageIntATX(image2, KD_IMAGE_HEIGHT_ATX);
          TEST_EXPR(w == w2 && h == h2);
-
          kdFreeImageATX(image);
          kdFreeImageATX(image2);
+         
          num = num + 2;
       }
    }
