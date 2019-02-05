@@ -21,6 +21,15 @@
    fun:pthread_create@@GLIBC_2.2.5
    ...
 }
+{
+   glibc_dir_alloc
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:__alloc_dir
+   ...
+}
+
 
 {
    macos_libc_setlocale_1
