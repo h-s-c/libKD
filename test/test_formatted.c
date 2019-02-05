@@ -109,7 +109,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test("0x1.009117p-1022", "%a", 2.23e-308);
 
     /* %p */
-#if defined(__EMSCRIPTEN__)
+#if (KDUINTPTR_MAX == KDUINT_MAX)
     test("00000000", "%p", KD_NULL);
 #else
     test("0000000000000000", "%p", KD_NULL);
