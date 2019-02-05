@@ -28,7 +28,7 @@
 #define PNG_IMAGE_COUNT 162
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-   KDDir *dir = kdOpenDir("data/pngsuite");
+   KDDir *dir = kdOpenDir("data/PngSuite");
    TEST_EXPR(dir != KD_NULL);
    KDDirent *dirent = KD_NULL;
    KDint num = 0;
@@ -36,7 +36,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
    {
       if((kdStrcmp(dirent->d_name, ".") != 0) && (kdStrcmp(dirent->d_name, "..") != 0))
       {
-         KDchar path[32] = "data/pngsuite/";
+         KDchar path[32] = "data/PngSuite/";
          kdStrncat_s(path, 32, dirent->d_name, 16);
          KDImageATX image = kdGetImageATX(path, KD_IMAGE_FORMAT_RGBA8888_ATX, 0);
          TEST_EXPR(image != KD_NULL);
