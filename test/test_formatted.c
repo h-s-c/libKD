@@ -72,8 +72,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 #if !defined(__EMSCRIPTEN__)
     const KDfloat64KHR pow_2_85 = 38685626227668133590597632.0;
     test("38685626227668133600000000.0", "%.1f", pow_2_85);
-#endif
     test("0.000000499999999999999978", "%.24f", 5e-7);
+#endif
     test("0.000000000000000020000000", "%.24f", 2e-17);
     test("0.0000000100 100000000", "%.10f %.0f", 1e-8, 1e+8);
     test("100056789.0", "%.1f", 100056789.0);
@@ -109,7 +109,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test("0x1.009117p-1022", "%a", 2.23e-308);
 
     /* %p */
-#if !defined(__MINGW32__)
+#if defined(__MINGW32__) || defined(__EMSCRIPTEN__)
+    test("00000000", "%p", KD_NULL);
+#else
     test("0000000000000000", "%p", KD_NULL);
 #endif
 
@@ -127,7 +129,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     test("123,4abc:", "%'x:", 0x1234ABC);
     test("100000000", "%b", 256);
     test("0b10 0B11", "%#b %#B", 2, 3);
+#if !defined(__EMSCRIPTEN__)
     test("2 3 4", "%I64d %I32d %Id", 2ll, 3, 4ll);
+#endif
     test("1k 2.54 M", "%$_d %$.2d", 1000, 2536000);
     test("2.42 Mi 2.4 M", "%$$.2d %$$$d", 2536000, 2536000);
     return 0;
