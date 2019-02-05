@@ -26,17 +26,23 @@
 #include "test.h"
 
 #define PNG_IMAGE_COUNT 162
+#if defined(_WIN32)
+#define PNG_IMAGE_PATH "data\\PngSuite\\"
+#else
+#define PNG_IMAGE_PATH "data/PngSuite/"
+#endif
+
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-   KDDir *dir = kdOpenDir("data/PngSuite");
+   KDDir *dir = kdOpenDir(PNG_IMAGE_PATH);
    TEST_EXPR(dir != KD_NULL);
    KDDirent *dirent = KD_NULL;
    KDint num = 0;
-   while(dirent = kdReadDir(dir))
+   while((dirent = kdReadDir(dir)))
    {
       if((kdStrcmp(dirent->d_name, ".") != 0) && (kdStrcmp(dirent->d_name, "..") != 0))
       {
-         KDchar path[32] = "data/PngSuite/";
+         KDchar path[32] = PNG_IMAGE_PATH;
          kdStrncat_s(path, 32, dirent->d_name, 16);
          KDImageATX image = kdGetImageATX(path, KD_IMAGE_FORMAT_RGBA8888_ATX, 0);
          TEST_EXPR(image != KD_NULL);
