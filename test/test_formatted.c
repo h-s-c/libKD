@@ -25,7 +25,6 @@
 #include <KD/KHR_float64.h>
 #include <KD/KHR_formatted.h>
 #include "test.h"
-#include <math.h>
 
 void test(const KDchar *str, const KDchar *format, ...)
 {
