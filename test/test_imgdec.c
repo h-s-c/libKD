@@ -68,8 +68,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          TEST_EXPR(ptr != KD_NULL);
          kdFreeImageATX(image);
 
-         kdLogMessagefKHR("%s\n", path);\
-
          image = kdGetImageATX(path, KD_IMAGE_FORMAT_LUM8_ATX, 0);
          TEST_EXPR(image != KD_NULL);
          w = kdGetImageIntATX(image, KD_IMAGE_WIDTH_ATX);
