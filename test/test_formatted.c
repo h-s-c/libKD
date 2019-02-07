@@ -34,6 +34,11 @@ void test(const KDchar *str, const KDchar *format, ...)
     kdVsprintfKHR(buf, format, ap);
     KD_VA_END_KHR(ap);
     TEST_STREQ(str, buf);
+
+    KD_VA_START_KHR(ap, format);
+    kdVsnprintfKHR(buf, 1024, format, ap);
+    KD_VA_END_KHR(ap);
+    TEST_STREQ(str, buf);
 }
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)

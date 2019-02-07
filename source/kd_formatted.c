@@ -37,6 +37,7 @@
 #endif
 #include "kdplatform.h"        // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
 #include <KD/kd.h>             // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
+#include "KD/KHR_float64.h"    // for KDfloat64
 #include "KD/KHR_formatted.h"  // for kdFprintfKHR, kdFscanfKHR, kdLogMessag...
 #include <KD/kdext.h>          // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
 #if defined(__clang__)
@@ -79,6 +80,14 @@
 
 #define STB_SPRINTF_STATIC
 #define STB_SPRINTF_NOUNALIGNED
+#define STB_SPRINTF_VA_LIST KDVaListKHR
+#define STB_SPRINTF_VA_START KD_VA_START_KHR
+#define STB_SPRINTF_VA_END KD_VA_END_KHR
+#define STB_SPRINTF_VA_ARG_INT(i) KD_VA_ARG_INT_KHR(i)
+#define STB_SPRINTF_VA_ARG_INT32(i) KD_VA_ARG_INT32_KHR(i)
+#define STB_SPRINTF_VA_ARG_INT64(i) KD_VA_ARG_INT64_KHR(i)
+#define STB_SPRINTF_VA_ARG_FLOAT64(d) KD_VA_ARG_FLOAT64_KHR(d)
+#define STB_SPRINTF_VA_ARG_PTR(p) KD_VA_ARG_PTR_KHR(p)
 #define STB_SPRINTF_IMPLEMENTATION
 #if defined(__clang__)
 #pragma clang diagnostic push
