@@ -37,7 +37,6 @@
 #endif
 #include "kdplatform.h"        // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
 #include <KD/kd.h>             // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
-#include "KD/KHR_float64.h"    // for KDfloat64
 #include "KD/KHR_formatted.h"  // for kdFprintfKHR, kdFscanfKHR, kdLogMessag...
 #include <KD/kdext.h>          // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
 #if defined(__clang__)
@@ -309,7 +308,6 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 }
                 else if(*format == 'l' || *format == 'L')
                 {
-                    lflag = 1;
                 }
                 else if(*format >= '1' && *format <= '9')
                 {
@@ -396,23 +394,15 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 str += width;
                 if(!noassign)
                 {
-                    if(lflag)
-                    {
-                        KDint64 *i = (KDint64 *)KD_VA_ARG_PTR_KHR(ap);
-                        *i = (KDint64)kdStrtol(tmp, KD_NULL, base);
-                    }
-                    else
-                    {
-                        KDint32 *i = (KDint32 *)KD_VA_ARG_PTR_KHR(ap);
-                        *i = kdStrtol(tmp, KD_NULL, base);
-                    }
+                    KDchar *i = KD_VA_ARG_PTR_KHR(ap);
+                    *i = (KDchar)kdStrtol(tmp, KD_NULL, base);
                 }
             }
             if(!noassign)
             {
                 count++;
             }
-            width = noassign = lflag = 0;
+            width = noassign = 0;
             format++;
         }
         else
