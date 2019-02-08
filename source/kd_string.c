@@ -805,7 +805,6 @@ KD_API KDint KD_APIENTRY kdStrcpy_s(KDchar *buf, KDsize buflen, const KDchar *sr
         } /* NUL-terminate dst */
         while(*s++)
         {
-            ;
         }
     }
 
