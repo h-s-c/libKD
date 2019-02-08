@@ -87,6 +87,7 @@
 #define STBI_MEMSET kdMemset
 #define STBI_ABS kdAbs
 #define STBI_FAILURE_USERMSG
+#define STBI_WINDOWS_UTF8
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #if defined(_MSC_VER)
