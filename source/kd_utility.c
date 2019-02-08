@@ -170,12 +170,12 @@ KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 KD_API KDfloat64KHR KD_APIENTRY kdStrtodKHR(const KDchar *s, KD_UNUSED KDchar **endptr)
 {
     KDfloat64KHR val, power;
-    KDint i, sign;
-
-    for(i = 0; kdIsspaceVEN(s[i]); i++)
+    KDint i = 0;
+    while(kdIsspaceVEN(s[i]))
     {
+        i++;
     }
-    sign = (s[i] == '-') ? -1 : 1;
+    KDint sign = (s[i] == '-') ? -1 : 1;
     if(s[i] == '+' || s[i] == '-')
     {
         i++;

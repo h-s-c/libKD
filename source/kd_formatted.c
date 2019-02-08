@@ -314,9 +314,10 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 }
                 else if(*format >= '1' && *format <= '9')
                 {
-
-                    for(tc = format; kdIsdigitVEN(*format); format++)
+                    tc = format;
+                    while(kdIsdigitVEN(*format))
                     {
+                        format++;
                     }
                     kdStrncpy_s(tmp, (KDsize)(format - tc), tc, (KDsize)(format - tc));
                     tmp[format - tc] = '\0';
