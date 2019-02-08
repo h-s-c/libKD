@@ -1913,7 +1913,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY
+kdAsinf(KDfloat32 x)
 {
     const KDfloat32
         huge = 1.000e+30f,
@@ -1933,7 +1934,7 @@ KD_API KDfloat32 KD_APIENTRY kdAsinf(KDfloat32 x)
         if(ix == 0x3f800000)
         { /* |x| == 1 */
             return shape_x.f32 * KD_PI_2_F;
-        }                                                                 /* asin(+-1) = +-pi/2 with inexact */
+        }               /* asin(+-1) = +-pi/2 with inexact */
         return KD_NANF; /* asin(|x|>1) is NaN */
     }
     else if(ix < 0x3f000000)
@@ -2231,7 +2232,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat32 KD_APIENTRY kdCosf(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY
+kdCosf(KDfloat32 x)
 {
     KDfloat64KHR y;
     KDint32 n, hx, ix;
@@ -2323,7 +2325,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat32 KD_APIENTRY kdSinf(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY
+kdSinf(KDfloat32 x)
 {
     KDfloat64KHR y;
     KDint32 n, hx, ix;
@@ -2415,7 +2418,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat32 KD_APIENTRY kdTanf(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY
+kdTanf(KDfloat32 x)
 {
     KDfloat64KHR y;
     KDint32 n, hx, ix;
@@ -2594,7 +2598,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY
+kdLogf(KDfloat32 x)
 {
     const KDfloat32
         ln2_hi = 6.9313812256e-01f, /* 0x3f317180 */
@@ -2619,7 +2624,7 @@ KD_API KDfloat32 KD_APIENTRY kdLogf(KDfloat32 x)
         }
         if(ix < 0)
         { /* log(-#) = NaN */
-            return KD_NANF; 
+            return KD_NANF;
         }
         k -= 25;
         x *= two25; /* subnormal number, scale up x */
@@ -3039,7 +3044,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
+KD_API KDfloat32 KD_APIENTRY
+kdSqrtf(KDfloat32 x)
 {
 #ifdef __SSE2__
     KDfloat32 result = 0.0f;
@@ -3066,7 +3072,7 @@ KD_API KDfloat32 KD_APIENTRY kdSqrtf(KDfloat32 x)
             return x;
         }
         else if(ix < 0)
-        {   /* sqrt(-ve) = sNaN */
+        { /* sqrt(-ve) = sNaN */
             return KD_NANF;
         }
     }
@@ -3304,7 +3310,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat32 KD_APIENTRY kdFmodf(KDfloat32 x, KDfloat32 y)
+KD_API KDfloat32 KD_APIENTRY
+kdFmodf(KDfloat32 x, KDfloat32 y)
 {
     const KDfloat32 Zero[] = {
         0.0f,
@@ -3561,7 +3568,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdAsinKHR(KDfloat64KHR x)
+KD_API KDfloat64KHR KD_APIENTRY
+kdAsinKHR(KDfloat64KHR x)
 {
     const KDfloat64KHR
         huge = 1.000e+300,
@@ -3793,7 +3801,8 @@ __attribute__((__no_sanitize__("signed-integer-overflow")))
 #endif
 #endif
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
+KD_API KDfloat64KHR KD_APIENTRY
+kdAtan2KHR(KDfloat64KHR y, KDfloat64KHR x)
 {
     volatile KDfloat64KHR
         tiny = 1.0e-300,
@@ -3972,7 +3981,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdCosKHR(KDfloat64KHR x)
+KD_API KDfloat64KHR KD_APIENTRY
+kdCosKHR(KDfloat64KHR x)
 {
     KDfloat64KHR y[2];
     KDint32 n, ix;
@@ -4056,7 +4066,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdSinKHR(KDfloat64KHR x)
+KD_API KDfloat64KHR KD_APIENTRY
+kdSinKHR(KDfloat64KHR x)
 {
     KDfloat64KHR y[2];
     KDint32 n, ix;
@@ -4139,7 +4150,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdTanKHR(KDfloat64KHR x)
+KD_API KDfloat64KHR KD_APIENTRY
+kdTanKHR(KDfloat64KHR x)
 {
     KDfloat64KHR y[2];
     KDint32 n, ix;
@@ -4403,7 +4415,8 @@ __attribute__((__no_sanitize__("float-divide-by-zero")))
 #endif
 #endif
 #endif
-KD_API KDfloat64KHR KD_APIENTRY kdLogKHR(KDfloat64KHR x)
+KD_API KDfloat64KHR KD_APIENTRY
+kdLogKHR(KDfloat64KHR x)
 {
     const KDfloat64KHR
         ln2_hi = 6.93147180369123816490e-01, /* 3fe62e42 fee00000 */
@@ -5022,7 +5035,7 @@ kdSqrtKHR(KDfloat64KHR x)
             return x; /* sqrt(+-0) = +-0 */
         }
         else if(ix0 < 0)
-        {  
+        {
             return KD_NAN; /* sqrt(-ve) = sNaN */
         }
     }
