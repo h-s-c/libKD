@@ -5572,3 +5572,14 @@ KD_API KDfloat64KHR KD_APIENTRY kdFmodKHR(KDfloat64KHR x, KDfloat64KHR y)
     }
     return x; /* exact output */
 }
+
+/* kdBitsToFloatNV
+ * Returns bit equivalent float
+ */
+KD_API KDfloat32 KD_APIENTRY kdBitsToFloatNV(KDuint32 x)
+{
+    KDfloat32 f = 0.0f;
+    kdAssert(sizeof(KDuint32) == sizeof(KDfloat32));
+    kdMemcpy(&f, &x, sizeof(x));
+    return f;
+}
