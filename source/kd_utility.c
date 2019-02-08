@@ -174,7 +174,6 @@ KD_API KDfloat64KHR KD_APIENTRY kdStrtodKHR(const KDchar *s, KD_UNUSED KDchar **
 
     for(i = 0; kdIsspaceVEN(s[i]); i++)
     {
-        ;
     }
     sign = (s[i] == '-') ? -1 : 1;
     if(s[i] == '+' || s[i] == '-')
