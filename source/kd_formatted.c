@@ -317,7 +317,6 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
 
                     for(tc = format; kdIsdigitVEN(*format); format++)
                     {
-                        ;
                     }
                     kdStrncpy_s(tmp, (KDsize)(format - tc), tc, (KDsize)(format - tc));
                     tmp[format - tc] = '\0';
