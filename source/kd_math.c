@@ -37,6 +37,7 @@
 #endif
 #include "kdplatform.h"      // for KDint32, KDuint32, KD_API, KD_APIENTRY
 #include <KD/kd.h>           // for KDfloat32, KDINT32_MAX, KDint
+#include <KD/kdext.h>        // for kdBitsToFloatNV
 #include <KD/KHR_float64.h>  // for KDfloat64KHR, KD_PI_2_KHR, KD_PI_KHR
 #if defined(__clang__)
 #pragma clang diagnostic pop

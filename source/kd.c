@@ -2444,7 +2444,6 @@ KD_API KDint KD_APIENTRY kdStateGeti(KDint startidx, KDuint numidxs, KDint32 *bu
             case KD_STATE_POINTER_AVAILABILITY:
             {
                 buffer[i] = __kd_window->states.pointer.availability;
-                ;
                 break;
             }
             case KD_INPUT_POINTER_X:
