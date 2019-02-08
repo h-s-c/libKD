@@ -45,6 +45,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFread(buf, 1, 10, f) == 10);
     TEST_EXPR(kdStrncmp(buf, str, 10) == 0);
     TEST_EXPR(kdFclose(f) == 0);
+    TEST_EXPR(kdRemove(path) == 0);
 
     return 0;
 }

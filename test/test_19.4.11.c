@@ -50,6 +50,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
     TEST_EXPR(kdFerror(fp) == 0);
     TEST_EXPR(kdFEOF(fp) == 0);
     TEST_EXPR(kdFclose(fp) != KD_EOF);
+    TEST_EXPR(kdRemove(path) == 0);
 
     return 0;
 }
