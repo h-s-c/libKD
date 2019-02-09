@@ -690,9 +690,9 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         s += 32;
     }
 #else
-    for(; *s; ++s)
+    while(*s)
     {
-        ;
+        ++s;
     }
     return (KDsize)(s - str);
 #endif
