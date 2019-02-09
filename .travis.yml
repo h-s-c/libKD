@@ -75,7 +75,7 @@ macos_template: &macos_template
 
 windows_template: &windows_template
   os: windows
-  before_install: cinst ninja opencppcoverage cppcheck && refreshenv
+  before_install: cinst ninja opencppcoverage cppcheck
 
 stages:
   - name: 'Testing (linux)'
