@@ -26,28 +26,10 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    const KDchar *mode[] = {"r", "r+", "w", "w+", "a", "a+"};
-#if defined(_WIN32)
-    const KDchar *path = "NUL";
-#else
-    const KDchar *path = "/dev/null";
-#endif
-
-    KDsize i;
-    KDFile *f;
-
-    for(i = 0; i < (sizeof(mode) / sizeof(mode[0])); i++)
-    {
-        f = kdFopen(path, mode[i]);
-        if(f == KD_NULL)
-        {
-            TEST_FAIL();
-        }
-        else
-        {
-            kdFclose(f);
-        }
-    }
+    static const KDchar abcde[] = "abcde";
+    static const KDchar abcdx[] = "abcdx";
+    TEST_EXPR(kdMemcmp(abcde, abcdx, 5) != 0);
+    TEST_EXPR(kdMemcmp(abcde, abcdx, 4) == 0);
 
     return 0;
 }

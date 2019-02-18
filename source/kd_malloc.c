@@ -45,7 +45,20 @@
 #pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"
+/******************************************************************************
+ * Platform includes
+ ******************************************************************************/
+
+#if defined(KD_THREAD_C11)
+#include <threads.h>
+#elif defined(KD_THREAD_POSIX)
+#include <pthread.h>
+#elif defined(KD_THREAD_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
 
 /******************************************************************************
  * Memory allocation
@@ -392,6 +405,9 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #pragma warning(disable : 28182)
 #elif defined(__clang__)
 #pragma clang diagnostic ignored "-Wcast-align"
+#if __has_warning("-Wextra-semi-stmt")
+#pragma clang diagnostic ignored "-Wextra-semi-stmt"
+#endif
 #pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #pragma clang diagnostic ignored "-Wsign-conversion"
 #pragma clang diagnostic ignored "-Wpadded"
@@ -792,6 +808,25 @@ static int win32munmap(void *ptr, KDsize size)
   The global lock_ensures that mparams.magic and other unique
   mparams values are initialized only once.
 */
+
+typedef struct _KDMutexAttr _KDMutexAttr;
+struct _KDMutexAttr {
+    /* This is useful for our kdMalloc implementation. */
+    KDThreadMutex *staticmutex;
+};
+struct KDThreadMutex {
+#if defined(KD_THREAD_C11)
+    mtx_t nativemutex;
+#elif defined(KD_THREAD_POSIX)
+    pthread_mutex_t nativemutex;
+#elif defined(KD_THREAD_WIN32)
+    SRWLOCK nativemutex;
+#else
+    KDboolean nativemutex;
+#endif
+    const _KDMutexAttr *mutexattr;
+};
+
 
 static KDThreadMutex *malloc_global_mutex;
 static KDThreadOnce malloc_global_mutex_status = KD_THREAD_ONCE_INIT;
@@ -3840,225 +3875,6 @@ static void *internal_memalign(mstate m, KDsize alignment, KDsize bytes)
     return mem;
 }
 
-/*
-  Common support for independent_X routines, handling
-    all of the combinations that can result.
-  The opts arg has:
-    bit 0 set if all elements are same size (using sizes[0])
-    bit 1 set if elements should be zeroed
-*/
-static void **ialloc(mstate m,
-    KDsize n_elements,
-    const KDsize *sizes,
-    int opts,
-    void *chunks[])
-{
-
-    KDsize element_size;   /* chunksize of each element, if all same */
-    KDsize contents_size;  /* total size of elements */
-    KDsize array_size;     /* request size of pointer array */
-    void *mem;             /* malloced aggregate space */
-    mchunkptr p;           /* corresponding chunk */
-    KDsize remainder_size; /* remaining bytes while splitting */
-    void **marray;         /* either "chunks" or malloced ptr array */
-    mchunkptr array_chunk; /* chunk for malloced ptr array */
-    flag_t was_enabled;    /* to disable mmap */
-    KDsize size;
-    KDsize i;
-
-    ensure_initialization();
-    /* compute array length, if needed */
-    if(chunks != 0)
-    {
-        if(n_elements == 0)
-        {
-            return chunks; /* nothing to do */
-        }
-        marray = chunks;
-        array_size = 0;
-    }
-    else
-    {
-        /* if empty req, must still return chunk representing empty array */
-        if(n_elements == 0)
-        {
-            return (void **)internal_malloc(m, 0);
-        }
-        marray = 0;
-        array_size = request2size(n_elements * (sizeof(void *)));
-    }
-
-    /* compute total element size */
-    if(opts & 0x1)
-    { /* all-same-size */
-        element_size = request2size(*sizes);
-        contents_size = n_elements * element_size;
-    }
-    else
-    { /* add up all the sizes */
-        element_size = 0;
-        contents_size = 0;
-        for(i = 0; i != n_elements; ++i)
-        {
-            contents_size += request2size(sizes[i]);
-        }
-    }
-
-    size = contents_size + array_size;
-
-    /*
-     Allocate the aggregate chunk.  First disable direct-mmapping so
-     malloc won't use it, since we would not be able to later
-     free/realloc space internal to a segregated mmap region.
-  */
-    was_enabled = use_mmap(m);
-    disable_mmap(m);
-    mem = internal_malloc(m, size - CHUNK_OVERHEAD);
-    if(was_enabled)
-    {
-        enable_mmap(m);
-    }
-    if(mem == 0)
-    {
-        return 0;
-    }
-
-    if(PREACTION(m))
-    {
-        return 0;
-    }
-    p = mem2chunk(mem);
-    remainder_size = chunksize(p);
-
-    kdAssert(!is_mmapped(p));
-
-    if(opts & 0x2)
-    { /* optionally clear the elements */
-        kdMemset((KDsize *)mem, 0, remainder_size - SIZE_T_SIZE - array_size);
-    }
-
-    /* If not provided, allocate the pointer array as final part of chunk */
-    if(marray == 0)
-    {
-        KDsize array_chunk_size;
-        array_chunk = chunk_plus_offset(p, contents_size);
-        array_chunk_size = remainder_size - contents_size;
-        marray = (void **)(chunk2mem(array_chunk));
-        set_size_and_pinuse_of_inuse_chunk(m, array_chunk, array_chunk_size);
-        remainder_size = contents_size;
-    }
-
-    /* split out elements */
-    for(i = 0;; ++i)
-    {
-        marray[i] = chunk2mem(p);
-        if(i != n_elements - 1)
-        {
-            if(element_size != 0)
-            {
-                size = element_size;
-            }
-            else
-            {
-                size = request2size(sizes[i]);
-            }
-            remainder_size -= size;
-            set_size_and_pinuse_of_inuse_chunk(m, p, size);
-            p = chunk_plus_offset(p, size);
-        }
-        else
-        { /* the final element absorbs any overallocation slop */
-            set_size_and_pinuse_of_inuse_chunk(m, p, remainder_size);
-            break;
-        }
-    }
-
-#if !defined(KD_NDEBUG)
-    if(marray != chunks)
-    {
-        /* final element must have exactly exhausted chunk */
-        if(element_size != 0)
-        {
-            kdAssert(remainder_size == element_size);
-        }
-        else
-        {
-            kdAssert(remainder_size == request2size(sizes[i]));
-        }
-        check_inuse_chunk(m, mem2chunk(marray));
-    }
-    for(i = 0; i != n_elements; ++i)
-    {
-        check_inuse_chunk(m, mem2chunk(marray[i]));
-    }
-
-#endif /* KD_NDEBUG */
-
-    POSTACTION(m);
-    return marray;
-}
-
-/* Try to free all pointers in the given array.
-   Note: this could be made faster, by delaying consolidation,
-   at the price of disabling some user integrity checks, We
-   still optimize some consolidations by combining adjacent
-   chunks before freeing, which will occur often if allocated
-   with ialloc or the array is sorted.
-*/
-static KDsize internal_bulk_free(mstate m, void *array[], KDsize nelem)
-{
-    KDsize unfreed = 0;
-    if(!PREACTION(m))
-    {
-        void **a;
-        void **fence = &(array[nelem]);
-        for(a = array; a != fence; ++a)
-        {
-            void *mem = *a;
-            if(mem != 0)
-            {
-                mchunkptr p = mem2chunk(mem);
-                KDsize psize = chunksize(p);
-#if FOOTERS
-                if(get_mstate_for(p) != m)
-                {
-                    ++unfreed;
-                    continue;
-                }
-#endif
-                check_inuse_chunk(m, p);
-                *a = 0;
-                if(RTCHECK(ok_address(m, p) && ok_inuse(p)))
-                {
-                    void **b = a + 1; /* try to merge with next chunk */
-                    mchunkptr next = next_chunk(p);
-                    if(b != fence && *b == chunk2mem(next))
-                    {
-                        KDsize newsize = chunksize(next) + psize;
-                        set_inuse(m, p, newsize);
-                        *b = chunk2mem(p);
-                    }
-                    else
-                    {
-                        dispose_chunk(m, p, psize);
-                    }
-                }
-                else
-                {
-                    CORRUPTION_ERROR_ACTION(m);
-                    break;
-                }
-            }
-        }
-        if(should_trim(m, m->topsize))
-        {
-            sys_trim(m, 0);
-        }
-        POSTACTION(m);
-    }
-    return unfreed;
-}
-
 /* kdRealloc: Resize memory block. */
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((__malloc__))
@@ -4129,11 +3945,11 @@ __attribute__((__malloc__))
 KD_API void *KD_APIENTRY
 kdCallocVEN(KDsize num, KDsize size)
 {
-  KDsize len = num * size;
-  void *ptr = kdMalloc(len);
-  if(!ptr) 
-  {
-    return KD_NULL;
-  }
-  return kdMemset(ptr, 0, len);
+    KDsize len = num * size;
+    void *ptr = kdMalloc(len);
+    if(!ptr)
+    {
+        return KD_NULL;
+    }
+    return kdMemset(ptr, 0, len);
 }

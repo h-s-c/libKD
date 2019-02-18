@@ -26,9 +26,9 @@
 /* Test if the stack is big enough according to the OpenKODE Core spec */
 struct recurse {
     struct recurse *next;
-    KDint32 value;
+    KDuint64 value;
 };
-static KDint32 testrecurse(KDint32 count, struct recurse *lastrecurse)
+static KDuint64 testrecurse(KDuint64 count, struct recurse *lastrecurse)
 {
     if(count != 625)
     {
@@ -39,7 +39,7 @@ static KDint32 testrecurse(KDint32 count, struct recurse *lastrecurse)
     }
     else
     {
-        KDint32 product = 1;
+        KDuint64 product = 1;
         while(lastrecurse)
         {
             product = product * lastrecurse->value | 1;

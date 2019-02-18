@@ -87,6 +87,7 @@
 #define STBI_MEMSET kdMemset
 #define STBI_ABS kdAbs
 #define STBI_FAILURE_USERMSG
+#define STBI_WINDOWS_UTF8
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #if defined(_MSC_VER)
@@ -103,6 +104,9 @@
 #pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
 #if __has_warning("-Wdouble-promotion")
 #pragma clang diagnostic ignored "-Wdouble-promotion"
+#endif
+#if __has_warning("-Wextra-semi-stmt")
+#pragma clang diagnostic ignored "-Wextra-semi-stmt"
 #endif
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wsign-conversion"
@@ -329,10 +333,10 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             image->alpha = KD_TRUE;
             break;
         }
-        case(KD_IMAGE_FORMAT_ALPHA8_ATX):
+        case(KD_IMAGE_FORMAT_LUM8_ATX):
         {
             channels = 1;
-            image->alpha = KD_TRUE;
+            image->alpha = KD_FALSE;
             break;
         }
         case(KD_IMAGE_FORMAT_COMPRESSED_ATX):

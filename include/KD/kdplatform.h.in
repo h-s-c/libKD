@@ -228,7 +228,7 @@ typedef intptr_t KDssize;
 #define KDINT_MIN (-0x7fffffff - 1)
 #define KDINT_MAX 0x7fffffff
 #define KDUINT_MAX 0xffffffffU
-#define KDINT64_MIN (-0x8000000000000000 - 1)
+#define KDINT64_MIN (-0x7fffffffffffffff - 1)
 #define KDINT64_MAX 0x7fffffffffffffff
 #define KDUINT64_MAX 0xffffffffffffffffU
 #if defined(_WIN64) || defined(__LP64__) || defined(_LP64)
@@ -242,8 +242,22 @@ typedef intptr_t KDssize;
 #define KDSIZE_MAX KDUINT_MAX
 #define KDUINTPTR_MAX KDUINT_MAX
 #endif
-#define KD_INFINITY 0x7f800000
 
+#if defined(__GNUC__) || defined(__clang__)
+#define KD_INFINITY (__builtin_inff())
+#define KD_NANF (__builtin_nanf(""))
+#define KD_HUGE_VAL_KHR (__builtin_huge_val())
+#define KD_NAN (__builtin_nan(""))
+#else
+KD_UNUSED static float __kd_onef = 1.0f;
+KD_UNUSED static float __kd_zerof = 0.0f;
+#define KD_INFINITY (__kd_onef/__kd_zerof)
+#define KD_NANF (__kd_zerof/__kd_zerof)
+KD_UNUSED static double __kd_one = 1.0;
+KD_UNUSED static double __kd_zero = 0.0;
+#define KD_HUGE_VAL_KHR (__kd_one/__kd_zero)
+#define KD_NAN (__kd_zero/__kd_zero)
+#endif
 
 /******************************************************************************
  * Extensions
@@ -257,8 +271,8 @@ typedef __builtin_va_list KDVaListKHR;
 #define KD_VA_ARG_INT_KHR(ap) __builtin_va_arg(ap, KDint)
 #define KD_VA_ARG_INT64_KHR(ap) __builtin_va_arg(ap, KDint64)
 #define KD_VA_ARG_FLOAT32_KHR(ap) __builtin_va_arg(ap, KDfloat32)
-#define KD_VA_ARG_FLOAT64_KHR(ap) __builtin_va_arg(ap, KDfloat64)
-#define KD_VA_ARG_PTR_KHR(ap) __builtin_va_arg(ap, KDuintptr)
+#define KD_VA_ARG_FLOAT64_KHR(ap) __builtin_va_arg(ap, KDfloat64KHR)
+#define KD_VA_ARG_PTR_KHR(ap) __builtin_va_arg(ap, KDchar *)
 #define KD_VA_COPY_VEN(d, s) __builtin_va_copy(d, s)
 #else
 #include <stdarg.h>
@@ -269,7 +283,7 @@ typedef va_list KDVaListKHR;
 #define KD_VA_ARG_INT_KHR(ap) va_arg(ap, KDint)
 #define KD_VA_ARG_INT64_KHR(ap) va_arg(ap, KDint64)
 #define KD_VA_ARG_FLOAT32_KHR(ap) va_arg(ap, KDfloat32)
-#define KD_VA_ARG_FLOAT64_KHR(ap) va_arg(ap, KDfloat64)
+#define KD_VA_ARG_FLOAT64_KHR(ap) va_arg(ap, KDfloat64KHR)
 #define KD_VA_ARG_PTR_KHR(ap) (void *)va_arg(ap, KDchar *)
 #define KD_VA_COPY_VEN(d, s) va_copy(d, s)
 #endif

@@ -90,11 +90,17 @@ KD_API KDint KD_APIENTRY kdMinVEN(KDint a, KDint b);
 KD_API KDchar *KD_APIENTRY kdGetEnvVEN(const KDchar *env);
 
 /*******************************************************
- * Memory allocation
+ * Memory allocation (extensions)
  *******************************************************/
 
 /* kdCallocVEN: Allocate and zero-initialize memory. */
 KD_API void *KD_APIENTRY kdCallocVEN(KDsize num, KDsize size);
+
+/*******************************************************
+ * Mathematical functions (extensions)
+ *******************************************************/
+
+KD_API KDfloat32 KD_APIENTRY kdBitsToFloatNV(KDuint32 x);
 
 /*******************************************************
  * String and memory functions (extensions)

@@ -17,6 +17,8 @@ linux_apt_template: &linux_apt_template
     apt:
       sources: 
         - sourceline: "ppa:ubuntu-toolchain-r/test"
+        - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-8 main"
+          key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
         - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main"
           key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
         - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
@@ -71,10 +73,18 @@ macos_template: &macos_template
   compiler: clang
   before_install: brew update && brew install ninja ccache valgrind cppcheck
 
+windows_template: &windows_template
+  os: windows
+  compiler: cl.exe
+  before_install: choco install -y ninja opencppcoverage cppcheck
+  script: cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && python ci-tools/run_ctest.py'
+
 stages:
   - name: 'Testing (linux)'
     if: branch = develop
   - name: 'Testing (macos)'
+    if: branch = develop
+  - name: 'Testing (windows)'
     if: branch = develop
   - name: 'Testing (coverity)'
     if: branch = coverity
@@ -82,6 +92,8 @@ stages:
     if: tag IS present
 
 jobs:
+  allow_failures:
+    - os: windows
   include:
     - stage: 'Testing (linux)'
       <<: *linux_apt_template
@@ -111,6 +123,10 @@ jobs:
     - <<: *linux_apt_template
       compiler: gcc-4.7
       before_install: sudo apt-get install -y gcc-4.7
+
+    - <<: *linux_apt_template
+      compiler: clang-8
+      before_install: sudo apt-get install -y clang-8 llvm-8
 
     - <<: *linux_apt_template
       compiler: clang-7
@@ -170,6 +186,9 @@ jobs:
 
     - <<: *macos_template
       osx_image: xcode7.3
+
+    - stage: 'Testing (windows)'
+      <<: *windows_template
 
     - stage: 'Testing (coverity)'
       <<: *linux_apt_template

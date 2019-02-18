@@ -131,7 +131,9 @@ static void *__kdNameLookupHandler(void *arg)
     event->data.namelookup = lookupevent;
     kdPostThreadEvent(event, payload->destination);
 
-    return 0;
+    /* Some combinations of valgrind with clang and glibc detect a leak otherwise */
+    kdThreadExit(KD_NULL);
+    return KD_NULL;
 }
 KD_API KDint KD_APIENTRY kdNameLookup(KDint af, const KDchar *hostname, void *eventuserptr)
 {
@@ -454,7 +456,6 @@ KD_API KDint KD_APIENTRY kdSocketRecv(KDSocket *socket, void *buf, KDint len)
         return -1;
     }
     return result;
-    ;
 }
 
 KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len, KDSockaddr *addr)
@@ -512,7 +513,7 @@ KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
     if(u.c)
     {
         KDuint8 *s = (KDuint8 *)&hostlong;
-        return (KDuint32)(s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
+        return ((KDuint32)s[0] << 24 | (KDuint32)s[1] << 16 | (KDuint32)s[2] << 8 | (KDuint32)s[3]);
     }
     else
     {

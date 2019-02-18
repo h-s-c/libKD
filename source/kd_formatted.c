@@ -35,10 +35,10 @@
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
 #endif
 #endif
-#include "kdplatform.h"         // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
-#include <KD/kd.h>              // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
-#include "KD/KHR_formatted.h"   // for kdFprintfKHR, kdFscanfKHR, kdLogMessag...
-#include <KD/kdext.h>           // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
+#include "kdplatform.h"        // for KDsize, KDVaListKHR, KD_API, KD_APIENTRY
+#include <KD/kd.h>             // for KDchar, KDint, kdStrncpy_s, kdSetError, kdS...
+#include "KD/KHR_formatted.h"  // for kdFprintfKHR, kdFscanfKHR, kdLogMessag...
+#include <KD/kdext.h>          // for kdIsspaceVEN, kdStrcspnVEN, kdIsdigitVEN
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
@@ -79,6 +79,14 @@
 
 #define STB_SPRINTF_STATIC
 #define STB_SPRINTF_NOUNALIGNED
+#define STB_SPRINTF_VA_LIST KDVaListKHR
+#define STB_SPRINTF_VA_START KD_VA_START_KHR
+#define STB_SPRINTF_VA_END KD_VA_END_KHR
+#define STB_SPRINTF_VA_ARG_INT(i) KD_VA_ARG_INT_KHR(i)
+#define STB_SPRINTF_VA_ARG_INT32(i) KD_VA_ARG_INT32_KHR(i)
+#define STB_SPRINTF_VA_ARG_INT64(i) KD_VA_ARG_INT64_KHR(i)
+#define STB_SPRINTF_VA_ARG_FLOAT64(d) KD_VA_ARG_FLOAT64_KHR(d)
+#define STB_SPRINTF_VA_ARG_PTR(p) KD_VA_ARG_PTR_KHR(p)
 #define STB_SPRINTF_IMPLEMENTATION
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -87,6 +95,9 @@
 #pragma clang diagnostic ignored "-Wconditional-uninitialized"
 #if __has_warning("-Wdouble-promotion")
 #pragma clang diagnostic ignored "-Wdouble-promotion"
+#endif
+#if __has_warning("-Wextra-semi-stmt")
+#pragma clang diagnostic ignored "-Wextra-semi-stmt"
 #endif
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wsign-compare"
@@ -300,14 +311,13 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 }
                 else if(*format == 'l' || *format == 'L')
                 {
-                    lflag = 1;
                 }
                 else if(*format >= '1' && *format <= '9')
                 {
-
-                    for(tc = format; kdIsdigitVEN(*format); format++)
+                    tc = format;
+                    while(kdIsdigitVEN(*format))
                     {
-                        ;
+                        format++;
                     }
                     kdStrncpy_s(tmp, (KDsize)(format - tc), tc, (KDsize)(format - tc));
                     tmp[format - tc] = '\0';
@@ -387,23 +397,15 @@ KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, K
                 str += width;
                 if(!noassign)
                 {
-                    if(lflag)
-                    {
-                        KDint64 *i = (KDint64 *)KD_VA_ARG_PTR_KHR(ap);
-                        *i = (KDint64)kdStrtol(tmp, KD_NULL, base);
-                    }
-                    else
-                    {
-                        KDint32 *i = (KDint32 *)KD_VA_ARG_PTR_KHR(ap);
-                        *i = kdStrtol(tmp, KD_NULL, base);
-                    }
+                    KDchar *i = KD_VA_ARG_PTR_KHR(ap);
+                    *i = (KDchar)kdStrtol(tmp, KD_NULL, base);
                 }
             }
             if(!noassign)
             {
                 count++;
             }
-            width = noassign = lflag = 0;
+            width = noassign = 0;
             format++;
         }
         else

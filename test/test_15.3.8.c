@@ -6,7 +6,7 @@
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
- * arising from the use of this software.
+ * arikdSinfg from the use of this software.
  *
  * Permission is granted to anyone to use this software for any purpose,
  * including commercial applications, and to alter it and redistribute it
@@ -22,36 +22,37 @@
  ******************************************************************************/
 
 #include <KD/kd.h>
+#include <KD/KHR_float64.h>
 #include "test.h"
 
-KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+#if defined(__clang__)
+#if defined(__has_attribute)
+#if __has_attribute(__no_sanitize__)
+__attribute__((__no_sanitize__("float-divide-by-zero")))
+#endif
+#endif
+#endif
+KDint KD_APIENTRY
+kdMain(KDint argc, const KDchar *const *argv)
 {
-    const KDchar *path = "putc";
-    const KDchar *str = "1234567890x";
-    KDuint8 i = 0;
-    KDchar buf[10];
-    KDFile *f;
+    TEST_APPROXF(kdExpf(-1.0f), 1.0f / KD_E_F);
+    TEST_APPROXF(kdExpf(0.0f), 1.0f);
+    TEST_APPROXF(kdExpf(KD_LN2_F), 2.0f);
+    TEST_APPROXF(kdExpf(1.0f), KD_E_F);
+    TEST_APPROXF(kdExpf(3.0f), KD_E_F * KD_E_F * KD_E_F);
 
-    kdMemset(buf, 'x', sizeof(buf));
+    TEST_APPROX(kdExpKHR(-1.0), 1.0 / KD_E_KHR);
+    TEST_APPROX(kdExpKHR(0.0), 1.0);
+    TEST_APPROX(kdExpKHR(KD_LN2_KHR), 2.0);
+    TEST_APPROX(kdExpKHR(1.0), KD_E_KHR);
+    TEST_APPROX(kdExpKHR(3.0), KD_E_KHR * KD_E_KHR * KD_E_KHR);
 
-    f = kdFopen("putc", "w+");
-    TEST_EXPR(f != KD_NULL);
+    TEST_EXPR(kdExpf(-KD_INFINITY) == 0.0f);
+    TEST_EXPR(kdExpf(KD_INFINITY) == KD_INFINITY);
+    TEST_EXPR(kdExpKHR(-KD_HUGE_VAL_KHR) == 0.0);
+    TEST_EXPR(kdExpKHR(KD_HUGE_VAL_KHR) == KD_HUGE_VAL_KHR);
 
-    while(str[i] != 'x')
-    {
-        TEST_EXPR(kdPutc(str[i], f) == str[i]);
-        i++;
-    }
-
-    TEST_EXPR(kdFclose(f) == 0);
-
-    f = kdFopen(path, "r");
-    TEST_EXPR(f != KD_NULL);
-
-    TEST_EXPR(kdFread(buf, 1, 10, f) == 10);
-    TEST_EXPR(kdStrncmp(buf, str, 10) == 0);
-
-    TEST_EXPR(kdFclose(f) == 0);
-
+    TEST_EXPR(kdIsNan(kdExpf(KD_NANF)));
+    TEST_EXPR(kdIsNan(kdExpKHR(KD_NAN)));
     return 0;
 }

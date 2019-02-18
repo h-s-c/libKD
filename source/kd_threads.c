@@ -512,6 +512,23 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 #endif /* ndef KD_NO_STATIC_DATA */
 
 /* kdThreadMutexCreate: Create a mutex. */
+typedef struct _KDMutexAttr _KDMutexAttr;
+struct _KDMutexAttr {
+    /* This is useful for our kdMalloc implementation. */
+    KDThreadMutex *staticmutex;
+};
+struct KDThreadMutex {
+#if defined(KD_THREAD_C11)
+    mtx_t nativemutex;
+#elif defined(KD_THREAD_POSIX)
+    pthread_mutex_t nativemutex;
+#elif defined(KD_THREAD_WIN32)
+    SRWLOCK nativemutex;
+#else
+    KDboolean nativemutex;
+#endif
+    const _KDMutexAttr *mutexattr;
+};
 KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
 {
     KDThreadMutex *mutex = KD_NULL;
@@ -548,7 +565,7 @@ KD_API KDThreadMutex *KD_APIENTRY kdThreadMutexCreate(const void *mutexattr)
 #elif defined(KD_THREAD_WIN32)
     InitializeSRWLock((SRWLOCK *)&mutex->nativemutex);
 #else
-    mutex->nativemutex = (void *)KD_FALSE;
+    mutex->nativemutex = KD_FALSE;
 #endif
     /* cppcheck-suppress knownConditionTrueFalse */
     if(error != 0)
@@ -595,7 +612,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexLock(KDThreadMutex *mutex)
 #elif defined(KD_THREAD_WIN32)
     AcquireSRWLockExclusive((SRWLOCK *)&mutex->nativemutex);
 #else
-    mutex->nativemutex = (void *)KD_TRUE;
+    mutex->nativemutex = KD_TRUE;
 #endif
     return 0;
 }
@@ -610,7 +627,7 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 #elif defined(KD_THREAD_WIN32)
     ReleaseSRWLockExclusive((SRWLOCK *)&mutex->nativemutex);
 #else
-    mutex->nativemutex = (void *)KD_FALSE;
+    mutex->nativemutex = KD_FALSE;
 #endif
     return 0;
 }

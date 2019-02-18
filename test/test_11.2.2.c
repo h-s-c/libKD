@@ -35,10 +35,10 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         KDchar buf[512];
         kdSnprintfKHR(buf, sizeof(buf), "%zu.%zu", i, i + 1);
 
-        KDfloat32 f = kdStrtof(buf, NULL);
+        KDfloat32 f = kdStrtof(buf, KD_NULL);
         TEST_EXPR(f > 0.0);
 
-        KDfloat64KHR d = kdStrtodKHR(buf, NULL);
+        KDfloat64KHR d = kdStrtodKHR(buf, KD_NULL);
         TEST_EXPR(d > 0.0);
     }
 
