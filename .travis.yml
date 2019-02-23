@@ -163,7 +163,9 @@ jobs:
       compiler: clang-5.0
       before_install: sudo apt-get install -y clang-5.0 llvm-5.0
 
-    - <<: *linux_apt_template
+    - <<: *linux_template
+      addons:
+        <<: *linux_apt_template
       compiler: clang-4.0
       before_install: sudo apt-get install -y clang-4.0 llvm-4.0
 
