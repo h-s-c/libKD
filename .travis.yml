@@ -223,9 +223,6 @@ jobs:
     - <<: *macos_template
       osx_image: xcode9.4
 
-    - <<: *macos_template
-      osx_image: xcode7.3
-
     - stage: 'Testing (windows)'
       <<: *windows_template
 
