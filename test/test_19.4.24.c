@@ -27,9 +27,9 @@
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
 #if defined(_WIN32)
-    const KDchar *path = "NUL";
+    const KDchar *path = "C:\\";
 #else
-    const KDchar *path = "/dev/null";
+    const KDchar *path = "/";
 #endif
 
     KDoff result = kdGetFree(path);
