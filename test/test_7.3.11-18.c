@@ -26,8 +26,8 @@
 
 #define THREAD_COUNT 10
 KDint done = 0;
-KDThreadCond *cond = KD_NULL;
 KDThreadMutex *mutex = KD_NULL;
+KDThreadCond *cond = KD_NULL;
 
 void *test_func(void *arg)
 {
@@ -41,8 +41,12 @@ void *test_func(void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    cond = kdThreadCondCreate(KD_NULL);
     mutex = kdThreadMutexCreate(KD_NULL);
+    cond = kdThreadCondCreate(KD_NULL);
+    if(kdGetError() == KD_ENOSYS)
+    {
+        return 0;
+    }
 
     KDThread *threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0; i < THREAD_COUNT; i++)
@@ -70,7 +74,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         kdThreadJoin(threads[k], KD_NULL);
     }
 
-    kdThreadMutexFree(mutex);
     kdThreadCondFree(cond);
+    kdThreadMutexFree(mutex);
     return 0;
 }
