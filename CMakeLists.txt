@@ -69,8 +69,10 @@ project (KD C)
     endif()
 
     if(KD_BUILD_OPTIMIZATONS AND NOT MSVC)
-        check_ipo_supported()
-        set_target_properties(KD PROPERTIES INTERPROCEDURAL_OPTIMIZATION "ON")
+        check_ipo_supported(RESULT IPO)
+        if(IPO)
+            set_target_properties(KD PROPERTIES INTERPROCEDURAL_OPTIMIZATION "ON")
+        endif()
     endif()
 
     target_include_directories(KD PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
