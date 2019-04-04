@@ -31,7 +31,7 @@ linux_apt_template: &linux_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.5 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-    packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
+    packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -72,7 +72,7 @@ packagecloud_rpm_template: &packagecloud_rpm_template
 macos_template: &macos_template
   os: osx
   compiler: clang
-  before_install: brew update && brew install ninja ccache valgrind cppcheck
+  before_install: brew update && brew install ninja ccache valgrind cppcheck flawfinder
 
 windows_template: &windows_template
   os: windows
