@@ -25,12 +25,14 @@
 find_path(GLES2_INCLUDE_DIR NAMES GLES2/gl2.h PATHS $ENV{KHRONOS_HEADERS})
 find_library(GLES2_LIBRARY NAMES GLESv2 libGLESv2 PATHS $ENV{OPENGLES_LIBDIR})
 
+include(FindPackageHandleStandardArgs)
+
 if(EMSCRIPTEN)
-    set(GLES2_FOUND TRUE)
-    SET(GLES2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
-    set(GLES2_LIBRARY "nul")
+    set(GLES2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+    find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_INCLUDE_DIR)
+    set(GLES2_LIBRARY "")
+else()
+    find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_INCLUDE_DIR GLES2_LIBRARY)
 endif()
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(GLES2 DEFAULT_MSG GLES2_LIBRARY)
 mark_as_advanced(GLES2_INCLUDE_DIR GLES2_LIBRARY)
