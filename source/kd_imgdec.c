@@ -356,31 +356,32 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     {
         if(channels == 4)
         {
-            /* PVR v2 only*/
-            struct PVR_Texture_Header {
-                KDuint dwHeaderSize;      /* size of the structure */
-                KDuint dwHeight;          /* height of surface to be created */
-                KDuint dwWidth;           /* width of input surface */
-                KDuint dwMipMapCount;     /* number of mip-map levels requested */
-                KDuint dwpfFlags;         /* pixel format flags */
-                KDuint dwTextureDataSize; /* Total size in bytes */
-                KDuint dwBitCount;        /* number of bits per pixel  */
-                KDuint dwRBitMask;        /* mask for red bit */
-                KDuint dwGBitMask;        /* mask for green bits */
-                KDuint dwBBitMask;        /* mask for blue bits */
-                KDuint dwAlphaBitMask;    /* mask for alpha channel */
-                KDuint dwPVR;             /* magic number identifying pvr file */
-                KDuint dwNumSurfs;        /* the number of surfaces present in the pvr */
-            };
-            struct PVR_Texture_Header header;
-            kdMemcpy(&header, filedata, sizeof(KDuint) * 13);
+            typedef struct PVRTexHeaderV3 {
+                KDuint32 version;
+                KDuint32 flags;
+                KDuint64 pixelFormat;
+                KDuint32 colourSpace;
+                KDuint32 channelType;
+                KDuint32 height;
+                KDuint32 width;
+                KDuint32 depth;
+                KDuint32 numSurfaces;
+                KDuint32 numFaces;
+                KDuint32 numMipmaps;
+                KDuint32 metaDataSize;
+            } PVRTexHeaderV3;
 
-            image->height = (KDint)header.dwHeight;
-            image->width = (KDint)header.dwWidth;
-            image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint);
+            const KDint headersize = 52;
+            PVRTexHeaderV3 header;
+            kdMemcpy(&header, filedata, sizeof(PVRTexHeaderV3));
+
+            image->height = (KDint)header.height;
+            image->width = (KDint)header.width;
+            image->levels = (KDint)header.numMipmaps;
+            image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint8);
             image->buffer = kdMalloc(image->size);
             /* PVRCT2/4 RGB/RGBA compressed formats for now */
-            __kdDecompressPVRTC((const KDuint8 *)filedata + header.dwHeaderSize, 0, image->width, image->height, image->buffer);
+            __kdDecompressPVRTC((const KDuint8 *)filedata + headersize + header.metaDataSize, 0, image->width, image->height, image->buffer);
         }
     }
     else
