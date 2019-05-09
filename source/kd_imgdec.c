@@ -356,6 +356,9 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     {
         if(channels == 4)
         {
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
             typedef struct PVRTexHeaderV3 {
                 KDuint32 version;
                 KDuint32 flags;
@@ -370,6 +373,8 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
                 KDuint32 numMipmaps;
                 KDuint32 metaDataSize;
             } PVRTexHeaderV3;
+#pragma clang diagnostic pop
+#endif
 
             const KDint headersize = 52;
             PVRTexHeaderV3 header;
