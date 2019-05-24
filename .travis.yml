@@ -100,6 +100,12 @@ jobs:
       <<: *linux_template
       addons:
         <<: *linux_apt_template
+      compiler: gcc-9
+      before_install: sudo apt-get install -y gcc-9
+
+    - <<: *linux_template
+      addons:
+        <<: *linux_apt_template
       compiler: gcc-8
       before_install: sudo apt-get install -y gcc-8
 
