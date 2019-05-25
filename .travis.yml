@@ -8,28 +8,24 @@ cache:
 
 linux_template: &linux_template
   os: linux
-  dist: trusty
+  dist: xenial
   sudo: required
 
 linux_apt_template: &linux_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-8 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-6.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-5.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-4.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main"
-        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.6 main"
-        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.5 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
     packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
@@ -184,18 +180,6 @@ jobs:
     - <<: *linux_template
       addons:
         <<: *linux_apt_template
-      compiler: clang-3.6
-      before_install: sudo apt-get install -y clang-3.6 llvm-3.6
-
-    - <<: *linux_template
-      addons:
-        <<: *linux_apt_template
-      compiler: clang-3.5
-      before_install: sudo apt-get install -y clang-3.5 llvm-3.5
-
-    - <<: *linux_template
-      addons:
-        <<: *linux_apt_template
       compiler: icc
       before_install: python ci-tools/install_icc.py
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
@@ -224,7 +208,7 @@ jobs:
 
     - stage: 'Testing (macos)'
       <<: *macos_template
-      osx_image: xcode10.1
+      osx_image: xcode10.2
 
     - <<: *macos_template
       osx_image: xcode9.4
