@@ -91,6 +91,10 @@ stages:
 jobs:
   allow_failures:
     - os: windows
+    - os: linux
+      compiler: clang-5.0
+    - os: linux
+      compiler: icc
   include:
     - stage: 'Testing (linux)'
       <<: *linux_template
