@@ -78,14 +78,10 @@
 
 #define BLK_Y_SIZE (4)  // always 4 for all 2D block types
 
-#define BLK_X_MAX (8)  // Max X dimension for blocks
-
 #define BLK_X_2BPP (8)  // dimensions for the two formats
 #define BLK_X_4BPP (4)
 
 #define WRAP_COORD(Val, Size) ((Val) & ((Size)-1))
-
-#define POWER_OF_2(X) util_number_is_power_2(X)
 
 #define PVRT_CLAMP(x, l, h) (kdMinVEN((h), kdMaxVEN((x), (l))))
 
@@ -95,17 +91,6 @@
  */
 #define LIMIT_COORD(Val, Size, AssumeImageTiles) \
     ((AssumeImageTiles) ? WRAP_COORD((Val), (Size)) : PVRT_CLAMP((Val), 0, (Size)-1))
-
-KDint util_number_is_power_2(KDuint input)
-{
-    KDuint minus1;
-
-    if(!input)
-        return 0;
-
-    minus1 = input - 1;
-    return ((input | minus1) == (input ^ minus1)) ? 1 : 0;
-}
 
 /***********************************************************
  * Decompression routines
@@ -125,14 +110,12 @@ static void Unpack5554Colour(const AMTC_BLOCK_STRUCT *pBlock, KDint ABColours[2]
 {
     KDuint32 RawBits[2];
 
-    KDint i;
-
     // Extract A and B
     RawBits[0] = pBlock->PackedData[1] & (0xFFFE);  // 15 bits (shifted up by one)
     RawBits[1] = pBlock->PackedData[1] >> 16;       // 16 bits
 
     // step through both colours
-    for(i = 0; i < 2; i++)
+    for(KDint i = 0; i < 2; i++)
     {
         // If completely opaque
         if(RawBits[i] & (1 << 15))
@@ -168,7 +151,7 @@ static void Unpack5554Colour(const AMTC_BLOCK_STRUCT *pBlock, KDint ABColours[2]
             ABColours[i][1] |= ABColours[i][1] >> 4;
 
             // grab the 3(+padding) or 4 bits of blue and add an extra padding bit
-            ABColours[i][2] = (RawBits[i] & 0xF) << 1;
+            ABColours[i][2] = (KDint)(RawBits[i] & 0xF) << 1;
 
             /*
              expand from 3 to 5 bits if this is from colour A, or 4 to 5 bits if from
@@ -199,7 +182,8 @@ static void UnpackModulations(const AMTC_BLOCK_STRUCT *pBlock, const KDint Do2bi
     KDint BlockModMode;
     KDuint32 ModulationBits;
 
-    KDint x, y;
+    KDint x;
+    KDint y;
 
     BlockModMode = pBlock->PackedData[1] & 1;
     ModulationBits = pBlock->PackedData[0];
@@ -274,12 +258,18 @@ static void UnpackModulations(const AMTC_BLOCK_STRUCT *pBlock, const KDint Do2bi
  ******************************************************************************/
 static void InterpolateColours(const KDint ColourP[4], const KDint ColourQ[4], const KDint ColourR[4], const KDint ColourS[4], const KDint Do2bitMode, const KDint x, const KDint y, KDint Result[4])
 {
-    KDint u, v, uscale;
+    KDint u;
+    KDint v;
+    KDint uscale;
     KDint k;
 
-    KDint tmp1, tmp2;
+    KDint tmp1;
+    KDint tmp2;
 
-    KDint P[4], Q[4], R[4], S[4];
+    KDint P[4];
+    KDint Q[4];
+    KDint R[4];
+    KDint S[4];
 
     // Copy the colours
     for(k = 0; k < 4; k++)
@@ -387,9 +377,13 @@ static void GetModulationValue(KDint x, KDint y, const KDint Do2bitMode, const K
     y = (y & 0x3) | ((~y & 0x2) << 1);
 
     if(Do2bitMode)
+    {
         x = (x & 0x7) | ((~x & 0x4) << 1);
+    }
     else
+    {
         x = (x & 0x3) | ((~x & 0x2) << 1);
+    }
 
     // assume no PT for now
     *DoPT = 0;
@@ -403,7 +397,9 @@ static void GetModulationValue(KDint x, KDint y, const KDint Do2bitMode, const K
     {
         // if this is a stored value
         if(((x ^ y) & 1) == 0)
+        {
             ModVal = RepVals0[ModulationVals[y][x]];
+        }
         else if(ModulationModes[y][x] == 1)  // else average from the neighbours if H&V interpolation..
         {
             ModVal = (RepVals0[ModulationVals[y - 1][x]] +
@@ -444,23 +440,37 @@ static void GetModulationValue(KDint x, KDint y, const KDint Do2bitMode, const K
  ******************************************************************************/
 static KDint DisableTwiddlingRoutine = 0;
 
-static KDuint32 TwiddleUV(KDuint32 YSize, KDuint32 XSize, KDuint32 YPos, KDuint32 XPos)
+static KDint PowerOfTwo(KDint input)
 {
-    KDuint32 Twiddled;
+    KDint minus1;
 
-    KDuint32 MinDimension;
-    KDuint32 MaxValue;
+    if(!input)
+    {
+        return 0;
+    }
+    minus1 = input - 1;
+    return ((input | minus1) == (input ^ minus1)) ? 1 : 0;
+}
 
-    KDuint32 SrcBitPos;
-    KDuint32 DstBitPos;
+static KDint TwiddleUV(KDint YSize, KDint XSize, KDint YPos, KDint XPos)
+{
+    KDint Twiddled;
+
+    KDint MinDimension;
+    KDint MaxValue;
+
+    KDint SrcBitPos;
+    KDint DstBitPos;
 
     KDint ShiftCount;
 
     kdAssert(YPos < YSize);
     kdAssert(XPos < XSize);
 
-    kdAssert(POWER_OF_2(YSize));
-    kdAssert(POWER_OF_2(XSize));
+    kdAssert(PowerOfTwo(YSize));
+    kdAssert(PowerOfTwo(XSize));
+
+
 
     if(YSize < XSize)
     {
@@ -475,7 +485,9 @@ static KDuint32 TwiddleUV(KDuint32 YSize, KDuint32 XSize, KDuint32 YPos, KDuint3
 
     // Nasty hack to disable twiddling
     if(DisableTwiddlingRoutine)
+    {
         return (YPos * XSize + XPos);
+    }
 
     // Step through all the bits in the "minimum" dimension
     SrcBitPos = 1;
@@ -514,27 +526,34 @@ static KDuint32 TwiddleUV(KDuint32 YSize, KDuint32 XSize, KDuint32 YPos, KDuint3
  ******************************************************************************/
 static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData, const KDboolean Do2bitMode, const KDint XDim, const KDint YDim, const KDint AssumeImageTiles, KDuint8 *pResultImage)
 {
-    KDint x, y;
-    KDint i, j;
+    KDint x;
+    KDint y;
+    KDint i;
+    KDint j;
 
-    KDint BlkX, BlkY;
-    KDint BlkXp1, BlkYp1;
+    KDint BlkX;
+    KDint BlkY;
+    KDint BlkXp1;
+    KDint BlkYp1;
     KDint XBlockSize;
-    KDint BlkXDim, BlkYDim;
+    KDint BlkXDim;
+    KDint BlkYDim;
 
-    KDint StartX, StartY;
+    KDint StartX;
+    KDint StartY;
 
     KDint ModulationVals[8][16];
     KDint ModulationModes[8][16];
 
-    KDint Mod, DoPT;
+    KDint Mod;
+    KDint DoPT;
 
-    KDuint uPosition;
+    KDint uPosition;
 
     // local neighbourhood of blocks
     AMTC_BLOCK_STRUCT *pBlocks[2][2];
 
-    AMTC_BLOCK_STRUCT *pPrevious[2][2] = {{NULL, NULL}, {NULL, NULL}};
+    AMTC_BLOCK_STRUCT *pPrevious[2][2] = {{KD_NULL, KD_NULL}, {KD_NULL, KD_NULL}};
 
     // Low precision colours extracted from the blocks
     struct
@@ -543,7 +562,8 @@ static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData, const KDboolean Do
     } Colours5554[2][2];
 
     // Interpolated A and B colours for the pixel
-    KDint ASig[4], BSig[4];
+    KDint ASig[4];
+    KDint BSig[4];
 
     KDint Result[4];
 
@@ -663,6 +683,9 @@ static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData, const KDboolean Do
 
 KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData, KDboolean Do2bitMode, KDint XDim, KDint YDim, KDuint8 *pResultImage)
 {
-    PVRDecompress((AMTC_BLOCK_STRUCT *)pCompressedData, Do2bitMode, XDim, YDim, 1, pResultImage);
+    AMTC_BLOCK_STRUCT data;
+    kdMemset(&data, 0, sizeof(data));
+    kdMemcpy(&data, pCompressedData, sizeof(data));
+    PVRDecompress(&data, Do2bitMode, XDim, YDim, 1, pResultImage);
     return XDim * YDim / 2;
 }
