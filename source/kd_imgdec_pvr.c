@@ -70,9 +70,10 @@
  * THE SOFTWARE.
  ******************************************************************************/
 
-/*****************************************************************************
- * defines and consts
- *****************************************************************************/
+/******************************************************************************
+ * Defines and consts
+ ******************************************************************************/
+
 #define PT_INDEX (2)  // The Punch-through index
 
 #define BLK_Y_SIZE (4)  // always 4 for all 2D block types
@@ -95,29 +96,6 @@
 #define LIMIT_COORD(Val, Size, AssumeImageTiles) \
     ((AssumeImageTiles) ? WRAP_COORD((Val), (Size)) : PVRT_CLAMP((Val), 0, (Size)-1))
 
-
-/***********************************************************
- DECOMPRESSION ROUTINES
- ************************************************************/
-
-/*!***********************************************************************
- @Struct	AMTC_BLOCK_STRUCT
- @Brief
- *************************************************************************/
-typedef struct
-{
-    // Uses 64 bits pre block
-    KDuint32 PackedData[2];
-} AMTC_BLOCK_STRUCT;
-
-/*!***********************************************************************
- @Function		util_number_is_power_2
- @Input		input A number
- @Returns		TRUE if the number is an integer power of two, else FALSE.
- @Description	Check that a number is an integer power of two, i.e.
- 1, 2, 4, 8, ... etc.
- Returns FALSE for zero.
- *************************************************************************/
 KDint util_number_is_power_2(KDuint input)
 {
     KDuint minus1;
@@ -129,16 +107,21 @@ KDint util_number_is_power_2(KDuint input)
     return ((input | minus1) == (input ^ minus1)) ? 1 : 0;
 }
 
+/***********************************************************
+ * Decompression routines
+ ************************************************************/
 
-/*!***********************************************************************
- @Function		Unpack5554Colour
- @Input			pBlock
- @Input			ABColours
- @Description	Given a block, extract the colour information and convert
- to 5554 formats
- *************************************************************************/
-static void Unpack5554Colour(const AMTC_BLOCK_STRUCT *pBlock,
-    KDint ABColours[2][4])
+typedef struct
+{
+    /* Uses 64 bits pre block */
+    KDuint32 PackedData[2];
+} AMTC_BLOCK_STRUCT;
+
+/******************************************************************************
+ * Unpack5554Colour: Given a block, extract the colour information and convert
+ * to 5554 formats
+ ******************************************************************************/
+static void Unpack5554Colour(const AMTC_BLOCK_STRUCT *pBlock, KDint ABColours[2][4])
 {
     KDuint32 RawBits[2];
 
@@ -206,24 +189,12 @@ static void Unpack5554Colour(const AMTC_BLOCK_STRUCT *pBlock,
     }
 }
 
-/*!***********************************************************************
- @Function		UnpackModulations
- @Input			pBlock
- @Input			Do2bitMode
- @Input			ModulationVals
- @Input			ModulationModes
- @Input			StartX
- @Input			StartY
- @Description	Given the block and the texture type and it's relative
- position in the 2x2 group of blocks, extract the bit
- patterns for the fully defined pixels.
- *************************************************************************/
-static void UnpackModulations(const AMTC_BLOCK_STRUCT *pBlock,
-    const KDint Do2bitMode,
-    KDint ModulationVals[8][16],
-    KDint ModulationModes[8][16],
-    KDint StartX,
-    KDint StartY)
+/******************************************************************************
+ * UnpackModulations: Given the block and the texture type and it's relative
+ * position in the 2x2 group of blocks, extract the bit patterns for the fully 
+ * defined pixels.
+ ******************************************************************************/
+static void UnpackModulations(const AMTC_BLOCK_STRUCT *pBlock, const KDint Do2bitMode, KDint ModulationVals[8][16], KDint ModulationModes[8][16], KDint StartX, KDint StartY)
 {
     KDint BlockModMode;
     KDuint32 ModulationBits;
@@ -294,31 +265,14 @@ static void UnpackModulations(const AMTC_BLOCK_STRUCT *pBlock,
     kdAssert(ModulationBits == 0);
 }
 
-/*!***********************************************************************
- @Function		InterpolateColours
- @Input			ColourP
- @Input			ColourQ
- @Input			ColourR
- @Input			ColourS
- @Input			Do2bitMode
- @Input			x
- @Input			y
- @Modified		Result
- @Description	This performs a HW bit accurate interpolation of either the
- A or B colours for a particular pixel.
- 
- NOTE: It is assumed that the source colours are in ARGB 5554
- format - This means that some "preparation" of the values will
- be necessary.
- *************************************************************************/
-static void InterpolateColours(const KDint ColourP[4],
-    const KDint ColourQ[4],
-    const KDint ColourR[4],
-    const KDint ColourS[4],
-    const KDint Do2bitMode,
-    const KDint x,
-    const KDint y,
-    KDint Result[4])
+/******************************************************************************
+ * InterpolateColours: This performs a HW bit accurate interpolation of either 
+ * the A or B colours for a particular pixel.
+ *
+ * NOTE: It is assumed that the source colours are in ARGB 5554 format. 
+ * This means that some "preparation" of the values will be necessary.
+ ******************************************************************************/
+static void InterpolateColours(const KDint ColourP[4], const KDint ColourQ[4], const KDint ColourR[4], const KDint ColourS[4], const KDint Do2bitMode, const KDint x, const KDint y, KDint Result[4])
 {
     KDint u, v, uscale;
     KDint k;
@@ -418,24 +372,11 @@ static void InterpolateColours(const KDint ColourP[4],
     }
 }
 
-/*!***********************************************************************
- @Function		GetModulationValue
- @Input			x
- @Input			y
- @Input			Do2bitMode
- @Input			ModulationVals
- @Input			ModulationModes
- @Input			Mod
- @Input			DoPT
- @Description	Get the modulation value as a numerator of a fraction of 8ths
- *************************************************************************/
-static void GetModulationValue(KDint x,
-    KDint y,
-    const KDint Do2bitMode,
-    const KDint ModulationVals[8][16],
-    const KDint ModulationModes[8][16],
-    KDint *Mod,
-    KDint *DoPT)
+/******************************************************************************
+ * GetModulationValue: Get the modulation value as a numerator of 
+ * a fraction of 8ths
+ ******************************************************************************/
+static void GetModulationValue(KDint x, KDint y, const KDint Do2bitMode, const KDint ModulationVals[8][16], const KDint ModulationModes[8][16], KDint *Mod, KDint *DoPT)
 {
     static const KDint RepVals0[4] = {0, 3, 5, 8};
     static const KDint RepVals1[4] = {0, 4, 4, 8};
@@ -494,19 +435,13 @@ static void GetModulationValue(KDint x,
     *Mod = ModVal;
 }
 
-/*!***********************************************************************
- @Function		TwiddleUV
- @Input			YSize	Y dimension of the texture in pixels
- @Input			XSize	X dimension of the texture in pixels
- @Input			YPos	Pixel Y position
- @Input			XPos	Pixel X position
- @Returns		The twiddled offset of the pixel
- @Description	Given the Block (or pixel) coordinates and the dimension of
- the texture in blocks (or pixels) this returns the twiddled
- offset of the block (or pixel) from the start of the map.
- 
- NOTE the dimensions of the texture must be a power of 2
- *************************************************************************/
+/******************************************************************************
+ * TwiddleUV: Given the Block (or pixel) coordinates and the dimension of
+ * the texture in blocks (or pixels) this returns the twiddled
+ * offset of the block (or pixel) from the start of the map.
+ * 
+ * NOTE: The dimensions of the texture must be a power of 2
+ ******************************************************************************/
 static KDint DisableTwiddlingRoutine = 0;
 
 static KDuint32 TwiddleUV(KDuint32 YSize, KDuint32 XSize, KDuint32 YPos, KDuint32 XPos)
@@ -574,22 +509,10 @@ static KDuint32 TwiddleUV(KDuint32 YSize, KDuint32 XSize, KDuint32 YPos, KDuint3
     return Twiddled;
 }
 
-/*!***********************************************************************
- @Function		Decompress
- @Input			pCompressedData The PVRTC texture data to decompress
- @Input			Do2BitMode Signifies whether the data is PVRTC2 or PVRTC4
- @Input			XDim X dimension of the texture
- @Input			YDim Y dimension of the texture
- @Input			AssumeImageTiles Assume the texture data tiles
- @Modified		pResultImage The decompressed texture data
- @Description	Decompresses PVRTC to RGBA 8888
- *************************************************************************/
-static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData,
-    const KDboolean Do2bitMode,
-    const KDint XDim,
-    const KDint YDim,
-    const KDint AssumeImageTiles,
-    KDuint8 *pResultImage)
+/******************************************************************************
+ * PVRDecompress: Decompresses PVRTC to RGBA 8888
+ ******************************************************************************/
+static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData, const KDboolean Do2bitMode, const KDint XDim, const KDint YDim, const KDint AssumeImageTiles, KDuint8 *pResultImage)
 {
     KDint x, y;
     KDint i, j;
@@ -738,23 +661,8 @@ static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData,
     }
 }
 
-/*!***********************************************************************
- @Function      PVRTDecompressPVRTC
- @Input         pCompressedData The PVRTC texture data to decompress
- @Input         Do2bitMode Signifies whether the data is PVRTC2 or PVRTC4
- @Input         XDim X dimension of the texture
- @Input         YDim Y dimension of the texture
- @Modified      pResultImage The decompressed texture data
- @Description   Decompresses PVRTC to RGBA 8888
- *************************************************************************/
-
-KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData,
-    KDboolean Do2bitMode,
-    KDint XDim,
-    KDint YDim,
-    KDuint8 *pResultImage)
+KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData, KDboolean Do2bitMode, KDint XDim, KDint YDim, KDuint8 *pResultImage)
 {
     PVRDecompress((AMTC_BLOCK_STRUCT *)pCompressedData, Do2bitMode, XDim, YDim, 1, pResultImage);
-
     return XDim * YDim / 2;
 }
