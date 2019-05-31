@@ -279,7 +279,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
     image->levels = 0;
-    image->bpp = 8;
 
     KDStat st;
     if(kdFstat(file, &st) == -1)
@@ -352,43 +351,83 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         }
     }
 
+    image->bpp = channels * 8;
+
     if(kdStrstrVEN(file->pathname, ".pvr"))
     {
-        if(channels == 4)
-        {
+        kdAssert(channels == 4);
+
+        enum PVRPixelType {
+            OGL_RGBA_4444 = 0x10,
+            OGL_RGBA_5551,
+            OGL_RGBA_8888,
+            OGL_RGB_565,
+            OGL_RGB_555,
+            OGL_RGB_888,
+            OGL_I_8,
+            OGL_AI_88,
+            OGL_PVRTC2,
+            OGL_PVRTC4
+        };
+
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
 #endif
-            typedef struct PVRTexHeaderV3 {
-                KDuint32 version;
-                KDuint32 flags;
-                KDuint64 pixelFormat;
-                KDuint32 colourSpace;
-                KDuint32 channelType;
-                KDuint32 height;
-                KDuint32 width;
-                KDuint32 depth;
-                KDuint32 numSurfaces;
-                KDuint32 numFaces;
-                KDuint32 numMipmaps;
-                KDuint32 metaDataSize;
-            } PVRTexHeaderV3;
+        struct PVRTexHeader {
+            KDuint dwHeaderSize;      /* size of the structure */
+            KDuint dwHeight;          /* height of surface to be created */
+            KDuint dwWidth;           /* width of input surface */
+            KDuint dwMipMapCount;     /* number of mip-map levels requested */
+            KDuint dwpfFlags;         /* pixel format flags */
+            KDuint dwTextureDataSize; /* total size in bytes */
+            KDuint dwBitCount;        /* number of bits per pixel  */
+            KDuint dwRBitMask;        /* mask for red bit */
+            KDuint dwGBitMask;        /* mask for green bits */
+            KDuint dwBBitMask;        /* mask for blue bits */
+            KDuint dwAlphaBitMask;    /* mask for alpha channel */
+            KDuint dwPVR;             /* magic number identifying pvr file */
+            KDuint dwNumSurfs;        /* the number of surfaces present in the pvr */
+        };
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
 
-            const KDint headersize = 52;
-            PVRTexHeaderV3 header;
-            kdMemcpy(&header, filedata, sizeof(PVRTexHeaderV3));
+        struct PVRTexHeader header;
+        kdMemset(&header, 0, sizeof(header));
+        kdMemcpy(&header, filedata, sizeof(header));
 
-            image->height = (KDint)header.height;
-            image->width = (KDint)header.width;
-            image->levels = (KDint)header.numMipmaps;
-            image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint8);
-            image->buffer = kdMalloc(image->size);
-            /* PVRCT2/4 RGB/RGBA compressed formats for now */
-            __kdDecompressPVRTC((const KDuint8 *)filedata + headersize + header.metaDataSize, 0, image->width, image->height, image->buffer);
+        kdAssert(header.dwHeaderSize == sizeof(header));
+        kdAssert(header.dwPVR == 0x21525650);
+
+        image->height = (KDint)header.dwHeight;
+        image->width = (KDint)header.dwWidth;
+        image->levels = (KDint)header.dwMipMapCount;
+        image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
+        image->buffer = kdMalloc(image->size);
+
+        switch(header.dwpfFlags & 0xff)
+        {
+            case OGL_RGBA_8888:
+            {
+                kdMemcpy(image->buffer, (const KDuint8 *)filedata + sizeof(header), image->size);
+                break;
+            }
+            case OGL_PVRTC2:
+            {
+                __kdDecompressPVRTC((const KDuint8 *)filedata + sizeof(header), KD_TRUE, image->width, image->height, image->buffer);
+                break;
+            }
+            case OGL_PVRTC4:
+            {
+                __kdDecompressPVRTC((const KDuint8 *)filedata + sizeof(header), KD_FALSE, image->width, image->height, image->buffer);
+                break;
+            }
+            default:
+            {
+                kdAssert(0);
+                break;
+            }
         }
     }
     else
@@ -398,7 +437,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             stbi_set_flip_vertically_on_load(1);
         }
         image->buffer = stbi_load_from_memory(filedata, (KDint)st.st_size, &image->width, &image->height, (KDint[]) {0}, channels);
-        image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint);
     }
 
     kdFree(filedata);

@@ -70,492 +70,484 @@
  * THE SOFTWARE.
  ******************************************************************************/
 
-struct Pixel32 {
-    KDuint8 red, green, blue, alpha;
-};
-typedef struct Pixel32 Pixel32;
+/*****************************************************************************
+ * defines and consts
+ *****************************************************************************/
+#define PT_INDEX (2)  // The Punch-through index
 
-struct Pixel128S {
-    KDint32 red, green, blue, alpha;
-};
-typedef struct Pixel128S Pixel128S;
+#define BLK_Y_SIZE (4)  // always 4 for all 2D block types
 
-struct PVRTCWord {
-    KDuint32 u32ModulationData;
-    KDuint32 u32ColorData;
-};
-typedef struct PVRTCWord PVRTCWord;
+#define BLK_X_MAX (8)  // Max X dimension for blocks
 
-struct PVRTCWordIndices {
-    KDint P[2], Q[2], R[2], S[2];
-};
-typedef struct PVRTCWordIndices PVRTCWordIndices;
+#define BLK_X_2BPP (8)  // dimensions for the two formats
+#define BLK_X_4BPP (4)
 
-static Pixel32 getColorA(KDuint32 u32ColorData)
+#define WRAP_COORD(Val, Size) ((Val) & ((Size)-1))
+
+#define POWER_OF_2(X) util_number_is_power_2(X)
+
+#define PVRT_CLAMP(x, l, h) (kdMinVEN((h), kdMaxVEN((x), (l))))
+
+/*
+ Define an expression to either wrap or clamp large or small vals to the
+ legal coordinate range
+ */
+#define LIMIT_COORD(Val, Size, AssumeImageTiles) \
+    ((AssumeImageTiles) ? WRAP_COORD((Val), (Size)) : PVRT_CLAMP((Val), 0, (Size)-1))
+
+
+/***********************************************************
+ DECOMPRESSION ROUTINES
+ ************************************************************/
+
+/*!***********************************************************************
+ @Struct	AMTC_BLOCK_STRUCT
+ @Brief
+ *************************************************************************/
+typedef struct
 {
-    Pixel32 color;
+    // Uses 64 bits pre block
+    KDuint32 PackedData[2];
+} AMTC_BLOCK_STRUCT;
 
-    // Opaque Color Mode - RGB 554
-    if((u32ColorData & 0x8000) != 0)
-    {
-        color.red = (KDuint8)((u32ColorData & 0x7c00) >> 10);                        // 5->5 bits
-        color.green = (KDuint8)((u32ColorData & 0x3e0) >> 5);                        // 5->5 bits
-        color.blue = (KDuint8)(u32ColorData & 0x1e) | ((u32ColorData & 0x1e) >> 4);  // 4->5 bits
-        color.alpha = (KDuint8)0xf;                                                  // 0->4 bits
-    }
-    // Transparent Color Mode - ARGB 3443
-    else
-    {
-        color.red = (KDuint8)((u32ColorData & 0xf00) >> 7) | ((u32ColorData & 0xf00) >> 11);  // 4->5 bits
-        color.green = (KDuint8)((u32ColorData & 0xf0) >> 3) | ((u32ColorData & 0xf0) >> 7);   // 4->5 bits
-        color.blue = (KDuint8)((u32ColorData & 0xe) << 1) | ((u32ColorData & 0xe) >> 2);      // 3->5 bits
-        color.alpha = (KDuint8)((u32ColorData & 0x7000) >> 11);                               // 3->4 bits - note 0 at right
-    }
-
-    return color;
-}
-
-static Pixel32 getColorB(KDuint32 u32ColorData)
-{
-    Pixel32 color;
-
-    // Opaque Color Mode - RGB 555
-    if(u32ColorData & 0x80000000)
-    {
-        color.red = (KDuint8)((u32ColorData & 0x7c000000) >> 26);   // 5->5 bits
-        color.green = (KDuint8)((u32ColorData & 0x3e00000) >> 21);  // 5->5 bits
-        color.blue = (KDuint8)((u32ColorData & 0x1f0000) >> 16);    // 5->5 bits
-        color.alpha = (KDuint8)0xf;                                 // 0 bits
-    }
-    // Transparent Color Mode - ARGB 3444
-    else
-    {
-        color.red = (KDuint8)(((u32ColorData & 0xf000000) >> 23) | ((u32ColorData & 0xf000000) >> 27));  // 4->5 bits
-        color.green = (KDuint8)(((u32ColorData & 0xf00000) >> 19) | ((u32ColorData & 0xf00000) >> 23));  // 4->5 bits
-        color.blue = (KDuint8)(((u32ColorData & 0xf0000) >> 15) | ((u32ColorData & 0xf0000) >> 19));     // 4->5 bits
-        color.alpha = (KDuint8)((u32ColorData & 0x70000000) >> 27);                                      // 3->4 bits - note 0 at right
-    }
-
-    return color;
-}
-
-static void interpolateColors(Pixel32 P, Pixel32 Q, Pixel32 R, Pixel32 S,
-    Pixel128S *pPixel, KDuint8 ui8Bpp)
-{
-    KDuint32 ui32WordWidth = 4;
-    KDuint32 ui32WordHeight = 4;
-    if(ui8Bpp == 2)
-    {
-        ui32WordWidth = 8;
-    }
-
-    //Convert to int 32.
-    Pixel128S hP = {(KDint32)P.red, (KDint32)P.green, (KDint32)P.blue, (KDint32)P.alpha};
-    Pixel128S hQ = {(KDint32)Q.red, (KDint32)Q.green, (KDint32)Q.blue, (KDint32)Q.alpha};
-    Pixel128S hR = {(KDint32)R.red, (KDint32)R.green, (KDint32)R.blue, (KDint32)R.alpha};
-    Pixel128S hS = {(KDint32)S.red, (KDint32)S.green, (KDint32)S.blue, (KDint32)S.alpha};
-
-    //Get vectors.
-    Pixel128S QminusP = {hQ.red - hP.red, hQ.green - hP.green, hQ.blue - hP.blue, hQ.alpha - hP.alpha};
-    Pixel128S SminusR = {hS.red - hR.red, hS.green - hR.green, hS.blue - hR.blue, hS.alpha - hR.alpha};
-
-    //Multiply colors.
-    hP.red *= ui32WordWidth;
-    hP.green *= ui32WordWidth;
-    hP.blue *= ui32WordWidth;
-    hP.alpha *= ui32WordWidth;
-    hR.red *= ui32WordWidth;
-    hR.green *= ui32WordWidth;
-    hR.blue *= ui32WordWidth;
-    hR.alpha *= ui32WordWidth;
-
-    if(ui8Bpp == 2)
-    {
-        //Loop through pixels to achieve results.
-        for(KDuint x = 0; x < ui32WordWidth; x++)
-        {
-            Pixel128S result = {4 * hP.red, 4 * hP.green, 4 * hP.blue, 4 * hP.alpha};
-            Pixel128S dY = {hR.red - hP.red, hR.green - hP.green, hR.blue - hP.blue, hR.alpha - hP.alpha};
-
-            for(KDuint y = 0; y < ui32WordHeight; y++)
-            {
-                pPixel[y * ui32WordWidth + x].red = (KDint32)((result.red >> 7) + (result.red >> 2));
-                pPixel[y * ui32WordWidth + x].green = (KDint32)((result.green >> 7) + (result.green >> 2));
-                pPixel[y * ui32WordWidth + x].blue = (KDint32)((result.blue >> 7) + (result.blue >> 2));
-                pPixel[y * ui32WordWidth + x].alpha = (KDint32)((result.alpha >> 5) + (result.alpha >> 1));
-
-                result.red += dY.red;
-                result.green += dY.green;
-                result.blue += dY.blue;
-                result.alpha += dY.alpha;
-            }
-
-            hP.red += QminusP.red;
-            hP.green += QminusP.green;
-            hP.blue += QminusP.blue;
-            hP.alpha += QminusP.alpha;
-
-            hR.red += SminusR.red;
-            hR.green += SminusR.green;
-            hR.blue += SminusR.blue;
-            hR.alpha += SminusR.alpha;
-        }
-    }
-    else
-    {
-        //Loop through pixels to achieve results.
-        for(KDuint y = 0; y < ui32WordHeight; y++)
-        {
-            Pixel128S result = {4 * hP.red, 4 * hP.green, 4 * hP.blue, 4 * hP.alpha};
-            Pixel128S dY = {hR.red - hP.red, hR.green - hP.green, hR.blue - hP.blue, hR.alpha - hP.alpha};
-
-            for(KDuint x = 0; x < ui32WordWidth; x++)
-            {
-                pPixel[y * ui32WordWidth + x].red = (KDint32)((result.red >> 6) + (result.red >> 1));
-                pPixel[y * ui32WordWidth + x].green = (KDint32)((result.green >> 6) + (result.green >> 1));
-                pPixel[y * ui32WordWidth + x].blue = (KDint32)((result.blue >> 6) + (result.blue >> 1));
-                pPixel[y * ui32WordWidth + x].alpha = (KDint32)((result.alpha >> 4) + (result.alpha));
-
-                result.red += dY.red;
-                result.green += dY.green;
-                result.blue += dY.blue;
-                result.alpha += dY.alpha;
-            }
-
-            hP.red += QminusP.red;
-            hP.green += QminusP.green;
-            hP.blue += QminusP.blue;
-            hP.alpha += QminusP.alpha;
-
-            hR.red += SminusR.red;
-            hR.green += SminusR.green;
-            hR.blue += SminusR.blue;
-            hR.alpha += SminusR.alpha;
-        }
-    }
-}
-
-static void unpackModulations(const PVRTCWord *word, KDint offsetX, KDint offsetY, KDint32 i32ModulationValues[16][8],
-    KDint32 i32ModulationModes[16][8], KDuint8 ui8Bpp)
-{
-    KDuint32 WordModMode = word->u32ColorData & 0x1;
-    KDuint32 ModulationBits = word->u32ModulationData;
-
-    // Unpack differently depending on 2bpp or 4bpp modes.
-    if(ui8Bpp == 2)
-    {
-        if(WordModMode)
-        {
-            // determine which of the three modes are in use:
-
-            // If this is the either the H-only or V-only interpolation mode...
-            if(ModulationBits & 0x1)
-            {
-                // look at the "LSB" for the "centre" (V=2,H=4) texel. Its LSB is now
-                // actually used to indicate whether it's the H-only mode or the V-only...
-
-                // The centre texel data is the at (y==2, x==4) and so its LSB is at bit 20.
-                if(ModulationBits & (0x1 << 20))
-                {
-                    // This is the V-only mode
-                    WordModMode = 3;
-                }
-                else
-                {
-                    // This is the H-only mode
-                    WordModMode = 2;
-                }
-
-                // Create an extra bit for the centre pixel so that it looks like
-                // we have 2 actual bits for this texel. It makes later coding much easier.
-                if(ModulationBits & (0x1 << 21))
-                {
-                    // set it to produce code for 1.0
-                    ModulationBits |= (0x1 << 20);
-                }
-                else
-                {
-                    // clear it to produce 0.0 code
-                    ModulationBits &= (KDuint) ~(0x1 << 20);
-                }
-            }  // end if H-Only or V-Only interpolation mode was chosen
-
-            if(ModulationBits & 0x2)
-            {
-                ModulationBits |= 0x1; /*set it*/
-            }
-            else
-            {
-                ModulationBits &= (KDuint)~0x1; /*clear it*/
-            }
-
-            // run through all the pixels in the block. Note we can now treat all the
-            // "stored" values as if they have 2bits (even when they didn't!)
-            for(KDint y = 0; y < 4; y++)
-            {
-                for(KDint x = 0; x < 8; x++)
-                {
-                    i32ModulationModes[x + offsetX][y + offsetY] = (KDint32)WordModMode;
-
-                    // if this is a stored value...
-                    if(((x ^ y) & 1) == 0)
-                    {
-                        i32ModulationValues[x + offsetX][y + offsetY] = ModulationBits & 3;
-                        ModulationBits >>= 2;
-                    }
-                }
-            }  // end for y
-        }
-        // else if direct encoded 2bit mode - i.e. 1 mode bit per pixel
-        else
-        {
-            for(KDint y = 0; y < 4; y++)
-            {
-                for(KDint x = 0; x < 8; x++)
-                {
-                    i32ModulationModes[x + offsetX][y + offsetY] = (KDint32)WordModMode;
-
-                    /*
-                    // double the bits so 0=> 00, and 1=>11
-                    */
-                    if(ModulationBits & 1)
-                    {
-                        i32ModulationValues[x + offsetX][y + offsetY] = 0x3;
-                    }
-                    else
-                    {
-                        i32ModulationValues[x + offsetX][y + offsetY] = 0x0;
-                    }
-                    ModulationBits >>= 1;
-                }
-            }  // end for y
-        }
-    }
-    else
-    {
-        //Much simpler than the 2bpp decompression, only two modes, so the n/8 values are set directly.
-        // run through all the pixels in the word.
-        if(WordModMode)
-        {
-            for(KDint y = 0; y < 4; y++)
-            {
-                for(KDint x = 0; x < 4; x++)
-                {
-                    i32ModulationValues[y + offsetY][x + offsetX] = ModulationBits & 3;
-                    //if (i32ModulationValues==0) {}; don't need to check 0, 0 = 0/8.
-                    if(i32ModulationValues[y + offsetY][x + offsetX] == 1)
-                    {
-                        i32ModulationValues[y + offsetY][x + offsetX] = 4;
-                    }
-                    else if(i32ModulationValues[y + offsetY][x + offsetX] == 2)
-                    {
-                        i32ModulationValues[y + offsetY][x + offsetX] = 14;  //+10 tells the decompressor to punch through alpha.
-                    }
-                    else if(i32ModulationValues[y + offsetY][x + offsetX] == 3)
-                    {
-                        i32ModulationValues[y + offsetY][x + offsetX] = 8;
-                    }
-                    ModulationBits >>= 2;
-                }  // end for x
-            }      // end for y
-        }
-        else
-        {
-            for(KDint y = 0; y < 4; y++)
-            {
-                for(KDint x = 0; x < 4; x++)
-                {
-                    i32ModulationValues[y + offsetY][x + offsetX] = ModulationBits & 3;
-                    i32ModulationValues[y + offsetY][x + offsetX] *= 3;
-                    if(i32ModulationValues[y + offsetY][x + offsetX] > 3)
-                    {
-                        i32ModulationValues[y + offsetY][x + offsetX] -= 1;
-                    }
-                    ModulationBits >>= 2;
-                }  // end for x
-            }      // end for y
-        }
-    }
-}
-
-static KDint32 getModulationValues(KDint32 i32ModulationValues[16][8], KDint32 i32ModulationModes[16][8], KDuint32 xPos, KDuint32 yPos,
-    KDuint8 ui8Bpp)
-{
-    if(ui8Bpp == 2)
-    {
-        const KDint RepVals0[4] = {0, 3, 5, 8};
-
-        // extract the modulation value. If a simple encoding
-        if(i32ModulationModes[xPos][yPos] == 0)
-        {
-            return RepVals0[i32ModulationValues[xPos][yPos]];
-        }
-        else
-        {
-            // if this is a stored value
-            if(((xPos ^ yPos) & 1) == 0)
-            {
-                return RepVals0[i32ModulationValues[xPos][yPos]];
-            }
-
-            // else average from the neighbours
-            // if H&V interpolation...
-            else if(i32ModulationModes[xPos][yPos] == 1)
-            {
-                return (RepVals0[i32ModulationValues[xPos][yPos - 1]] +
-                           RepVals0[i32ModulationValues[xPos][yPos + 1]] +
-                           RepVals0[i32ModulationValues[xPos - 1][yPos]] +
-                           RepVals0[i32ModulationValues[xPos + 1][yPos]] + 2) /
-                    4;
-            }
-            // else if H-Only
-            else if(i32ModulationModes[xPos][yPos] == 2)
-            {
-                return (RepVals0[i32ModulationValues[xPos - 1][yPos]] +
-                           RepVals0[i32ModulationValues[xPos + 1][yPos]] + 1) /
-                    2;
-            }
-            // else it's V-Only
-            else
-            {
-                return (RepVals0[i32ModulationValues[xPos][yPos - 1]] +
-                           RepVals0[i32ModulationValues[xPos][yPos + 1]] + 1) /
-                    2;
-            }
-        }
-    }
-    else if(ui8Bpp == 4)
-    {
-        return i32ModulationValues[xPos][yPos];
-    }
-
-    return 0;
-}
-
-static void pvrtcGetDecompressedPixels(const PVRTCWord *P, const PVRTCWord *Q,
-    const PVRTCWord *R, const PVRTCWord *S,
-    Pixel32 *pColorData,
-    KDuint8 ui8Bpp)
-{
-    //4bpp only needs 8*8 values, but 2bpp needs 16*8, so rather than wasting processor time we just statically allocate 16*8.
-    KDint32 i32ModulationValues[16][8];
-    //Only 2bpp needs this.
-    KDint32 i32ModulationModes[16][8];
-    //4bpp only needs 16 values, but 2bpp needs 32, so rather than wasting processor time we just statically allocate 32.
-    Pixel128S upscaledColorA[32];
-    Pixel128S upscaledColorB[32];
-
-    KDuint32 ui32WordWidth = 4;
-    KDuint32 ui32WordHeight = 4;
-    if(ui8Bpp == 2)
-    {
-        ui32WordWidth = 8;
-    }
-
-    //Get the modulations from each word.
-    unpackModulations(P, 0, 0, i32ModulationValues, i32ModulationModes, ui8Bpp);
-    unpackModulations(Q, (KDint)ui32WordWidth, 0, i32ModulationValues, i32ModulationModes, ui8Bpp);
-    unpackModulations(R, 0, (KDint)ui32WordHeight, i32ModulationValues, i32ModulationModes, ui8Bpp);
-    unpackModulations(S, (KDint)ui32WordWidth, (KDint)ui32WordHeight, i32ModulationValues, i32ModulationModes, ui8Bpp);
-
-    // Bilinear upscale image data from 2x2 -> 4x4
-    interpolateColors(getColorA(P->u32ColorData), getColorA(Q->u32ColorData),
-        getColorA(R->u32ColorData), getColorA(S->u32ColorData),
-        upscaledColorA, ui8Bpp);
-    interpolateColors(getColorB(P->u32ColorData), getColorB(Q->u32ColorData),
-        getColorB(R->u32ColorData), getColorB(S->u32ColorData),
-        upscaledColorB, ui8Bpp);
-
-    for(KDuint y = 0; y < ui32WordHeight; y++)
-    {
-        for(KDuint x = 0; x < ui32WordWidth; x++)
-        {
-            KDint32 mod = getModulationValues(i32ModulationValues, i32ModulationModes, x + ui32WordWidth / 2, y + ui32WordHeight / 2, ui8Bpp);
-            KDboolean punchthroughAlpha = KD_FALSE;
-            if(mod > 10)
-            {
-                punchthroughAlpha = KD_TRUE;
-                mod -= 10;
-            }
-
-            Pixel128S result;
-            result.red = (upscaledColorA[y * ui32WordWidth + x].red * (8 - mod) + upscaledColorB[y * ui32WordWidth + x].red * mod) / 8;
-            result.green = (upscaledColorA[y * ui32WordWidth + x].green * (8 - mod) + upscaledColorB[y * ui32WordWidth + x].green * mod) /
-                8;
-            result.blue = (upscaledColorA[y * ui32WordWidth + x].blue * (8 - mod) + upscaledColorB[y * ui32WordWidth + x].blue * mod) / 8;
-            if(punchthroughAlpha)
-            {
-                result.alpha = 0;
-            }
-            else
-            {
-                result.alpha = (upscaledColorA[y * ui32WordWidth + x].alpha * (8 - mod) + upscaledColorB[y * ui32WordWidth + x].alpha * mod) / 8;
-            }
-
-            //Convert the 32bit precision Result to 8 bit per channel color.
-            if(ui8Bpp == 2)
-            {
-                pColorData[y * ui32WordWidth + x].red = (KDuint8)result.red;
-                pColorData[y * ui32WordWidth + x].green = (KDuint8)result.green;
-                pColorData[y * ui32WordWidth + x].blue = (KDuint8)result.blue;
-                pColorData[y * ui32WordWidth + x].alpha = (KDuint8)result.alpha;
-            }
-            else if(ui8Bpp == 4)
-            {
-                pColorData[y + x * ui32WordHeight].red = (KDuint8)result.red;
-                pColorData[y + x * ui32WordHeight].green = (KDuint8)result.green;
-                pColorData[y + x * ui32WordHeight].blue = (KDuint8)result.blue;
-                pColorData[y + x * ui32WordHeight].alpha = (KDuint8)result.alpha;
-            }
-        }
-    }
-}
-
-static KDuint wrapWordIndex(KDuint numWords, KDint word)
-{
-    return (((KDuint)word + numWords) % numWords);
-}
-
-/// <summary>Check that a number is an integer power of two, i.e.: 1, 2, 4, 8, ... etc.</summary>
-/// <param name="input">Value to be checked</param>
-/// <returns>true if the number is a non-zero, integer power of two, else false.</returns>
-static KDboolean isPowerOf2(KDuint input)
+/*!***********************************************************************
+ @Function		util_number_is_power_2
+ @Input		input A number
+ @Returns		TRUE if the number is an integer power of two, else FALSE.
+ @Description	Check that a number is an integer power of two, i.e.
+ 1, 2, 4, 8, ... etc.
+ Returns FALSE for zero.
+ *************************************************************************/
+KDint util_number_is_power_2(KDuint input)
 {
     KDuint minus1;
 
     if(!input)
-    {
-        return KD_FALSE;
-    }
+        return 0;
 
     minus1 = input - 1;
-    return ((input | minus1) == (input ^ minus1));
+    return ((input | minus1) == (input ^ minus1)) ? 1 : 0;
 }
 
-static KDuint32 TwiddleUV(KDuint32 XSize, KDuint32 YSize, KDuint32 XPos, KDuint32 YPos)
-{
-    //Initially assume X is the larger size.
-    KDuint32 MinDimension = XSize;
-    KDuint32 MaxValue = YPos;
-    KDuint32 Twiddled = 0;
-    KDuint32 SrcBitPos = 1;
-    KDuint32 DstBitPos = 1;
-    KDint ShiftCount = 0;
 
-    //Check the sizes are valid.
+/*!***********************************************************************
+ @Function		Unpack5554Colour
+ @Input			pBlock
+ @Input			ABColours
+ @Description	Given a block, extract the colour information and convert
+ to 5554 formats
+ *************************************************************************/
+static void Unpack5554Colour(const AMTC_BLOCK_STRUCT *pBlock,
+    KDint ABColours[2][4])
+{
+    KDuint32 RawBits[2];
+
+    KDint i;
+
+    // Extract A and B
+    RawBits[0] = pBlock->PackedData[1] & (0xFFFE);  // 15 bits (shifted up by one)
+    RawBits[1] = pBlock->PackedData[1] >> 16;       // 16 bits
+
+    // step through both colours
+    for(i = 0; i < 2; i++)
+    {
+        // If completely opaque
+        if(RawBits[i] & (1 << 15))
+        {
+            // Extract R and G (both 5 bit)
+            ABColours[i][0] = (RawBits[i] >> 10) & 0x1F;
+            ABColours[i][1] = (RawBits[i] >> 5) & 0x1F;
+
+            /*
+             The precision of Blue depends on  A or B. If A then we need to
+             replicate the top bit to get 5 bits in total
+             */
+            ABColours[i][2] = RawBits[i] & 0x1F;
+            if(i == 0)
+            {
+                ABColours[0][2] |= ABColours[0][2] >> 4;
+            }
+
+            // set 4bit alpha fully on...
+            ABColours[i][3] = 0xF;
+        }
+        else  // Else if colour has variable translucency
+        {
+            /*
+             Extract R and G (both 4 bit).
+             (Leave a space on the end for the replication of bits
+             */
+            ABColours[i][0] = (RawBits[i] >> (8 - 1)) & 0x1E;
+            ABColours[i][1] = (RawBits[i] >> (4 - 1)) & 0x1E;
+
+            // replicate bits to truly expand to 5 bits
+            ABColours[i][0] |= ABColours[i][0] >> 4;
+            ABColours[i][1] |= ABColours[i][1] >> 4;
+
+            // grab the 3(+padding) or 4 bits of blue and add an extra padding bit
+            ABColours[i][2] = (RawBits[i] & 0xF) << 1;
+
+            /*
+             expand from 3 to 5 bits if this is from colour A, or 4 to 5 bits if from
+             colour B
+             */
+            if(i == 0)
+            {
+                ABColours[0][2] |= ABColours[0][2] >> 3;
+            }
+            else
+            {
+                ABColours[0][2] |= ABColours[0][2] >> 4;
+            }
+
+            // Set the alpha bits to be 3 + a zero on the end
+            ABColours[i][3] = (RawBits[i] >> 11) & 0xE;
+        }
+    }
+}
+
+/*!***********************************************************************
+ @Function		UnpackModulations
+ @Input			pBlock
+ @Input			Do2bitMode
+ @Input			ModulationVals
+ @Input			ModulationModes
+ @Input			StartX
+ @Input			StartY
+ @Description	Given the block and the texture type and it's relative
+ position in the 2x2 group of blocks, extract the bit
+ patterns for the fully defined pixels.
+ *************************************************************************/
+static void UnpackModulations(const AMTC_BLOCK_STRUCT *pBlock,
+    const KDint Do2bitMode,
+    KDint ModulationVals[8][16],
+    KDint ModulationModes[8][16],
+    KDint StartX,
+    KDint StartY)
+{
+    KDint BlockModMode;
+    KDuint32 ModulationBits;
+
+    KDint x, y;
+
+    BlockModMode = pBlock->PackedData[1] & 1;
+    ModulationBits = pBlock->PackedData[0];
+
+    // if it's in an interpolated mode
+    if(Do2bitMode && BlockModMode)
+    {
+        /*
+         run through all the pixels in the block. Note we can now treat all the
+         "stored" values as if they have 2bits (even when they didn't!)
+         */
+        for(y = 0; y < BLK_Y_SIZE; y++)
+        {
+            for(x = 0; x < BLK_X_2BPP; x++)
+            {
+                ModulationModes[y + StartY][x + StartX] = BlockModMode;
+
+                // if this is a stored value...
+                if(((x ^ y) & 1) == 0)
+                {
+                    ModulationVals[y + StartY][x + StartX] = ModulationBits & 3;
+                    ModulationBits >>= 2;
+                }
+            }
+        }
+    }
+    else if(Do2bitMode)  // else if direct encoded 2bit mode - i.e. 1 mode bit per pixel
+    {
+        for(y = 0; y < BLK_Y_SIZE; y++)
+        {
+            for(x = 0; x < BLK_X_2BPP; x++)
+            {
+                ModulationModes[y + StartY][x + StartX] = BlockModMode;
+
+                // double the bits so 0=> 00, and 1=>11
+                if(ModulationBits & 1)
+                {
+                    ModulationVals[y + StartY][x + StartX] = 0x3;
+                }
+                else
+                {
+                    ModulationVals[y + StartY][x + StartX] = 0x0;
+                }
+                ModulationBits >>= 1;
+            }
+        }
+    }
+    else  // else its the 4bpp mode so each value has 2 bits
+    {
+        for(y = 0; y < BLK_Y_SIZE; y++)
+        {
+            for(x = 0; x < BLK_X_4BPP; x++)
+            {
+                ModulationModes[y + StartY][x + StartX] = BlockModMode;
+
+                ModulationVals[y + StartY][x + StartX] = ModulationBits & 3;
+                ModulationBits >>= 2;
+            }
+        }
+    }
+
+    // make sure nothing is left over
+    kdAssert(ModulationBits == 0);
+}
+
+/*!***********************************************************************
+ @Function		InterpolateColours
+ @Input			ColourP
+ @Input			ColourQ
+ @Input			ColourR
+ @Input			ColourS
+ @Input			Do2bitMode
+ @Input			x
+ @Input			y
+ @Modified		Result
+ @Description	This performs a HW bit accurate interpolation of either the
+ A or B colours for a particular pixel.
+ 
+ NOTE: It is assumed that the source colours are in ARGB 5554
+ format - This means that some "preparation" of the values will
+ be necessary.
+ *************************************************************************/
+static void InterpolateColours(const KDint ColourP[4],
+    const KDint ColourQ[4],
+    const KDint ColourR[4],
+    const KDint ColourS[4],
+    const KDint Do2bitMode,
+    const KDint x,
+    const KDint y,
+    KDint Result[4])
+{
+    KDint u, v, uscale;
+    KDint k;
+
+    KDint tmp1, tmp2;
+
+    KDint P[4], Q[4], R[4], S[4];
+
+    // Copy the colours
+    for(k = 0; k < 4; k++)
+    {
+        P[k] = ColourP[k];
+        Q[k] = ColourQ[k];
+        R[k] = ColourR[k];
+        S[k] = ColourS[k];
+    }
+
+    // put the x and y values into the right range
+    v = (y & 0x3) | ((~y & 0x2) << 1);
+
+    if(Do2bitMode)
+    {
+        u = (x & 0x7) | ((~x & 0x4) << 1);
+    }
+    else
+    {
+        u = (x & 0x3) | ((~x & 0x2) << 1);
+    }
+
+    // get the u and v scale amounts
+    v = v - BLK_Y_SIZE / 2;
+
+    if(Do2bitMode)
+    {
+        u = u - BLK_X_2BPP / 2;
+        uscale = 8;
+    }
+    else
+    {
+        u = u - BLK_X_4BPP / 2;
+        uscale = 4;
+    }
+
+    for(k = 0; k < 4; k++)
+    {
+        tmp1 = P[k] * uscale + u * (Q[k] - P[k]);
+        tmp2 = R[k] * uscale + u * (S[k] - R[k]);
+
+        tmp1 = tmp1 * 4 + v * (tmp2 - tmp1);
+
+        Result[k] = tmp1;
+    }
+
+    // Lop off the appropriate number of bits to get us to 8 bit precision
+    if(Do2bitMode)
+    {
+        // do RGB
+        for(k = 0; k < 3; k++)
+        {
+            Result[k] >>= 2;
+        }
+
+        Result[3] >>= 1;
+    }
+    else
+    {
+        // do RGB  (A is ok)
+        for(k = 0; k < 3; k++)
+        {
+            Result[k] >>= 1;
+        }
+    }
+
+    // sanity check
+    for(k = 0; k < 4; k++)
+    {
+        kdAssert(Result[k] < 256);
+    }
+
+
+    /*
+     Convert from 5554 to 8888
+     
+     do RGB 5.3 => 8
+     */
+    for(k = 0; k < 3; k++)
+    {
+        Result[k] += Result[k] >> 5;
+    }
+
+    Result[3] += Result[3] >> 4;
+
+    // 2nd sanity check
+    for(k = 0; k < 4; k++)
+    {
+        kdAssert(Result[k] < 256);
+    }
+}
+
+/*!***********************************************************************
+ @Function		GetModulationValue
+ @Input			x
+ @Input			y
+ @Input			Do2bitMode
+ @Input			ModulationVals
+ @Input			ModulationModes
+ @Input			Mod
+ @Input			DoPT
+ @Description	Get the modulation value as a numerator of a fraction of 8ths
+ *************************************************************************/
+static void GetModulationValue(KDint x,
+    KDint y,
+    const KDint Do2bitMode,
+    const KDint ModulationVals[8][16],
+    const KDint ModulationModes[8][16],
+    KDint *Mod,
+    KDint *DoPT)
+{
+    static const KDint RepVals0[4] = {0, 3, 5, 8};
+    static const KDint RepVals1[4] = {0, 4, 4, 8};
+
+    KDint ModVal;
+
+    // Map X and Y into the local 2x2 block
+    y = (y & 0x3) | ((~y & 0x2) << 1);
+
+    if(Do2bitMode)
+        x = (x & 0x7) | ((~x & 0x4) << 1);
+    else
+        x = (x & 0x3) | ((~x & 0x2) << 1);
+
+    // assume no PT for now
+    *DoPT = 0;
+
+    // extract the modulation value. If a simple encoding
+    if(ModulationModes[y][x] == 0)
+    {
+        ModVal = RepVals0[ModulationVals[y][x]];
+    }
+    else if(Do2bitMode)
+    {
+        // if this is a stored value
+        if(((x ^ y) & 1) == 0)
+            ModVal = RepVals0[ModulationVals[y][x]];
+        else if(ModulationModes[y][x] == 1)  // else average from the neighbours if H&V interpolation..
+        {
+            ModVal = (RepVals0[ModulationVals[y - 1][x]] +
+                         RepVals0[ModulationVals[y + 1][x]] +
+                         RepVals0[ModulationVals[y][x - 1]] +
+                         RepVals0[ModulationVals[y][x + 1]] + 2) /
+                4;
+        }
+        else if(ModulationModes[y][x] == 2)  // else if H-Only
+        {
+            ModVal = (RepVals0[ModulationVals[y][x - 1]] +
+                         RepVals0[ModulationVals[y][x + 1]] + 1) /
+                2;
+        }
+        else  // else it's V-Only
+        {
+            ModVal = (RepVals0[ModulationVals[y - 1][x]] +
+                         RepVals0[ModulationVals[y + 1][x]] + 1) /
+                2;
+        }
+    }
+    else  // else it's 4BPP and PT encoding
+    {
+        ModVal = RepVals1[ModulationVals[y][x]];
+
+        *DoPT = ModulationVals[y][x] == PT_INDEX;
+    }
+
+    *Mod = ModVal;
+}
+
+/*!***********************************************************************
+ @Function		TwiddleUV
+ @Input			YSize	Y dimension of the texture in pixels
+ @Input			XSize	X dimension of the texture in pixels
+ @Input			YPos	Pixel Y position
+ @Input			XPos	Pixel X position
+ @Returns		The twiddled offset of the pixel
+ @Description	Given the Block (or pixel) coordinates and the dimension of
+ the texture in blocks (or pixels) this returns the twiddled
+ offset of the block (or pixel) from the start of the map.
+ 
+ NOTE the dimensions of the texture must be a power of 2
+ *************************************************************************/
+static KDint DisableTwiddlingRoutine = 0;
+
+static KDuint32 TwiddleUV(KDuint32 YSize, KDuint32 XSize, KDuint32 YPos, KDuint32 XPos)
+{
+    KDuint32 Twiddled;
+
+    KDuint32 MinDimension;
+    KDuint32 MaxValue;
+
+    KDuint32 SrcBitPos;
+    KDuint32 DstBitPos;
+
+    KDint ShiftCount;
+
     kdAssert(YPos < YSize);
     kdAssert(XPos < XSize);
-    kdAssert(isPowerOf2(YSize));
-    kdAssert(isPowerOf2(XSize));
 
-    //If Y is the larger dimension - switch the min/max values.
+    kdAssert(POWER_OF_2(YSize));
+    kdAssert(POWER_OF_2(XSize));
+
     if(YSize < XSize)
     {
         MinDimension = YSize;
         MaxValue = XPos;
     }
+    else
+    {
+        MinDimension = XSize;
+        MaxValue = YPos;
+    }
+
+    // Nasty hack to disable twiddling
+    if(DisableTwiddlingRoutine)
+        return (YPos * XSize + XPos);
 
     // Step through all the bits in the "minimum" dimension
+    SrcBitPos = 1;
+    DstBitPos = 1;
+    Twiddled = 0;
+    ShiftCount = 0;
+
     while(SrcBitPos < MinDimension)
     {
         if(YPos & SrcBitPos)
@@ -568,152 +560,201 @@ static KDuint32 TwiddleUV(KDuint32 XSize, KDuint32 YSize, KDuint32 XPos, KDuint3
             Twiddled |= (DstBitPos << 1);
         }
 
+
         SrcBitPos <<= 1;
         DstBitPos <<= 2;
         ShiftCount += 1;
     }
 
-    // Prepend any unused bits
+    // prepend any unused bits
     MaxValue >>= ShiftCount;
+
     Twiddled |= (MaxValue << (2 * ShiftCount));
 
     return Twiddled;
 }
 
-static void mapDecompressedData(Pixel32 *pOutput, KDint width,
-    const Pixel32 *pWord,
-    const PVRTCWordIndices *words,
-    KDuint8 ui8Bpp)
+/*!***********************************************************************
+ @Function		Decompress
+ @Input			pCompressedData The PVRTC texture data to decompress
+ @Input			Do2BitMode Signifies whether the data is PVRTC2 or PVRTC4
+ @Input			XDim X dimension of the texture
+ @Input			YDim Y dimension of the texture
+ @Input			AssumeImageTiles Assume the texture data tiles
+ @Modified		pResultImage The decompressed texture data
+ @Description	Decompresses PVRTC to RGBA 8888
+ *************************************************************************/
+static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData,
+    const KDboolean Do2bitMode,
+    const KDint XDim,
+    const KDint YDim,
+    const KDint AssumeImageTiles,
+    KDuint8 *pResultImage)
 {
-    KDuint32 ui32WordWidth = 4;
-    KDuint32 ui32WordHeight = 4;
-    if(ui8Bpp == 2)
+    KDint x, y;
+    KDint i, j;
+
+    KDint BlkX, BlkY;
+    KDint BlkXp1, BlkYp1;
+    KDint XBlockSize;
+    KDint BlkXDim, BlkYDim;
+
+    KDint StartX, StartY;
+
+    KDint ModulationVals[8][16];
+    KDint ModulationModes[8][16];
+
+    KDint Mod, DoPT;
+
+    KDuint uPosition;
+
+    // local neighbourhood of blocks
+    AMTC_BLOCK_STRUCT *pBlocks[2][2];
+
+    AMTC_BLOCK_STRUCT *pPrevious[2][2] = {{NULL, NULL}, {NULL, NULL}};
+
+    // Low precision colours extracted from the blocks
+    struct
     {
-        ui32WordWidth = 8;
+        KDint Reps[2][4];
+    } Colours5554[2][2];
+
+    // Interpolated A and B colours for the pixel
+    KDint ASig[4], BSig[4];
+
+    KDint Result[4];
+
+    if(Do2bitMode)
+    {
+        XBlockSize = BLK_X_2BPP;
+    }
+    else
+    {
+        XBlockSize = BLK_X_4BPP;
     }
 
-    for(KDuint y = 0; y < ui32WordHeight / 2; y++)
+    // For MBX don't allow the sizes to get too small
+    BlkXDim = kdMaxVEN(2, XDim / XBlockSize);
+    BlkYDim = kdMaxVEN(2, YDim / BLK_Y_SIZE);
+
+    /*
+     Step through the pixels of the image decompressing each one in turn
+     
+     Note that this is a hideously inefficient way to do this!
+     */
+    for(y = 0; y < YDim; y++)
     {
-        for(KDuint x = 0; x < ui32WordWidth / 2; x++)
+        for(x = 0; x < XDim; x++)
         {
-            pOutput[((((KDuint)words->P[1] * ui32WordHeight) + y + ui32WordHeight / 2) * (KDuint)width + (KDuint)words->P[0] * ui32WordWidth + x + ui32WordWidth / 2)] = pWord[y * ui32WordWidth + x];  // map P
+            // map this pixel to the top left neighbourhood of blocks
+            BlkX = (x - XBlockSize / 2);
+            BlkY = (y - BLK_Y_SIZE / 2);
 
-            pOutput[((((KDuint)words->Q[1] * ui32WordHeight) + y + ui32WordHeight / 2) * (KDuint)width + (KDuint)words->Q[0] * ui32WordWidth + x)] = pWord[y * ui32WordWidth + x + ui32WordWidth / 2];  // map Q
+            BlkX = LIMIT_COORD(BlkX, XDim, AssumeImageTiles);
+            BlkY = LIMIT_COORD(BlkY, YDim, AssumeImageTiles);
 
-            pOutput[((((KDuint)words->R[1] * ui32WordHeight) + y) * (KDuint)width + (KDuint)words->R[0] * ui32WordWidth + x + ui32WordWidth / 2)] = pWord[(y + ui32WordHeight / 2) * ui32WordWidth + x];  // map R
 
-            pOutput[((((KDuint)words->S[1] * ui32WordHeight) + y) * (KDuint)width + (KDuint)words->S[0] * ui32WordWidth + x)] = pWord[(y + ui32WordHeight / 2) * ui32WordWidth + x + ui32WordWidth / 2];  // map S
+            BlkX /= XBlockSize;
+            BlkY /= BLK_Y_SIZE;
+
+            // compute the positions of the other 3 blocks
+            BlkXp1 = LIMIT_COORD(BlkX + 1, BlkXDim, AssumeImageTiles);
+            BlkYp1 = LIMIT_COORD(BlkY + 1, BlkYDim, AssumeImageTiles);
+
+            // Map to block memory locations
+            pBlocks[0][0] = pCompressedData + TwiddleUV(BlkYDim, BlkXDim, BlkY, BlkX);
+            pBlocks[0][1] = pCompressedData + TwiddleUV(BlkYDim, BlkXDim, BlkY, BlkXp1);
+            pBlocks[1][0] = pCompressedData + TwiddleUV(BlkYDim, BlkXDim, BlkYp1, BlkX);
+            pBlocks[1][1] = pCompressedData + TwiddleUV(BlkYDim, BlkXDim, BlkYp1, BlkXp1);
+
+
+            /*
+             extract the colours and the modulation information IF the previous values
+             have changed.
+             */
+            if(kdMemcmp(pPrevious, pBlocks, 4 * sizeof(void *)) != 0)
+            {
+                StartY = 0;
+                for(i = 0; i < 2; i++)
+                {
+                    StartX = 0;
+                    for(j = 0; j < 2; j++)
+                    {
+                        Unpack5554Colour(pBlocks[i][j], Colours5554[i][j].Reps);
+
+                        UnpackModulations(pBlocks[i][j],
+                            Do2bitMode,
+                            ModulationVals,
+                            ModulationModes,
+                            StartX, StartY);
+
+                        StartX += XBlockSize;
+                    }
+
+                    StartY += BLK_Y_SIZE;
+                }
+
+                // make a copy of the new pointers
+                kdMemcpy(pPrevious, pBlocks, 4 * sizeof(void *));
+            }
+
+            // decompress the pixel.  First compute the interpolated A and B signals
+            InterpolateColours(Colours5554[0][0].Reps[0],
+                Colours5554[0][1].Reps[0],
+                Colours5554[1][0].Reps[0],
+                Colours5554[1][1].Reps[0],
+                Do2bitMode, x, y,
+                ASig);
+
+            InterpolateColours(Colours5554[0][0].Reps[1],
+                Colours5554[0][1].Reps[1],
+                Colours5554[1][0].Reps[1],
+                Colours5554[1][1].Reps[1],
+                Do2bitMode, x, y,
+                BSig);
+
+            GetModulationValue(x, y, Do2bitMode, (const KDint(*)[16])ModulationVals, (const KDint(*)[16])ModulationModes,
+                &Mod, &DoPT);
+
+            // compute the modulated colour
+            for(i = 0; i < 4; i++)
+            {
+                Result[i] = ASig[i] * 8 + Mod * (BSig[i] - ASig[i]);
+                Result[i] >>= 3;
+            }
+
+            if(DoPT)
+            {
+                Result[3] = 0;
+            }
+
+            // Store the result in the output image
+            uPosition = (x + y * XDim) << 2;
+            pResultImage[uPosition + 0] = (KDuint8)Result[0];
+            pResultImage[uPosition + 1] = (KDuint8)Result[1];
+            pResultImage[uPosition + 2] = (KDuint8)Result[2];
+            pResultImage[uPosition + 3] = (KDuint8)Result[3];
         }
     }
 }
-static KDint pvrtcDecompress(const KDuint8 *pCompressedData,
-    Pixel32 *pDecompressedData,
-    KDuint32 ui32Width,
-    KDuint32 ui32Height,
-    KDuint8 ui8Bpp)
-{
-    KDuint32 ui32WordWidth = 4;
-    KDuint32 ui32WordHeight = 4;
-    if(ui8Bpp == 2)
-    {
-        ui32WordWidth = 8;
-    }
 
-    const KDuint8 *pWordMembers = pCompressedData;
-    Pixel32 *pOutData = pDecompressedData;
-
-    // Calculate number of words
-    KDint i32NumXWords = (KDint)(ui32Width / ui32WordWidth);
-    KDint i32NumYWords = (KDint)(ui32Height / ui32WordHeight);
-
-    // Structs used for decompression
-    PVRTCWordIndices indices;
-    Pixel32 *pPixels;
-    pPixels = (Pixel32 *)kdMalloc(ui32WordWidth * ui32WordHeight * sizeof(Pixel32));
-
-    // For each row of words
-    for(KDint wordY = -1; wordY < i32NumYWords - 1; wordY++)
-    {
-        // for each column of words
-        for(KDint wordX = -1; wordX < i32NumXWords - 1; wordX++)
-        {
-            indices.P[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX);
-            indices.P[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY);
-            indices.Q[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX + 1);
-            indices.Q[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY);
-            indices.R[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX);
-            indices.R[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY + 1);
-            indices.S[0] = (KDint)wrapWordIndex((KDuint)i32NumXWords, wordX + 1);
-            indices.S[1] = (KDint)wrapWordIndex((KDuint)i32NumYWords, wordY + 1);
-
-            //Work out the offsets into the twiddle structs, multiply by two as there are two members per word.
-            KDuint32 WordOffsets[4] =
-                {
-                    TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.P[0], (KDuint)indices.P[1]) * 2,
-                    TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.Q[0], (KDuint)indices.Q[1]) * 2,
-                    TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.R[0], (KDuint)indices.R[1]) * 2,
-                    TwiddleUV((KDuint)i32NumXWords, (KDuint)i32NumYWords, (KDuint)indices.S[0], (KDuint)indices.S[1]) * 2,
-                };
-
-            //Access individual elements to fill out PVRTCWord
-            PVRTCWord P, Q, R, S;
-            P.u32ColorData = pWordMembers[WordOffsets[0] + 1];
-            P.u32ModulationData = pWordMembers[WordOffsets[0]];
-            Q.u32ColorData = pWordMembers[WordOffsets[1] + 1];
-            Q.u32ModulationData = pWordMembers[WordOffsets[1]];
-            R.u32ColorData = pWordMembers[WordOffsets[2] + 1];
-            R.u32ModulationData = pWordMembers[WordOffsets[2]];
-            S.u32ColorData = pWordMembers[WordOffsets[3] + 1];
-            S.u32ModulationData = pWordMembers[WordOffsets[3]];
-
-            // assemble 4 words into struct to get decompressed pixels from
-            pvrtcGetDecompressedPixels(&P, &Q, &R, &S, pPixels, ui8Bpp);
-            mapDecompressedData(pOutData, (KDint)ui32Width, pPixels, &indices, ui8Bpp);
-
-        }  // for each word
-    }      // for each row of words
-
-    kdFree(pPixels);
-    //Return the data size
-    return (KDint)(ui32Width * ui32Height / (ui32WordWidth / 2));
-}
+/*!***********************************************************************
+ @Function      PVRTDecompressPVRTC
+ @Input         pCompressedData The PVRTC texture data to decompress
+ @Input         Do2bitMode Signifies whether the data is PVRTC2 or PVRTC4
+ @Input         XDim X dimension of the texture
+ @Input         YDim Y dimension of the texture
+ @Modified      pResultImage The decompressed texture data
+ @Description   Decompresses PVRTC to RGBA 8888
+ *************************************************************************/
 
 KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData,
-    KDint Do2bitMode,
+    KDboolean Do2bitMode,
     KDint XDim,
     KDint YDim,
     KDuint8 *pResultImage)
 {
-    //Cast the output buffer to a Pixel32 pointer.
-    Pixel32 *pDecompressedData = (Pixel32 *)pResultImage;
+    PVRDecompress((AMTC_BLOCK_STRUCT *)pCompressedData, Do2bitMode, XDim, YDim, 1, pResultImage);
 
-    //Check the X and Y values are at least the minimum size.
-    KDint XTrueDim = kdMaxVEN(XDim, ((Do2bitMode == 1) ? 16 : 8));
-    KDint YTrueDim = kdMaxVEN(YDim, 8);
-
-    //If the dimensions aren't correct, we need to create a new buffer instead of just using the provided one, as the buffer will overrun otherwise.
-    if(XTrueDim != XDim || YTrueDim != YDim)
-    {
-        pDecompressedData = (Pixel32 *)kdMalloc((KDsize)XTrueDim * (KDsize)YTrueDim * sizeof(Pixel32));
-    }
-
-    //Decompress the surface.
-    KDint retval = pvrtcDecompress((const KDuint8 *)pCompressedData, pDecompressedData, (KDuint32)XTrueDim, (KDuint32)YTrueDim, (Do2bitMode == 1 ? 2 : 4));
-
-    //If the dimensions were too small, then copy the new buffer back into the output buffer.
-    if(XTrueDim != XDim || YTrueDim != YDim)
-    {
-        //Loop through all the required pixels.
-        for(KDint x = 0; x < XDim; ++x)
-        {
-            for(KDint y = 0; y < YDim; ++y)
-            {
-                ((Pixel32 *)pResultImage)[x + y * XDim] = pDecompressedData[x + y * XTrueDim];
-            }
-        }
-
-        //Free the temporary buffer.
-        kdFree(pDecompressedData);
-    }
-    return retval;
+    return XDim * YDim / 2;
 }
