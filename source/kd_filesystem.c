@@ -450,7 +450,7 @@ static _KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEE
 KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
 {
     KDint error = 0;
-    for(KDuint i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
+    for(KDuint64 i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
     {
         if(seekorigins[i].seekorigin_kd == origin)
         {
@@ -726,7 +726,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     } _KDAccessMode;
     _KDAccessMode accessmodes[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
     KDint accessmode = 0;
-    for(KDuint i = 0; i < sizeof(accessmodes) / sizeof(accessmodes[0]); i++)
+    for(KDuint64 i = 0; i < sizeof(accessmodes) / sizeof(accessmodes[0]); i++)
     {
         if(accessmodes[i].accessmode_kd & amode)
         {

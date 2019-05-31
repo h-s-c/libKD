@@ -169,7 +169,8 @@ KD_API KDfloat32 KD_APIENTRY kdStrtof(const KDchar *s, KDchar **endptr)
 /* kdStrtodKHR: Convert a string to a 64-bit floating point number. */
 KD_API KDfloat64KHR KD_APIENTRY kdStrtodKHR(const KDchar *s, KD_UNUSED KDchar **endptr)
 {
-    KDfloat64KHR val, power;
+    KDfloat64KHR val;
+    KDfloat64KHR power;
     KDint i = 0;
     while(kdIsspaceVEN(s[i]))
     {
@@ -201,9 +202,12 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
 {
     KDchar _s;
     KDchar *s = &_s;
-    KDint64 acc, cutoff;
+    KDint64 acc;
+    KDint64 cutoff;
     KDint c;
-    KDint neg, any, cutlim;
+    KDint neg;
+    KDint any;
+    KDint cutlim;
     /*
      * Ensure that base is between 2 and 36 inclusive, or the special
      * value of 0.
@@ -346,9 +350,12 @@ KD_API KDint KD_APIENTRY kdStrtol(const KDchar *nptr, KDchar **endptr, KDint bas
 KD_API KDuint KD_APIENTRY kdStrtoul(const KDchar *nptr, KDchar **endptr, KDint base)
 {
     KDchar *s;
-    KDint64 acc, cutoff;
+    KDint64 acc;
+    KDint64 cutoff;
     KDint c;
-    KDint neg, any, cutlim;
+    KDint neg;
+    KDint any;
+    KDint cutlim;
     /*
      * See strtoimax for comments as to the logic used.
      */

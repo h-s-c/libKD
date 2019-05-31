@@ -1660,7 +1660,7 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
-    for(KDuint i = 0; i < queuesize; i++)
+    for(KDuint64 i = 0; i < queuesize; i++)
     {
         KDEvent *callbackevent = __kdQueuePull(kdThreadSelf()->eventqueue);
         if(callbackevent)

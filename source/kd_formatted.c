@@ -285,9 +285,14 @@ KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ..
 
 KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, KDVaListKHR ap)
 {
-    KDint count, noassign, width, base, lflag;
+    KDint count;
+    KDint noassign;
+    KDint width;
+    KDint base;
+    KDint lflag;
     const KDchar *tc;
-    KDchar *t, tmp[128];
+    KDchar *t;
+    KDchar tmp[128];
 
     count = noassign = width = lflag = 0;
     while(*format && *str)

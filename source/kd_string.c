@@ -372,7 +372,8 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
     {
         return 0;
     }
-    const KDuint8 *p1 = src1, *p2 = src2;
+    const KDuint8 *p1 = src1;
+    const KDuint8 *p2 = src2;
     do
     {
         if(*p1++ != *p2++)
