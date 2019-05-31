@@ -23,7 +23,7 @@
 
 struct KDFile {
 #if defined(_WIN32)
-    void* nativefile;
+    void *nativefile;
 #else
     KDint nativefile;
     KDint8 padding[4];
@@ -64,11 +64,11 @@ void __kdThreadFree(KDThread *thread);
 
 void __kdCleanupThreadStorageKHR(void);
 
-_KDQueue* __kdQueueCreate(KDsize size);
-KDint __kdQueueFree(_KDQueue* queue);
+_KDQueue *__kdQueueCreate(KDsize size);
+KDint __kdQueueFree(_KDQueue *queue);
 KDsize __kdQueueSize(_KDQueue *queue);
 KDint __kdQueuePush(_KDQueue *queue, void *value);
-void* __kdQueuePull(_KDQueue *queue);
+void *__kdQueuePull(_KDQueue *queue);
 
 #if !defined(_WIN32)
 KDssize __kdWrite(KDint fd, const void *buf, KDsize count);
@@ -91,4 +91,4 @@ extern KDint errno;
 KDint _fltused;
 #endif
 
-KDint __kdDecompressPVRTC(const KDuint8* pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8* pResultImage);
+KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8 *pResultImage);
