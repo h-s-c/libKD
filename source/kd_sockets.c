@@ -50,7 +50,7 @@
  * C includes
  ******************************************************************************/
 
-#if !defined(_WIN32) && !defined(KD_FREESTANDING)
+#if !defined(_WIN32)
 #include <errno.h>  // for errno
 #endif
 

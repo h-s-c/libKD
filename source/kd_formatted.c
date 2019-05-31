@@ -43,8 +43,6 @@
 #pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"  // for __kdWrite
-
 /******************************************************************************
  * C includes
  ******************************************************************************/
@@ -228,7 +226,7 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
     WriteFile(out, buf, len, (DWORD[]) {0}, KD_NULL);
 #else
-    KDssize result = __kdWrite(STDOUT_FILENO, buf, (KDsize)len);
+    KDssize result = write(STDOUT_FILENO, buf, (KDsize)len);
     if(result != len)
     {
         return KD_NULL;

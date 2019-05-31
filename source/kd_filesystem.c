@@ -45,13 +45,13 @@
 #pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"  // for KDFile, __kdRead, __kdWrite
+#include "kd_internal.h"  // for KDFile
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
-#if !defined(_WIN32) && !defined(KD_FREESTANDING)
+#if !defined(_WIN32)
 #include <errno.h>  // for errno, EINTR, ENOTDIR, ENOTE...
 #include <stdio.h>  // for remove, rename
 #endif
@@ -185,7 +185,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         KDint error = GetLastError();
 #else
-    file->nativefile = __kdOpen(pathname, access | O_CLOEXEC, create);
+    file->nativefile = open(pathname, access | O_CLOEXEC, create);
     if(file->nativefile == -1)
     {
         KDint error = errno;
@@ -252,7 +252,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
         KDint error = GetLastError();
 #else
     KDchar *temp = buffer;
-    while(length != 0 && (retval = __kdRead(file->nativefile, temp, size)) != 0)
+    while(length != 0 && (retval = read(file->nativefile, temp, size)) != 0)
     {
         if(retval == -1)
         {
@@ -296,7 +296,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     KDchar *temp = kdMalloc(length);
     KDchar *_temp = temp;
     kdMemcpy(temp, buffer, length);
-    while(length != 0 && (retval = __kdWrite(file->nativefile, temp, size)) != 0)
+    while(length != 0 && (retval = write(file->nativefile, temp, size)) != 0)
     {
         if(retval == -1)
         {
@@ -339,7 +339,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     {
         KDint error = GetLastError();
 #else
-    KDint success = (KDint)__kdRead(file->nativefile, &byte, 1);
+    KDint success = (KDint)read(file->nativefile, &byte, 1);
     if(success == 0)
     {
         file->eof = KD_TRUE;
@@ -366,7 +366,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     {
         KDint error = GetLastError();
 #else
-    KDint success = (KDint)__kdWrite(file->nativefile, &byte, 1);
+    KDint success = (KDint)write(file->nativefile, &byte, 1);
     if(success == -1)
     {
         KDint error = errno;

@@ -49,7 +49,7 @@
  * C includes
  ******************************************************************************/
 
-#if !defined(_WIN32) && !defined(KD_FREESTANDING)
+#if !defined(_WIN32)
 #include <errno.h>   // for EACCES, EAGAIN, EBADF, EBUSY, EEXIST
 #include <locale.h>  // for setlocale, LC_ALL, LC_CTYPE
 #endif

@@ -70,22 +70,12 @@ KDsize __kdQueueSize(_KDQueue *queue);
 KDint __kdQueuePush(_KDQueue *queue, void *value);
 void *__kdQueuePull(_KDQueue *queue);
 
-#if !defined(_WIN32)
-KDssize __kdWrite(KDint fd, const void *buf, KDsize count);
-KDssize __kdRead(KDint fd, void *buf, KDsize count);
-KDint __kdOpen(const KDchar *pathname, KDint flags, KDuint mode);
-#endif
-
 extern KDThreadOnce __kd_threadinit_once;
 #ifndef KDThreadStorageKeyKHR
 typedef KDuint32 KDThreadStorageKeyKHR;
 #endif
 extern KDThreadStorageKeyKHR __kd_threadlocal;
 extern KDThreadMutex *__kd_tls_mutex;
-
-#if !defined(_WIN32) && !defined(__ANDROID__) && defined(KD_FREESTANDING)
-extern KDint errno;
-#endif
 
 #if defined(_WIN32) && defined(KD_FREESTANDING)
 KDint _fltused;
