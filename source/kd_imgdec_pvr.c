@@ -683,9 +683,8 @@ static void PVRDecompress(AMTC_BLOCK_STRUCT *pCompressedData, const KDboolean Do
 
 KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData, KDboolean Do2bitMode, KDint XDim, KDint YDim, KDuint8 *pResultImage)
 {
-    AMTC_BLOCK_STRUCT data;
-    kdMemset(&data, 0, sizeof(data));
-    kdMemcpy(&data, pCompressedData, sizeof(data));
-    PVRDecompress(&data, Do2bitMode, XDim, YDim, 1, pResultImage);
+    AMTC_BLOCK_STRUCT *dataptr = KD_NULL;
+    kdMemcpy(&dataptr, &pCompressedData, sizeof(pCompressedData));
+    PVRDecompress(dataptr, Do2bitMode, XDim, YDim, 1, pResultImage);
     return XDim * YDim / 2;
 }
