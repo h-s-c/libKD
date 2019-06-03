@@ -830,3 +830,21 @@ KD_API KDchar *KD_APIENTRY kdStrdupVEN(const KDchar *str)
     kdStrcpy_s(dup, len, str);
     return dup;
 }
+
+/* kdStrrchr: Scan string for the last occurrence of a byte value. */
+KD_API KDchar *KD_APIENTRY kdStrrchrVEN(const KDchar *str, KDint ch)
+{
+    KDchar c = ch;
+    for(KDchar *save = KD_NULL;; ++str) 
+    {
+        if (*str == c)
+        {
+            save = (KDchar *)str;
+        }
+        if (*str == '\0')
+        {
+            return save;
+        }
+    }
+    return KD_NULL;
+}

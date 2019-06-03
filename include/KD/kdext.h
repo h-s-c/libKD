@@ -115,6 +115,16 @@ KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2);
 /* kdStrdupVEN:  Duplicate a string. */
 KD_API KDchar* KD_APIENTRY kdStrdupVEN(const KDchar *str);
 
+/* kdStrrchr: Scan string for the last occurrence of a byte value. */
+KD_API KDchar *KD_APIENTRY kdStrrchrVEN(const KDchar *str, KDint ch);
+
+/*******************************************************
+ * File system (extensions)
+ *******************************************************/
+
+/* kdBasenameVEN: Returns the path component following the final '/'. */
+KD_API KDchar *KD_APIENTRY kdBasenameVEN(const KDchar *pathname);
+
 /*******************************************************
  * Windowing (extensions)
  *******************************************************/

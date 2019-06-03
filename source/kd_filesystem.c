@@ -460,8 +460,8 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
             {
                 error = GetLastError();
 #else
-            KDint retval = (KDint)lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
-            if(retval != 0)
+            KDoff retval = (KDint)lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
+            if(retval == (KDoff)-1)
             {
                 error = errno;
 #endif
@@ -893,4 +893,11 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
         return (KDoff)-1;
     }
     return freespace;
+}
+
+/* kdBasenameVEN: Returns the path component following the final '/'. */
+KD_API KDchar *KD_APIENTRY kdBasenameVEN(const KDchar *pathname)
+{
+    KDchar *ptr = kdStrrchrVEN(pathname, '/');
+    return ptr ? ptr + 1 : (KDchar *) pathname;
 }
