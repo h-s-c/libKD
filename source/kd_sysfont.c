@@ -63,13 +63,19 @@
 #define STBTT_memset kdMemset
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
-#if defined(__clang__)
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4244)
+#elif defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
 #pragma clang diagnostic ignored "-Wcast-qual"
+#pragma clang diagnostic ignored "-Wconversion"
 #pragma clang diagnostic ignored "-Wfloat-equal"
-#pragma clang diagnostic ignored "-Wimplicit-float-conversion"
 #pragma clang diagnostic ignored "-Wbad-function-cast"
+#if __has_warning("-Wimplicit-float-conversion")
+#pragma clang diagnostic ignored "-Wimplicit-float-conversion"
+#endif
 #if __has_warning("-Wdouble-promotion")
 #pragma clang diagnostic ignored "-Wdouble-promotion"
 #endif
@@ -83,7 +89,9 @@
 #endif
 #endif
 #include "stb_truetype.h"
-#if defined(__clang__)
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#elif defined(__clang__)
 #pragma clang diagnostic pop
 #endif
 
