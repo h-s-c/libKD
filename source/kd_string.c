@@ -834,12 +834,12 @@ KD_API KDchar *KD_APIENTRY kdStrdupVEN(const KDchar *str)
 /* kdStrrchr: Scan string for the last occurrence of a byte value. */
 KD_API KDchar *KD_APIENTRY kdStrrchrVEN(const KDchar *str, KDint ch)
 {
-    KDchar c = ch;
+    KDchar c = (KDchar)ch;
     for(KDchar *save = KD_NULL;; ++str)
     {
         if(*str == c)
         {
-            save = (KDchar *)str;
+            kdMemcpy(&save, &str, sizeof(str));
         }
         if(*str == '\0')
         {
