@@ -38,7 +38,6 @@
 #endif
 #include "kdplatform.h"
 #include <KD/kd.h>
-#include <KD/kdext.h>
 #include <KD/ACR_system_font.h>
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -48,8 +47,8 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#define STBTT_ifloor(x) ((int)kdFloorf(x))
-#define STBTT_iceil(x) ((int)kdCeilf(x))
+#define STBTT_ifloor(x) ((KDint)kdFloorf(x))
+#define STBTT_iceil(x) ((KDint)kdCeilf(x))
 #define STBTT_sqrt(x) kdSqrtf(x)
 #define STBTT_pow(x, y) kdPowf(x, y)
 #define STBTT_fmod(x, y) kdFmodf(x, y)
@@ -64,8 +63,29 @@
 #define STBTT_memset kdMemset
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#pragma clang diagnostic ignored "-Wcast-qual"
+#pragma clang diagnostic ignored "-Wfloat-equal"
+#pragma clang diagnostic ignored "-Wimplicit-float-conversion"
+#pragma clang diagnostic ignored "-Wbad-function-cast"
+#if __has_warning("-Wdouble-promotion")
+#pragma clang diagnostic ignored "-Wdouble-promotion"
+#endif
+#if __has_warning("-Wextra-semi-stmt")
+#pragma clang diagnostic ignored "-Wextra-semi-stmt"
+#endif
+#pragma clang diagnostic ignored "-Wpadded"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#if __has_warning("-Wcomma")
+#pragma clang diagnostic ignored "-Wcomma"
+#endif
+#endif
 #include "stb_truetype.h"
-
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 /******************************************************************************
  * OpenKODE Core extension: KD_ACR_system_font
@@ -353,7 +373,7 @@ static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
     }
 
     kdFseek(fontfile, 0, KD_SEEK_END);
-    KDsize fontsize = kdFtell(fontfile);
+    KDsize fontsize = (KDsize)kdFtell(fontfile);
     kdFseek(fontfile, 0, KD_SEEK_SET);
 
     KDuint8 *fontbuffer = kdMalloc(fontsize);
@@ -383,21 +403,21 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
     /* calculate font scaling */
     KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, size);
 
-    KDint x = 0;
+    KDuint x = 0;
     for(KDsize i = 0; i < kdStrlen(utf8string); ++i)
     {
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
-        x += ax * scale;
+        x += (KDuint)(ax * scale);
 
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += kern * scale;
+        x += (KDuint)(kern * scale);
     }
 
-    *result_w = x;
+    *result_w = (KDint)x;
     *result_h = size;
 
     kdFree(font);
@@ -423,15 +443,15 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
     /* calculate font scaling */
     KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, size);
 
-    KDint x = 0;
+    KDuint x = 0;
 
     KDint ascent = 0;
     KDint descent = 0;
     KDint lineGap = 0;
     stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
 
-    ascent *= scale;
-    descent *= scale;
+    ascent *= (KDint)scale;
+    descent *= (KDint)scale;
 
     for(KDsize i = 0; i < kdStrlen(utf8string); ++i)
     {
@@ -446,18 +466,18 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
         KDint y = ascent + c_y1;
 
         /* render character (stride and offset is important here) */
-        KDint byteOffset = x + (y * w);
+        KDint byteOffset = (KDint)x + (y * w);
         stbtt_MakeCodepointBitmap(&info, (KDuint8 *)buffer + byteOffset, c_x2 - c_x1, c_y2 - c_y1, w, scale, scale, utf8string[i]);
 
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
-        x += ax * scale;
+        x += (KDuint)(ax * scale);
 
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += kern * scale;
+        x += (KDuint)(kern * scale);
     }
 
     kdFree(font);
