@@ -409,7 +409,7 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
     stbtt_InitFont(&info, font, 0);
 
     /* calculate font scaling */
-    KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, size);
+    KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, (KDfloat32)size);
 
     KDuint x = 0;
     for(KDsize i = 0; i < kdStrlen(utf8string); ++i)
@@ -449,7 +449,7 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
     stbtt_InitFont(&info, font, 0);
 
     /* calculate font scaling */
-    KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, size);
+    KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, (KDfloat32)size);
 
     KDuint x = 0;
 
