@@ -835,13 +835,13 @@ KD_API KDchar *KD_APIENTRY kdStrdupVEN(const KDchar *str)
 KD_API KDchar *KD_APIENTRY kdStrrchrVEN(const KDchar *str, KDint ch)
 {
     KDchar c = ch;
-    for(KDchar *save = KD_NULL;; ++str) 
+    for(KDchar *save = KD_NULL;; ++str)
     {
-        if (*str == c)
+        if(*str == c)
         {
             save = (KDchar *)str;
         }
-        if (*str == '\0')
+        if(*str == '\0')
         {
             return save;
         }

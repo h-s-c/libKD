@@ -48,20 +48,20 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#define STBTT_ifloor(x)   ((int) kdFloorf(x))
-#define STBTT_iceil(x)    ((int) kdCeilf(x))
-#define STBTT_sqrt(x)      kdSqrtf(x)
-#define STBTT_pow(x,y)     kdPowf(x,y)
-#define STBTT_fmod(x,y)    kdFmodf(x,y)
-#define STBTT_cos(x)       kdCosf(x)
-#define STBTT_acos(x)      kdAcosf(x)
-#define STBTT_fabs(x)      kdFabsf(x)
-#define STBTT_malloc(x,u)  ((void)(u),kdMalloc(x))
-#define STBTT_free(x,u)    ((void)(u),kdFree(x))
-#define STBTT_assert(x)    kdAssert(x)
-#define STBTT_strlen(x)    kdStrlen(x)
-#define STBTT_memcpy       kdMemcpy
-#define STBTT_memset       kdMemset
+#define STBTT_ifloor(x) ((int)kdFloorf(x))
+#define STBTT_iceil(x) ((int)kdCeilf(x))
+#define STBTT_sqrt(x) kdSqrtf(x)
+#define STBTT_pow(x, y) kdPowf(x, y)
+#define STBTT_fmod(x, y) kdFmodf(x, y)
+#define STBTT_cos(x) kdCosf(x)
+#define STBTT_acos(x) kdAcosf(x)
+#define STBTT_fabs(x) kdFabsf(x)
+#define STBTT_malloc(x, u) ((void)(u), kdMalloc(x))
+#define STBTT_free(x, u) ((void)(u), kdFree(x))
+#define STBTT_assert(x) kdAssert(x)
+#define STBTT_strlen(x) kdStrlen(x)
+#define STBTT_memcpy kdMemcpy
+#define STBTT_memset kdMemset
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
@@ -85,8 +85,7 @@ static const KDchar __kd_sans_regular[7][128] = {
     /* MacOS */
     "/Library/Fonts/Arial.ttf",
     /* Android */
-    "/system/fonts/Roboto-Regular.ttf"
-};
+    "/system/fonts/Roboto-Regular.ttf"};
 
 static const KDchar __kd_sans_bold[7][128] = {
     /* Ubuntu */
@@ -102,8 +101,7 @@ static const KDchar __kd_sans_bold[7][128] = {
     /* MacOS */
     "/Library/Fonts/Arial Bold.ttf",
     /* Android */
-    "/system/fonts/Roboto-Bold.ttf"
-};
+    "/system/fonts/Roboto-Bold.ttf"};
 
 static const KDchar __kd_sans_bolditalic[7][128] = {
     /* Ubuntu */
@@ -119,8 +117,7 @@ static const KDchar __kd_sans_bolditalic[7][128] = {
     /* MacOS */
     "/Library/Fonts/Arial Bold Italic.ttf",
     /* Android */
-    "/system/fonts/Roboto-BoldItalic.ttf"
-};
+    "/system/fonts/Roboto-BoldItalic.ttf"};
 
 static const KDchar __kd_sans_italic[7][128] = {
     /* Ubuntu */
@@ -136,8 +133,7 @@ static const KDchar __kd_sans_italic[7][128] = {
     /* MacOS */
     "/Library/Fonts/Arial Italic.ttf",
     /* Android */
-    "/system/fonts/Roboto-Italic.ttf"
-};
+    "/system/fonts/Roboto-Italic.ttf"};
 
 static const KDchar __kd_serif_regular[7][128] = {
     /* Ubuntu */
@@ -153,8 +149,7 @@ static const KDchar __kd_serif_regular[7][128] = {
     /* MacOS */
     "/Library/Fonts/Times New Roman.ttf",
     /* Android */
-    "/system/fonts/NotoSerif-Regular.ttf"
-};
+    "/system/fonts/NotoSerif-Regular.ttf"};
 
 static const KDchar __kd_serif_bold[7][128] = {
     /* Ubuntu */
@@ -170,8 +165,7 @@ static const KDchar __kd_serif_bold[7][128] = {
     /* MacOS */
     "/Library/Fonts/Times New Roman Bold.ttf",
     /* Android */
-    "/system/fonts/NotoSerif-Bold.ttf"
-};
+    "/system/fonts/NotoSerif-Bold.ttf"};
 
 static const KDchar __kd_serif_bolditalic[7][128] = {
     /* Ubuntu */
@@ -187,8 +181,7 @@ static const KDchar __kd_serif_bolditalic[7][128] = {
     /* MacOS */
     "/Library/Fonts/Times New Roman Bold Italic.ttf",
     /* Android */
-    "/system/fonts/NotoSerif-BoldItalic.ttf"
-};
+    "/system/fonts/NotoSerif-BoldItalic.ttf"};
 
 static const KDchar __kd_serif_italic[7][128] = {
     /* Ubuntu */
@@ -204,8 +197,7 @@ static const KDchar __kd_serif_italic[7][128] = {
     /* MacOS */
     "/Library/Fonts/Times New Roman Italic.ttf",
     /* Android */
-    "/system/fonts/NotoSerif-Italic.ttf"
-};
+    "/system/fonts/NotoSerif-Italic.ttf"};
 
 static const KDchar __kd_mono_regular[7][128] = {
     /* Ubuntu */
@@ -221,8 +213,7 @@ static const KDchar __kd_mono_regular[7][128] = {
     /* MacOS */
     "/Library/Fonts/Courier New.ttf",
     /* Android */
-    "/system/fonts/DroidSansMono.ttf"
-};
+    "/system/fonts/DroidSansMono.ttf"};
 
 static const KDchar __kd_mono_bold[7][128] = {
     /* Ubuntu */
@@ -238,8 +229,7 @@ static const KDchar __kd_mono_bold[7][128] = {
     /* MacOS */
     "/Library/Fonts/Courier New Bold.ttf",
     /* Android */
-    ""
-};
+    ""};
 
 static const KDchar __kd_mono_bolditalic[7][128] = {
     /* Ubuntu */
@@ -255,8 +245,7 @@ static const KDchar __kd_mono_bolditalic[7][128] = {
     /* MacOS */
     "/Library/Fonts/Courier New Bold Italic.ttf",
     /* Android */
-    ""
-};
+    ""};
 
 static const KDchar __kd_mono_italic[7][128] = {
     /* Ubuntu */
@@ -272,12 +261,11 @@ static const KDchar __kd_mono_italic[7][128] = {
     /* MacOS */
     "/Library/Fonts/Courier New Italic.ttf",
     /* Android */
-    ""
-};
+    ""};
 
 static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
 {
-    KDFile* fontfile = KD_NULL;
+    KDFile *fontfile = KD_NULL;
     KDchar fontpaths[7][128];
 
     switch(type)
@@ -291,7 +279,7 @@ static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
             else if(flag & KD_SYSTEM_FONT_FLAG_BOLD_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_sans_bold, sizeof(fontpaths));
-            }          
+            }
             else if(flag & KD_SYSTEM_FONT_FLAG_ITALIC_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_sans_italic, sizeof(fontpaths));
@@ -307,11 +295,11 @@ static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
             if(flag & KD_SYSTEM_FONT_FLAG_BOLD_ACR && flag & KD_SYSTEM_FONT_FLAG_ITALIC_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_serif_bolditalic, sizeof(fontpaths));
-            } 
+            }
             else if(flag & KD_SYSTEM_FONT_FLAG_BOLD_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_serif_bold, sizeof(fontpaths));
-            }          
+            }
             else if(flag & KD_SYSTEM_FONT_FLAG_ITALIC_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_serif_italic, sizeof(fontpaths));
@@ -327,11 +315,11 @@ static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
             if(flag & KD_SYSTEM_FONT_FLAG_BOLD_ACR && flag & KD_SYSTEM_FONT_FLAG_ITALIC_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_mono_bolditalic, sizeof(fontpaths));
-            } 
+            }
             else if(flag & KD_SYSTEM_FONT_FLAG_BOLD_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_mono_bold, sizeof(fontpaths));
-            }          
+            }
             else if(flag & KD_SYSTEM_FONT_FLAG_ITALIC_ACR)
             {
                 kdMemcpy(&fontpaths, &__kd_mono_italic, sizeof(fontpaths));
@@ -369,7 +357,7 @@ static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
     kdFseek(fontfile, 0, KD_SEEK_SET);
 
     KDuint8 *fontbuffer = kdMalloc(fontsize);
-    
+
     kdFread(fontbuffer, fontsize, 1, fontfile);
     kdFclose(fontfile);
 
@@ -377,7 +365,7 @@ static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
 }
 
 /* kdSystemFontGetTextSizeACR: Gets system font width and height. */
-KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale, KDint32 type, KDint32 flag, const KDchar * utf8string, KD_UNUSED KDint32 w, KDint32 * result_w, KDint32 * result_h)
+KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale, KDint32 type, KDint32 flag, const KDchar *utf8string, KD_UNUSED KDint32 w, KDint32 *result_w, KDint32 *result_h)
 {
     if(locale)
     {
@@ -391,18 +379,18 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
     kdMemset(&info, 0, sizeof(info));
 
     stbtt_InitFont(&info, font, 0);
-    
+
     /* calculate font scaling */
     KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, size);
 
-    KDint x = 0;    
+    KDint x = 0;
     for(KDsize i = 0; i < kdStrlen(utf8string); ++i)
     {
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
         x += ax * scale;
-        
+
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
@@ -417,7 +405,7 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
 }
 
 /* kdSystemFontRenderTextACR: Stores a system font image to a buffer. */
-KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale, KDint32 type, KDint32 flag, const KDchar * utf8string, KDint32 w, KD_UNUSED KDint32 h, KD_UNUSED KDint32 pitch, void * buffer)
+KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale, KDint32 type, KDint32 flag, const KDchar *utf8string, KDint32 w, KD_UNUSED KDint32 h, KD_UNUSED KDint32 pitch, void *buffer)
 {
     if(locale)
     {
@@ -431,20 +419,20 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
     kdMemset(&info, 0, sizeof(info));
 
     stbtt_InitFont(&info, font, 0);
-    
+
     /* calculate font scaling */
     KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, size);
 
     KDint x = 0;
-       
+
     KDint ascent = 0;
     KDint descent = 0;
     KDint lineGap = 0;
     stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
-    
+
     ascent *= scale;
     descent *= scale;
-    
+
     for(KDsize i = 0; i < kdStrlen(utf8string); ++i)
     {
         /* get bounding box for character (may be offset to account for chars that dip above or below the line */
@@ -453,19 +441,19 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
         KDint c_x2 = 0;
         KDint c_y2 = 0;
         stbtt_GetCodepointBitmapBox(&info, utf8string[i], scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
-        
+
         /* compute y (different characters have different heights */
         KDint y = ascent + c_y1;
-        
+
         /* render character (stride and offset is important here) */
-        KDint byteOffset = x + (y  * w);
-        stbtt_MakeCodepointBitmap(&info, (KDuint8*)buffer + byteOffset, c_x2 - c_x1, c_y2 - c_y1, w, scale, scale, utf8string[i]);
-        
+        KDint byteOffset = x + (y * w);
+        stbtt_MakeCodepointBitmap(&info, (KDuint8 *)buffer + byteOffset, c_x2 - c_x1, c_y2 - c_y1, w, scale, scale, utf8string[i]);
+
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
         x += ax * scale;
-        
+
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);

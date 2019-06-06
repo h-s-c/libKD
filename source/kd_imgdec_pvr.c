@@ -471,7 +471,6 @@ static KDint TwiddleUV(KDint YSize, KDint XSize, KDint YPos, KDint XPos)
     kdAssert(PowerOfTwo(XSize));
 
 
-
     if(YSize < XSize)
     {
         MinDimension = YSize;

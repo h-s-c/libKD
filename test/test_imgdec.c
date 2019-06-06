@@ -64,7 +64,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
          TEST_EXPR(w != 0 && h != 0);
          KDchar *ptr = kdGetImagePointerATX(image, KD_IMAGE_POINTER_BUFFER_ATX);
          TEST_EXPR(ptr != KD_NULL);
-#if 0
+#if 1
          if(kdStrstrVEN(dirent->d_name, ".pvr"))
          {
             KDchar *debugpath = kdBasenameVEN(dirent->d_name);

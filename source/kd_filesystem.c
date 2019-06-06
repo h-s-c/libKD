@@ -899,5 +899,13 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
 KD_API KDchar *KD_APIENTRY kdBasenameVEN(const KDchar *pathname)
 {
     KDchar *ptr = kdStrrchrVEN(pathname, '/');
-    return ptr ? ptr + 1 : (KDchar *) pathname;
+    if(ptr)
+    {
+        return ptr + 1;
+    }
+    else
+    {
+        kdMemcpy(&ptr, &pathname, sizeof(pathname));
+        return ptr;
+    }
 }
