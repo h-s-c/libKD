@@ -2,6 +2,7 @@
 [![Zlib License](https://img.shields.io/:license-zlib-blue.svg)](https://opensource.org/licenses/Zlib)
 [![Git Flow](https://img.shields.io/:standard-gitflow-green.svg)](http://nvie.com/git-model)
 [![Semantic Versioning](https://img.shields.io/:standard-semver-green.svg)](http://semver.org)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
 
 ##
 [![Travis CI](https://img.shields.io/travis/h-s-c/libKD/develop.svg?label=TravisCI)](https://travis-ci.org/h-s-c/libKD)  
@@ -46,3 +47,6 @@ zypper install libkd
 cmake -G Ninja -Bbuild -H.
 ninja -C build
 ```
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_large)
