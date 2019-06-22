@@ -7,7 +7,8 @@
 [![Travis CI](https://img.shields.io/travis/h-s-c/libKD/develop.svg?label=TravisCI)](https://travis-ci.org/h-s-c/libKD)  
 [![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libKD/develop.svg?label=AppVeyorCI)](https://ci.appveyor.com/project/h-s-c/libKD)  
 [![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=CoverityScan)](https://scan.coverity.com/projects/h-s-c-libkd)  
-[![Codecov](https://img.shields.io/codecov/c/github/h-s-c/libKD/develop.svg?label=Codecov)](https://codecov.io/gh/h-s-c/libKD)  
+[![Codecov](https://img.shields.io/codecov/c/github/h-s-c/libKD/develop.svg?label=Codecov)](https://codecov.io/gh/h-s-c/libKD)
+[![Fossa License Scan](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
 
 ### About
 -   Cross-platform system API similar to SDL created by Khronos (OpenGl etc.)
