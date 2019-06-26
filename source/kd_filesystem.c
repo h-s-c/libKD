@@ -62,6 +62,7 @@
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 // IWYU pragma: no_include <bits/types/struct_timespec.h>
+// IWYU pragma: no_include <time.h>
 #include <unistd.h>    // for lseek, access, close, fsync
 #include <fcntl.h>     // for O_CREAT, O_WRONLY, SEEK_CUR
 #include <dirent.h>    // for closedir, opendir, readdir, DIR
