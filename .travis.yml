@@ -95,6 +95,8 @@ jobs:
       compiler: clang-5.0
     - os: linux
       compiler: icc
+    - os: linux
+      env: DOCKER_IMAGE=dockcross/web-wasm
   include:
     - stage: 'Testing (linux)'
       <<: *linux_template
@@ -208,7 +210,7 @@ jobs:
 
     - <<: *linux_template
       <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/browser-asmjs
+      env: DOCKER_IMAGE=dockcross/web-wasm
 
     - stage: 'Testing (macos)'
       <<: *macos_template
