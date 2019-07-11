@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -23,7 +23,7 @@
 
 struct KDFile {
 #if defined(_WIN32)
-    void* nativefile;
+    void *nativefile;
 #else
     KDint nativefile;
     KDint8 padding[4];
@@ -64,17 +64,11 @@ void __kdThreadFree(KDThread *thread);
 
 void __kdCleanupThreadStorageKHR(void);
 
-_KDQueue* __kdQueueCreate(KDsize size);
-KDint __kdQueueFree(_KDQueue* queue);
+_KDQueue *__kdQueueCreate(KDsize size);
+KDint __kdQueueFree(_KDQueue *queue);
 KDsize __kdQueueSize(_KDQueue *queue);
 KDint __kdQueuePush(_KDQueue *queue, void *value);
-void* __kdQueuePull(_KDQueue *queue);
-
-#if !defined(_WIN32)
-KDssize __kdWrite(KDint fd, const void *buf, KDsize count);
-KDssize __kdRead(KDint fd, void *buf, KDsize count);
-KDint __kdOpen(const KDchar *pathname, KDint flags, KDuint mode);
-#endif
+void *__kdQueuePull(_KDQueue *queue);
 
 extern KDThreadOnce __kd_threadinit_once;
 #ifndef KDThreadStorageKeyKHR
@@ -83,12 +77,8 @@ typedef KDuint32 KDThreadStorageKeyKHR;
 extern KDThreadStorageKeyKHR __kd_threadlocal;
 extern KDThreadMutex *__kd_tls_mutex;
 
-#if !defined(_WIN32) && !defined(__ANDROID__) && defined(KD_FREESTANDING)
-extern KDint errno;
-#endif
-
 #if defined(_WIN32) && defined(KD_FREESTANDING)
 KDint _fltused;
 #endif
 
-KDint __kdDecompressPVRTC(const KDuint8* pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8* pResultImage);
+KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8 *pResultImage);

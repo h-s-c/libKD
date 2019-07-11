@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -45,13 +45,13 @@
 #pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"  // for KDFile, __kdRead, __kdWrite
+#include "kd_internal.h"  // for KDFile
 
 /******************************************************************************
  * C includes
  ******************************************************************************/
 
-#if !defined(_WIN32) && !defined(KD_FREESTANDING)
+#if !defined(_WIN32)
 #include <errno.h>  // for errno, EINTR, ENOTDIR, ENOTE...
 #include <stdio.h>  // for remove, rename
 #endif
@@ -62,6 +62,7 @@
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 // IWYU pragma: no_include <bits/types/struct_timespec.h>
+// IWYU pragma: no_include <time.h>
 #include <unistd.h>    // for lseek, access, close, fsync
 #include <fcntl.h>     // for O_CREAT, O_WRONLY, SEEK_CUR
 #include <dirent.h>    // for closedir, opendir, readdir, DIR
@@ -185,7 +186,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         KDint error = GetLastError();
 #else
-    file->nativefile = __kdOpen(pathname, access | O_CLOEXEC, create);
+    file->nativefile = open(pathname, access | O_CLOEXEC, create);
     if(file->nativefile == -1)
     {
         KDint error = errno;
@@ -252,7 +253,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
         KDint error = GetLastError();
 #else
     KDchar *temp = buffer;
-    while(length != 0 && (retval = __kdRead(file->nativefile, temp, size)) != 0)
+    while(length != 0 && (retval = read(file->nativefile, temp, size)) != 0)
     {
         if(retval == -1)
         {
@@ -296,7 +297,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
     KDchar *temp = kdMalloc(length);
     KDchar *_temp = temp;
     kdMemcpy(temp, buffer, length);
-    while(length != 0 && (retval = __kdWrite(file->nativefile, temp, size)) != 0)
+    while(length != 0 && (retval = write(file->nativefile, temp, size)) != 0)
     {
         if(retval == -1)
         {
@@ -339,7 +340,7 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
     {
         KDint error = GetLastError();
 #else
-    KDint success = (KDint)__kdRead(file->nativefile, &byte, 1);
+    KDint success = (KDint)read(file->nativefile, &byte, 1);
     if(success == 0)
     {
         file->eof = KD_TRUE;
@@ -366,7 +367,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
     {
         KDint error = GetLastError();
 #else
-    KDint success = (KDint)__kdWrite(file->nativefile, &byte, 1);
+    KDint success = (KDint)write(file->nativefile, &byte, 1);
     if(success == -1)
     {
         KDint error = errno;
@@ -450,7 +451,7 @@ static _KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEE
 KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
 {
     KDint error = 0;
-    for(KDuint i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
+    for(KDuint64 i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
     {
         if(seekorigins[i].seekorigin_kd == origin)
         {
@@ -460,8 +461,8 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
             {
                 error = GetLastError();
 #else
-            KDint retval = (KDint)lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
-            if(retval != 0)
+            KDoff retval = (KDint)lseek(file->nativefile, (KDint32)offset, seekorigins[i].seekorigin);
+            if(retval == (KDoff)-1)
             {
                 error = errno;
 #endif
@@ -726,7 +727,7 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     } _KDAccessMode;
     _KDAccessMode accessmodes[] = {{KD_R_OK, R_OK}, {KD_W_OK, W_OK}, {KD_X_OK, X_OK}};
     KDint accessmode = 0;
-    for(KDuint i = 0; i < sizeof(accessmodes) / sizeof(accessmodes[0]); i++)
+    for(KDuint64 i = 0; i < sizeof(accessmodes) / sizeof(accessmodes[0]); i++)
     {
         if(accessmodes[i].accessmode_kd & amode)
         {
@@ -893,4 +894,19 @@ KD_API KDoff KD_APIENTRY kdGetFree(const KDchar *pathname)
         return (KDoff)-1;
     }
     return freespace;
+}
+
+/* kdBasenameVEN: Returns the path component following the final '/'. */
+KD_API KDchar *KD_APIENTRY kdBasenameVEN(const KDchar *pathname)
+{
+    KDchar *ptr = kdStrrchrVEN(pathname, '/');
+    if(ptr)
+    {
+        return ptr + 1;
+    }
+    else
+    {
+        kdMemcpy(&ptr, &pathname, sizeof(pathname));
+        return ptr;
+    }
 }

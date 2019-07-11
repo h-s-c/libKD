@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -42,8 +42,6 @@
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
-
-#include "kd_internal.h"  // for __kdWrite
 
 /******************************************************************************
  * C includes
@@ -228,7 +226,7 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
     HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
     WriteFile(out, buf, len, (DWORD[]) {0}, KD_NULL);
 #else
-    KDssize result = __kdWrite(STDOUT_FILENO, buf, (KDsize)len);
+    KDssize result = write(STDOUT_FILENO, buf, (KDsize)len);
     if(result != len)
     {
         return KD_NULL;
@@ -285,9 +283,14 @@ KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ..
 
 KD_API KDint KD_APIENTRY kdVsscanfKHR(const KDchar *str, const KDchar *format, KDVaListKHR ap)
 {
-    KDint count, noassign, width, base, lflag;
+    KDint count;
+    KDint noassign;
+    KDint width;
+    KDint base;
+    KDint lflag;
     const KDchar *tc;
-    KDchar *t, tmp[128];
+    KDchar *t;
+    KDchar tmp[128];
 
     count = noassign = width = lflag = 0;
     while(*format && *str)

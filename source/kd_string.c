@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -372,7 +372,8 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
     {
         return 0;
     }
-    const KDuint8 *p1 = src1, *p2 = src2;
+    const KDuint8 *p1 = src1;
+    const KDuint8 *p2 = src2;
     do
     {
         if(*p1++ != *p2++)
@@ -828,4 +829,22 @@ KD_API KDchar *KD_APIENTRY kdStrdupVEN(const KDchar *str)
     }
     kdStrcpy_s(dup, len, str);
     return dup;
+}
+
+/* kdStrrchr: Scan string for the last occurrence of a byte value. */
+KD_API KDchar *KD_APIENTRY kdStrrchrVEN(const KDchar *str, KDint ch)
+{
+    KDchar c = (KDchar)ch;
+    for(KDchar *save = KD_NULL;; ++str)
+    {
+        if(*str == c)
+        {
+            kdMemcpy(&save, &str, sizeof(str));
+        }
+        if(*str == '\0')
+        {
+            return save;
+        }
+    }
+    return KD_NULL;
 }

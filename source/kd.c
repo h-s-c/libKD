@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -1660,7 +1660,7 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
-    for(KDuint i = 0; i < queuesize; i++)
+    for(KDuint64 i = 0; i < queuesize; i++)
     {
         KDEvent *callbackevent = __kdQueuePull(kdThreadSelf()->eventqueue);
         if(callbackevent)

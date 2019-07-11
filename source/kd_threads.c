@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -75,6 +75,7 @@
 // IWYU pragma: no_include <bits/types/time_t.h>
 // IWYU pragma: no_include <bits/types/struct_timespec.h>
 // IWYU pragma: no_include <linux/time.h>
+// IWYU pragma: no_include <time.h>
 #include <sys/prctl.h>  // for prctl, PR_SET_NAME
 #endif
 

@@ -2,7 +2,7 @@
 # libKD
 # zlib/libpng License
 ###############################################################################
-# Copyright (c) 2014-2018 Kevin Schmidt
+# Copyright (c) 2014-2019 Kevin Schmidt
 #
 # This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
@@ -21,15 +21,18 @@
 # 3. This notice may not be removed or altered from any source distribution.
 ###############################################################################
 
+
 find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h PATHS $ENV{KHRONOS_HEADERS})
 find_library(EGL_LIBRARY NAMES egl EGL libEGL PATHS $ENV{OPENGLES_LIBDIR})
 
+include(FindPackageHandleStandardArgs)
+
 if(EMSCRIPTEN)
-    set(EGL_FOUND TRUE)
-    SET(EGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
-    set(EGL_LIBRARY "nul")
+    set(EGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+    find_package_handle_standard_args(EGL DEFAULT_MSG EGL_INCLUDE_DIR)
+    set(EGL_LIBRARY "")
+else()
+    find_package_handle_standard_args(EGL DEFAULT_MSG EGL_INCLUDE_DIR EGL_LIBRARY)
 endif()
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY)
 mark_as_advanced(EGL_INCLUDE_DIR EGL_LIBRARY)

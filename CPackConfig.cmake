@@ -2,7 +2,7 @@
 # libKD
 # zlib/libpng License
 ###############################################################################
-# Copyright (c) 2014-2018 Kevin Schmidt
+# Copyright (c) 2014-2019 Kevin Schmidt
 #
 # This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
@@ -30,7 +30,7 @@ set(CPACK_PACKAGE_DESCRIPTION "OpenKODE Core implementation")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OpenKODE Core implementation")
 
 find_program(GIT_COMMAND NAMES git)
-execute_process(COMMAND ${GIT_COMMAND} describe --abbrev=0 --tags
+execute_process(COMMAND ${GIT_COMMAND} describe origin/master
     WORKING_DIRECTORY "$ENV{PWD}"
     OUTPUT_VARIABLE CPACK_PACKAGE_VERSION 
     OUTPUT_STRIP_TRAILING_WHITESPACE)

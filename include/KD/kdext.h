@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -114,6 +114,16 @@ KD_API KDsize KD_APIENTRY kdStrcspnVEN(const KDchar *str1, const KDchar *str2);
 
 /* kdStrdupVEN:  Duplicate a string. */
 KD_API KDchar* KD_APIENTRY kdStrdupVEN(const KDchar *str);
+
+/* kdStrrchr: Scan string for the last occurrence of a byte value. */
+KD_API KDchar *KD_APIENTRY kdStrrchrVEN(const KDchar *str, KDint ch);
+
+/*******************************************************
+ * File system (extensions)
+ *******************************************************/
+
+/* kdBasenameVEN: Returns the path component following the final '/'. */
+KD_API KDchar *KD_APIENTRY kdBasenameVEN(const KDchar *pathname);
 
 /*******************************************************
  * Windowing (extensions)

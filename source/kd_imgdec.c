@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2018 Kevin Schmidt
+ * Copyright (c) 2014-2019 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -47,7 +47,7 @@
 #pragma clang diagnostic pop
 #endif
 
-#include "kd_internal.h"  // for _KDImageATX, __kdOpen, KDFile
+#include "kd_internal.h"  // for _KDImageATX, KDFile
 
 /******************************************************************************
  * Platform includes
@@ -161,7 +161,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     image->size = (KDsize)st.st_size;
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    KDint fd = __kdOpen(pathname, O_RDONLY | O_CLOEXEC, 0);
+    KDint fd = open(pathname, O_RDONLY | O_CLOEXEC, 0);
     if(fd == -1)
 #elif(_WIN32)
     WIN32_FIND_DATA data;
@@ -279,7 +279,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         return KD_NULL;
     }
     image->levels = 0;
-    image->bpp = 8;
 
     KDStat st;
     if(kdFstat(file, &st) == -1)
@@ -352,35 +351,83 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         }
     }
 
+    image->bpp = channels * 8;
+
     if(kdStrstrVEN(file->pathname, ".pvr"))
     {
-        if(channels == 4)
-        {
-            /* PVR v2 only*/
-            struct PVR_Texture_Header {
-                KDuint dwHeaderSize;      /* size of the structure */
-                KDuint dwHeight;          /* height of surface to be created */
-                KDuint dwWidth;           /* width of input surface */
-                KDuint dwMipMapCount;     /* number of mip-map levels requested */
-                KDuint dwpfFlags;         /* pixel format flags */
-                KDuint dwTextureDataSize; /* Total size in bytes */
-                KDuint dwBitCount;        /* number of bits per pixel  */
-                KDuint dwRBitMask;        /* mask for red bit */
-                KDuint dwGBitMask;        /* mask for green bits */
-                KDuint dwBBitMask;        /* mask for blue bits */
-                KDuint dwAlphaBitMask;    /* mask for alpha channel */
-                KDuint dwPVR;             /* magic number identifying pvr file */
-                KDuint dwNumSurfs;        /* the number of surfaces present in the pvr */
-            };
-            struct PVR_Texture_Header header;
-            kdMemcpy(&header, filedata, sizeof(KDuint) * 13);
+        kdAssert(channels == 4);
 
-            image->height = (KDint)header.dwHeight;
-            image->width = (KDint)header.dwWidth;
-            image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint);
-            image->buffer = kdMalloc(image->size);
-            /* PVRCT2/4 RGB/RGBA compressed formats for now */
-            __kdDecompressPVRTC((const KDuint8 *)filedata + header.dwHeaderSize, 0, image->width, image->height, image->buffer);
+        enum PVRPixelType {
+            OGL_RGBA_4444 = 0x10,
+            OGL_RGBA_5551,
+            OGL_RGBA_8888,
+            OGL_RGB_565,
+            OGL_RGB_555,
+            OGL_RGB_888,
+            OGL_I_8,
+            OGL_AI_88,
+            OGL_PVRTC2,
+            OGL_PVRTC4
+        };
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
+        struct PVRTexHeader {
+            KDuint dwHeaderSize;      /* size of the structure */
+            KDuint dwHeight;          /* height of surface to be created */
+            KDuint dwWidth;           /* width of input surface */
+            KDuint dwMipMapCount;     /* number of mip-map levels requested */
+            KDuint dwpfFlags;         /* pixel format flags */
+            KDuint dwTextureDataSize; /* total size in bytes */
+            KDuint dwBitCount;        /* number of bits per pixel  */
+            KDuint dwRBitMask;        /* mask for red bit */
+            KDuint dwGBitMask;        /* mask for green bits */
+            KDuint dwBBitMask;        /* mask for blue bits */
+            KDuint dwAlphaBitMask;    /* mask for alpha channel */
+            KDuint dwPVR;             /* magic number identifying pvr file */
+            KDuint dwNumSurfs;        /* the number of surfaces present in the pvr */
+        };
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
+        struct PVRTexHeader header;
+        kdMemset(&header, 0, sizeof(header));
+        kdMemcpy(&header, filedata, sizeof(header));
+
+        kdAssert(header.dwHeaderSize == sizeof(header));
+        kdAssert(header.dwPVR == 0x21525650);
+
+        image->height = (KDint)header.dwHeight;
+        image->width = (KDint)header.dwWidth;
+        image->levels = (KDint)header.dwMipMapCount;
+        image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
+        image->buffer = kdMalloc(image->size);
+
+        switch(header.dwpfFlags & 0xff)
+        {
+            case OGL_RGBA_8888:
+            {
+                kdMemcpy(image->buffer, (const KDuint8 *)filedata + sizeof(header), image->size);
+                break;
+            }
+            case OGL_PVRTC2:
+            {
+                __kdDecompressPVRTC((const KDuint8 *)filedata + sizeof(header), KD_TRUE, image->width, image->height, image->buffer);
+                break;
+            }
+            case OGL_PVRTC4:
+            {
+                __kdDecompressPVRTC((const KDuint8 *)filedata + sizeof(header), KD_FALSE, image->width, image->height, image->buffer);
+                break;
+            }
+            default:
+            {
+                kdAssert(0);
+                break;
+            }
         }
     }
     else
@@ -390,7 +437,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             stbi_set_flip_vertically_on_load(1);
         }
         image->buffer = stbi_load_from_memory(filedata, (KDint)st.st_size, &image->width, &image->height, (KDint[]) {0}, channels);
-        image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels * sizeof(KDuint);
     }
 
     kdFree(filedata);

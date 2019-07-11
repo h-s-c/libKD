@@ -8,30 +8,26 @@ cache:
 
 linux_template: &linux_template
   os: linux
-  dist: trusty
+  dist: xenial
   sudo: required
 
 linux_apt_template: &linux_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-8 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-6.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-5.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-4.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.6 main"
-        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-      - sourceline: "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.5 main"
-        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-    packages: ['ninja-build', 'valgrind', 'cppcheck', 'binutils-gold', 
+    packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -72,13 +68,13 @@ packagecloud_rpm_template: &packagecloud_rpm_template
 macos_template: &macos_template
   os: osx
   compiler: clang
-  before_install: brew update && brew install ninja ccache valgrind cppcheck
+  before_install: brew update && brew install ninja ccache valgrind cppcheck flawfinder
 
 windows_template: &windows_template
   os: windows
   compiler: cl.exe
   before_install: choco install -y ninja opencppcoverage cppcheck
-  script: cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && python ci-tools/run_ctest.py'
+  script: cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && python ci-tools/run_ctest.py && exit %errorlevel%'
 
 stages:
   - name: 'Testing (linux)'
@@ -95,9 +91,21 @@ stages:
 jobs:
   allow_failures:
     - os: windows
+    - os: linux
+      compiler: clang-5.0
+    - os: linux
+      compiler: icc
+    - os: linux
+      env: DOCKER_IMAGE=dockcross/web-wasm
   include:
     - stage: 'Testing (linux)'
       <<: *linux_template
+      addons:
+        <<: *linux_apt_template
+      compiler: gcc-9
+      before_install: sudo apt-get install -y gcc-9
+
+    - <<: *linux_template
       addons:
         <<: *linux_apt_template
       compiler: gcc-8
@@ -178,18 +186,6 @@ jobs:
     - <<: *linux_template
       addons:
         <<: *linux_apt_template
-      compiler: clang-3.6
-      before_install: sudo apt-get install -y clang-3.6 llvm-3.6
-
-    - <<: *linux_template
-      addons:
-        <<: *linux_apt_template
-      compiler: clang-3.5
-      before_install: sudo apt-get install -y clang-3.5 llvm-3.5
-
-    - <<: *linux_template
-      addons:
-        <<: *linux_apt_template
       compiler: icc
       before_install: python ci-tools/install_icc.py
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
@@ -214,7 +210,7 @@ jobs:
 
     - <<: *linux_template
       <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/browser-asmjs
+      env: DOCKER_IMAGE=dockcross/web-wasm
 
     - stage: 'Testing (macos)'
       <<: *macos_template
@@ -222,9 +218,6 @@ jobs:
 
     - <<: *macos_template
       osx_image: xcode9.4
-
-    - <<: *macos_template
-      osx_image: xcode7.3
 
     - stage: 'Testing (windows)'
       <<: *windows_template
@@ -237,11 +230,14 @@ jobs:
           project:
             name: h-s-c/libKD
           notification_email: kevin.patrick.schmidt@googlemail.com
-          build_command: python ci-tools/run_ctest.py
+          build_command_prepend: ci-tools/cmake/bin/cmake -S . -B build -G Ninja
+          build_command: ci-tools/cmake/bin/cmake --build build
           branch_pattern: coverity
+      script: true  
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
- 
+
+
     - stage: 'Deployment (packagecloud)'
       <<: *linux_template
       <<: *docker_template
