@@ -36,12 +36,6 @@ curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh |
 dnf install libkd
 ```
 
-### Opensuse
-```bash
-curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
-zypper install libkd
-```
-
 ## Build from source
 ```bash
 cmake -G Ninja -Bbuild -H.
