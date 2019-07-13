@@ -30,9 +30,7 @@ set(CPACK_PACKAGE_DESCRIPTION "OpenKODE Core implementation")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OpenKODE Core implementation")
 
 find_program(GIT_COMMAND NAMES git)
-execute_process(COMMAND ${GIT_COMMAND} fetch origin master
-    WORKING_DIRECTORY "$ENV{PWD}")
-execute_process(COMMAND ${GIT_COMMAND} describe origin/master
+execute_process(COMMAND ${GIT_COMMAND} rev-parse --abbrev-ref HEAD
     WORKING_DIRECTORY "$ENV{PWD}"
     OUTPUT_VARIABLE CPACK_PACKAGE_VERSION 
     OUTPUT_STRIP_TRAILING_WHITESPACE)
