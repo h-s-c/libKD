@@ -29,7 +29,9 @@ linux_apt_template: &linux_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-    packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 
+      - sourceline: "deb http://files.viva64.com/deb/ viva64-release pvs-studio"
+        key_url: "https://files.viva64.com/etc/pubkey.txt"
+    packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
