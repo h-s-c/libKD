@@ -25,6 +25,8 @@ linux_apt_template: &linux_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-4.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.9 main"
+        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
     packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 
@@ -93,6 +95,8 @@ jobs:
     - os: windows
     - os: linux
       compiler: clang-5.0
+    - os: linux
+      compiler: clang-3.9
     - os: linux
       compiler: icc
     - os: linux
@@ -176,6 +180,12 @@ jobs:
         <<: *linux_apt_template
       compiler: clang-4.0
       before_install: sudo apt-get install -y clang-4.0 llvm-4.0
+
+    - <<: *linux_template
+      addons:
+        <<: *linux_apt_template
+      compiler: clang-3.9
+      before_install: sudo apt-get install -y clang-3.9 llvm-3.9
 
     - <<: *linux_template
       addons:
