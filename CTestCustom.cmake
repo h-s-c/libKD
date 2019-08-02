@@ -33,6 +33,7 @@ set(CTEST_CUSTOM_COVERAGE_EXCLUDE
 set(CTEST_CUSTOM_ERROR_EXCEPTION
     "clang: error: .* 'linker' input unused"
     "WARNING:root:emcc: cannot find library \"nul\""
+    "www.viva64.com/en/w:1:1: error:"
     "error: V")
 
 set(CTEST_CUSTOM_WARNING_EXCEPTION
