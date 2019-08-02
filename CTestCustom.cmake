@@ -32,10 +32,12 @@ set(CTEST_CUSTOM_COVERAGE_EXCLUDE
 
 set(CTEST_CUSTOM_ERROR_EXCEPTION
     "clang: error: .* 'linker' input unused"
-    "WARNING:root:emcc: cannot find library \"nul\"")
+    "WARNING:root:emcc: cannot find library \"nul\""
+    "error: V")
 
 set(CTEST_CUSTOM_WARNING_EXCEPTION
     "warning LNK4044"
     "warning LNK4031"
     "warning MSB8029"
-    "warning D9025")
+    "warning D9025"
+    "warning: V")
