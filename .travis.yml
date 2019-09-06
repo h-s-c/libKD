@@ -15,6 +15,8 @@ linux_apt_template: &linux_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main"
+        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main"
@@ -96,6 +98,7 @@ jobs:
   allow_failures:
     - os: windows
     - os: linux
+      compiler: clang-9
       compiler: clang-5.0
     - os: linux
       compiler: icc
@@ -150,6 +153,12 @@ jobs:
         <<: *linux_apt_template
       compiler: gcc-4.7
       before_install: sudo apt-get install -y gcc-4.7
+
+    - <<: *linux_template
+      addons:
+        <<: *linux_apt_template
+      compiler: clang-9
+      before_install: sudo apt-get install -y clang-9 llvm-9
 
     - <<: *linux_template
       addons:
