@@ -114,6 +114,9 @@
 #endif
 #pragma clang diagnostic ignored "-Wfloat-conversion"
 #pragma clang diagnostic ignored "-Wfloat-equal"
+#if __has_warning("-Wimplicit-int-float-conversion")
+#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+#endif
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wsign-conversion"
 #pragma clang diagnostic ignored "-Wstring-conversion"
