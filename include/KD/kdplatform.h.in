@@ -45,8 +45,6 @@
 
 #if defined(__GNUC__) && (__GNUC__ >= 7)
 #define KD_FALLTHROUGH __attribute__ ((fallthrough))
-#elif defined(__clang__) && (__clang_major__ >= 9)
-#define KD_FALLTHROUGH __attribute__ ((fallthrough))
 #else
 #define KD_FALLTHROUGH ((void)0)
 #endif
