@@ -257,6 +257,8 @@ void __kdThreadInitOnce(void)
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
 static void *__kdThreadRun(void *init)
 {
+    __kdMallocThreadInit();
+
     KDThread *thread = (KDThread *)init;
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     /* Set the thread name */
@@ -319,6 +321,8 @@ static void *__kdThreadRun(void *init)
     {
         __kdThreadFree(thread);
     }
+
+    __kdMallocThreadFinal();
     return result;
 }
 #endif

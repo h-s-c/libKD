@@ -58,6 +58,11 @@ struct _KDImageATX {
     KDboolean alpha;
 };
 
+void __kdMallocInit(void);
+void __kdMallocFinal(void);
+void __kdMallocThreadInit(void);
+void __kdMallocThreadFinal(void);
+
 KDThread *__kdThreadInit(void);
 void __kdThreadInitOnce(void);
 void __kdThreadFree(KDThread *thread);
