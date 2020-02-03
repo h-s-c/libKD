@@ -41,6 +41,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 option(KD_BUILD_EXAMPLES "Build with examples" Off)
 option(KD_BUILD_TESTS "Build with tests" On)
 option(KD_BUILD_OPTIMIZATONS "Build with optimizations (Haswell or later required)" Off)
+option(KD_BUILD_VERBOSE "Build with further checks" Off)
 
 project (KD C)
     include(CPack)
@@ -178,7 +179,7 @@ project (KD C)
     endif()
 
 
-    if(NOT MINGW AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT CMAKE_C_COMPILER_ID STREQUAL "TinyCC" AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
+    if(KD_BUILD_VERBOSE AND NOT MINGW AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT CMAKE_C_COMPILER_ID STREQUAL "TinyCC" AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
         find_program(CLANG_TIDY NAMES clang-tidy)
         if(CLANG_TIDY AND NOT DEFINED ENV{CI} AND NOT CMAKE_CROSSCOMPILING AND NOT KD_BUILD_OPTIMIZATONS)
             message(STATUS "clang-tidy found: ${CLANG_TIDY}")
