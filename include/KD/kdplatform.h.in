@@ -43,7 +43,9 @@
 #define MESA_EGL_NO_X11_HEADERS
 #endif
 
-#if defined(__GNUC__) && (__GNUC__ >= 7)
+#if defined(__GNUC__) && (__GNUC__ >= 7) 
+#define KD_FALLTHROUGH __attribute__ ((fallthrough))
+#elif defined(__EMSCRIPTEN__)
 #define KD_FALLTHROUGH __attribute__ ((fallthrough))
 #else
 #define KD_FALLTHROUGH ((void)0)
