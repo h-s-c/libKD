@@ -94,8 +94,6 @@
 #pragma warning(push)
 #pragma warning(disable : 6001)
 #pragma warning(disable : 6011)
-#elif defined(__TINYC__)
-#define STBI_NO_SIMD
 #elif defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"

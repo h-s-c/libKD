@@ -210,12 +210,6 @@ jobs:
       before_script: source ci-tools/icc/bin/compilervars.sh intel64
 
     - <<: *linux_template
-      addons:
-        <<: *linux_apt_template
-      compiler: tcc
-      before_install: sudo apt-get install -y tcc
-
-    - <<: *linux_template
       <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-x64
 
@@ -255,7 +249,6 @@ jobs:
       script: true  
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
-
 
     - stage: 'Deployment (packagecloud)'
       <<: *linux_template

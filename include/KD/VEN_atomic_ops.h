@@ -11,26 +11,65 @@
 extern "C" {
 #endif
 
-typedef struct KDAtomicIntVEN KDAtomicIntVEN;
-typedef struct KDAtomicPtrVEN KDAtomicPtrVEN;
+#if defined(KD_ATOMIC_C11)
+#include <stdatomic.h>
 
-KD_API KDAtomicIntVEN* KD_APIENTRY kdAtomicIntCreateVEN(KDint value);
-KD_API KDAtomicPtrVEN* KD_APIENTRY kdAtomicPtrCreateVEN(void* value);
+typedef volatile _Atomic(KDint) KDAtomicIntVEN;
 
-KD_API KDint KD_APIENTRY kdAtomicIntFreeVEN(KDAtomicIntVEN *object);
-KD_API KDint KD_APIENTRY kdAtomicPtrFreeVEN(KDAtomicPtrVEN *object);
+static KD_INLINE KDint kdAtomicIntLoadVEN(KDAtomicIntVEN* src) { return atomic_load_explicit(src, memory_order_relaxed); }
+static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint val) { atomic_store_explicit(dst, val, memory_order_relaxed); }
+static KD_INLINE KDint kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint add) { return atomic_fetch_add_explicit(val, add, memory_order_relaxed); }
+static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint val, KDint ref) { return atomic_compare_exchange_weak_explicit(dst, &ref, val, memory_order_relaxed, memory_order_relaxed); }
 
-KD_API KDint KD_APIENTRY kdAtomicIntLoadVEN(KDAtomicIntVEN *object);
-KD_API void* KD_APIENTRY kdAtomicPtrLoadVEN(KDAtomicPtrVEN *object);
+#elif defined(KD_ATOMIC_WIN32)
 
-KD_API void KD_APIENTRY kdAtomicIntStoreVEN(KDAtomicIntVEN *object, KDint value);
-KD_API void KD_APIENTRY kdAtomicPtrStoreVEN(KDAtomicPtrVEN *object, void* value);
+typedef volatile long      KDAtomicIntVEN;
 
-KD_API KDint KD_APIENTRY kdAtomicIntFetchAddVEN(KDAtomicIntVEN *object, KDint value);
-KD_API KDint KD_APIENTRY kdAtomicIntFetchSubVEN(KDAtomicIntVEN *object, KDint value);
+static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint val) { _InterlockedExchange(&dst, (long)val); }
+static KD_INLINE KDint kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint add) { return (KDint)_InterlockedExchangeAdd(val, (long)add) }
+static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint val, KDint ref) { return (_InterlockedCompareExchange((void* volatile*)dst, (long)val, (long)ref) == (long)ref) ? 1 : 0; }
 
-KD_API KDboolean KD_APIENTRY kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN *object, KDint expected, KDint desired);
-KD_API KDboolean KD_APIENTRY kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN *object, void* expected, void* desired);
+#elif defined(KD_ATOMIC_BUILTIN)
+
+typedef volatile KDint KDAtomicIntVEN;
+
+static KD_INLINE KDint kdAtomicIntLoadVEN(KDAtomicIntVEN* src) { return __atomic_load_n(src, __ATOMIC_RELAXED); }
+static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint val) { __atomic_store_n(dst, val, __ATOMIC_RELAXED); }
+static KD_INLINE KDint kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint add) { return __atomic_add_fetch(val, add, __ATOMIC_RELAXED) + add; }
+static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint val, KDint ref) { return __atomic_compare_exchange_n(dst, &ref, val, KD_TRUE, __ATOMIC_RELAXED, __ATOMIC_RELAXED); }
+
+#elif defined(KD_ATOMIC_SYNC)
+
+typedef volatile KDint KDAtomicIntVEN;
+
+static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint val) { __sync_lock_test_and_set(dst, val); }
+static KD_INLINE KDint kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint add) { return __sync_fetch_and_add(val, add) + add; }
+static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint val, KDint ref) { return __sync_bool_compare_and_swap(dst, ref, val); }
+
+#elif defined(KD_ATOMIC_EMSCRIPTEN)
+
+#include <emscripten/threading.h>
+
+typedef KDuint32 KDAtomicIntVEN;
+
+static KD_INLINE KDint kdAtomicIntLoadVEN(KDAtomicIntVEN* src) { return (KDint)emscripten_atomic_load_u32((void*)src); }
+static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint val) { emscripten_atomic_store_u32((void*)dst, (KDuint32)val); }
+static KD_INLINE KDint kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint add) { return (KDint)emscripten_atomic_add_u32((void*)val, (KDuint32)add); }
+static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint val, KDint ref) { return emscripten_atomic_cas_u32((void*)dst, (KDuint32)ref, (KDuint32)val) == (KDuint32)ref; }
+
+#endif
+
+#if defined(KD_ATOMIC_WIN32) || defined(KD_ATOMIC_SYNC)
+static KD_INLINE KDint kdAtomicIntLoadVEN(KDAtomicIntVEN* src) 
+{ 
+    KDint value = 0;
+    do
+    {
+        value = *src;
+    } while(!kdAtomicIntCompareExchangeVEN(src, value, value));
+    return value;
+}
+#endif
 
 #ifdef __cplusplus
 }

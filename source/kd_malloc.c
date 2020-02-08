@@ -59,7 +59,7 @@
  * Thirdparty includes
  ******************************************************************************/
 
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
 #include "rpmalloc.h"
 #endif
 
@@ -72,28 +72,28 @@
 
 void __kdMallocInit(void)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     rpmalloc_initialize();
 #endif
 }
 
 void __kdMallocFinal(void)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     rpmalloc_finalize();
 #endif
 }
 
 void __kdMallocThreadInit(void)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     rpmalloc_thread_initialize();
 #endif
 }
 
 void __kdMallocThreadFinal(void)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     rpmalloc_thread_finalize();
 #endif
 }
@@ -106,7 +106,7 @@ __attribute__((__malloc__))
 KD_API void *KD_APIENTRY
 kdMalloc(KDsize size)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     return rpmalloc(size);
 #else
     return malloc(size);
@@ -116,7 +116,7 @@ kdMalloc(KDsize size)
 /* kdFree: Free allocated memory block. */
 KD_API void KD_APIENTRY kdFree(void *ptr)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     rpfree(ptr);
 #else
     free(ptr);
@@ -130,7 +130,7 @@ __attribute__((__malloc__))
 KD_API void *KD_APIENTRY
 kdRealloc(void *ptr, KDsize size)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     return rprealloc(ptr, size);
 #else
     return realloc(ptr, size);
@@ -144,7 +144,7 @@ __attribute__((__malloc__))
 KD_API void *KD_APIENTRY
 kdCallocVEN(KDsize num, KDsize size)
 {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
     return rpcalloc(num, size);
 #else
     return calloc(num, size);

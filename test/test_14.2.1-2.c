@@ -26,10 +26,10 @@
 #include "test.h"
 
 #define THREAD_COUNT 10
-KDAtomicIntVEN *test_count = KD_NULL;
+KDAtomicIntVEN test_count;
 void *test_func(void *arg)
 {
-    KDint i = kdAtomicIntFetchAddVEN(test_count, 1);
+    KDint i = kdAtomicIntFetchAddVEN(&test_count, 1);
     kdSetTLS(&i);
     for(;;)
     {
@@ -49,7 +49,6 @@ void *test_func(void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    test_count = kdAtomicIntCreateVEN(0);
     KDThread *threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0; i < THREAD_COUNT; i++)
     {
@@ -77,8 +76,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         kdThreadJoin(threads[k], KD_NULL);
     }
 
-    TEST_EQ(kdAtomicIntLoadVEN(test_count), THREAD_COUNT);
-
-    kdAtomicIntFreeVEN(test_count);
+    TEST_EQ(kdAtomicIntLoadVEN(&test_count), THREAD_COUNT);
     return 0;
 }
