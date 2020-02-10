@@ -187,28 +187,28 @@
 
 /// Atomic access abstraction
 typedef KDAtomicIntVEN atomic32_t;
+typedef KDAtomicPtrVEN atomicptr_t;
 
 static FORCEINLINE int32_t atomic_load32(atomic32_t* src) { return kdAtomicIntLoadVEN(src); }
 static FORCEINLINE void    atomic_store32(atomic32_t* dst, int32_t val) { kdAtomicIntStoreVEN(dst, val); }
-static FORCEINLINE int32_t atomic_incr32(atomic32_t* val) { return kdAtomicIntIncrementVEN(val); }
-static FORCEINLINE int32_t atomic_decr32(atomic32_t* val) { return kdAtomicIntDecrementVEN(val); }
+static FORCEINLINE int32_t atomic_incr32(atomic32_t* val) { return atomic_fetch_add_explicit(val, 1, memory_order_relaxed) + 1; }
+static FORCEINLINE int32_t atomic_decr32(atomic32_t* val) { return atomic_fetch_add_explicit(val, -1, memory_order_relaxed) - 1; }
 static FORCEINLINE int32_t atomic_add32(atomic32_t* val, int32_t add) { return kdAtomicIntFetchAddVEN(val, add) + add; }
+static FORCEINLINE void*   atomic_load_ptr(atomicptr_t* src) { return kdAtomicPtrLoadVEN(src); }
+static FORCEINLINE void    atomic_store_ptr(atomicptr_t* dst, void* val) { kdAtomicPtrStoreVEN(dst, val); }
+static FORCEINLINE int     atomic_cas_ptr(atomicptr_t* dst, void* val, void* ref) { return kdAtomicPtrCompareExchangeVEN(dst, val, ref); }
+static FORCEINLINE void    atomic_store_ptr_release(atomicptr_t* dst, void* val) { kdAtomicPtrStoreVEN(dst, val); }
+static FORCEINLINE int     atomic_cas_ptr_acquire(atomicptr_t* dst, void* val, void* ref) { return kdAtomicPtrCompareExchangeVEN(dst, val, ref); }
+
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
 typedef volatile long long atomic64_t;
-typedef volatile void*     atomicptr_t;
 
 #if ENABLE_STATISTICS || ENABLE_ADAPTIVE_THREAD_CACHE
 static FORCEINLINE int64_t atomic_load64(atomic64_t* src) { return *src; }
 static FORCEINLINE int64_t atomic_add64(atomic64_t* val, int64_t add) { return (int64_t)_InterlockedExchangeAdd64(val, add) + add; }
 #endif
-
-static FORCEINLINE void*   atomic_load_ptr(atomicptr_t* src) { return (void*)*src; }
-static FORCEINLINE void    atomic_store_ptr(atomicptr_t* dst, void* val) { *dst = val; }
-static FORCEINLINE void    atomic_store_ptr_release(atomicptr_t* dst, void* val) { *dst = val; }
-static FORCEINLINE int     atomic_cas_ptr(atomicptr_t* dst, void* val, void* ref) { return (_InterlockedCompareExchangePointer((void* volatile*)dst, val, ref) == ref) ? 1 : 0; }
-static FORCEINLINE int     atomic_cas_ptr_acquire(atomicptr_t* dst, void* val, void* ref) { return atomic_cas_ptr(dst, val, ref); }
 
 #define EXPECTED(x) (x)
 #define UNEXPECTED(x) (x)
@@ -219,18 +219,11 @@ static FORCEINLINE int     atomic_cas_ptr_acquire(atomicptr_t* dst, void* val, v
 
 
 typedef volatile _Atomic(int64_t) atomic64_t;
-typedef volatile _Atomic(void*) atomicptr_t;
 
 #if ENABLE_STATISTICS || ENABLE_ADAPTIVE_THREAD_CACHE
 static FORCEINLINE int64_t atomic_load64(atomic64_t* val) { return atomic_load_explicit(val, memory_order_relaxed); }
 static FORCEINLINE int64_t atomic_add64(atomic64_t* val, int64_t add) { return atomic_fetch_add_explicit(val, add, memory_order_relaxed) + add; }
 #endif
-
-static FORCEINLINE void*   atomic_load_ptr(atomicptr_t* src) { return atomic_load_explicit(src, memory_order_relaxed); }
-static FORCEINLINE void    atomic_store_ptr(atomicptr_t* dst, void* val) { atomic_store_explicit(dst, val, memory_order_relaxed); }
-static FORCEINLINE void    atomic_store_ptr_release(atomicptr_t* dst, void* val) { atomic_store_explicit(dst, val, memory_order_release); }
-static FORCEINLINE int     atomic_cas_ptr(atomicptr_t* dst, void* val, void* ref) { return atomic_compare_exchange_weak_explicit(dst, &ref, val, memory_order_relaxed, memory_order_relaxed); }
-static FORCEINLINE int     atomic_cas_ptr_acquire(atomicptr_t* dst, void* val, void* ref) { return atomic_compare_exchange_weak_explicit(dst, &ref, val, memory_order_acquire, memory_order_relaxed); }
 
 #define EXPECTED(x) __builtin_expect((x), 1)
 #define UNEXPECTED(x) __builtin_expect((x), 0)
