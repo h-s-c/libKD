@@ -37,7 +37,7 @@ static KD_INLINE KDint32 kdAtomicIntDecrementVEN(KDAtomicIntVEN* val) { return (
 static KD_INLINE KDint32 kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint32 add) { return (KDint32)_InterlockedExchangeAdd(val, (long)add); }
 static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint32 val, KDint32 ref) { return (_InterlockedCompareExchange((volatile long*)dst, (long)val, (long)ref) == (long)ref) ? 1 : 0; }
 #if defined(_M_IX86)
-static KD_INLINE void  kdAtomicPtrStoreVEN(KDAtomicPtrVEN* dst, void * val) { _InterlockedExchange(dst, (long)val); }
+static KD_INLINE void  kdAtomicPtrStoreVEN(KDAtomicPtrVEN* dst, void * val) { _InterlockedExchange((volatile long*)dst, (long)val); }
 static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, void* val, void* ref) { return (_InterlockedCompareExchange((volatile long*)dst, (long)val, (long)ref) == (long)ref) ? 1 : 0; }
 #else
 static KD_INLINE void  kdAtomicPtrStoreVEN(KDAtomicPtrVEN* dst, void * val) { _InterlockedExchangePointer(dst, val); }
