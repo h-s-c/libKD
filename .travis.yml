@@ -33,6 +33,8 @@ linux_apt_template: &linux_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://files.viva64.com/deb/ viva64-release pvs-studio"
         key_url: "https://files.viva64.com/etc/pubkey.txt"
+      - sourceline: 'deb https://apt.repos.intel.com/oneapi all main'
+        key_url: 'https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB'
     packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
@@ -206,8 +208,8 @@ jobs:
       addons:
         <<: *linux_apt_template
       compiler: icc
-      before_install: python ci-tools/install_icc.py
-      before_script: source ci-tools/icc/bin/compilervars.sh intel64
+      before_install: sudo apt-get install -y intel-oneapi-icc
+      before_script: source /opt/intel/inteloneapi/compiler/latest/env/vars.sh
 
     - <<: *linux_template
       <<: *docker_template
