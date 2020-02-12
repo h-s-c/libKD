@@ -162,7 +162,7 @@ jobs:
       addons:
         <<: *linux_apt_template
       compiler: clang-10
-      before_install: sudo apt-get install -y clang-9 llvm-9
+      before_install: sudo apt-get install -y clang-10 llvm-10
 
     - <<: *linux_template
       addons:
