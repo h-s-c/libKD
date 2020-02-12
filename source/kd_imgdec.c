@@ -73,6 +73,7 @@
  * Thirdparty includes
  ******************************************************************************/
 
+#define STBI_NO_THREAD_LOCALS
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 #define STBI_NO_LINEAR
