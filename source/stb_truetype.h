@@ -2006,7 +2006,7 @@ static int stbtt__run_charstring(const stbtt_fontinfo *info, int glyph_index, st
 {
    int in_header = 1, maskbits = 0, subr_stack_height = 0, sp = 0, v, i, b0;
    int has_subrs = 0, clear_stack;
-   float s[48];
+   float s[48] = {0};
    stbtt__buf subr_stack[10], subrs = info->subrs, b;
    float f;
 
