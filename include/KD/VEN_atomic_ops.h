@@ -14,8 +14,8 @@ extern "C" {
 #if defined(KD_ATOMIC_C11)
 #include <stdatomic.h>
 
-typedef volatile _Atomic(KDint32) KDAtomicIntVEN;
-typedef volatile _Atomic(void*) KDAtomicPtrVEN;
+typedef _Atomic(KDint32) KDAtomicIntVEN;
+typedef _Atomic(void*) KDAtomicPtrVEN;
 
 static KD_INLINE KDint32 kdAtomicIntLoadVEN(KDAtomicIntVEN* src) { return atomic_load_explicit(src, memory_order_relaxed); }
 static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint32 val) { atomic_store_explicit(dst, val, memory_order_relaxed); }
@@ -28,8 +28,8 @@ static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, vo
 #elif defined(KD_ATOMIC_WIN32)
 #include <intrin.h>
 
-typedef volatile long KDAtomicIntVEN;
-typedef volatile void*  KDAtomicPtrVEN;
+typedef long KDAtomicIntVEN;
+typedef void*  KDAtomicPtrVEN;
 
 static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint32 val) { _InterlockedExchange(dst, (long)val); }
 static KD_INLINE KDint32 kdAtomicIntIncrementVEN(KDAtomicIntVEN* val) { return (KDint32)_InterlockedIncrement(val); }
@@ -46,8 +46,8 @@ static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, vo
 
 #elif defined(KD_ATOMIC_BUILTIN)
 
-typedef volatile KDint32 KDAtomicIntVEN;
-typedef volatile void* KDAtomicPtrVEN;
+typedef KDint32 KDAtomicIntVEN;
+typedef void* KDAtomicPtrVEN;
 
 static KD_INLINE KDint32 kdAtomicIntLoadVEN(KDAtomicIntVEN* src) { return __atomic_load_n(src, __ATOMIC_RELAXED); }
 static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint32 val) { __atomic_store_n(dst, val, __ATOMIC_RELAXED); }
@@ -66,8 +66,8 @@ static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, vo
 
 #elif defined(KD_ATOMIC_SYNC)
 
-typedef volatile KDint32 KDAtomicIntVEN;
-typedef volatile void* KDAtomicPtrVEN;
+typedef KDint32 KDAtomicIntVEN;
+typedef void* KDAtomicPtrVEN;
 
 static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint32 val) { __sync_lock_test_and_set(dst, val); }
 static KD_INLINE KDint32 kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint32 add) { return __sync_fetch_and_add(val, add); }
