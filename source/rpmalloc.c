@@ -191,8 +191,8 @@ typedef KDAtomicPtrVEN atomicptr_t;
 
 static FORCEINLINE int32_t atomic_load32(atomic32_t* src) { return kdAtomicIntLoadVEN(src); }
 static FORCEINLINE void    atomic_store32(atomic32_t* dst, int32_t val) { kdAtomicIntStoreVEN(dst, val); }
-static FORCEINLINE int32_t atomic_incr32(atomic32_t* val) { return kdAtomicIntFetchAddVEN(val, 1) + 1; }
-static FORCEINLINE int32_t atomic_decr32(atomic32_t* val) { return kdAtomicIntFetchAddVEN(val, -1) - 1; }
+static FORCEINLINE int32_t atomic_incr32(atomic32_t* val) { return kdAtomicIntIncrementVEN(val); }
+static FORCEINLINE int32_t atomic_decr32(atomic32_t* val) { return kdAtomicIntDecrementVEN(val); }
 static FORCEINLINE int32_t atomic_add32(atomic32_t* val, int32_t add) { return kdAtomicIntFetchAddVEN(val, add) + add; }
 static FORCEINLINE void*   atomic_load_ptr(atomicptr_t* src) { return kdAtomicPtrLoadVEN(src); }
 static FORCEINLINE void    atomic_store_ptr(atomicptr_t* dst, void* val) { kdAtomicPtrStoreVEN(dst, val); }

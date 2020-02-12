@@ -102,9 +102,9 @@ static KD_INLINE KDint32 kdAtomicIntLoadVEN(KDAtomicIntVEN* src)
     return value;
 }
 
-static KD_INLINE KDint32 kdAtomicPtrLoadVEN(KDAtomicPtrVEN* src) 
+static KD_INLINE void* kdAtomicPtrLoadVEN(KDAtomicPtrVEN* src) 
 {
-    KDint32 value = 0;
+    void* value = 0;
     do
     {
         value = *src;
