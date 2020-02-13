@@ -165,7 +165,6 @@
 
 #include <stdint.h>
 #include <string.h>
-#include <errno.h>
 
 #if ENABLE_ASSERTS
 #  undef NDEBUG
@@ -1471,11 +1470,11 @@ _memory_aligned_allocate(heap_t* heap, size_t alignment, size_t size) {
 
 #if ENABLE_VALIDATE_ARGS
 	if ((size + alignment) < size) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 	if (alignment & (alignment - 1)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #endif
@@ -1513,11 +1512,11 @@ _memory_aligned_allocate(heap_t* heap, size_t alignment, size_t size) {
 	// span size away from span start (thus causing pointer mask to give us
 	// an invalid span start on free)
 	if (alignment & align_mask) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 	if (alignment >= _memory_span_size) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 
@@ -1545,7 +1544,7 @@ retry:
 
 	span = (span_t*)_memory_map(mapped_size, &align_offset);
 	if (!span) {
-		errno = ENOMEM;
+		kdSetError(KD_ENOMEM);
 		return 0;
 	}
 	ptr = pointer_offset(span, SPAN_HEADER_SIZE);
@@ -1559,7 +1558,7 @@ retry:
 		_memory_unmap(span, mapped_size, align_offset, mapped_size);
 		++num_pages;
 		if (num_pages > limit_pages) {
-			errno = EINVAL;
+			kdSetError(KD_EINVAL);
 			return 0;
 		}
 		goto retry;
@@ -1582,7 +1581,7 @@ retry:
 
 static void
 _memory_heap_initialize(heap_t* heap) {
-	memset(heap, 0, sizeof(heap_t));
+	kdMemset(heap, 0, sizeof(heap_t));
 
 	//Get a new heap ID
 	heap->id = 1 + atomic_incr32(&_memory_heap_id);
@@ -1861,7 +1860,7 @@ _memory_reallocate(heap_t* heap, void* p, size_t size, size_t oldsize, unsigned 
 			if ((size_t)span->block_size >= size) {
 				//Still fits in block, never mind trying to save memory, but preserve data if alignment changed
 				if ((p != block) && !(flags & RPMALLOC_NO_PRESERVE))
-					memmove(block, p, oldsize);
+					kdMemmove(block, p, oldsize);
 				return block;
 			}
 		} else if (span->size_class == SIZE_CLASS_LARGE) {
@@ -1877,7 +1876,7 @@ _memory_reallocate(heap_t* heap, void* p, size_t size, size_t oldsize, unsigned 
 			if ((current_spans >= num_spans) && (num_spans >= (current_spans / 2))) {
 				//Still fits in block, never mind trying to save memory, but preserve data if alignment changed
 				if ((p != block) && !(flags & RPMALLOC_NO_PRESERVE))
-					memmove(block, p, oldsize);
+					kdMemmove(block, p, oldsize);
 				return block;
 			}
 		} else {
@@ -1894,7 +1893,7 @@ _memory_reallocate(heap_t* heap, void* p, size_t size, size_t oldsize, unsigned 
 			if ((current_pages >= num_pages) && (num_pages >= (current_pages / 2))) {
 				//Still fits in block, never mind trying to save memory, but preserve data if alignment changed
 				if ((p != block) && !(flags & RPMALLOC_NO_PRESERVE))
-					memmove(block, p, oldsize);
+					kdMemmove(block, p, oldsize);
 				return block;
 			}
 		}
@@ -1912,7 +1911,7 @@ _memory_reallocate(heap_t* heap, void* p, size_t size, size_t oldsize, unsigned 
 	void* block = _memory_allocate(heap, new_size);
 	if (p && block) {
 		if (!(flags & RPMALLOC_NO_PRESERVE))
-			memcpy(block, p, oldsize < new_size ? oldsize : new_size);
+			kdMemcpy(block, p, oldsize < new_size ? oldsize : new_size);
 		_memory_deallocate(p);
 	}
 
@@ -1937,7 +1936,7 @@ _memory_aligned_reallocate(heap_t* heap, void* ptr, size_t alignment, size_t siz
 		if (!(flags & RPMALLOC_NO_PRESERVE) && ptr) {
 			if (!oldsize)
 				oldsize = usablesize;
-			memcpy(block, ptr, oldsize < size ? oldsize : size);
+			kdMemcpy(block, ptr, oldsize < size ? oldsize : size);
 		}
 		rpfree(ptr);
 	}
@@ -1959,7 +1958,7 @@ _memory_adjust_size_class(size_t iclass) {
 		--prevclass;
 		//A class can be merged if number of pages and number of blocks are equal
 		if (_memory_size_class[prevclass].block_count == _memory_size_class[iclass].block_count)
-			memcpy(_memory_size_class + prevclass, _memory_size_class + iclass, sizeof(_memory_size_class[iclass]));
+			kdMemcpy(_memory_size_class + prevclass, _memory_size_class + iclass, sizeof(_memory_size_class[iclass]));
 		else
 			break;
 	}
@@ -2033,7 +2032,6 @@ rp_thread_destructor(void* value) {
 #    define MAP_UNINITIALIZED 0
 #  endif
 #endif
-#include <errno.h>
 
 //! Initialize the allocator and setup global data
 extern inline int
@@ -2054,9 +2052,9 @@ rpmalloc_initialize_config(const rpmalloc_config_t* config) {
 	_rpmalloc_initialized = 1;
 
 	if (config)
-		memcpy(&_memory_config, config, sizeof(rpmalloc_config_t));
+		kdMemcpy(&_memory_config, config, sizeof(rpmalloc_config_t));
 	else
-		memset(&_memory_config, 0, sizeof(rpmalloc_config_t));
+		kdMemset(&_memory_config, 0, sizeof(rpmalloc_config_t));
 
 	if (!_memory_config.memory_map || !_memory_config.memory_unmap) {
 		_memory_config.memory_map = _memory_map_os;
@@ -2073,7 +2071,7 @@ rpmalloc_initialize_config(const rpmalloc_config_t* config) {
 	if (!_memory_page_size) {
 #if PLATFORM_WINDOWS
 		SYSTEM_INFO system_info;
-		memset(&system_info, 0, sizeof(system_info));
+		kdMemset(&system_info, 0, sizeof(system_info));
 		GetSystemInfo(&system_info);
 		_memory_page_size = system_info.dwPageSize;
 		_memory_map_granularity = system_info.dwAllocationGranularity;
@@ -2129,7 +2127,7 @@ rpmalloc_initialize_config(const rpmalloc_config_t* config) {
 			LUID luid;
 			if (LookupPrivilegeValue(0, SE_LOCK_MEMORY_NAME, &luid)) {
 				TOKEN_PRIVILEGES token_privileges;
-				memset(&token_privileges, 0, sizeof(token_privileges));
+				kdMemset(&token_privileges, 0, sizeof(token_privileges));
 				token_privileges.PrivilegeCount = 1;
 				token_privileges.Privileges[0].Luid = luid;
 				token_privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
@@ -2472,7 +2470,7 @@ extern inline RPMALLOC_ALLOCATOR void*
 rpmalloc(size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #endif
@@ -2492,13 +2490,13 @@ rpcalloc(size_t num, size_t size) {
 #if PLATFORM_WINDOWS
 	int err = SizeTMult(num, size, &total);
 	if ((err != S_OK) || (total >= MAX_ALLOC_SIZE)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #else
 	int err = __builtin_umull_overflow(num, size, &total);
 	if (err || (total >= MAX_ALLOC_SIZE)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #endif
@@ -2508,7 +2506,7 @@ rpcalloc(size_t num, size_t size) {
 	heap_t* heap = get_thread_heap();
 	void* block = _memory_allocate(heap, total);
 	if (block)
-		memset(block, 0, total);
+		kdMemset(block, 0, total);
 	return block;
 }
 
@@ -2516,7 +2514,7 @@ extern inline RPMALLOC_ALLOCATOR void*
 rprealloc(void* ptr, size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return ptr;
 	}
 #endif
@@ -2529,7 +2527,7 @@ rpaligned_realloc(void* ptr, size_t alignment, size_t size, size_t oldsize,
                   unsigned int flags) {
 #if ENABLE_VALIDATE_ARGS
 	if ((size + alignment < size) || (alignment > _memory_page_size)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #endif
@@ -2550,13 +2548,13 @@ rpaligned_calloc(size_t alignment, size_t num, size_t size) {
 #if PLATFORM_WINDOWS
 	int err = SizeTMult(num, size, &total);
 	if ((err != S_OK) || (total >= MAX_ALLOC_SIZE)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #else
 	int err = __builtin_umull_overflow(num, size, &total);
 	if (err || (total >= MAX_ALLOC_SIZE)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #endif
@@ -2565,7 +2563,7 @@ rpaligned_calloc(size_t alignment, size_t num, size_t size) {
 #endif
 	void* block = rpaligned_alloc(alignment, total);
 	if (block)
-		memset(block, 0, total);
+		kdMemset(block, 0, total);
 	return block;
 }
 
@@ -2579,8 +2577,8 @@ rpposix_memalign(void **memptr, size_t alignment, size_t size) {
 	if (memptr)
 		*memptr = rpaligned_alloc(alignment, size);
 	else
-		return EINVAL;
-	return *memptr ? 0 : ENOMEM;
+		return KD_EINVAL;
+	return *memptr ? 0 : KD_ENOMEM;
 }
 
 extern inline size_t
@@ -2594,7 +2592,7 @@ rpmalloc_thread_collect(void) {
 
 void
 rpmalloc_thread_statistics(rpmalloc_thread_statistics_t* stats) {
-	memset(stats, 0, sizeof(rpmalloc_thread_statistics_t));
+	kdMemset(stats, 0, sizeof(rpmalloc_thread_statistics_t));
 	heap_t* heap = get_thread_heap_raw();
 	if (!heap)
 		return;
@@ -2658,7 +2656,7 @@ rpmalloc_thread_statistics(rpmalloc_thread_statistics_t* stats) {
 
 void
 rpmalloc_global_statistics(rpmalloc_global_statistics_t* stats) {
-	memset(stats, 0, sizeof(rpmalloc_global_statistics_t));
+	kdMemset(stats, 0, sizeof(rpmalloc_global_statistics_t));
 #if ENABLE_STATISTICS
 	stats->mapped = (size_t)atomic_load32(&_mapped_pages) * _memory_page_size;
 	stats->mapped_peak = (size_t)_mapped_pages_peak * _memory_page_size;
@@ -2801,7 +2799,7 @@ extern inline RPMALLOC_ALLOCATOR void*
 rpmalloc_heap_alloc(rpmalloc_heap_t* heap, size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return ptr;
 	}
 #endif
@@ -2812,7 +2810,7 @@ extern inline RPMALLOC_ALLOCATOR void*
 rpmalloc_heap_aligned_alloc(rpmalloc_heap_t* heap, size_t alignment, size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return ptr;
 	}
 #endif
@@ -2831,13 +2829,13 @@ rpmalloc_heap_aligned_calloc(rpmalloc_heap_t* heap, size_t alignment, size_t num
 #if PLATFORM_WINDOWS
 	int err = SizeTMult(num, size, &total);
 	if ((err != S_OK) || (total >= MAX_ALLOC_SIZE)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #else
 	int err = __builtin_umull_overflow(num, size, &total);
 	if (err || (total >= MAX_ALLOC_SIZE)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #endif
@@ -2846,7 +2844,7 @@ rpmalloc_heap_aligned_calloc(rpmalloc_heap_t* heap, size_t alignment, size_t num
 #endif
 	void* block = _memory_aligned_allocate(heap, alignment, total);
 	if (block)
-		memset(block, 0, total);
+		kdMemset(block, 0, total);
 	return block;
 }
 
@@ -2854,7 +2852,7 @@ extern inline RPMALLOC_ALLOCATOR void*
 rpmalloc_heap_realloc(rpmalloc_heap_t* heap, void* ptr, size_t size, unsigned int flags) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return ptr;
 	}
 #endif
@@ -2865,7 +2863,7 @@ extern inline RPMALLOC_ALLOCATOR void*
 rpmalloc_heap_aligned_realloc(rpmalloc_heap_t* heap, void* ptr, size_t alignment, size_t size, unsigned int flags) {
 #if ENABLE_VALIDATE_ARGS
 	if ((size + alignment < size) || (alignment > _memory_page_size)) {
-		errno = EINVAL;
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 #endif
@@ -2899,7 +2897,7 @@ rpmalloc_heap_free_all(rpmalloc_heap_t* heap) {
 			span = next_span;
 		}
 	}
-	memset(heap->span_class, 0, sizeof(heap->span_class));
+	kdMemset(heap->span_class, 0, sizeof(heap->span_class));
 
 	span = heap->large_huge_span;
 	while (span) {
