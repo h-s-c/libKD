@@ -91,11 +91,7 @@
 #define STBI_WINDOWS_UTF8
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 6001)
-#pragma warning(disable : 6011)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"
 #pragma clang diagnostic ignored "-Wcast-qual"
@@ -114,6 +110,10 @@
 #if __has_warning("-Wcomma")
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 6001)
+#pragma warning(disable : 6011)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -121,10 +121,10 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #include "stb_image.h"  // for stbi_info_from_memory, stbi_load_from_memory
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif

@@ -58,10 +58,7 @@
 #define STBD_MEMCPY kdMemcpy
 #define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4244)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"
 #pragma clang diagnostic ignored "-Wcast-qual"
@@ -76,16 +73,19 @@
 #if __has_warning("-Wcomma")
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4244)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include "stb_dxt.h"  // for stb_compress_dxt_block, STB_DXT_NORMAL
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif

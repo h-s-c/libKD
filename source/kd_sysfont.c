@@ -63,10 +63,7 @@
 #define STBTT_memset kdMemset
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4244)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
 #pragma clang diagnostic ignored "-Wcast-qual"
@@ -90,12 +87,16 @@
 #if __has_warning("-Wcomma")
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
+#pragma clang diagnostic ignored "-Wunused-function"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4244)
 #endif
 #include "stb_truetype.h"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
 #endif
 
 /******************************************************************************
