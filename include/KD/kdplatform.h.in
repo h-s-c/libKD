@@ -51,18 +51,6 @@
 #define KD_INLINE
 #endif
 
-#if defined(__INTEL_COMPILER)
-#define KD_FALLTHROUGH ((void)0)
-#elif defined(__clang__) && (__clang_major__ >= 10)
-#define KD_FALLTHROUGH __attribute__ ((fallthrough))
-#elif defined(__GNUC__) && (__GNUC__ >= 7) 
-#define KD_FALLTHROUGH __attribute__ ((fallthrough))
-#elif defined(__EMSCRIPTEN__)
-#define KD_FALLTHROUGH __attribute__ ((fallthrough))
-#else
-#define KD_FALLTHROUGH ((void)0)
-#endif
-
 #if defined(__GNUC__) || defined(__clang__)
 #define KD_UNUSED __attribute__((__unused__))
 #elif defined(_MSC_VER)

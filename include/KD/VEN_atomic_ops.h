@@ -87,7 +87,7 @@ static KD_INLINE KDint32 kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint32 add
 static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint32 val, KDint32 ref) { return emscripten_atomic_cas_u32((void*)&dst, (KDuint32)ref, (KDuint32)val) == (KDuint32)ref; }
 static KD_INLINE void* kdAtomicPtrLoadVEN(KDAtomicPtrVEN* src) { return (void *)(KDuint32)emscripten_atomic_load_u32(&src); }
 static KD_INLINE void  kdAtomicPtrStoreVEN(KDAtomicPtrVEN* dst, void* val) { emscripten_atomic_store_u32(&dst, (KDuint32)val); }
-static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, void* val, void* ref) { { return emscripten_atomic_cas_u32(&dst, (KDuint32)ref, (KDuint32)val) == (KDuint32)ref; }
+static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, void* val, void* ref) { return emscripten_atomic_cas_u32(&dst, (KDuint32)ref, (KDuint32)val) == (KDuint32)ref; }
 
 #endif
 

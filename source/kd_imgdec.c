@@ -337,12 +337,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             image->alpha = KD_FALSE;
             break;
         }
-        case(KD_IMAGE_FORMAT_COMPRESSED_ATX):
-        {
-            /* TODO: Load compressed formats (do not decode) */
-            /* fallthrough */
-            KD_FALLTHROUGH;
-        }
         default:
         {
             kdFree(filedata);
