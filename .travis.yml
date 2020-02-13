@@ -78,7 +78,7 @@ packagecloud_rpm_template: &packagecloud_rpm_template
 macos_template: &macos_template
   os: osx
   compiler: clang
-  before_install: brew update && brew install ninja ccache valgrind cppcheck flawfinder
+  before_install: brew update && brew install ninja ccache cppcheck flawfinder
 
 windows_template: &windows_template
   os: windows
@@ -241,6 +241,7 @@ jobs:
 
     - <<: *macos_template
       osx_image: xcode9.4
+      before_script: brew install valgrind
 
     - stage: 'Testing (windows)'
       <<: *windows_template
