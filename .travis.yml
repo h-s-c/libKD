@@ -102,10 +102,7 @@ jobs:
   allow_failures:
     - os: windows
     - os: linux
-      compiler: clang-10
       compiler: clang-5.0
-    - os: linux
-      compiler: icc
     - os: linux
       env: DOCKER_IMAGE=dockcross/web-wasm
   include:
