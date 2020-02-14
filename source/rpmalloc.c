@@ -9,6 +9,11 @@
  *
  */
 
+
+#if defined(_MSC_VER)
+#pragma warning(disable : 6011)
+#endif
+
 #if defined(__clang__)
 #pragma clang diagnostic ignored "-Wpadded"
 #if __has_warning("-Wreserved-id-macro")
