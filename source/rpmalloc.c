@@ -134,7 +134,7 @@
 /// Platform and arch specifics
 #if defined(_MSC_VER) && !defined(__clang__)
 #  ifndef FORCEINLINE
-#    define FORCEINLINE inline __forceinline
+#    define FORCEINLINE __inline __forceinline
 #  endif
 #  define _Static_assert static_assert
 #else
