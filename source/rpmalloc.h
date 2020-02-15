@@ -32,7 +32,11 @@ extern "C" {
 # define RPMALLOC_CDECL
 #elif defined(_MSC_VER)
 # define RPMALLOC_EXPORT
+# if (_MSC_VER >= 1900)
 # define RPMALLOC_ALLOCATOR __declspec(allocator) __declspec(restrict)
+# else
+# define RPMALLOC_ALLOCATOR __declspec(restrict)
+# endif
 # define RPMALLOC_ATTRIB_MALLOC
 # define RPMALLOC_ATTRIB_ALLOC_SIZE(size)
 # define RPMALLOC_ATTRIB_ALLOC_SIZE2(count,size)
