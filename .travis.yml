@@ -229,7 +229,7 @@ jobs:
 
     - <<: *linux_template
       <<: *docker_template
-      env: DOCKER_IMAGE=trzeci/emscripten
+      env: DOCKER_IMAGE=dockcross/web-wasm
 
     - stage: 'Testing (macos)'
       <<: *macos_template
