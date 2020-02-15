@@ -297,6 +297,17 @@ jobs:
     - <<: *linux_template
       <<: *docker_template
       <<: *packagecloud_deb_template
+      env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=bullseye
+      script:
+        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
+              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+            python ci-tools/run_cpack.py;"
+
+    - <<: *linux_template
+      <<: *docker_template
+      <<: *packagecloud_deb_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=buster
       script:
         - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
@@ -325,6 +336,30 @@ jobs:
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
               libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
               libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+            python ci-tools/run_cpack.py;"
+
+    - <<: *linux_template
+      <<: *docker_template
+      <<: *packagecloud_rpm_template
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=31
+      script:
+        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+            dnf -y groupinstall \"C Development Tools and Libraries\" && 
+            dnf -y install git pkgconfig rpm-build ninja-build python 
+              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
+              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
+            python ci-tools/run_cpack.py;"
+
+    - <<: *linux_template
+      <<: *docker_template
+      <<: *packagecloud_rpm_template
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=30
+      script:
+        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+            dnf -y groupinstall \"C Development Tools and Libraries\" && 
+            dnf -y install git pkgconfig rpm-build ninja-build python 
+              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
+              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
             python ci-tools/run_cpack.py;"
 
     - <<: *linux_template
