@@ -137,6 +137,9 @@
 #    define FORCEINLINE __inline __forceinline
 #  endif
 #  define _Static_assert static_assert
+#  if (_MSC_VER < 1900)
+#    define inline __inline
+#  endif
 #else
 #  ifndef FORCEINLINE
 #    define FORCEINLINE inline __attribute__((__always_inline__))
