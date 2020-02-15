@@ -11,7 +11,7 @@
 [![Fossa License Scan](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
 
 ### About
--   Cross-platform system API similar to SDL created by Khronos (OpenGl etc.)
+-   Cross-platform system API similar to SDL created by Khronos (OpenGL etc.)
 -   [Specification](https://www.khronos.org/registry/kode/)
 
 ### Platforms

@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -257,6 +257,8 @@ void __kdThreadInitOnce(void)
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
 static void *__kdThreadRun(void *init)
 {
+    __kdMallocThreadInit();
+
     KDThread *thread = (KDThread *)init;
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     /* Set the thread name */
@@ -319,6 +321,8 @@ static void *__kdThreadRun(void *init)
     {
         __kdThreadFree(thread);
     }
+
+    __kdMallocThreadFinal();
     return result;
 }
 #endif

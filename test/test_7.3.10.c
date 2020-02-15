@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -27,11 +27,11 @@
 
 /* Test if we can call test_func more than once. */
 #define THREAD_COUNT 10
-KDAtomicIntVEN *test_once_count = KD_NULL;
+KDAtomicIntVEN test_once_count;
 static KDThreadOnce test_once = KD_THREAD_ONCE_INIT;
 static void test_once_func(void)
 {
-    kdAtomicIntFetchAddVEN(test_once_count, 1);
+    kdAtomicIntFetchAddVEN(&test_once_count, 1);
 }
 
 void *test_func(void *arg)
@@ -45,7 +45,6 @@ void *test_func(void *arg)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-    test_once_count = kdAtomicIntCreateVEN(0);
     KDThread *threads[THREAD_COUNT] = {KD_NULL};
     for(KDint i = 0; i < THREAD_COUNT; i++)
     {
@@ -64,8 +63,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         kdThreadJoin(threads[k], KD_NULL);
     }
 
-    TEST_EQ(kdAtomicIntLoadVEN(test_once_count), 1);
-
-    kdAtomicIntFreeVEN(test_once_count);
+    TEST_EQ(kdAtomicIntLoadVEN(&test_once_count), 1);
     return 0;
 }

@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -96,6 +96,9 @@
 #endif
 #if __has_warning("-Wextra-semi-stmt")
 #pragma clang diagnostic ignored "-Wextra-semi-stmt"
+#endif
+#if __has_warning("-Wimplicit-fallthrough")
+#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wsign-compare"
@@ -198,7 +201,7 @@ KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...)
 }
 
 static KDchar *__kdVfprintfCallback(KDchar *buf, void *user, KDint len)
-{
+{   
     KDFile *file = (KDFile *)user;
     for(KDint i = 0; i < len; i++)
     {

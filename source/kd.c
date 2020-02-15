@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -2256,6 +2256,8 @@ static void __kd_AndroidOnInputQueueDestroyed(KD_UNUSED ANativeActivity *activit
 
 static KDint __kdPreMain(KDint argc, KDchar **argv)
 {
+    __kdMallocInit();
+
 #if defined(_WIN32)
     WSADATA wsadata;
     kdMemset(&wsadata, 0, sizeof(WSADATA));
@@ -2326,6 +2328,8 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 #if defined(_WIN32)
     WSACleanup();
 #endif
+
+    __kdMallocFinal();
     return result;
 }
 

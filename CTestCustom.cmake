@@ -2,7 +2,7 @@
 # libKD
 # zlib/libpng License
 ###############################################################################
-# Copyright (c) 2014-2019 Kevin Schmidt
+# Copyright (c) 2014-2020 Kevin Schmidt
 #
 # This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
@@ -32,10 +32,13 @@ set(CTEST_CUSTOM_COVERAGE_EXCLUDE
 
 set(CTEST_CUSTOM_ERROR_EXCEPTION
     "clang: error: .* 'linker' input unused"
-    "WARNING:root:emcc: cannot find library \"nul\"")
+    "WARNING:root:emcc: cannot find library \"nul\""
+    "www.viva64.com/en/w:1:1: error:"
+    "error: V")
 
 set(CTEST_CUSTOM_WARNING_EXCEPTION
     "warning LNK4044"
     "warning LNK4031"
     "warning MSB8029"
-    "warning D9025")
+    "warning D9025"
+    "warning: V")

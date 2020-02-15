@@ -15,6 +15,10 @@ linux_apt_template: &linux_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-10 main"
+        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main"
+        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main"
@@ -25,9 +29,15 @@ linux_apt_template: &linux_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-4.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.9 main"
+        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
-    packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 
+      - sourceline: "deb http://files.viva64.com/deb/ viva64-release pvs-studio"
+        key_url: "https://files.viva64.com/etc/pubkey.txt"
+      - sourceline: 'deb https://apt.repos.intel.com/oneapi all main'
+        key_url: 'https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB'
+    packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -68,13 +78,12 @@ packagecloud_rpm_template: &packagecloud_rpm_template
 macos_template: &macos_template
   os: osx
   compiler: clang
-  before_install: brew update && brew install ninja ccache valgrind cppcheck flawfinder
+  before_install: brew update && brew install ninja ccache cppcheck flawfinder
 
 windows_template: &windows_template
   os: windows
   compiler: cl.exe
   before_install: choco install -y ninja opencppcoverage cppcheck
-  script: cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && python ci-tools/run_ctest.py && exit %errorlevel%'
 
 stages:
   - name: 'Testing (linux)'
@@ -93,8 +102,6 @@ jobs:
     - os: windows
     - os: linux
       compiler: clang-5.0
-    - os: linux
-      compiler: icc
     - os: linux
       env: DOCKER_IMAGE=dockcross/web-wasm
   include:
@@ -150,6 +157,18 @@ jobs:
     - <<: *linux_template
       addons:
         <<: *linux_apt_template
+      compiler: clang-10
+      before_install: sudo apt-get install -y clang-10 llvm-10
+
+    - <<: *linux_template
+      addons:
+        <<: *linux_apt_template
+      compiler: clang-9
+      before_install: sudo apt-get install -y clang-9 llvm-9
+
+    - <<: *linux_template
+      addons:
+        <<: *linux_apt_template
       compiler: clang-8
       before_install: sudo apt-get install -y clang-8 llvm-8
 
@@ -180,6 +199,12 @@ jobs:
     - <<: *linux_template
       addons:
         <<: *linux_apt_template
+      compiler: clang-3.9
+      before_install: sudo apt-get install -y clang-3.9 llvm-3.9
+
+    - <<: *linux_template
+      addons:
+        <<: *linux_apt_template
       compiler: clang-3.8
       before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
@@ -187,14 +212,8 @@ jobs:
       addons:
         <<: *linux_apt_template
       compiler: icc
-      before_install: python ci-tools/install_icc.py
-      before_script: source ci-tools/icc/bin/compilervars.sh intel64
-
-    - <<: *linux_template
-      addons:
-        <<: *linux_apt_template
-      compiler: tcc
-      before_install: sudo apt-get install -y tcc
+      before_install: sudo apt-get install -y intel-oneapi-icc
+      before_script: source /opt/intel/inteloneapi/compiler/latest/env/vars.sh
 
     - <<: *linux_template
       <<: *docker_template
@@ -214,10 +233,14 @@ jobs:
 
     - stage: 'Testing (macos)'
       <<: *macos_template
-      osx_image: xcode10.1
+      osx_image: xcode11.3
+
+    - <<: *macos_template
+      osx_image: xcode10.3
 
     - <<: *macos_template
       osx_image: xcode9.4
+      before_script: brew install valgrind
 
     - stage: 'Testing (windows)'
       <<: *windows_template
@@ -236,7 +259,6 @@ jobs:
       script: true  
       env:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
-
 
     - stage: 'Deployment (packagecloud)'
       <<: *linux_template

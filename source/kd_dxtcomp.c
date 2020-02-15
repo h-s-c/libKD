@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -58,10 +58,7 @@
 #define STBD_MEMCPY kdMemcpy
 #define STB_DXT_STATIC
 #define STB_DXT_IMPLEMENTATION
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4244)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"
 #pragma clang diagnostic ignored "-Wcast-qual"
@@ -76,16 +73,19 @@
 #if __has_warning("-Wcomma")
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4244)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 #include "stb_dxt.h"  // for stb_compress_dxt_block, STB_DXT_NORMAL
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
@@ -114,6 +114,9 @@
 #endif
 #pragma clang diagnostic ignored "-Wfloat-conversion"
 #pragma clang diagnostic ignored "-Wfloat-equal"
+#if __has_warning("-Wimplicit-int-float-conversion")
+#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+#endif
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wsign-conversion"
 #pragma clang diagnostic ignored "-Wstring-conversion"

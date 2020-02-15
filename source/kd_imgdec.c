@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -73,6 +73,7 @@
  * Thirdparty includes
  ******************************************************************************/
 
+#define STBI_NO_THREAD_LOCALS
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 #define STBI_NO_LINEAR
@@ -90,13 +91,7 @@
 #define STBI_WINDOWS_UTF8
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 6001)
-#pragma warning(disable : 6011)
-#elif defined(__TINYC__)
-#define STBI_NO_SIMD
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"
 #pragma clang diagnostic ignored "-Wcast-qual"
@@ -115,6 +110,10 @@
 #if __has_warning("-Wcomma")
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 6001)
+#pragma warning(disable : 6011)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -122,10 +121,10 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #include "stb_image.h"  // for stbi_info_from_memory, stbi_load_from_memory
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
@@ -337,10 +336,6 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
             channels = 1;
             image->alpha = KD_FALSE;
             break;
-        }
-        case(KD_IMAGE_FORMAT_COMPRESSED_ATX):
-        {
-            /* TODO: Load compressed formats (do not decode) */
         }
         default:
         {

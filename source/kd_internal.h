@@ -2,7 +2,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -57,6 +57,11 @@ struct _KDImageATX {
     KDint format;
     KDboolean alpha;
 };
+
+void __kdMallocInit(void);
+void __kdMallocFinal(void);
+void __kdMallocThreadInit(void);
+void __kdMallocThreadFinal(void);
 
 KDThread *__kdThreadInit(void);
 void __kdThreadInitOnce(void);

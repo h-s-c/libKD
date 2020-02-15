@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -385,6 +385,13 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
 }
 
 /* kdMemcpy: Copy a memory region, no overlapping. */
+#if defined(KD_FREESTANDING) && defined(_MSC_VER) && defined(__clang__)
+/* Clang on windows uses memcpy for list initialization */
+void * memcpy(void *buf, const void *src, KDsize len)
+{
+    return kdMemcpy(buf, src, len);
+}
+#endif
 KD_API void *KD_APIENTRY kdMemcpy(void *buf, const void *src, KDsize len)
 {
     KDint8 *_buf = buf;
@@ -424,6 +431,13 @@ KD_API void *KD_APIENTRY kdMemmove(void *buf, const void *src, KDsize len)
 }
 
 /* kdMemset: Set bytes in memory to a value. */
+#if defined(KD_FREESTANDING) && defined(_MSC_VER) && defined(__clang__)
+/* Clang on windows uses memset for zero initialization */
+void* memset(void *buf, KDint byte, KDsize len)
+{
+    return kdMemset(buf, byte, len);
+}
+#endif
 KD_API void *KD_APIENTRY kdMemset(void *buf, KDint byte, KDsize len)
 {
     KDuint8 *p = (KDuint8 *)buf;

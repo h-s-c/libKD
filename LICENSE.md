@@ -1,4 +1,4 @@
-Copyright (c) 2014-2019 Kevin Schmidt
+Copyright (c) 2014-2020 Kevin Schmidt
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages

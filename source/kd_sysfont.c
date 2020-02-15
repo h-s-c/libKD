@@ -6,7 +6,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -63,10 +63,7 @@
 #define STBTT_memset kdMemset
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4244)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
 #pragma clang diagnostic ignored "-Wcast-qual"
@@ -82,17 +79,24 @@
 #if __has_warning("-Wextra-semi-stmt")
 #pragma clang diagnostic ignored "-Wextra-semi-stmt"
 #endif
+#if __has_warning("-Wimplicit-fallthrough")
+#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
+#endif
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wsign-conversion"
 #if __has_warning("-Wcomma")
 #pragma clang diagnostic ignored "-Wcomma"
 #endif
+#pragma clang diagnostic ignored "-Wunused-function"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4244)
 #endif
 #include "stb_truetype.h"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#elif defined(__clang__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
 #endif
 
 /******************************************************************************
@@ -417,12 +421,12 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
-        x += (KDuint)(ax * scale);
+        x += (KDuint)((KDfloat32)ax * scale);
 
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += (KDuint)(kern * scale);
+        x += (KDuint)((KDfloat32)kern * scale);
     }
 
     *result_w = (KDint)x;
@@ -480,12 +484,12 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
-        x += (KDuint)(ax * scale);
+        x += (KDuint)((KDfloat32)ax * scale);
 
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += (KDuint)(kern * scale);
+        x += (KDuint)((KDfloat32)kern * scale);
     }
 
     kdFree(font);

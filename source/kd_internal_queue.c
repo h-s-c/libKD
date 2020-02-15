@@ -5,7 +5,7 @@
  * libKD
  * zlib/libpng License
  ******************************************************************************
- * Copyright (c) 2014-2019 Kevin Schmidt
+ * Copyright (c) 2014-2020 Kevin Schmidt
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -37,7 +37,7 @@
 #endif
 #include "kdplatform.h"         // for KDsize, KDssize, kdAssert
 #include <KD/kd.h>              // for kdSetError, KDint, kdFree, kdMalloc
-#include "KD/VEN_atomic_ops.h"  // for kdAtomicIntLoadVEN, kdAtomicIntCreateVEN
+#include "KD/VEN_atomic_ops.h"  // for kdAtomicIntLoadVEN, kdAtomicIntInitVEN
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
@@ -52,16 +52,17 @@
  ******************************************************************************/
 
 struct _kdQueueCell {
-    KDAtomicIntVEN *sequence;
     void *data;
+    KDAtomicIntVEN sequence;
+    KDint8 padding[4];
 };
 typedef struct _kdQueueCell _kdQueueCell;
 
 struct _KDQueue {
     KDsize buffer_mask;
     _kdQueueCell *buffer;
-    KDAtomicIntVEN *tail;
-    KDAtomicIntVEN *head;
+    KDAtomicIntVEN tail;
+    KDAtomicIntVEN head;
 };
 
 _KDQueue *__kdQueueCreate(KDsize size)
@@ -85,24 +86,16 @@ _KDQueue *__kdQueueCreate(KDsize size)
 
     for(KDsize i = 0; i != size; i += 1)
     {
-        queue->buffer[i].sequence = kdAtomicIntCreateVEN((KDint)i);
+        kdAtomicIntStoreVEN(&queue->buffer[i].sequence, (KDint)i);
     }
 
-    queue->tail = kdAtomicIntCreateVEN(0);
-    queue->head = kdAtomicIntCreateVEN(0);
+    kdAtomicIntStoreVEN(&queue->tail, 0);
+    kdAtomicIntStoreVEN(&queue->head, 0);
     return queue;
 }
 
 KDint __kdQueueFree(_KDQueue *queue)
 {
-    kdAtomicIntFreeVEN(queue->head);
-    kdAtomicIntFreeVEN(queue->tail);
-
-    for(KDsize i = 0; i != queue->buffer_mask + 1; i += 1)
-    {
-        kdAtomicIntFreeVEN(queue->buffer[i].sequence);
-    }
-
     kdFree(queue->buffer);
     kdFree(queue);
     return 0;
@@ -110,21 +103,21 @@ KDint __kdQueueFree(_KDQueue *queue)
 
 KDsize __kdQueueSize(_KDQueue *queue)
 {
-    return (KDsize)(kdAtomicIntLoadVEN(queue->tail) - kdAtomicIntLoadVEN(queue->head));
+    return (KDsize)(kdAtomicIntLoadVEN(&queue->tail) - kdAtomicIntLoadVEN(&queue->head));
 }
 
 KDint __kdQueuePush(_KDQueue *queue, void *value)
 {
     _kdQueueCell *cell;
-    KDsize pos = (KDsize)kdAtomicIntLoadVEN(queue->tail);
+    KDsize pos = (KDsize)kdAtomicIntLoadVEN(&queue->tail);
     for(;;)
     {
         cell = &queue->buffer[pos & queue->buffer_mask];
-        KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
+        KDsize seq = (KDsize)kdAtomicIntLoadVEN(&cell->sequence);
         KDssize dif = (KDssize)seq - (KDssize)pos;
         if(dif == 0)
         {
-            if(kdAtomicIntCompareExchangeVEN(queue->tail, (KDint)pos, (KDint)pos + 1))
+            if(kdAtomicIntCompareExchangeVEN(&queue->tail, (KDint)pos + 1, (KDint)pos))
             {
                 break;
             }
@@ -136,12 +129,12 @@ KDint __kdQueuePush(_KDQueue *queue, void *value)
         }
         else
         {
-            pos = (KDsize)kdAtomicIntLoadVEN(queue->tail);
+            pos = (KDsize)kdAtomicIntLoadVEN(&queue->tail);
         }
     }
 
     cell->data = value;
-    kdAtomicIntStoreVEN(cell->sequence, (KDint)pos + 1);
+    kdAtomicIntStoreVEN(&cell->sequence, (KDint)pos + 1);
 
     return 0;
 }
@@ -149,15 +142,15 @@ KDint __kdQueuePush(_KDQueue *queue, void *value)
 void *__kdQueuePull(_KDQueue *queue)
 {
     _kdQueueCell *cell;
-    KDsize pos = (KDsize)kdAtomicIntLoadVEN(queue->head);
+    KDsize pos = (KDsize)kdAtomicIntLoadVEN(&queue->head);
     for(;;)
     {
         cell = &queue->buffer[pos & queue->buffer_mask];
-        KDsize seq = (KDsize)kdAtomicIntLoadVEN(cell->sequence);
+        KDsize seq = (KDsize)kdAtomicIntLoadVEN(&cell->sequence);
         KDssize dif = (KDssize)seq - (KDssize)(pos + 1);
         if(dif == 0)
         {
-            if(kdAtomicIntCompareExchangeVEN(queue->head, (KDint)pos, (KDint)pos + 1))
+            if(kdAtomicIntCompareExchangeVEN(&queue->head, (KDint)pos + 1, (KDint)pos))
             {
                 break;
             }
@@ -169,11 +162,11 @@ void *__kdQueuePull(_KDQueue *queue)
         }
         else
         {
-            pos = (KDsize)kdAtomicIntLoadVEN(queue->head);
+            pos = (KDsize)kdAtomicIntLoadVEN(&queue->head);
         }
     }
 
     void *value = cell->data;
-    kdAtomicIntStoreVEN(cell->sequence, (KDint)(pos + queue->buffer_mask) + 1);
+    kdAtomicIntStoreVEN(&cell->sequence, (KDint)(pos + queue->buffer_mask) + 1);
     return value;
 }

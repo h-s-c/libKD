@@ -2,7 +2,7 @@
 # libKD
 # zlib/libpng License
 ###############################################################################
-# Copyright (c) 2014-2019 Kevin Schmidt
+# Copyright (c) 2014-2020 Kevin Schmidt
 #
 # This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
@@ -41,13 +41,17 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
 option(KD_BUILD_EXAMPLES "Build with examples" Off)
 option(KD_BUILD_TESTS "Build with tests" On)
 option(KD_BUILD_OPTIMIZATONS "Build with optimizations (Haswell or later required)" Off)
+option(KD_BUILD_VERBOSE "Build with further checks" Off)
 
 project (KD C)
     include(CPack)
     include(CTest)
 
     file(GLOB KD_SOURCES "${CMAKE_SOURCE_DIR}/source/*.c")
-    if(EMSCRIPTEN OR ANDROID OR MINGW OR CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
+    if(EMSCRIPTEN)
+        list(REMOVE_ITEM KD_SOURCES "${CMAKE_SOURCE_DIR}/source/rpmalloc.c")
+    endif()
+    if(EMSCRIPTEN OR ANDROID OR MINGW)
         add_library(KD STATIC ${KD_SOURCES})
     else()
         add_library(KD SHARED ${KD_SOURCES})
@@ -62,8 +66,10 @@ project (KD C)
     endif()
 
     set_target_properties(KD PROPERTIES C_STANDARD 11 C_EXTENSIONS "OFF")
-    set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE "True")
-    if(NOT APPLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "TinyCC" AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
+    if(NOT EMSCRIPTEN)
+        set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE "True")
+    endif()
+    if(NOT APPLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
         set_target_properties(KD PROPERTIES LINK_WHAT_YOU_USE "True")
     endif()
 
@@ -86,7 +92,7 @@ project (KD C)
         if(KD_BUILD_OPTIMIZATONS)
             target_compile_definitions(KD PRIVATE __SSE__=1 __SSE2__=1 __SSE4_1__=1 __SSE4_2__=1)
         endif()
-    elseif(NOT CMAKE_C_COMPILER_ID STREQUAL "PGI")
+    else()
         target_compile_options(KD PRIVATE -Wall -Wextra -Werror -Wshadow -pedantic)
         target_compile_options(KD PRIVATE -Wno-unused-function)
         target_compile_options(KD PRIVATE $<$<CONFIG:Debug>:-fno-omit-frame-pointer>)
@@ -103,7 +109,8 @@ project (KD C)
             set(KD_FREESTANDING "On")
         endif()
         if(EMSCRIPTEN)
-            set(EMCC_FLAGS "-s WASM=1 -s BYSYNCIFY=1 -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=20  -s PROXY_TO_PTHREAD=1 -s \"BINARYEN_TRAP_MODE='clamp'\"")
+            target_compile_options(KD PRIVATE -Wno-unreachable-code)
+            set(EMCC_FLAGS "-s WASM=1 -s ASYNCIFY=1 -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=20")
             set_target_properties(KD PROPERTIES LINK_FLAGS ${EMCC_FLAGS})
         endif()
         if(KD_BUILD_OPTIMIZATONS)
@@ -177,7 +184,7 @@ project (KD C)
     endif()
 
 
-    if(NOT MINGW AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT CMAKE_C_COMPILER_ID STREQUAL "TinyCC" AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
+    if(KD_BUILD_VERBOSE AND NOT MINGW AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
         find_program(CLANG_TIDY NAMES clang-tidy)
         if(CLANG_TIDY AND NOT DEFINED ENV{CI} AND NOT CMAKE_CROSSCOMPILING AND NOT KD_BUILD_OPTIMIZATONS)
             message(STATUS "clang-tidy found: ${CLANG_TIDY}")
