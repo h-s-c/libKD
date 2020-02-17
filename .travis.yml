@@ -244,7 +244,9 @@ jobs:
 
     - stage: 'Testing (windows)'
       <<: *windows_template
-      script: python ci-tools/run_ctest.py 'c:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\Common7\Tools\VsDevCmd.bat' '-arch=amd64'
+      script: cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && python ci-tools/run_ctest.py'
+      env:
+        - MSYS2_ARG_CONV_EXCL="*"
 
     - stage: 'Testing (coverity)'
       <<: *linux_template
