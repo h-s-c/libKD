@@ -83,7 +83,7 @@ macos_template: &macos_template
 windows_template: &windows_template
   os: windows
   compiler: cl.exe
-  before_install: choco install -y ninja opencppcoverage cppcheck python
+  before_install: choco install -y ninja opencppcoverage cppcheck
 
 stages:
   - name: 'Testing (linux)'
@@ -244,7 +244,7 @@ jobs:
 
     - stage: 'Testing (windows)'
       <<: *windows_template
-      script: cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && python ci-tools/run_ctest.py'
+      script: cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && python ci-tools\run_ctest.py'
 
     - stage: 'Testing (coverity)'
       <<: *linux_template
