@@ -1,5 +1,4 @@
 language: c
-install: python ci-tools/install_cmake.py   
 script: python ci-tools/run_ctest.py
 
 cache:
@@ -21,6 +20,8 @@ linux_xenial_apt_template: &linux_xenial_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
+      - sourceline: "deb https://apt.kitware.com/ubuntu/ xenial main"
+        key_url: "https://apt.kitware.com/keys/kitware-archive-latest.asc"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-11 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-10 main"
@@ -45,7 +46,7 @@ linux_xenial_apt_template: &linux_xenial_apt_template
         key_url: "https://files.viva64.com/etc/pubkey.txt"
       - sourceline: 'deb https://apt.repos.intel.com/oneapi all main'
         key_url: 'https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB'
-    packages: ['ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
+    packages: ['cmake' 'ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -273,8 +274,8 @@ jobs:
           project:
             name: h-s-c/libKD
           notification_email: kevin.patrick.schmidt@googlemail.com
-          build_command_prepend: ci-tools/cmake/bin/cmake -S . -B build -G Ninja
-          build_command: ci-tools/cmake/bin/cmake --build build
+          build_command_prepend: cmake -S . -B build -G Ninja
+          build_command: cmake --build build
           branch_pattern: coverity
       script: true  
       env:
