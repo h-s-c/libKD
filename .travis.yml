@@ -271,9 +271,9 @@ jobs:
       compiler: clang-3.8
       before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
-    - <<: *linux_xenial_template
+    - <<: *linux_focal_template
       addons:
-        <<: *linux_xenial_apt_template
+        <<: *linux_focal_apt_template
       compiler: icc
       before_install: sudo apt-get install -y intel-oneapi-icc
       before_script: source /opt/intel/oneapi/setvars.sh
