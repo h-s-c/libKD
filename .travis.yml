@@ -236,14 +236,16 @@ jobs:
 
     - stage: 'Testing (macos)'
       <<: *macos_template
-      osx_image: xcode11.3
+      osx_image: xcode12
+      
+    - <<: *macos_template
+      osx_image: xcode11.6
 
     - <<: *macos_template
       osx_image: xcode10.3
 
     - <<: *macos_template
       osx_image: xcode9.4
-      before_script: brew install
 
     - stage: 'Testing (windows)'
       <<: *windows_template
