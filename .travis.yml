@@ -138,7 +138,9 @@ _macos_template: &macos_template
 _windows_template: &windows_template
   os: windows
   compiler: cl.exe
-  before_install: choco install -y ninja opencppcoverage cppcheck
+  before_install: 
+    - choco install -y ninja opencppcoverage cppcheck
+    - choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=User"'
 
 stages:
   - name: 'Testing'
