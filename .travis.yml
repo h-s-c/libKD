@@ -153,8 +153,6 @@ stages:
 jobs:
   allow_failures:
     - os: windows
-    - os: linux
-      env: DOCKER_IMAGE=dockcross/web-wasm
   include:
     - stage: 'Testing'
       <<: *linux_focal_template
@@ -277,18 +275,6 @@ jobs:
       compiler: icc
       install: sudo apt-get install -y intel-oneapi-icc
       before_script: source /opt/intel/oneapi/setvars.sh
-
-    - <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/web-wasm
-
-    - <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-shared-x64
-
-    - <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-shared-x64-posix
-
-    - <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-shared-x86
 
     - <<: *macos_template
       osx_image: xcode12
