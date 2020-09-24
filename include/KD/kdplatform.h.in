@@ -24,6 +24,7 @@
 #ifndef __kdplatform_h_
 #define __kdplatform_h_
 
+#define EGL_NO_X11
 #define MESA_EGL_NO_X11_HEADERS
 #include <stddef.h>
 
@@ -38,10 +39,6 @@
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_COCOA
 #cmakedefine KD_FREESTANDING
-
-#if defined(KD_WINDOW_X11)
-#define MESA_EGL_NO_X11_HEADERS
-#endif
 
 #if defined(_MSC_VER)
 #define KD_INLINE __inline __forceinline
