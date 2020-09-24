@@ -138,19 +138,7 @@ _windows_template: &windows_template
   before_install: choco install -y ninja opencppcoverage cppcheck
 
 stages:
-  - name: 'Testing (linux gcc)'
-    if: branch = develop
-  - name: 'Testing (linux clang)'
-    if: branch = develop
-  - name: 'Testing (linux icc)'
-    if: branch = develop
-  - name: 'Testing (linux emscripten)'
-    if: branch = develop
-  - name: 'Testing (linux mingw)'
-    if: branch = develop
-  - name: 'Testing (macos)'
-    if: branch = develop
-  - name: 'Testing (windows)'
+  - name: 'Testing'
     if: branch = develop
   - name: 'Testing (coverity)'
     if: branch = coverity
@@ -163,7 +151,7 @@ jobs:
     - os: linux
       env: DOCKER_IMAGE=dockcross/web-wasm
   include:
-    - stage: 'Testing (linux gcc)'
+    - stage: 'Testing'
       <<: *linux_focal_template
       addons:
         <<: *linux_focal_apt_template
@@ -218,8 +206,7 @@ jobs:
       compiler: gcc-4.7
       before_install: sudo apt-get install -y gcc-4.7
 
-    - stage: 'Testing (linux clang)'
-      <<: *linux_focal_template
+    - <<: *linux_focal_template
       addons:
         <<: *linux_focal_apt_template
       compiler: clang-11
@@ -279,20 +266,17 @@ jobs:
       compiler: clang-3.8
       before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
-    - stage: 'Testing (linux icc)'
-      <<: *linux_xenial_template
+    - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: icc
       before_install: sudo apt-get install -y intel-oneapi-icc
       before_script: source /opt/intel/oneapi/setvars.sh
 
-    - stage: 'Testing (linux emscripten)'
-      <<: *docker_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/web-wasm
 
-    - stage: 'Testing (linux mingw)'
-      <<: *docker_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-static-x64
 
     - <<: *docker_template
@@ -301,12 +285,10 @@ jobs:
     - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-static-x86
 
-    - stage: 'Testing (macos)'
-      <<: *macos_template
+    - <<: *macos_template
       osx_image: xcode12
 
-    - stage: 'Testing (windows)'
-      <<: *windows_template
+    - <<: *windows_template
       script: ci-tools/run_ctest_vs2017.cmd
 
     - stage: 'Testing (coverity)'
