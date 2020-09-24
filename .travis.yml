@@ -1,11 +1,6 @@
 language: c
 script: python ci-tools/run_ctest.py
 
-cache:
-  ccache: true
-  directories:
-    - 'ci-tools/cache'
-
 _linux_focal_template: &linux_focal_template
   os: linux
   dist: focal
@@ -134,7 +129,7 @@ _packagecloud_fedora_template: &packagecloud_fedora_template
 _macos_template: &macos_template
   os: osx
   compiler: clang
-  before_install: brew update && brew install ninja ccache cppcheck flawfinder
+  before_install: brew update && brew install ninja cppcheck flawfinder
 
 _windows_template: &windows_template
   os: windows
