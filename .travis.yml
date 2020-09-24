@@ -82,6 +82,7 @@ _linux_xenial_apt_template: &linux_xenial_apt_template
 _docker_template: &docker_template
   <<: *linux_focal_template
   services: docker
+  install: python ci-tools/install_cmake.py
   before_install: docker pull $DOCKER_IMAGE;
   script: docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
