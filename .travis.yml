@@ -213,7 +213,7 @@ jobs:
         <<: *linux_apt_template
       compiler: icc
       before_install: sudo apt-get install -y intel-oneapi-icc
-      before_script: source /opt/intel/inteloneapi/compiler/latest/env/vars.sh
+      before_script: source /opt/intel/oneapi/setvars.sh
 
     - <<: *linux_template
       <<: *docker_template
