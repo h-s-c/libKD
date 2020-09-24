@@ -296,6 +296,10 @@ jobs:
     - <<: *windows_template
       script: ci-tools/run_ctest_vs2017.cmd
 
+    - <<: *windows_template
+      install: choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+      script: ci-tools/run_ctest_vs2019.cmd
+
     - stage: 'Testing (coverity)'
       <<: *linux_focal_template
       addons:
