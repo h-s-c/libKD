@@ -134,6 +134,7 @@
 
 #if defined(KD_ATOMIC_BUILTIN)
 /*  Disable for now. Works around bug in implementation */
+#undef KD_ATOMIC_BUILTIN
 #define KD_ATOMIC_SYNC
 #endif
 
