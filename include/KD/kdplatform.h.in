@@ -89,7 +89,10 @@
 #define KD_THREAD_WIN32
 #endif
 #elif defined(__clang__)
-#if __has_include(<stdatomic.h>)
+/* Clang 5 atomic implementation has a bug */
+#if(__clang_major__ == 5)
+#define KD_ATOMIC_SYNC
+#elif __has_include(<stdatomic.h>)
 #define KD_ATOMIC_C11
 #else
 #define KD_ATOMIC_SYNC

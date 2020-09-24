@@ -160,8 +160,6 @@ jobs:
   allow_failures:
     - os: windows
     - os: linux
-      compiler: clang-5.0
-    - os: linux
       env: DOCKER_IMAGE=dockcross/web-wasm
   include:
     - stage: 'Testing (linux gcc)'
