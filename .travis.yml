@@ -52,12 +52,20 @@ linux_xenial_apt_template: &linux_xenial_apt_template
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
 
 docker_template: &docker_template
+  <<: *linux_template
   services: docker
   before_install: docker pull $DOCKER_IMAGE;
   script: docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-packagecloud_deb_template: &packagecloud_deb_template
+packagecloud_ubuntu_template: &packagecloud_ubuntu_template
+  <<: *docker_template
   before_install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+  script:
+    - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
+        apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
+          libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
+          libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
+        python ci-tools/run_cpack.py;"
   deploy:
     provider: packagecloud
     dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -70,8 +78,16 @@ packagecloud_deb_template: &packagecloud_deb_template
       tags: true
     package_glob: "*.deb"
 
-packagecloud_rpm_template: &packagecloud_rpm_template
+packagecloud_fedora_template: &packagecloud_fedora_template
+  <<: *docker_template
   before_install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
+  script:
+    - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
+        dnf -y groupinstall \"C Development Tools and Libraries\" && 
+        dnf -y install git pkgconfig rpm-build ninja-build python 
+          mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
+          libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
+        python ci-tools/run_cpack.py;"
   deploy:
     provider: packagecloud
     dist: "$DOCKER_IMAGE/$DOCKER_IMAGE_VERSION"
@@ -241,21 +257,17 @@ jobs:
       before_script: source /opt/intel/oneapi/setvars.sh
 
     - stage: 'Testing (linux emscripten)'
-      <<: *linux_template
       <<: *docker_template
       env: DOCKER_IMAGE=dockcross/web-wasm
 
     - stage: 'Testing (linux mingw)'
-      <<: *linux_template
       <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-static-x64
 
-    - <<: *linux_template
-      <<: *docker_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-static-x64-posix
 
-    - <<: *linux_template
-      <<: *docker_template
+    - <<: *docker_template
       env: DOCKER_IMAGE=dockcross/windows-static-x86
 
     - stage: 'Testing (macos)'
@@ -282,127 +294,35 @@ jobs:
         - secure: "Lo6vQDjM1B/BNAhTSphPCEbKxc7uaxOmg8GE+k94tVj4cZuzwvZb8YN8w6FCaHL/D8Vc+TIVAoBRBEGZ9J+VE02kK86kiN8ftcBevF5rtuDNyc4b7yohfpkdfIAe0IJxN76J5mLlwVvlGMPDkDMyPgwNQdSPQpa+HAvwK/kSOJw="
 
     - stage: 'Deployment (packagecloud)'
-      <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_deb_template
+      <<: *packagecloud_ubuntu_template
+      env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=focal
+
+    - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=bionic
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
-              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_deb_template
+    - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=xenial
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
-              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_deb_template
+    - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
-              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_deb_template
+    - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=bullseye
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
-              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_deb_template
+    - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=buster
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
-              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_deb_template
+    - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
-              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/run_cpack.py;"
 
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_deb_template
-      env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=jessie
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "apt-get -qq update &&
-            apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build 
-              libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev 
-              libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev;
-            python ci-tools/run_cpack.py;"
+    - <<: *packagecloud_fedora_template
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=34
 
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_rpm_template
+    - <<: *packagecloud_fedora_template
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=33
+
+    - <<: *packagecloud_fedora_template
+      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=32
+
+    - <<: *packagecloud_fedora_template
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=31
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
-            dnf -y groupinstall \"C Development Tools and Libraries\" && 
-            dnf -y install git pkgconfig rpm-build ninja-build python 
-              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
-              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/run_cpack.py;"
-
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_rpm_template
-      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=30
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
-            dnf -y groupinstall \"C Development Tools and Libraries\" && 
-            dnf -y install git pkgconfig rpm-build ninja-build python 
-              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
-              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/run_cpack.py;"
-
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_rpm_template
-      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=29
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
-            dnf -y groupinstall \"C Development Tools and Libraries\" && 
-            dnf -y install git pkgconfig rpm-build ninja-build python 
-              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
-              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/run_cpack.py;"
-
-    - <<: *linux_template
-      <<: *docker_template
-      <<: *packagecloud_rpm_template
-      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=28
-      script:
-        - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
-            dnf -y groupinstall \"C Development Tools and Libraries\" && 
-            dnf -y install git pkgconfig rpm-build ninja-build python 
-              mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
-              libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
-            python ci-tools/run_cpack.py;"
