@@ -37,7 +37,7 @@ linux_apt_template: &linux_apt_template
         key_url: "https://files.viva64.com/etc/pubkey.txt"
       - sourceline: 'deb https://apt.repos.intel.com/oneapi all main'
         key_url: 'https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB'
-    packages: ['ninja-build', 'valgrind', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
+    packages: ['ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -240,7 +240,7 @@ jobs:
 
     - <<: *macos_template
       osx_image: xcode9.4
-      before_script: brew install valgrind
+      before_script: brew install
 
     - stage: 'Testing (windows)'
       <<: *windows_template
