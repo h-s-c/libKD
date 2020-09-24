@@ -17,6 +17,8 @@ linux_apt_template: &linux_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
+      - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-11 main"
+        key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-10 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main"
@@ -108,8 +110,14 @@ jobs:
     - os: linux
       env: DOCKER_IMAGE=dockcross/web-wasm
   include:
-    - stage: 'Testing (linux)'
+    - stage: 'Testing (linux gcc)'
       <<: *linux_template
+      addons:
+        <<: *linux_apt_template
+      compiler: gcc-10
+      before_install: sudo apt-get install -y gcc-10
+
+    - <<: *linux_template
       addons:
         <<: *linux_apt_template
       compiler: gcc-9
@@ -156,6 +164,13 @@ jobs:
         <<: *linux_apt_template
       compiler: gcc-4.7
       before_install: sudo apt-get install -y gcc-4.7
+
+    - stage: 'Testing (linux clang)'
+      <<: *linux_template
+      addons:
+        <<: *linux_apt_template
+      compiler: clang-11
+      before_install: sudo apt-get install -y clang-10 llvm-11
 
     - <<: *linux_template
       addons:
@@ -211,7 +226,8 @@ jobs:
       compiler: clang-3.8
       before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
-    - <<: *linux_template
+    - stage: 'Testing (linux other)'
+      <<: *linux_template
       addons:
         <<: *linux_apt_template
       compiler: icc
@@ -237,7 +253,7 @@ jobs:
     - stage: 'Testing (macos)'
       <<: *macos_template
       osx_image: xcode12
-      
+
     - <<: *macos_template
       osx_image: xcode11.6
 
