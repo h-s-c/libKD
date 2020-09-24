@@ -252,7 +252,7 @@ jobs:
 
     - stage: 'Testing (windows)'
       <<: *windows_template
-      script: cmd.exe //C "ci-tools/run_ctest_vs2017.cmd"
+      script: ci-tools/run_ctest_vs2017.cmd
 
     - stage: 'Testing (coverity)'
       <<: *linux_template
