@@ -282,13 +282,13 @@ jobs:
       env: DOCKER_IMAGE=dockcross/web-wasm
 
     - <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-static-x64
+      env: DOCKER_IMAGE=dockcross/windows-shared-x64
 
     - <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-static-x64-posix
+      env: DOCKER_IMAGE=dockcross/windows-shared-x64-posix
 
     - <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-static-x86
+      env: DOCKER_IMAGE=dockcross/windows-shared-x86
 
     - <<: *macos_template
       osx_image: xcode12
