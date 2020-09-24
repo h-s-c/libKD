@@ -3,8 +3,10 @@ install: python ci-tools/install_cmake.py
 script: python ci-tools/run_ctest.py
 
 cache:
+  ccache: true
   directories:
     - 'ci-tools/cache'
+    - $HOME/Library/Caches/Homebrew
 
 linux_template: &linux_template
   os: linux
@@ -79,6 +81,7 @@ macos_template: &macos_template
   os: osx
   compiler: clang
   before_install: brew update && brew install ninja ccache cppcheck flawfinder
+  before_cache: brew cleanup
 
 windows_template: &windows_template
   os: windows
