@@ -98,7 +98,11 @@ stages:
     if: branch = develop
   - name: 'Testing (linux clang)'
     if: branch = develop
-  - name: 'Testing (linux other)'
+  - name: 'Testing (linux icc)'
+    if: branch = develop
+  - name: 'Testing (linux emscripten)'
+    if: branch = develop
+  - name: 'Testing (linux mingw)'
     if: branch = develop
   - name: 'Testing (macos)'
     if: branch = develop
@@ -227,7 +231,7 @@ jobs:
       compiler: clang-3.8
       before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
-    - stage: 'Testing (linux other)'
+    - stage: 'Testing (linux icc)'
       <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
@@ -235,21 +239,23 @@ jobs:
       before_install: sudo apt-get install -y intel-oneapi-icc
       before_script: source /opt/intel/oneapi/setvars.sh
 
-    - <<: *linux_template
-      <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-x64
-
-    - <<: *linux_template
-      <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-x64-posix
-
-    - <<: *linux_template
-      <<: *docker_template
-      env: DOCKER_IMAGE=dockcross/windows-x86
-
-    - <<: *linux_template
+    - stage: 'Testing (linux emscripten)'
+      <<: *linux_template
       <<: *docker_template
       env: DOCKER_IMAGE=dockcross/web-wasm
+
+    - stage: 'Testing (linux mingw)'
+      <<: *linux_template
+      <<: *docker_template
+      env: DOCKER_IMAGE=dockcross/windows-static-x64
+
+    - <<: *linux_template
+      <<: *docker_template
+      env: DOCKER_IMAGE=dockcross/windows-static-x64-posix
+
+    - <<: *linux_template
+      <<: *docker_template
+      env: DOCKER_IMAGE=dockcross/windows-static-x86
 
     - stage: 'Testing (macos)'
       <<: *macos_template
