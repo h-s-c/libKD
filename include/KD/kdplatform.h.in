@@ -89,14 +89,8 @@
 #define KD_THREAD_WIN32
 #endif
 #elif defined(__clang__)
-#if(__clang_major__ > 3)
 #if __has_include(<stdatomic.h>)
 #define KD_ATOMIC_C11
-#else
-#define KD_ATOMIC_BUILTIN
-#endif
-#elif(__clang_major__ == 3) && (__clang_minor__ >= 1)
-#define KD_ATOMIC_BUILTIN
 #else
 #define KD_ATOMIC_SYNC
 #endif
@@ -110,10 +104,8 @@
 #if __has_include(<stdatomic.h>)
 #define KD_ATOMIC_C11
 #else
-#define KD_ATOMIC_BUILTIN
+#define KD_ATOMIC_SYNC
 #endif
-#elif(__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
-#define KD_ATOMIC_BUILTIN
 #elif(__GNUC__ == 4) && (__GNUC_MINOR__ >= 1)
 #define KD_ATOMIC_SYNC
 #endif
@@ -126,13 +118,6 @@
 #else
 #define KD_THREAD_POSIX
 #endif
-#endif
-
-
-#if defined(KD_ATOMIC_BUILTIN)
-/*  Disable for now. Works around bug in implementation */
-#undef KD_ATOMIC_BUILTIN
-#define KD_ATOMIC_SYNC
 #endif
 
 /******************************************************************************
