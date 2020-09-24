@@ -6,12 +6,11 @@ cache:
   directories:
     - 'ci-tools/cache'
 
-linux_focal_template: &linux_focal_template
+_linux_focal_template: &linux_focal_template
   os: linux
   dist: focal
-  sudo: required
 
-linux_focal_apt_template: &linux_focal_apt_template
+_linux_focal_apt_template: &linux_focal_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
@@ -32,12 +31,11 @@ linux_focal_apt_template: &linux_focal_apt_template
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
 
-linux_bionic_template: &linux_bionic_template
+_linux_bionic_template: &linux_bionic_template
   os: linux
   dist: bionic
-  sudo: required
 
-linux_bionic_apt_template: &linux_bionic_apt_template
+_linux_bionic_apt_template: &linux_bionic_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
@@ -61,12 +59,11 @@ linux_bionic_apt_template: &linux_bionic_apt_template
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
 
 
-linux_xenial_template: &linux_xenial_template
+_linux_xenial_template: &linux_xenial_template
   os: linux
   dist: xenial
-  sudo: required
 
-linux_xenial_apt_template: &linux_xenial_apt_template
+_linux_xenial_apt_template: &linux_xenial_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
@@ -87,13 +84,13 @@ linux_xenial_apt_template: &linux_xenial_apt_template
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
 
-docker_template: &docker_template
+_docker_template: &docker_template
   <<: *linux_focal_template
   services: docker
   before_install: docker pull $DOCKER_IMAGE;
   script: docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
-packagecloud_ubuntu_template: &packagecloud_ubuntu_template
+_packagecloud_ubuntu_template: &packagecloud_ubuntu_template
   <<: *docker_template
   before_install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
   script:
@@ -109,12 +106,11 @@ packagecloud_ubuntu_template: &packagecloud_ubuntu_template
     username: "h-s-c"
     token:
       secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-    skip_cleanup: true
     on:
       tags: true
     package_glob: "*.deb"
 
-packagecloud_fedora_template: &packagecloud_fedora_template
+_packagecloud_fedora_template: &packagecloud_fedora_template
   <<: *docker_template
   before_install: docker pull $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION;
   script:
@@ -131,17 +127,16 @@ packagecloud_fedora_template: &packagecloud_fedora_template
     username: "h-s-c"
     token:
       secure: "q55rWSAf5bU/WpC0l8SVS/F0UvGLvFBmn7TVZJ922Yz2nTswxojib9eFhbEds63LprN3/G1kE7VnUE/GygEpbw/z3shWnZIsymWfK18VwLIJZlcOUEyaFrmJwBbN742lkPxENObQjYrSuOSEA46ztcurXyRVsCTIzYvcbdveLW4="
-    skip_cleanup: true
     on:
       tags: true
     package_glob: "*.rpm"
 
-macos_template: &macos_template
+_macos_template: &macos_template
   os: osx
   compiler: clang
   before_install: brew update && brew install ninja ccache cppcheck flawfinder
 
-windows_template: &windows_template
+_windows_template: &windows_template
   os: windows
   compiler: cl.exe
   before_install: choco install -y ninja opencppcoverage cppcheck
