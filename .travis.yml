@@ -1,5 +1,5 @@
 language: c
-before_install: python ci-tools/install_cmake.py
+install: python ci-tools/install_cmake.py
 script: python ci-tools/run_ctest.py
 
 _linux_focal_template: &linux_focal_template
@@ -133,7 +133,8 @@ _windows_template: &windows_template
   os: windows
   compiler: cl.exe
   before_install: 
-    - choco install -y ninja opencppcoverage cppcheck
+    - choco install -y ninja opencppcoverage cppcheck 
+    - choco install -y visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
 
 stages:
   - name: 'Testing'
@@ -152,121 +153,121 @@ jobs:
       addons:
         <<: *linux_focal_apt_template
       compiler: gcc-10
-      install: sudo apt-get install -y gcc-10
+      before_install: sudo apt-get install -y gcc-10
 
     - <<: *linux_bionic_template
       addons:
         <<: *linux_bionic_apt_template
       compiler: gcc-9
-      install: sudo apt-get install -y gcc-9
+      before_install: sudo apt-get install -y gcc-9
 
     - <<: *linux_bionic_template
       addons:
         <<: *linux_bionic_apt_template
       compiler: gcc-8
-      install: sudo apt-get install -y gcc-8
+      before_install: sudo apt-get install -y gcc-8
 
     - <<: *linux_bionic_template
       addons:
         <<: *linux_bionic_apt_template
       compiler: gcc-7
-      install: sudo apt-get install -y gcc-7
+      before_install: sudo apt-get install -y gcc-7
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: gcc-6
-      install: sudo apt-get install -y gcc-6
+      before_install: sudo apt-get install -y gcc-6
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: gcc-5
-      install: sudo apt-get install -y gcc-5
+      before_install: sudo apt-get install -y gcc-5
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: gcc-4.9
-      install: sudo apt-get install -y gcc-4.9
+      before_install: sudo apt-get install -y gcc-4.9
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: gcc-4.8
-      install: sudo apt-get install -y gcc-4.8
+      before_install: sudo apt-get install -y gcc-4.8
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: gcc-4.7
-      install: sudo apt-get install -y gcc-4.7
+      before_install: sudo apt-get install -y gcc-4.7
 
     - <<: *linux_focal_template
       addons:
         <<: *linux_focal_apt_template
       compiler: clang-11
-      install: sudo apt-get install -y clang-11 llvm-11
+      before_install: sudo apt-get install -y clang-11 llvm-11
 
     - <<: *linux_focal_template
       addons:
         <<: *linux_focal_apt_template
       compiler: clang-10
-      install: sudo apt-get install -y clang-10 llvm-10
+      before_install: sudo apt-get install -y clang-10 llvm-10
 
     - <<: *linux_focal_template
       addons:
         <<: *linux_focal_apt_template
       compiler: clang-9
-      install: sudo apt-get install -y clang-9 llvm-9
+      before_install: sudo apt-get install -y clang-9 llvm-9
 
     - <<: *linux_bionic_template
       addons:
         <<: *linux_bionic_apt_template
       compiler: clang-8
-      install: sudo apt-get install -y clang-8 llvm-8
+      before_install: sudo apt-get install -y clang-8 llvm-8
 
     - <<: *linux_bionic_template
       addons:
         <<: *linux_bionic_apt_template
       compiler: clang-7
-      install: sudo apt-get install -y clang-7 llvm-7
+      before_install: sudo apt-get install -y clang-7 llvm-7
 
     - <<: *linux_bionic_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: clang-6.0
-      install: sudo apt-get install -y clang-6.0 llvm-6.0
+      before_install: sudo apt-get install -y clang-6.0 llvm-6.0
 
     - <<: *linux_bionic_template
       addons:
         <<: *linux_bionic_apt_template
       compiler: clang-5.0
-      install: sudo apt-get install -y clang-5.0 llvm-5.0
+      before_install: sudo apt-get install -y clang-5.0 llvm-5.0
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: clang-4.0
-      install: sudo apt-get install -y clang-4.0 llvm-4.0
+      before_install: sudo apt-get install -y clang-4.0 llvm-4.0
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: clang-3.9
-      install: sudo apt-get install -y clang-3.9 llvm-3.9
+      before_install: sudo apt-get install -y clang-3.9 llvm-3.9
 
     - <<: *linux_xenial_template
       addons:
         <<: *linux_xenial_apt_template
       compiler: clang-3.8
-      install: sudo apt-get install -y clang-3.8 llvm-3.8
+      before_install: sudo apt-get install -y clang-3.8 llvm-3.8
 
     - <<: *linux_focal_template
       addons:
         <<: *linux_focal_apt_template
       compiler: icc
-      install: sudo apt-get install -y intel-oneapi-icc
+      before_install: sudo apt-get install -y intel-oneapi-icc
       before_script: source /opt/intel/oneapi/setvars.sh
 
     - <<: *macos_template
@@ -276,7 +277,6 @@ jobs:
       script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' python 'ci-tools\run_ctest.py'
 
     - <<: *windows_template
-      install: choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
       script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' python 'ci-tools\run_ctest.py'
 
     - stage: 'Testing (coverity)'
