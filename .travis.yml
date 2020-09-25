@@ -129,14 +129,6 @@ _macos_template: &macos_template
   compiler: clang
   before_install: brew update && brew install ninja cppcheck flawfinder
 
-_windows_template: &windows_template
-  os: windows
-  compiler: cl.exe
-  before_install: 
-    - choco install -y ninja opencppcoverage cppcheck 
-    - choco install -y visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-  before_script: cmd //C RefreshEnv.cmd
-
 stages:
   - name: 'Testing'
     if: branch = develop
@@ -146,8 +138,6 @@ stages:
     if: tag IS present
 
 jobs:
-  allow_failures:
-    - os: windows
   include:
     - stage: 'Testing'
       <<: *linux_focal_template
@@ -273,12 +263,6 @@ jobs:
 
     - <<: *macos_template
       osx_image: xcode12
-
-    - <<: *windows_template
-      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' python 'ci-tools\run_ctest.py'
-
-    - <<: *windows_template
-      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' python 'ci-tools\run_ctest.py'
 
     - stage: 'Testing (coverity)'
       <<: *linux_focal_template
