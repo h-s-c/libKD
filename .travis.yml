@@ -10,8 +10,6 @@ _linux_focal_apt_template: &linux_focal_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
-      - sourceline: "deb https://apt.kitware.com/ubuntu/ focal main"
-        key_url: "https://apt.kitware.com/keys/kitware-archive-latest.asc"
       - sourceline: "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
@@ -20,9 +18,9 @@ _linux_focal_apt_template: &linux_focal_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://files.viva64.com/deb/ viva64-release pvs-studio"
         key_url: "https://files.viva64.com/etc/pubkey.txt"
-      - sourceline: 'deb https://apt.repos.intel.com/oneapi all main'
-        key_url: 'https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB'
-    packages: ['cmake', 'ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
+      - sourceline: "deb https://apt.repos.intel.com/oneapi all main"
+        key_url: "https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB"
+    packages: ['ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -35,8 +33,6 @@ _linux_bionic_apt_template: &linux_bionic_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
-      - sourceline: "deb https://apt.kitware.com/ubuntu/ bionic main"
-        key_url: "https://apt.kitware.com/keys/kitware-archive-latest.asc"
       - sourceline: "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-7 main"
@@ -47,9 +43,9 @@ _linux_bionic_apt_template: &linux_bionic_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://files.viva64.com/deb/ viva64-release pvs-studio"
         key_url: "https://files.viva64.com/etc/pubkey.txt"
-      - sourceline: 'deb https://apt.repos.intel.com/oneapi all main'
-        key_url: 'https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB'
-    packages: ['cmake', 'ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
+      - sourceline: "deb https://apt.repos.intel.com/oneapi all main"
+        key_url: "https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB"
+    packages: ['ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -63,8 +59,6 @@ _linux_xenial_apt_template: &linux_xenial_apt_template
   apt:
     sources: 
       - sourceline: "ppa:ubuntu-toolchain-r/test"
-      - sourceline: "deb https://apt.kitware.com/ubuntu/ xenial main"
-        key_url: "https://apt.kitware.com/keys/kitware-archive-latest.asc"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-4.0 main"
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-3.9 main"
@@ -73,9 +67,9 @@ _linux_xenial_apt_template: &linux_xenial_apt_template
         key_url: "http://llvm.org/apt/llvm-snapshot.gpg.key"
       - sourceline: "deb http://files.viva64.com/deb/ viva64-release pvs-studio"
         key_url: "https://files.viva64.com/etc/pubkey.txt"
-      - sourceline: 'deb https://apt.repos.intel.com/oneapi all main'
-        key_url: 'https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB'
-    packages: ['cmake', 'ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
+      - sourceline: "deb https://apt.repos.intel.com/oneapi all main"
+        key_url: "https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB"
+    packages: ['ninja-build', 'cppcheck', 'flawfinder', 'binutils-gold', 'pvs-studio', 
                'libgl1-mesa-dev', 'libegl1-mesa-dev', 'libgles2-mesa-dev', 'libx11-dev', 'libwayland-dev',
                'libxcb1-dev', 'libxcb-xkb-dev', 'libxkbcommon-dev', 'libxkbcommon-x11-dev',
                'libxcb-ewmh-dev', 'libxcb-icccm4-dev', 'libxcb-randr0-dev', 'libxcb-util0-dev']
@@ -140,7 +134,6 @@ _windows_template: &windows_template
   compiler: cl.exe
   before_install: 
     - choco install -y ninja opencppcoverage cppcheck
-    - choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=User"'
 
 stages:
   - name: 'Testing'
