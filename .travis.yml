@@ -280,11 +280,11 @@ jobs:
       osx_image: xcode12
 
     - <<: *windows_template
-      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 && ctest -VV -S ci-tools\run_ctest.cmake
+      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 && ctest -VV -S 'ci-tools\run_ctest.cmake'
 
     - <<: *windows_template
       install: choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 && ctest -VV -S ci-tools\run_ctest.cmake
+      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 && ctest -VV -S 'ci-tools\run_ctest.cmake'
 
     - stage: 'Testing (coverity)'
       <<: *linux_focal_template
