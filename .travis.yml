@@ -1,5 +1,5 @@
 language: c
-script: ctest -S 'ci-tools\run_ctest.cmake
+script: ctest -S ci-tools/run_ctest.cmake
 
 _linux_focal_template: &linux_focal_template
   os: linux
