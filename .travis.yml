@@ -1,5 +1,6 @@
 language: c
-script: ctest -S ci-tools/run_ctest.cmake
+before_install: python ci-tools/install_cmake.py
+script: python ci-tools/run_ctest.py
 
 _linux_focal_template: &linux_focal_template
   os: linux
@@ -85,7 +86,6 @@ _docker_template: &docker_template
   cache:
     directories:
       - 'ci-tools/cache'
-  before_install: python ci-tools/install_cmake.py
   before_script: docker pull $DOCKER_IMAGE;
   script: docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
 
@@ -280,11 +280,11 @@ jobs:
       osx_image: xcode12
 
     - <<: *windows_template
-      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' ctest -S 'ci-tools\run_ctest.cmake'
+      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' python 'ci-tools\run_ctest.py'
 
     - <<: *windows_template
       install: choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' ctest -S 'ci-tools\run_ctest.cmake'
+      script: cmd.exe //c 'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat' amd64 '&&' python 'ci-tools\run_ctest.py'
 
     - stage: 'Testing (coverity)'
       <<: *linux_focal_template
