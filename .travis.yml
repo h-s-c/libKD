@@ -135,6 +135,7 @@ _windows_template: &windows_template
   before_install: 
     - choco install -y ninja opencppcoverage cppcheck 
     - choco install -y visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+  before_script: cmd //C RefreshEnv.cmd
 
 stages:
   - name: 'Testing'
