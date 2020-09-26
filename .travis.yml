@@ -111,7 +111,7 @@ _packagecloud_fedora_template: &packagecloud_fedora_template
     - docker run -v `pwd`:/build:rw -w /build $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION /bin/bash -c "dnf -y update &&
         dnf -y groupinstall \"C Development Tools and Libraries\" && 
         dnf -y install git pkgconfig rpm-build ninja-build python 
-          mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel mesa-libwayland-egl-devel 
+          mesa-libGL-devel mesa-libEGL-devel mesa-libGLES-devel libX11-devel wayland-devel
           libxcb-devel libxkbcommon-devel libxkbcommon-x11-devel xcb-util-wm-devel xcb-util-devel;
         python ci-tools/run_cpack.py;"
   deploy:
@@ -293,9 +293,6 @@ jobs:
 
     - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=ubuntu DOCKER_IMAGE_VERSION=trusty
-
-    - <<: *packagecloud_ubuntu_template
-      env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=bullseye
 
     - <<: *packagecloud_ubuntu_template
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=buster
