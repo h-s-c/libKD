@@ -24,6 +24,7 @@
 #ifndef __kdplatform_h_
 #define __kdplatform_h_
 
+#define EGL_NO_X11
 #define MESA_EGL_NO_X11_HEADERS
 #include <stddef.h>
 
@@ -38,10 +39,6 @@
 #cmakedefine KD_WINDOW_WAYLAND
 #cmakedefine KD_WINDOW_COCOA
 #cmakedefine KD_FREESTANDING
-
-#if defined(KD_WINDOW_X11)
-#define MESA_EGL_NO_X11_HEADERS
-#endif
 
 #if defined(_MSC_VER)
 #define KD_INLINE __inline __forceinline
@@ -92,14 +89,11 @@
 #define KD_THREAD_WIN32
 #endif
 #elif defined(__clang__)
-#if(__clang_major__ > 3)
-#if __has_include(<stdatomic.h>)
+/* Clang 5 atomic implementation has a bug */
+#if(__clang_major__ == 5)
+#define KD_ATOMIC_SYNC
+#elif __has_include(<stdatomic.h>)
 #define KD_ATOMIC_C11
-#else
-#define KD_ATOMIC_BUILTIN
-#endif
-#elif(__clang_major__ == 3) && (__clang_minor__ >= 1)
-#define KD_ATOMIC_BUILTIN
 #else
 #define KD_ATOMIC_SYNC
 #endif
@@ -113,10 +107,8 @@
 #if __has_include(<stdatomic.h>)
 #define KD_ATOMIC_C11
 #else
-#define KD_ATOMIC_BUILTIN
+#define KD_ATOMIC_SYNC
 #endif
-#elif(__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
-#define KD_ATOMIC_BUILTIN
 #elif(__GNUC__ == 4) && (__GNUC_MINOR__ >= 1)
 #define KD_ATOMIC_SYNC
 #endif

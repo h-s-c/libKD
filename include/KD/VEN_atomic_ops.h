@@ -44,26 +44,6 @@ static KD_INLINE void  kdAtomicPtrStoreVEN(KDAtomicPtrVEN* dst, void * val) { _I
 static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, void* val, void* ref) { return (_InterlockedCompareExchangePointer((void * volatile*)dst, val, ref) == ref) ? 1 : 0; }
 #endif
 
-#elif defined(KD_ATOMIC_BUILTIN)
-
-typedef KDint32 KDAtomicIntVEN;
-typedef void* KDAtomicPtrVEN;
-
-static KD_INLINE KDint32 kdAtomicIntLoadVEN(KDAtomicIntVEN* src) { return __atomic_load_n(src, __ATOMIC_RELAXED); }
-static KD_INLINE void  kdAtomicIntStoreVEN(KDAtomicIntVEN* dst, KDint32 val) { __atomic_store_n(dst, val, __ATOMIC_RELAXED); }
-static KD_INLINE KDint32 kdAtomicIntFetchAddVEN(KDAtomicIntVEN* val, KDint32 add) { return __atomic_add_fetch(val, add, __ATOMIC_RELAXED); }
-static KD_INLINE KDboolean kdAtomicIntCompareExchangeVEN(KDAtomicIntVEN* dst, KDint32 val, KDint32 ref) { return __atomic_compare_exchange_n(dst, &ref, val, KD_TRUE, __ATOMIC_RELAXED, __ATOMIC_RELAXED); }
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-qual"
-#endif
-static KD_INLINE void* kdAtomicPtrLoadVEN(KDAtomicPtrVEN* src) { return (void*)__atomic_load_n(src, __ATOMIC_RELAXED); }
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
-static KD_INLINE void  kdAtomicPtrStoreVEN(KDAtomicPtrVEN* dst, void* val) { __atomic_store_n(dst, val, __ATOMIC_RELAXED); }
-static KD_INLINE KDboolean kdAtomicPtrCompareExchangeVEN(KDAtomicPtrVEN* dst, void* val, void* ref) { return __atomic_compare_exchange_n(dst, &ref, val, KD_TRUE, __ATOMIC_RELAXED, __ATOMIC_RELAXED); }
-
 #elif defined(KD_ATOMIC_SYNC)
 
 typedef KDint32 KDAtomicIntVEN;
