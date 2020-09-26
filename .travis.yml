@@ -301,9 +301,6 @@ jobs:
       env: DOCKER_IMAGE=debian DOCKER_IMAGE_VERSION=stretch
 
     - <<: *packagecloud_fedora_template
-      env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=34
-
-    - <<: *packagecloud_fedora_template
       env: DOCKER_IMAGE=fedora DOCKER_IMAGE_VERSION=33
 
     - <<: *packagecloud_fedora_template
