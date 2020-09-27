@@ -2825,10 +2825,10 @@ static EM_BOOL __kd_EmscriptenResizeCallback(KD_UNUSED KDint type, KD_UNUSED con
 {
     KDfloat64KHR width = 0.0;
     KDfloat64KHR height = 0.0;
-    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR *)&height);
+    emscripten_get_element_css_size("canvas", &width, (KDfloat64KHR *)&height);
     __kd_window->properties.width = (KDint32)width;
     __kd_window->properties.height = (KDint32)height;
-    emscripten_set_canvas_element_size("#canvas", __kd_window->properties.width, __kd_window->properties.height);
+    emscripten_set_canvas_element_size("canvas", __kd_window->properties.width, __kd_window->properties.height);
     return 1;
 }
 
@@ -3143,10 +3143,10 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #elif defined(KD_WINDOW_EMSCRIPTEN)
     KDfloat64KHR width = 0.0;
     KDfloat64KHR height = 0.0;
-    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR *)&height);
+    emscripten_get_element_css_size("canvas", &width, (KDfloat64KHR *)&height);
     window->properties.width = (KDint32)width;
     window->properties.height = (KDint32)height;
-    emscripten_set_canvas_element_size("#canvas", window->properties.width, window->properties.height);
+    emscripten_set_canvas_element_size("canvas", window->properties.width, window->properties.height);
 #elif defined(KD_WINDOW_WIN32)
     WNDCLASS windowclass = {0};
     HINSTANCE instance = GetModuleHandle(KD_NULL);
@@ -3391,7 +3391,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 #if defined(KD_WINDOW_WIN32)
         SetWindowPos(window->nativewindow, 0, 0, 0, param[0], param[1], 0);
 #elif defined(KD_WINDOW_EMSCRIPTEN)
-        emscripten_set_canvas_element_size("#canvas", param[0], param[1]);
+        emscripten_set_canvas_element_size("canvas", param[0], param[1]);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -3527,15 +3527,15 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
     ANativeWindow_setBuffersGeometry(window->nativewindow, 0, 0, window->format);
 #elif defined(KD_WINDOW_EMSCRIPTEN)
-    emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_keydown_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
-    emscripten_set_keyup_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
-    emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
-    emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_mousedown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_focusin_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_focusout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenResizeCallback);
     emscripten_set_visibilitychange_callback(0, 1, __kd_EmscriptenVisibilityCallback);
-    emscripten_set_resize_callback(0, 0, 1, __kd_EmscriptenResizeCallback);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
