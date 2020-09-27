@@ -266,6 +266,9 @@ jobs:
     - <<: *macos_template
       osx_image: xcode12
 
+    - <<: *docker_template
+      env: DOCKER_IMAGE=emscripten/emsdk
+
     - stage: 'Testing (coverity)'
       <<: *linux_focal_template
       addons:
