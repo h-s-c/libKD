@@ -81,7 +81,10 @@ _docker_template: &docker_template
     directories:
       - 'ci-tools/cache'
   before_script: docker pull $DOCKER_IMAGE;
-  script: docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "python ci-tools/run_ctest.py"
+  script: 
+    - docker run -e CI -e TRAVIS -v `pwd`:/build:rw -w /build $DOCKER_IMAGE /bin/bash -c "apt-get -qq update &&
+        apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build;
+        python ci-tools/run_ctest.py;"
 
 _packagecloud_ubuntu_template: &packagecloud_ubuntu_template
   <<: *docker_template
@@ -268,6 +271,7 @@ jobs:
 
     - <<: *docker_template
       env: DOCKER_IMAGE=emscripten/emsdk
+      before_install: sudo apt-get install -y clang-8 llvm-8
 
     - stage: 'Testing (coverity)'
       <<: *linux_focal_template
