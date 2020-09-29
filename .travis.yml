@@ -267,8 +267,8 @@ jobs:
       services: docker
       before_script: docker pull emscripten/emsdk;
       script: 
-        - docker run -e CI -e TRAVIS -e CC==/emsdk/upstream/emscripten/emcc 
-            -e CXX==/emsdk/upstream/emscripten/em++ -e AR==/emsdk/upstream/emscripten/emar
+        - docker run -e CI -e TRAVIS -e CC=/emsdk/upstream/emscripten/emcc 
+            -e CXX=/emsdk/upstream/emscripten/em++ -e AR=/emsdk/upstream/emscripten/emar
             -e CMAKE_TOOLCHAIN_FILE=/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
             -v `pwd`:/build:rw -w /build emscripten/emsdk /bin/bash -c "apt-get -qq update &&
             apt-get -qq -y install build-essential git pkg-config dpkg python ninja-build;
