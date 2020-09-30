@@ -82,7 +82,7 @@ typedef KDuint32 KDThreadStorageKeyKHR;
 extern KDThreadStorageKeyKHR __kd_threadlocal;
 extern KDThreadMutex *__kd_tls_mutex;
 
-#if defined(_WIN32) && defined(KD_FREESTANDING)
+#if defined(_WIN32) && defined(KD_FREESTANDING) && !defined(__MINGW32__)
 KDint _fltused;
 #endif
 
