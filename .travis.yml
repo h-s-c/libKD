@@ -260,12 +260,6 @@ jobs:
       before_install: sudo apt-get install -y intel-oneapi-icc
       before_script: source /opt/intel/oneapi/setvars.sh
 
-    - <<: *linux_focal_template
-      addons:
-        <<: *linux_focal_apt_template
-      compiler: x86_64-w64-mingw32-gcc
-      before_install: sudo apt-get install -y gcc-mingw-w64-x86-64
-
     - <<: *macos_template
       osx_image: xcode12
 
