@@ -239,10 +239,14 @@ static FORCEINLINE void*   atomic_exchange_ptr_acquire(atomicptr_t* dst, void* v
 
 #elif defined(KD_ATOMIC_SYNC)
 
-static FORCEINLINE int     atomic_cas32_acquire(atomic32_t* dst, int32_t val, int32_t ref) { return kdAtomicIntCompareExchangeVEN(dst, ref, val); }
+static FORCEINLINE int     atomic_cas32_acquire(atomic32_t* dst, int32_t val, int32_t ref) { return kdAtomicIntCompareExchangeVEN(dst, val, ref); }
 static FORCEINLINE void    atomic_store32_release(atomic32_t* dst, int32_t val) { kdAtomicIntStoreVEN(dst, val); }
 static FORCEINLINE void    atomic_store_ptr_release(atomicptr_t* dst, void* val) { kdAtomicPtrStoreVEN(dst, val); }
+#if defined(__clang__)
+static FORCEINLINE void*   atomic_exchange_ptr_acquire(atomicptr_t* dst, void* val) { return __sync_swap(dst, val); }
+#else
 static FORCEINLINE void*   atomic_exchange_ptr_acquire(atomicptr_t* dst, void* val) { return __sync_lock_test_and_set(dst, val); }
+#endif
 
 #endif
 
