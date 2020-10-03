@@ -12,6 +12,7 @@
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 6011)
+#pragma warning(disable : 6101)
 #pragma warning(disable : 28160)
 #endif
 
