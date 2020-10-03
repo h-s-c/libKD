@@ -1,12 +1,8 @@
 BasedOnStyle: WebKit
 AlignAfterOpenBracket: DontAlign
 AlignTrailingComments: true
-BraceWrapping:
-  AfterControlStatement: true
-  AfterFunction: true
-  BeforeElse: true
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Custom
+BreakBeforeBraces: Allman
 BreakBeforeTernaryOperators: false
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true

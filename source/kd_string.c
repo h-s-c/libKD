@@ -387,7 +387,7 @@ KD_API KDint KD_APIENTRY kdMemcmp(const void *src1, const void *src2, KDsize len
 /* kdMemcpy: Copy a memory region, no overlapping. */
 #if defined(KD_FREESTANDING) && defined(_MSC_VER) && defined(__clang__)
 /* Clang on windows uses memcpy for list initialization */
-void * memcpy(void *buf, const void *src, KDsize len)
+void *memcpy(void *buf, const void *src, KDsize len)
 {
     return kdMemcpy(buf, src, len);
 }
@@ -433,7 +433,7 @@ KD_API void *KD_APIENTRY kdMemmove(void *buf, const void *src, KDsize len)
 /* kdMemset: Set bytes in memory to a value. */
 #if defined(KD_FREESTANDING) && defined(_MSC_VER) && defined(__clang__)
 /* Clang on windows uses memset for zero initialization */
-void* memset(void *buf, KDint byte, KDsize len)
+void *memset(void *buf, KDint byte, KDsize len)
 {
     return kdMemset(buf, byte, len);
 }
@@ -499,7 +499,10 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
     for(;; mem++, result += 16)
     {
         const __m128i data = _mm_loadu_si128(mem);
-        enum { mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT };
+        enum
+        {
+            mode = _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_LEAST_SIGNIFICANT
+        };
 
         /* Note: pcmpstri return mask/index and set ALU flags. Intrinsics
          *       functions can return just single value (mask, particular

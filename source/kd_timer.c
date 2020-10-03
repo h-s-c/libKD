@@ -47,7 +47,8 @@
  ******************************************************************************/
 
 /* kdSetTimer: Set timer. */
-typedef struct {
+typedef struct
+{
     KDint64 interval;
     void *eventuserptr;
     KDThread *destination;
@@ -86,7 +87,8 @@ static void *__kdTimerHandler(void *arg)
     }
     return 0;
 }
-struct KDTimer {
+struct KDTimer
+{
     KDThread *thread;
     KDThread *originthr;
     _KDTimerPayload *payload;

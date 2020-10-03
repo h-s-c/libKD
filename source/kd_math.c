@@ -131,7 +131,8 @@
  * A union which permits us to convert between a float and a 32 bit
  * int.
  */
-typedef union {
+typedef union
+{
     KDfloat32 f32;
     KDuint32 u32;
 } __KDFloatShape;
@@ -159,9 +160,11 @@ typedef union {
  * ints.
  */
 
-typedef union {
+typedef union
+{
     KDfloat64KHR value;
-    struct {
+    struct
+    {
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
         /* Big endian */
         KDuint32 msw;
@@ -172,12 +175,14 @@ typedef union {
         KDuint32 msw;
 #endif
     } parts;
-    struct {
+    struct
+    {
         KDuint64 w;
     } xparts;
 } ieee_double_shape_type;
 
-typedef union {
+typedef union
+{
     KDfloat64KHR f64;
     KDuint64 u64;
 } __KDFloat64Shape;

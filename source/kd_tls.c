@@ -90,7 +90,8 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 }
 
 /* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
-struct _KDThreadStorage {
+struct _KDThreadStorage
+{
     KDThreadStorageKeyKHR key;
 #if defined(KD_THREAD_C11)
     tss_t nativekey;

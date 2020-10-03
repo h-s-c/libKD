@@ -100,7 +100,8 @@
  ******************************************************************************/
 
 /* kdThreadAttrCreate: Create a thread attribute object. */
-struct KDThreadAttr {
+struct KDThreadAttr
+{
 #if defined(KD_THREAD_POSIX)
     pthread_attr_t nativeattr;
 #endif
@@ -188,7 +189,8 @@ KD_API KDint KD_APIENTRY kdThreadAttrSetDebugNameVEN(KDThreadAttr *attr, const c
 }
 
 /* kdThreadCreate: Create a new thread. */
-struct _KDThreadInternal {
+struct _KDThreadInternal
+{
 #if defined(KD_THREAD_C11)
     thrd_t nativethread;
 #elif defined(KD_THREAD_POSIX)
@@ -289,7 +291,8 @@ static void *__kdThreadRun(void *init)
 #pragma warning(disable : 6322)
 /* https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx */
 #pragma pack(push, 8)
-        struct THREADNAME_INFO {
+        struct THREADNAME_INFO
+        {
             KDuint32 type;       // must be 0x1000
             const KDchar *name;  // pointer to name (in user addr space)
             KDuint32 threadid;   // thread ID (-1=caller thread)
@@ -522,11 +525,13 @@ KD_API KDint KD_APIENTRY kdThreadOnce(KDThreadOnce *once_control, void (*init_ro
 
 /* kdThreadMutexCreate: Create a mutex. */
 typedef struct _KDMutexAttr _KDMutexAttr;
-struct _KDMutexAttr {
+struct _KDMutexAttr
+{
     /* This is useful for our kdMalloc implementation. */
     KDThreadMutex *staticmutex;
 };
-struct KDThreadMutex {
+struct KDThreadMutex
+{
 #if defined(KD_THREAD_C11)
     mtx_t nativemutex;
 #elif defined(KD_THREAD_POSIX)
@@ -642,7 +647,8 @@ KD_API KDint KD_APIENTRY kdThreadMutexUnlock(KDThreadMutex *mutex)
 }
 
 /* kdThreadCondCreate: Create a condition variable. */
-struct KDThreadCond {
+struct KDThreadCond
+{
 #if defined(KD_THREAD_C11)
     cnd_t nativecond;
 #elif defined(KD_THREAD_POSIX)
@@ -767,7 +773,8 @@ KD_API KDint KD_APIENTRY kdThreadCondWait(KDThreadCond *cond, KDThreadMutex *mut
 }
 
 /* kdThreadSemCreate: Create a semaphore. */
-struct KDThreadSem {
+struct KDThreadSem
+{
     KDThreadMutex *mutex;
 #if defined(KD_THREAD_C11) || defined(KD_THREAD_POSIX) || defined(KD_THREAD_WIN32)
     KDThreadCond *condition;

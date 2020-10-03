@@ -201,7 +201,7 @@ KD_API KDint KD_APIENTRY kdFprintfKHR(KDFile *file, const KDchar *format, ...)
 }
 
 static KDchar *__kdVfprintfCallback(KDchar *buf, void *user, KDint len)
-{   
+{
     KDFile *file = (KDFile *)user;
     for(KDint i = 0; i < len; i++)
     {

@@ -428,7 +428,8 @@ KD_API void KD_APIENTRY kdClearerr(KDFile *file)
 }
 
 /* TODO: Cleanup */
-typedef struct {
+typedef struct
+{
 #if defined(_MSC_VER)
     KDint seekorigin_kd;
 #else
@@ -721,7 +722,8 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
     {
         KDint error = GetLastError();
 #else
-    typedef struct _KDAccessMode {
+    typedef struct _KDAccessMode
+    {
         KDint accessmode_kd;
         KDint accessmode_posix;
     } _KDAccessMode;
@@ -745,7 +747,8 @@ KD_API KDint KD_APIENTRY kdAccess(const KDchar *pathname, KDint amode)
 }
 
 /* kdOpenDir: Open a directory ready for listing. */
-struct KDDir {
+struct KDDir
+{
 #if defined(_WIN32)
     HANDLE nativedir;
 #else

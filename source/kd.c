@@ -178,7 +178,8 @@ KD_API void KD_APIENTRY kdDefaultEvent(KD_UNUSED const KDEvent *event)
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
-struct _KDCallback {
+struct _KDCallback
+{
     KDCallbackFunc *func;
     void *eventuserptr;
     KDint eventtype;
@@ -206,7 +207,8 @@ static KDboolean __kdExecCallback(KDEvent *event)
 }
 
 #ifdef KD_WINDOW_SUPPORTED
-struct KDWindow {
+struct KDWindow
+{
     void *nativewindow;
     void *nativedisplay;
     EGLenum platform;
@@ -2928,8 +2930,8 @@ static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED stru
         window->xkb.state = xkb_state_new(window->xkb.keymap);
     }
 }
-static void __kdWaylandKeyboardHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED struct wl_array *keys) {}
-static void __kdWaylandKeyboardHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface) {}
+static void __kdWaylandKeyboardHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED struct wl_array *keys) { }
+static void __kdWaylandKeyboardHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface) { }
 static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED KDuint32 time, KDuint32 key, KDuint32 state)
 {
     struct KDWindow *window = data;
@@ -3073,8 +3075,8 @@ static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_su
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED KDint32 width, KD_UNUSED KDint32 height) {}
-static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED KDint32 width, KD_UNUSED KDint32 height) { }
+static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) { }
 static const struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     __kdWaylandShellSurfacePing,
     __kdWaylandShellSurfaceConfigure,
@@ -3231,7 +3233,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         window->xkb.keymap = xkb_x11_keymap_new_from_device(window->xkb.context, window->nativedisplay, device, XKB_KEYMAP_COMPILE_NO_FLAGS);
         window->xkb.state = xkb_x11_state_new_from_device(window->xkb.keymap, window->nativedisplay, device);
 
-        enum {
+        enum
+        {
             required_events =
                 (XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY |
                     XCB_XKB_EVENT_TYPE_MAP_NOTIFY |
