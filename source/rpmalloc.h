@@ -115,7 +115,7 @@ typedef struct rpmalloc_thread_statistics_t {
 		size_t from_reserved;
 		//! Number of raw memory map calls (not hitting the reserve spans but resulting in actual OS mmap calls)
 		size_t map_calls;
-	} span_use[32];
+	} span_use[64];
 	//! Per size class statistics (only if ENABLE_STATISTICS=1)
 	struct {
 		//! Current number of allocations
@@ -179,6 +179,7 @@ typedef struct rpmalloc_config_t {
 	//  For Windows, see https://docs.microsoft.com/en-us/windows/desktop/memory/large-page-support
 	//  For Linux, see https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt
 	int enable_huge_pages;
+	int unused;
 } rpmalloc_config_t;
 
 //! Initialize allocator with default configuration
@@ -287,7 +288,7 @@ rpmalloc_usable_size(void* ptr);
 typedef struct heap_t rpmalloc_heap_t;
 
 //! Acquire a new heap. Will reuse existing released heaps or allocate memory for a new heap
-//  if none available. Heap API is imlemented with the strict assumption that only one single
+//  if none available. Heap API is implemented with the strict assumption that only one single
 //  thread will call heap functions for a given heap at any given time, no functions are thread safe.
 RPMALLOC_EXPORT rpmalloc_heap_t*
 rpmalloc_heap_acquire(void);
@@ -330,7 +331,7 @@ rpmalloc_heap_realloc(rpmalloc_heap_t* heap, void* ptr, size_t size, unsigned in
 //  less than memory page size. A caveat of rpmalloc internals is that this must also be strictly less than
 //  the span size (default 64KiB).
 RPMALLOC_EXPORT RPMALLOC_ALLOCATOR void*
-rpmalloc_heap_aligned_realloc(rpmalloc_heap_t* heap, void* ptr, size_t alignment, size_t size, unsigned int flags) RPMALLOC_ATTRIB_MALLOC RPMALLOC_ATTRIB_ALLOC_SIZE(3);
+rpmalloc_heap_aligned_realloc(rpmalloc_heap_t* heap, void* ptr, size_t alignment, size_t size, unsigned int flags) RPMALLOC_ATTRIB_MALLOC RPMALLOC_ATTRIB_ALLOC_SIZE(4);
 
 //! Free the given memory block from the given heap. The memory block MUST be allocated
 //  by the same heap given to this function.
