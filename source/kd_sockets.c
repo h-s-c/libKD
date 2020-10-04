@@ -73,7 +73,14 @@
 #include <windows.h>
 #define _WINSOCK_DEPRECATED_NO_WARNINGS 1
 #include <winsock2.h> /* WSA.. */
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 6101)
+#endif
 #include <ws2tcpip.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 #undef s_addr /* OpenKODE uses this */
 #endif
 
