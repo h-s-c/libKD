@@ -134,8 +134,11 @@
 
 /// Platform and arch specifics
 #if defined(_MSC_VER) && !defined(__clang__)
+#ifdef _MSC_VER == 1800
+#define inline __inline
+#endif
 #  ifndef FORCEINLINE
-#    define FORCEINLINE __inline __forceinline
+#    define FORCEINLINE inline __forceinline
 #  endif
 #  define _Static_assert static_assert
 #else
