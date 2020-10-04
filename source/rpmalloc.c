@@ -134,7 +134,7 @@
 
 /// Platform and arch specifics
 #if defined(_MSC_VER) && !defined(__clang__)
-#ifdef _MSC_VER == 1800
+#if(_MSC_VER <= 1800)
 #define inline __inline
 #endif
 #  ifndef FORCEINLINE
