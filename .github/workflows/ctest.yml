@@ -6,7 +6,12 @@ on:
     branches: [ develop ]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        compiler: [gcc-9, gcc-10, clang-10, clang-11, clang-12]
+    env:
+      CC: ${{ matrix.compiler }}
     steps:
     - uses: actions/checkout@v2
       with:
