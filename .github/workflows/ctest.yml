@@ -38,7 +38,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CC: emcc
-      CMAKE_TOOLCHAIN_FILE: ${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
     steps:
     - uses: actions/checkout@v2
       with:
@@ -47,7 +46,7 @@ jobs:
     - name: install dependencies
       run: sudo apt-get update && sudo apt-get install -yq ninja-build 
     - name: run ctest
-      run: ctest -VV -S ci-tools/run_ctest.cmake
+      run: CMAKE_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ctest -VV -S ci-tools/run_ctest.cmake
   macos:
     runs-on: macos-latest
     env:
