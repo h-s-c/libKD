@@ -11,8 +11,6 @@ jobs:
       CC: ${{ matrix.compiler }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-18.04, macos-10.15]
-        compiler: ''
         include:
         - os: ubuntu-20.04
           compiler: [gcc-9, gcc-10, clang-10, clang-11, clang-12]
