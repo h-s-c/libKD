@@ -18,7 +18,7 @@ jobs:
         - os: ubuntu-18.04
           compiler: [gcc-7, clang-9]
         - os: macos-10.15
-          compiler: clang-12
+          compiler: [clang-12]
     steps:
     - uses: actions/checkout@v2
       with:
