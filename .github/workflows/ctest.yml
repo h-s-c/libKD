@@ -30,28 +30,32 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: 'true'
-    - name: dependencies
+    - name: install dependencies
       run: sudo apt-get update && sudo apt-get install -yq ninja-build cppcheck flawfinder binutils-gold libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev
-    - name: install cmake
-      run: python ci-tools/install_cmake.py
     - name: run ctest
-      run: python ci-tools/run_ctest.py
+      run: ctest -V -S ci-tools/run_ctest.cmake
   macos:
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     env:
-      CC: ${{ matrix.compiler }}
-    strategy:
-      matrix:
-        include:
-        - os: macos-10.15
-          compiler: clang-12
+      CC: clang
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: 'true'
-    - name: dependencies
+    - name: install dependencies
       run: brew update && brew install ninja cppcheck flawfinder
-    - name: install cmake
-      run: python ci-tools/install_cmake.py
     - name: run ctest
-      run: python ci-tools/run_ctest.py
+      run: ctest -V -S ci-tools/run_ctest.cmake
+  windows:
+    runs-on: windows-latest
+    env:
+      CC: cl
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - uses: ilammy/msvc-dev-cmd@v1
+    - name: install dependencies
+      run: cinst ninja wget opencppcoverage cppcheck 
+    - name: run ctest
+      run: ctest -V -S ci-tools/run_ctest.cmake
