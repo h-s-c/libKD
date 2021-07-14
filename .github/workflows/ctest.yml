@@ -56,6 +56,6 @@ jobs:
         submodules: 'true'
     - uses: ilammy/msvc-dev-cmd@v1
     - name: install dependencies
-      run: cinst ninja wget opencppcoverage cppcheck && refreshenv
+      run: cinst ninja curl opencppcoverage cppcheck && refreshenv
     - name: run ctest
       run: ctest -VV -S ci-tools/run_ctest.cmake
