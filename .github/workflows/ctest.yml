@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.compiler }}
     strategy:
       matrix:
         os: [ubuntu-20.04, ubuntu-18.04, macos-10.15]
@@ -17,8 +19,6 @@ jobs:
             compiler: [gcc-7, clang-9]
           - os: macos-10.15
             compiler: clang-12
-    env:
-      CC: ${{ matrix.compiler }}
     steps:
     - uses: actions/checkout@v2
       with:
