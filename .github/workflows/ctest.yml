@@ -33,11 +33,11 @@ jobs:
     - name: install dependencies
       run: sudo apt-get update && sudo apt-get install -yq ninja-build cppcheck flawfinder binutils-gold libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev
     - name: run ctest
-      run: ctest -V -S ci-tools/run_ctest.cmake
+      run: ctest -VV -S ci-tools/run_ctest.cmake
   macos:
     runs-on: macos-latest
     env:
-      CC: clang
+      CC: '$(brew --prefix llvm)/bin/clang'
     steps:
     - uses: actions/checkout@v2
       with:
@@ -45,7 +45,7 @@ jobs:
     - name: install dependencies
       run: brew update && brew install ninja cppcheck flawfinder
     - name: run ctest
-      run: ctest -V -S ci-tools/run_ctest.cmake
+      run: ctest -VV -S ci-tools/run_ctest.cmake
   windows:
     runs-on: windows-latest
     env:
@@ -58,4 +58,4 @@ jobs:
     - name: install dependencies
       run: cinst ninja wget opencppcoverage cppcheck 
     - name: run ctest
-      run: ctest -V -S ci-tools/run_ctest.cmake
+      run: ctest -VV -S ci-tools/run_ctest.cmake
