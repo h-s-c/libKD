@@ -47,9 +47,12 @@ jobs:
     - name: run ctest
       run: ctest -VV -S ci-tools/run_ctest.cmake
   windows:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
     env:
       CC: cl
+    strategy:
+      matrix:
+        os: [windows-2019, windows-2016]
     steps:
     - uses: actions/checkout@v2
       with:
