@@ -46,7 +46,7 @@ jobs:
     - name: install dependencies
       run: sudo apt-get update && sudo apt-get install -yq ninja-build 
     - name: run ctest
-      run: CMAKE_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ctest -VV -S ci-tools/run_ctest.cmake
+      run: ctest -DCMAKE_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake -VV -S ci-tools/run_ctest.cmake 
   macos:
     runs-on: macos-latest
     env:
