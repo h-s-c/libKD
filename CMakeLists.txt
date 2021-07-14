@@ -88,7 +88,7 @@ project (KD C)
     target_include_directories(KD PUBLIC ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
 
     if(MSVC)
-        target_compile_options(KD PRIVATE /W3 /WX /wd4100 /wd4127 /wd4204)
+        target_compile_options(KD PRIVATE /W3 /WX /wd4100 /wd4127 /wd4204 /wd5105)
         target_compile_options(KD PRIVATE /GS- /Zl /Gs9999999)
         set_target_properties(KD PROPERTIES LINK_FLAGS "/NODEFAULTLIB /SUBSYSTEM:CONSOLE /STACK:0x100000,0x100000")
         string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
