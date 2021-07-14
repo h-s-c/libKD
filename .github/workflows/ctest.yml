@@ -6,10 +6,17 @@ on:
     branches: [ develop ]
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        compiler: [gcc-9, gcc-10, clang-10, clang-11, clang-12]
+        os: [ubuntu-20.04, ubuntu-18.04, macos-10.15]
+        include:
+          - os: ubuntu-20.04
+            compiler: [gcc-9, gcc-10, clang-10, clang-11, clang-12]
+          - os: ubuntu-18.04
+            compiler: [gcc-7, clang-9]
+          - os: macos-10.15
+            compiler: clang-12
     env:
       CC: ${{ matrix.compiler }}
     steps:
