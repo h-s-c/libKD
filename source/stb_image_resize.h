@@ -1113,7 +1113,7 @@ static void stbir__calculate_coefficients_downsample(stbir_filter filter, float 
 {
     int i;
 
-    STBIR_ASSERT(out_last_pixel - out_first_pixel <= (int)ceil(stbir__filter_info_table[filter].support(scale_ratio) * 2)); // Taken directly from stbir__get_coefficient_width() which we can't call because we don't know if we're horizontal or vertical.
+    STBIR_ASSERT(out_last_pixel - out_first_pixel <= (int)STBIR_CEIL(stbir__filter_info_table[filter].support(scale_ratio) * 2)); // Taken directly from stbir__get_coefficient_width() which we can't call because we don't know if we're horizontal or vertical.
 
     contributor->n0 = out_first_pixel;
     contributor->n1 = out_last_pixel;
