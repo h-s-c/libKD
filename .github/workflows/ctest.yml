@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CC: emcc
+      CMAKE_TOOLCHAIN_FILE: emsdk-master/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
     steps:
     - uses: actions/checkout@v2
       with:
