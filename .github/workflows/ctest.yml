@@ -46,8 +46,10 @@ jobs:
         submodules: 'true'
     - name: install dependencies
       run: sudo apt-get update && sudo apt-get install -yq ninja-build
+    - name: install cmake
+      run: python ci-tools/install_cmake.py
     - name: run ctest
-      run: ctest -VV -S ci-tools/run_ctest.cmake
+      run: python ci-tools/run_ctest.py
   macos:
     runs-on: macos-latest
     env:
