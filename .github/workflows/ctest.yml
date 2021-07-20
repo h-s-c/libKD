@@ -45,11 +45,11 @@ jobs:
       with:
         submodules: 'true'
     - name: install dependencies
-      run: sudo apt-get update && sudo apt-get install -yq ninja-build
+      run: sudo apt-get update && sudo apt-get install -yq python3 ninja-build
     - name: install cmake
-      run: python ci-tools/install_cmake.py
+      run: python3 ci-tools/install_cmake.py
     - name: run ctest
-      run: python ci-tools/run_ctest.py
+      run: python3 ci-tools/run_ctest.py
   macos:
     runs-on: macos-latest
     env:
