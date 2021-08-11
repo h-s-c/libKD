@@ -12,7 +12,7 @@
 -   [Specification](https://www.khronos.org/registry/kode/)
 
 ### Examples
--   [Compiled to WebAssembly and viewable in your browser](https://h-s-c.github.io/libkd/)
+-   [Via WebAssembly running in your browser or Win64 binaries](https://h-s-c.github.io/libkd/)
 
 ### Platforms
 -   Windows, Android, Linux, Web support
