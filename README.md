@@ -11,6 +11,9 @@
 -   Cross-platform system API similar to SDL created by Khronos (OpenGL etc.)
 -   [Specification](https://www.khronos.org/registry/kode/)
 
+### Examples
+-   [Compiled to WebAssembly and viewable in your browser](https://h-s-c.github.io/libkd/)
+
 ### Platforms
 -   Windows, Android, Linux, Web support
 -   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
