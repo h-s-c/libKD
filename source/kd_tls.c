@@ -66,6 +66,10 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#if _WIN32_WINNT < 0x0601
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
+#endif
 #include <windows.h>
 #endif
 
@@ -86,7 +90,8 @@ KD_API void KD_APIENTRY kdSetTLS(void *ptr)
 }
 
 /* kdMapThreadStorageKHR: Maps an arbitrary pointer to a global thread storage key. */
-struct _KDThreadStorage {
+struct _KDThreadStorage
+{
     KDThreadStorageKeyKHR key;
 #if defined(KD_THREAD_C11)
     tss_t nativekey;

@@ -51,14 +51,16 @@
  * - Based on http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
  ******************************************************************************/
 
-struct _kdQueueCell {
+struct _kdQueueCell
+{
     void *data;
     KDAtomicIntVEN sequence;
     KDint8 padding[4];
 };
 typedef struct _kdQueueCell _kdQueueCell;
 
-struct _KDQueue {
+struct _KDQueue
+{
     KDsize buffer_mask;
     _kdQueueCell *buffer;
     KDAtomicIntVEN tail;

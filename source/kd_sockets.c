@@ -73,7 +73,14 @@
 #include <windows.h>
 #define _WINSOCK_DEPRECATED_NO_WARNINGS 1
 #include <winsock2.h> /* WSA.. */
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 6101)
+#endif
 #include <ws2tcpip.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 #undef s_addr /* OpenKODE uses this */
 #endif
 
@@ -82,7 +89,8 @@
  ******************************************************************************/
 
 /* kdNameLookup: Look up a hostname. */
-typedef struct {
+typedef struct
+{
     const KDchar *hostname;
     void *eventuserptr;
     KDThread *destination;
@@ -171,7 +179,8 @@ KD_API void KD_APIENTRY kdNameLookupCancel(KD_UNUSED void *eventuserptr)
 }
 
 /* kdSocketCreate: Creates a socket. */
-struct KDSocket {
+struct KDSocket
+{
 #if defined(_WIN32)
     SOCKET nativesocket;
 #else
@@ -505,7 +514,8 @@ KD_API KDint KD_APIENTRY kdSocketRecvFrom(KDSocket *socket, void *buf, KDint len
 /* kdHtonl: Convert a 32-bit integer from host to network byte order. */
 KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
 {
-    union {
+    union
+    {
         /* cppcheck-suppress unusedStructMember */
         KDint i;
         KDchar c;
@@ -524,7 +534,8 @@ KD_API KDuint32 KD_APIENTRY kdHtonl(KDuint32 hostlong)
 /* kdHtons: Convert a 16-bit integer from host to network byte order. */
 KD_API KDuint16 KD_APIENTRY kdHtons(KDuint16 hostshort)
 {
-    union {
+    union
+    {
         /* cppcheck-suppress unusedStructMember */
         KDint i;
         KDchar c;

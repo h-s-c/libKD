@@ -352,7 +352,8 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
     {
         kdAssert(channels == 4);
 
-        enum PVRPixelType {
+        enum PVRPixelType
+        {
             OGL_RGBA_4444 = 0x10,
             OGL_RGBA_5551,
             OGL_RGBA_8888,
@@ -369,7 +370,8 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
 #endif
-        struct PVRTexHeader {
+        struct PVRTexHeader
+        {
             KDuint dwHeaderSize;      /* size of the structure */
             KDuint dwHeight;          /* height of surface to be created */
             KDuint dwWidth;           /* width of input surface */

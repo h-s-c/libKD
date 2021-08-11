@@ -21,7 +21,8 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
-struct KDFile {
+struct KDFile
+{
 #if defined(_WIN32)
     void *nativefile;
 #else
@@ -36,7 +37,8 @@ struct KDFile {
 typedef struct _KDQueue _KDQueue;
 typedef struct _KDCallback _KDCallback;
 typedef struct _KDThreadInternal _KDThreadInternal;
-struct KDThread {
+struct KDThread
+{
     _KDThreadInternal *internal;
     _KDQueue *eventqueue;
     KDEvent *lastevent;
@@ -47,7 +49,8 @@ struct KDThread {
 };
 
 typedef struct _KDImageATX _KDImageATX;
-struct _KDImageATX {
+struct _KDImageATX
+{
     KDuint8 *buffer;
     KDsize size;
     KDint width;
@@ -82,7 +85,7 @@ typedef KDuint32 KDThreadStorageKeyKHR;
 extern KDThreadStorageKeyKHR __kd_threadlocal;
 extern KDThreadMutex *__kd_tls_mutex;
 
-#if defined(_WIN32) && defined(KD_FREESTANDING)
+#if defined(_WIN32) && defined(KD_FREESTANDING) && !defined(__MINGW32__)
 KDint _fltused;
 #endif
 

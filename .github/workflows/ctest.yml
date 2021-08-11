@@ -1,0 +1,77 @@
+name: build and run tests
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+jobs:
+  linux:
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.compiler }}
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-20.04
+          compiler: gcc-9
+        - os: ubuntu-20.04
+          compiler: gcc-10
+        - os: ubuntu-20.04
+          compiler: clang-10
+        - os: ubuntu-20.04
+          compiler: clang-11
+        - os: ubuntu-20.04
+          compiler: clang-12
+        - os: ubuntu-18.04
+          compiler: gcc-7
+        - os: ubuntu-18.04
+          compiler: clang-9
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - name: install dependencies
+      run: sudo apt-get update && sudo apt-get install -yq ninja-build cppcheck flawfinder binutils-gold libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev
+    - name: run ctest
+      run: ctest -VV -S ci-tools/run_ctest.cmake
+  emscripten:
+    runs-on: ubuntu-latest
+    container: emscripten/emsdk:latest
+    env:
+      CC: emcc
+      CMAKE_TOOLCHAIN_FILE: /emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - name: install dependencies
+      run: sudo apt-get update && sudo apt-get install -yq python3 ninja-build
+    - name: install cmake
+      run: python3 ci-tools/install_cmake.py
+    - name: run ctest
+      run: python3 ci-tools/run_ctest.py
+  macos:
+    runs-on: macos-latest
+    env:
+      CC: clang
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - name: install dependencies
+      run: brew update && brew install ninja cppcheck flawfinder
+    - name: run ctest
+      run: ctest -VV -S ci-tools/run_ctest.cmake
+  windows:
+    runs-on: windows-latest
+    env:
+      CC: cl
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - uses: ilammy/msvc-dev-cmd@v1
+    - name: install dependencies
+      run: cinst ninja curl opencppcoverage cppcheck && refreshenv
+    - name: run ctest
+      run: ctest -VV -S ci-tools/run_ctest.cmake

@@ -1,18 +1,18 @@
 # OpenKODE Core implementation
 [![Zlib License](https://img.shields.io/:license-zlib-blue.svg)](https://opensource.org/licenses/Zlib)
 [![Git Flow](https://img.shields.io/:standard-gitflow-green.svg)](http://nvie.com/git-model)
-[![Semantic Versioning](https://img.shields.io/:standard-semver-green.svg)](http://semver.org)
 
 ##
-[![Travis CI](https://img.shields.io/travis/com/h-s-c/libKD/develop.svg?label=TravisCI)](https://travis-ci.com/h-s-c/libKD)  
-[![AppVeyor CI](https://img.shields.io/appveyor/ci/h-s-c/libKD/develop.svg?label=AppVeyorCI)](https://ci.appveyor.com/project/h-s-c/libKD)  
-[![Coverity Scan](https://img.shields.io/coverity/scan/3798.svg?label=CoverityScan)](https://scan.coverity.com/projects/h-s-c-libkd)  
-[![Codecov](https://img.shields.io/codecov/c/github/h-s-c/libKD/develop.svg?label=Codecov)](https://codecov.io/gh/h-s-c/libKD)  
-[![Fossa License Scan](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
+[![Build](https://img.shields.io/github/workflow/status/h-s-c/libKD/build%20and%20run%20tests)](https://github.com/h-s-c/libKD/actions)  
+[![Coverage](https://img.shields.io/codecov/c/github/h-s-c/libKD/develop.svg?label=coverage)](https://codecov.io/gh/h-s-c/libKD)  
+[![License Scan](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
 
 ### About
 -   Cross-platform system API similar to SDL created by Khronos (OpenGL etc.)
 -   [Specification](https://www.khronos.org/registry/kode/)
+
+### Examples
+-   [Compiled to WebAssembly and viewable in your browser](https://h-s-c.github.io/libkd/)
 
 ### Platforms
 -   Windows, Android, Linux, Web support

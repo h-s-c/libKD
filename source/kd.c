@@ -178,7 +178,8 @@ KD_API void KD_APIENTRY kdDefaultEvent(KD_UNUSED const KDEvent *event)
 }
 
 /* kdPumpEvents: Pump the thread's event queue, performing callbacks. */
-struct _KDCallback {
+struct _KDCallback
+{
     KDCallbackFunc *func;
     void *eventuserptr;
     KDint eventtype;
@@ -206,7 +207,8 @@ static KDboolean __kdExecCallback(KDEvent *event)
 }
 
 #ifdef KD_WINDOW_SUPPORTED
-struct KDWindow {
+struct KDWindow
+{
     void *nativewindow;
     void *nativedisplay;
     EGLenum platform;
@@ -2825,10 +2827,10 @@ static EM_BOOL __kd_EmscriptenResizeCallback(KD_UNUSED KDint type, KD_UNUSED con
 {
     KDfloat64KHR width = 0.0;
     KDfloat64KHR height = 0.0;
-    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR *)&height);
+    emscripten_get_element_css_size("canvas", &width, (KDfloat64KHR *)&height);
     __kd_window->properties.width = (KDint32)width;
     __kd_window->properties.height = (KDint32)height;
-    emscripten_set_canvas_element_size("#canvas", __kd_window->properties.width, __kd_window->properties.height);
+    emscripten_set_canvas_element_size("canvas", __kd_window->properties.width, __kd_window->properties.height);
     return 1;
 }
 
@@ -2928,8 +2930,8 @@ static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED stru
         window->xkb.state = xkb_state_new(window->xkb.keymap);
     }
 }
-static void __kdWaylandKeyboardHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED struct wl_array *keys) {}
-static void __kdWaylandKeyboardHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface) {}
+static void __kdWaylandKeyboardHandleEnter(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface, KD_UNUSED struct wl_array *keys) { }
+static void __kdWaylandKeyboardHandleLeave(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED struct wl_surface *surface) { }
 static void __kdWaylandKeyboardHandleKey(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KD_UNUSED KDuint32 serial, KD_UNUSED KDuint32 time, KDuint32 key, KDuint32 state)
 {
     struct KDWindow *window = data;
@@ -3073,8 +3075,8 @@ static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_su
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED KDint32 width, KD_UNUSED KDint32 height) {}
-static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) {}
+static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED KDint32 width, KD_UNUSED KDint32 height) { }
+static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) { }
 static const struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
     __kdWaylandShellSurfacePing,
     __kdWaylandShellSurfaceConfigure,
@@ -3143,10 +3145,10 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
 #elif defined(KD_WINDOW_EMSCRIPTEN)
     KDfloat64KHR width = 0.0;
     KDfloat64KHR height = 0.0;
-    emscripten_get_element_css_size("#canvas", &width, (KDfloat64KHR *)&height);
+    emscripten_get_element_css_size("canvas", &width, (KDfloat64KHR *)&height);
     window->properties.width = (KDint32)width;
     window->properties.height = (KDint32)height;
-    emscripten_set_canvas_element_size("#canvas", window->properties.width, window->properties.height);
+    emscripten_set_canvas_element_size("canvas", window->properties.width, window->properties.height);
 #elif defined(KD_WINDOW_WIN32)
     WNDCLASS windowclass = {0};
     HINSTANCE instance = GetModuleHandle(KD_NULL);
@@ -3231,7 +3233,8 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         window->xkb.keymap = xkb_x11_keymap_new_from_device(window->xkb.context, window->nativedisplay, device, XKB_KEYMAP_COMPILE_NO_FLAGS);
         window->xkb.state = xkb_x11_state_new_from_device(window->xkb.keymap, window->nativedisplay, device);
 
-        enum {
+        enum
+        {
             required_events =
                 (XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY |
                     XCB_XKB_EVENT_TYPE_MAP_NOTIFY |
@@ -3391,7 +3394,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertyiv(KDWindow *window, KDint pname, co
 #if defined(KD_WINDOW_WIN32)
         SetWindowPos(window->nativewindow, 0, 0, 0, param[0], param[1], 0);
 #elif defined(KD_WINDOW_EMSCRIPTEN)
-        emscripten_set_canvas_element_size("#canvas", param[0], param[1]);
+        emscripten_set_canvas_element_size("canvas", param[0], param[1]);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
@@ -3527,15 +3530,15 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
     ANativeWindow_setBuffersGeometry(window->nativewindow, 0, 0, window->format);
 #elif defined(KD_WINDOW_EMSCRIPTEN)
-    emscripten_set_mousedown_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_mouseup_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_mousemove_callback(0, 0, 1, __kd_EmscriptenMouseCallback);
-    emscripten_set_keydown_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
-    emscripten_set_keyup_callback(0, 0, 1, __kd_EmscriptenKeyboardCallback);
-    emscripten_set_focusin_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
-    emscripten_set_focusout_callback(0, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_mousedown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenMouseCallback);
+    emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenKeyboardCallback);
+    emscripten_set_focusin_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_focusout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenFocusCallback);
+    emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, __kd_EmscriptenResizeCallback);
     emscripten_set_visibilitychange_callback(0, 1, __kd_EmscriptenVisibilityCallback);
-    emscripten_set_resize_callback(0, 0, 1, __kd_EmscriptenResizeCallback);
 #elif defined(KD_WINDOW_WAYLAND) || defined(KD_WINDOW_X11)
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)

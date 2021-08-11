@@ -209,9 +209,11 @@ Example *exampleInit(void)
 
     eglMakeCurrent(example->egl.display, example->egl.surface, example->egl.surface, example->egl.context);
 
-    eglSwapInterval(example->egl.display, 1);
+    if((eglSwapInterval(example->egl.display, 1) == EGL_FALSE) && (eglGetError() != EGL_SUCCESS))
+    {
+         kdLogMessage("eglSwapInterval not supported");
+    }
 
-    kdAssert(eglGetError() == EGL_SUCCESS);
 
 #if defined(GL_KHR_debug)
     if(kdStrstrVEN((const KDchar *)glGetString(GL_EXTENSIONS), "GL_KHR_debug"))
