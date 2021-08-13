@@ -11,6 +11,7 @@
 -   Cross-platform abstraction layer similar to SDL
 -   [Specification](https://www.khronos.org/registry/kode/)
 
+### Details
 -   Threads and synchronization
 -   Events
 -   Application startup and exit
