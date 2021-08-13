@@ -8,8 +8,21 @@
 [![License Scan](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
 
 ### About
--   Cross-platform system API similar to SDL created by Khronos (OpenGL etc.)
+-   Cross-platform abstraction layer similar to SDL
 -   [Specification](https://www.khronos.org/registry/kode/)
+
+-   Threads and synchronization
+-   Events
+-   Application startup and exit
+-   Memory allocation
+-   Mathematical functions
+-   String and memory functions
+-   Time functions
+-   File system
+-   Network sockets
+-   Input/output
+-   Windowing
+-   Assertions and logging
 
 ### Examples
 -   [Via WebAssembly running in your browser or Win64 binaries](https://h-s-c.github.io/libkd/)
