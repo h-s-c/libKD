@@ -28,6 +28,34 @@
 ### Examples
 -   [Via WebAssembly running in your browser or Win64 binaries](https://h-s-c.github.io/libkd/)
 
+```
+#include <KD/kd.h>
+
+KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
+{
+    KDboolean run = KD_TRUE;
+    while(run)
+    {
+        const KDEvent *event = kdWaitEvent(-1);
+        if(event)
+        {
+            switch(event->type)
+            {
+                case(KD_EVENT_QUIT):
+                {
+                    run = KD_FALSE;
+                }
+                default:
+                {
+                    kdDefaultEvent(event);
+                }
+            }
+        }
+    }
+    return 0;
+}
+```
+
 ### Platforms
 -   Windows, Android, Linux, Web support
 -   Experimental OSX/iOS support (needs an [EGL implementation](https://github.com/davidandreoletti/libegl/))
