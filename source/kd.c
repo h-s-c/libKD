@@ -124,6 +124,10 @@
 #endif
 #endif
 
+#if defined(__linux__) || defined(__APPLE__)
+#include <signal.h>    // for signal, SIGINT
+#endif
+
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -2256,6 +2260,38 @@ static void __kd_AndroidOnInputQueueDestroyed(KD_UNUSED ANativeActivity *activit
 }
 #endif
 
+#if defined(__linux__) || defined(__APPLE__)
+static void __kdSigHandler(KDint signal)
+{
+    if(signal == SIGINT || signal == SIGHUP)
+    {
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_QUIT;
+        if(!__kdExecCallback(event))
+        {
+            kdPostEvent(event);
+        }
+    }
+}
+#endif
+
+#if defined(_WIN32)
+static BOOL WINAPI __kdSigHandlerWin(DWORD signal)
+{
+    if(signal == CTRL_C_EVENT || signal == CTRL_CLOSE_EVENT)
+    {
+        KDEvent *event = kdCreateEvent();
+        event->type = KD_EVENT_QUIT;
+        if(!__kdExecCallback(event))
+        {
+            kdPostEvent(event);
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
+#endif
+
 static KDint __kdPreMain(KDint argc, KDchar **argv)
 {
     __kdMallocInit();
@@ -2283,6 +2319,15 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 #endif
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
+
+#if defined(__linux__) || defined(__APPLE__)
+    signal(SIGINT, __kdSigHandler);
+    signal(SIGHUP, __kdSigHandler);
+#endif
+
+#if defined(_WIN32)
+    SetConsoleCtrlHandler(__kdSigHandlerWin, TRUE);
+#endif
 
     KDint result = 0;
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__) || (defined(__MINGW32__) && !defined(__MINGW64__))
