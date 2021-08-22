@@ -111,9 +111,13 @@
 // IWYU pragma: no_forward_declare wl_pointer
 // IWYU pragma: no_forward_declare wl_registry
 // IWYU pragma: no_forward_declare wl_seat
-// IWYU pragma: no_forward_declare wl_shell_surface
 // IWYU pragma: no_forward_declare wl_surface
 #include <wayland-egl.h>  // IWYU pragma: keep
+#if defined(KD_WINDOW_WAYLAND_DECOR)
+#include <libdecor.h>
+#else
+#include "wayland/xdg-shell.h"
+#endif
 #endif
 #if defined(KD_WINDOW_X11)
 #include <xcb/xcb_ewmh.h>             // for xcb_ewmh_connection_t, xcb_...
@@ -273,25 +277,29 @@ struct KDWindow
         KDuint8 firstevent;
         KDint8 padding[7];
     } xkb;
+    struct
+    {
+        xcb_ewmh_connection_t ewmh;
+    } xcb;
 #endif
 #if defined(KD_WINDOW_WAYLAND)
     struct
     {
         struct wl_surface *surface;
-        struct wl_shell_surface *shell_surface;
         struct wl_registry *registry;
         struct wl_compositor *compositor;
-        struct wl_shell *shell;
         struct wl_seat *seat;
         struct wl_keyboard *keyboard;
         struct wl_pointer *pointer;
-    } wayland;
+#if defined(KD_WINDOW_WAYLAND_DECOR)
+        struct libdecor *context;
+        struct libdecor_frame *frame;
+#else
+        struct xdg_wm_base *xdg_wm_base;
+        struct xdg_surface *xdg_surface;
+        struct xdg_toplevel *xdg_toplevel;
 #endif
-#if defined(KD_WINDOW_WAYLAND)
-    struct
-    {
-        xcb_ewmh_connection_t ewmh;
-    } xcb;
+    } wayland;
 #endif
 };
 
@@ -2078,6 +2086,9 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 #if defined(KD_WINDOW_WAYLAND)
     if(window && window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
+#if defined(KD_WINDOW_WAYLAND_DECOR)
+        libdecor_dispatch(window->wayland.context, 0);
+#endif
         wl_display_dispatch_pending(window->nativedisplay);
     }
 #endif
@@ -3089,23 +3100,37 @@ static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, 
         wl_keyboard_add_listener(window->wayland.keyboard, &__kd_wl_keyboard_listener, window);
     }
 }
+
 static const struct wl_seat_listener __kd_wl_seat_listener = {
     __kdWaylandSeatHandleCapabilities,
     KD_NULL};
 
+#if !defined(KD_WINDOW_WAYLAND_DECOR)
+static void
+__kdWaylandXdbWmBasePing(KD_UNUSED void *data, struct xdg_wm_base *xdg_wm_base, uint32_t serial)
+{
+   xdg_wm_base_pong(xdg_wm_base, serial);
+}
+
+static const struct xdg_wm_base_listener __kd_xdg_wm_base_listener = {
+   __kdWaylandXdbWmBasePing
+};
+#endif
+
 static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, KDuint32 name, const KDchar *interface, KD_UNUSED KDuint32 version)
 {
     struct KDWindow *window = data;
-    if(!kdStrcmp(interface, "wl_compositor"))
+    if(!kdStrcmp(interface, wl_compositor_interface.name))
     {
         window->wayland.compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 1);
-        window->wayland.surface = wl_compositor_create_surface(window->wayland.compositor);
     }
-    else if(!kdStrcmp(interface, "wl_shell"))
+#if !defined(KD_WINDOW_WAYLAND_DECOR)
+    else if(!kdStrcmp(interface, xdg_wm_base_interface.name))
     {
-        window->wayland.shell = wl_registry_bind(registry, name, &wl_shell_interface, 1);
-        window->wayland.shell_surface = wl_shell_get_shell_surface(window->wayland.shell, window->wayland.surface);
+        window->wayland.xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
+        xdg_wm_base_add_listener(window->wayland.xdg_wm_base, &__kd_xdg_wm_base_listener, window);
     }
+#endif
     else if(!kdStrcmp(interface, "wl_seat"))
     {
         window->wayland.seat = wl_registry_bind(registry, name, &wl_seat_interface, 1);
@@ -3116,16 +3141,73 @@ static const struct wl_registry_listener __kd_wl_registry_listener = {
     __kdWaylandRegistryAddObject,
     KD_NULL};
 
-static void __kdWaylandShellSurfacePing(KD_UNUSED void *data, struct wl_shell_surface *shell_surface, KDuint32 serial)
+#if defined(KD_WINDOW_WAYLAND_DECOR)
+static void __kdWaylandDecorFrameConfigure(struct libdecor_frame *frame, struct libdecor_configuration *configuration, void *user_data)
 {
-    wl_shell_surface_pong(shell_surface, serial);
+    struct KDWindow *window = user_data;
+
+    libdecor_configuration_get_content_size(configuration, frame, &window->properties.width, &window->properties.height);
+    wl_egl_window_resize(window->nativewindow, window->properties.width, window->properties.height, 0, 0);
+
+    struct libdecor_state *state = libdecor_state_new(window->properties.width, window->properties.height);
+    libdecor_frame_commit(frame, state, configuration);
+    libdecor_state_free(state);
 }
-static void __kdWaylandShellSurfaceConfigure(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface, KD_UNUSED KDuint32 edges, KD_UNUSED KDint32 width, KD_UNUSED KDint32 height) { }
-static void __kdWaylandShellSurfacePopupDone(KD_UNUSED void *data, KD_UNUSED struct wl_shell_surface *shell_surface) { }
-static const struct wl_shell_surface_listener __kd_wl_shell_surface_listener = {
-    __kdWaylandShellSurfacePing,
-    __kdWaylandShellSurfaceConfigure,
-    __kdWaylandShellSurfacePopupDone};
+
+static void
+__kdWaylandDecorFrameClose(KD_UNUSED struct libdecor_frame *frame, KD_UNUSED void *user_data)
+{
+    KDEvent *event = kdCreateEvent();
+    event->type = KD_EVENT_WINDOW_CLOSE;
+    if(!__kdExecCallback(event))
+    {
+        kdPostEvent(event);
+    }
+}
+
+static void
+__kdWaylandDecorFrameCommit(KD_UNUSED struct libdecor_frame *frame, void *user_data)
+{
+    struct KDWindow *window = user_data;
+    wl_surface_commit(window->wayland.surface);
+}
+
+static struct libdecor_frame_interface __kd_libdecor_frame_interface = {
+    __kdWaylandDecorFrameConfigure,
+    __kdWaylandDecorFrameClose,
+    __kdWaylandDecorFrameCommit,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+    KD_NULL,
+};
+
+static void __kdWaylandDecorHandleError(KD_UNUSED struct libdecor *context, enum libdecor_error error, const char *message)
+{
+    kdLogMessagefKHR("libdecor caught error (%d): %s\n", error, message);
+    kdExit(-1);
+}
+
+static struct libdecor_interface __kd_libdecor_interface = {
+    .error = __kdWaylandDecorHandleError,
+};
+#else
+static void __kdWaylandXdgSurfaceConfigure(KD_UNUSED void *data, struct xdg_surface *xdg_surface, uint32_t serial)
+{
+    xdg_surface_ack_configure(xdg_surface, serial);
+}
+
+static const struct xdg_surface_listener __kd_xdg_surface_listener = {
+    __kdWaylandXdgSurfaceConfigure
+};
+#endif
 #endif
 
 KD_API NativeDisplayType KD_APIENTRY kdGetDisplayVEN(void)
@@ -3235,7 +3317,6 @@ KD_API KDWindow *KD_APIENTRY kdCreateWindow(KD_UNUSED EGLDisplay display, KD_UNU
         window->wayland.registry = wl_display_get_registry(window->nativedisplay);
         wl_registry_add_listener(window->wayland.registry, &__kd_wl_registry_listener, window);
         wl_display_roundtrip(window->nativedisplay);
-        wl_shell_surface_add_listener(window->wayland.shell_surface, &__kd_wl_shell_surface_listener, window);
     }
 #endif
 
@@ -3348,16 +3429,15 @@ KD_API KDint KD_APIENTRY kdDestroyWindow(KDWindow *window)
         {
             wl_seat_destroy(window->wayland.seat);
         }
-        if(window->wayland.shell)
-        {
-            wl_shell_destroy(window->wayland.shell);
-        }
         if(window->wayland.compositor)
         {
             wl_compositor_destroy(window->wayland.compositor);
         }
         wl_egl_window_destroy(window->nativewindow);
-        wl_shell_surface_destroy(window->wayland.shell_surface);
+#if !defined(KD_WINDOW_WAYLAND_DECOR)
+        xdg_toplevel_destroy(window->wayland.xdg_toplevel);
+        xdg_surface_destroy(window->wayland.xdg_surface);
+#endif
         wl_surface_destroy(window->wayland.surface);
         wl_registry_destroy(window->wayland.registry);
         wl_display_disconnect(window->nativedisplay);
@@ -3398,14 +3478,6 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, KD
 #if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
         {
-            if(param[0])
-            {
-                wl_shell_surface_set_fullscreen(window->wayland.shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, KD_NULL);
-            }
-            else
-            {
-                wl_shell_surface_set_toplevel(window->wayland.shell_surface);
-            }
         }
 #endif
 #if defined(KD_WINDOW_X11)
@@ -3488,7 +3560,10 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertycv(KDWindow *window, KDint pname, co
 #if defined(KD_WINDOW_WAYLAND)
         if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
         {
-            wl_shell_surface_set_title(window->wayland.shell_surface, param);
+#if defined(KD_WINDOW_WAYLAND_DECOR)
+            libdecor_frame_set_app_id(window->wayland.frame, param);
+            libdecor_frame_set_title(window->wayland.frame, param);
+#endif
         }
 #endif
 #if defined(KD_WINDOW_X11)
@@ -3553,11 +3628,6 @@ KD_API KDint KD_APIENTRY kdGetWindowPropertycv(KDWindow *window, KDint pname, KD
 /* kdRealizeWindow: Realize the window as a displayable entity and get the native window handle for passing to EGL. */
 KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *nativewindow)
 {
-    KDint32 windowsize[2];
-    windowsize[0] = window->properties.width;
-    windowsize[1] = window->properties.height;
-    kdSetWindowPropertyiv(window, KD_WINDOWPROPERTY_SIZE, windowsize);
-    kdSetWindowPropertycv(window, KD_WINDOWPROPERTY_CAPTION, window->properties.caption);
     window->properties.focused = 1;
     window->properties.visible = 1;
 
@@ -3588,7 +3658,19 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
 #if defined(KD_WINDOW_WAYLAND)
     if(window->platform == EGL_PLATFORM_WAYLAND_KHR)
     {
+        window->wayland.surface = wl_compositor_create_surface(window->wayland.compositor);
         window->nativewindow = wl_egl_window_create(window->wayland.surface, window->properties.width, window->properties.height);
+#if defined(KD_WINDOW_WAYLAND_DECOR)
+        window->wayland.context = libdecor_new(window->nativedisplay, &__kd_libdecor_interface);
+        window->wayland.frame = libdecor_decorate(window->wayland.context, window->wayland.surface, &__kd_libdecor_frame_interface, window);
+        libdecor_frame_map(window->wayland.frame);
+#else
+        window->wayland.xdg_surface = xdg_wm_base_get_xdg_surface(window->wayland.xdg_wm_base, window->wayland.surface);
+        xdg_surface_add_listener(window->wayland.xdg_surface, &__kd_xdg_surface_listener, &window);
+        window->wayland.xdg_toplevel = xdg_surface_get_toplevel(window->wayland.xdg_surface);
+#endif
+        wl_display_roundtrip(window->nativedisplay);
+        wl_display_roundtrip(window->nativedisplay);
     }
 #endif
 #if defined(KD_WINDOW_X11)
@@ -3599,6 +3681,12 @@ KD_API KDint KD_APIENTRY kdRealizeWindow(KDWindow *window, EGLNativeWindowType *
     }
 #endif
 #endif
+
+    KDint32 windowsize[2];
+    windowsize[0] = window->properties.width;
+    windowsize[1] = window->properties.height;
+    kdSetWindowPropertyiv(window, KD_WINDOWPROPERTY_SIZE, windowsize);
+    kdSetWindowPropertycv(window, KD_WINDOWPROPERTY_CAPTION, window->properties.caption);
 
     KDEvent *kdevent = kdCreateEvent();
     kdevent->userptr = window->eventuserptr;
