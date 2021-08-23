@@ -8,7 +8,7 @@
 [![License Scan](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
 
 ### About
--   Cross-platform abstraction layer similar to SDL
+-   Cross-platform abstraction layer and application framework implemented in a clean, simple and maintainable manner. Written in C; build and tested with CMake and Github Actions; developed for Windows, Linux, Android and the Web.
 -   [Specification](https://www.khronos.org/registry/kode/)
 
 ### Details
