@@ -94,7 +94,7 @@ void __kdMallocThreadInit(void)
 void __kdMallocThreadFinal(void)
 {
 #if !defined(__EMSCRIPTEN__) && !defined(__PGIC__)
-    rpmalloc_thread_finalize();
+    rpmalloc_thread_finalize(1);
 #endif
 }
 
