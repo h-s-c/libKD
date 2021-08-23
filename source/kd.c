@@ -3189,7 +3189,7 @@ static struct libdecor_frame_interface __kd_libdecor_frame_interface = {
     KD_NULL,
 };
 
-static void __kdWaylandDecorHandleError(KD_UNUSED struct libdecor *context, enum libdecor_error error, const char *message)
+static KD_NORETURN void __kdWaylandDecorHandleError(KD_UNUSED struct libdecor *context, enum libdecor_error error, const char *message)
 {
     kdLogMessagefKHR("libdecor caught error (%d): %s\n", error, message);
     kdExit(-1);

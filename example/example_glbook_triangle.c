@@ -54,7 +54,7 @@ KDboolean Init(Example *example)
     glBindAttribLocation(userData->programObject, 0, "vPosition");
     glLinkProgram(userData->programObject);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     return KD_TRUE;
 }
 
