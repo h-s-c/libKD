@@ -1044,9 +1044,9 @@ _rpmalloc_unmap_os(void* address, size_t size, size_t offset, size_t release) {
 	} else {
 #if defined(MADV_FREE_REUSABLE)
 		int ret;
-		while ((ret = madvise(address, size, MADV_FREE_REUSABLE)) == -1 && (errno == EAGAIN))
-			errno = 0;
-		if ((ret == -1) && (errno != 0)) {
+		while ((ret = madvise(address, size, MADV_FREE_REUSABLE)) == -1 && (kdGetError() == KD_EAGAIN))
+			kdSetError(0);
+		if ((ret == -1) && (kdGetError() != 0)) {
 #elif defined(MADV_DONTNEED)
 		if (madvise(address, size, MADV_DONTNEED)) {
 #elif defined(MADV_PAGEOUT)
