@@ -116,7 +116,7 @@
 #if defined(KD_WINDOW_WAYLAND_DECOR)
 #include <libdecor.h>
 #else
-#include "wayland/xdg-shell.h"
+#include "xdg-shell.h"
 #endif
 #endif
 #if defined(KD_WINDOW_X11)
