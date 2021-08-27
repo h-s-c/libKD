@@ -250,6 +250,12 @@ static KDchar *__kdLogMessagefCallback(KDchar *buf, KD_UNUSED void *user, KDint 
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 __attribute__((__format__(__printf__, 1, 2)))
 #endif
+#if defined(__clang__)
+#pragma clang diagnostic push
+#if __has_warning("-Wunreachable-code")
+#pragma clang diagnostic ignored "-Wunreachable-code"
+#endif
+#endif
 KD_API KDint KD_APIENTRY
 kdLogMessagefKHR(const KDchar *format, ...)
 {
@@ -272,6 +278,9 @@ kdLogMessagefKHR(const KDchar *format, ...)
     KD_VA_END_KHR(ap);
     return result;
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 /* kdSscanfKHR, kdVsscanfKHR: Read formatted input from a buffer. */
 KD_API KDint KD_APIENTRY kdSscanfKHR(const KDchar *str, const KDchar *format, ...)
