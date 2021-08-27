@@ -31,6 +31,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
+#if !defined(__ANDROID__)
 #if defined(__EMSCRIPTEN__)
 #include <AL/al.h>
 #include <AL/alc.h>
@@ -38,11 +39,15 @@
 #include <al.h>
 #include <alc.h>
 #endif
+#endif
 
 #define EXAMPLE_COMMON_IMPLEMENTATION
 #include "example_common.h"
+
+#if !defined(__ANDROID__)
 #define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.c"
+#endif
 
 #include "data/cams.h"
 #include "data/shaders.h"
@@ -134,6 +139,7 @@ typedef struct {
     GLint minFade;
 } SHADERFADE;
 
+#if !defined(__ANDROID__)
 typedef struct {
     ALuint ID;
 
@@ -152,6 +158,7 @@ typedef struct {
 } AUDIOSTREAM;
 
 static AUDIOSTREAM sAudioStream;
+#endif
 
 static SHADERLIT sShaderLit;
 static SHADERFLAT sShaderFlat;
@@ -1067,6 +1074,7 @@ void appRender(Example *example, KDust tick, KDint width, KDint height)
     drawFadeQuad();
 }
 
+#if !defined(__ANDROID__)
 void AudioStreamInit(AUDIOSTREAM *self)
 {
     kdMemset(self, 0, sizeof(AUDIOSTREAM));
@@ -1170,6 +1178,7 @@ KDboolean AudioStreamUpdate(AUDIOSTREAM *self)
 
     return KD_TRUE;
 }
+#endif
 
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
@@ -1178,11 +1187,13 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     appInit();
 
+#if !defined(__ANDROID__)
     ALCdevice *device = alcOpenDevice(KD_NULL);
     ALCcontext *context = alcCreateContext(device, KD_NULL);
     kdAssert(alcMakeContextCurrent(context));
     AudioStreamInit(&sAudioStream);
     AudioStreamOpen(&sAudioStream, "data/!Cube - San Angeles Observation.ogg");
+#endif
 
     while(example->run)
     {
@@ -1210,14 +1221,18 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
         eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
         appRender(example, kdGetTimeUST() / 1000000, width, height);
+#if !defined(__ANDROID__)
         AudioStreamUpdate(&sAudioStream);
+#endif
         exampleRun(example);
     }
 
+#if !defined(__ANDROID__)
     AudioStreamDeinit(&sAudioStream);
     alcMakeContextCurrent(KD_NULL);
     alcDestroyContext(context);
     alcCloseDevice(device);
+#endif
 
     appDeinit();
 
