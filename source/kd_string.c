@@ -584,7 +584,16 @@ KD_API KDsize KD_APIENTRY kdStrlen(const KDchar *str)
         __m128i a = _mm_cmpeq_epi8(x, c16);
         mask = (KDuint32)_mm_movemask_epi8(a);
 #elif defined(__ARM_NEON__)
+#if defined(__ANDROID__) && defined(__clang__)
+#pragma clang diagnostic push
+#if __has_warning("-Wcast-align")
+#pragma clang diagnostic ignored "-Wcast-align"
+#endif
+#endif
         uint8x16_t x = *(const uint8x16_t *)&s[0];
+#if defined(__ANDROID__) && defined(__clang__)
+#pragma clang diagnostic pop
+#endif
         uint8x16_t a = vceqq_u8(x, c16);
         uint8x8_t xx = vorr_u8(vget_low_u8(x), vget_high_u8(x));
         if(vget_lane_u64(vreinterpret_u64_u8(xx), 0))

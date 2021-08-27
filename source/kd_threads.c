@@ -401,6 +401,12 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 }
 
 /* kdThreadExit: Terminate this thread. */
+#if defined(__ANDROID__) && defined(__clang__)
+#pragma clang diagnostic push
+#if __has_warning("-Winvalid-noreturn")
+#pragma clang diagnostic ignored "-Winvalid-noreturn"
+#endif
+#endif
 KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
 {
     KD_UNUSED KDint result = 0;
@@ -415,14 +421,13 @@ KD_API KD_NORETURN void KD_APIENTRY kdThreadExit(void *retval)
     pthread_exit(retval);
 #elif defined(KD_THREAD_WIN32)
     ExitThread(result);
-    while(1)
-    {
-        ;
-    }
 #else
     kdExit(result);
 #endif
 }
+#if defined(__ANDROID__) && defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 /* kdThreadJoin: Wait for termination of another thread. */
 KD_API KDint KD_APIENTRY kdThreadJoin(KDThread *thread, void **retval)

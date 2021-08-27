@@ -75,7 +75,7 @@ project (KD C)
     if(NOT EMSCRIPTEN)
         set_target_properties(KD PROPERTIES POSITION_INDEPENDENT_CODE "True")
     endif()
-    if(NOT EMSCRIPTEN AND NOT APPLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
+    if(NOT ANDROID AND NOT EMSCRIPTEN AND NOT APPLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
         set_target_properties(KD PROPERTIES LINK_WHAT_YOU_USE "True")
     endif()
 
