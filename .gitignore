@@ -13,5 +13,8 @@
 /cmake-build-minsizerel
 /cmake-build-release
 /cmake-build-relwithdebinfo
-
 .vscode/
+/example/android/.gradle
+/example/android/.idea
+/example/android/app/.cxx
+/example/android/app/build
