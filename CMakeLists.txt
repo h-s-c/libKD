@@ -296,7 +296,7 @@ project (KD C)
     endif()
 
     # Examples
-    if(NOT DEFINED ENV{CI} AND KD_BUILD_EXAMPLES)
+    if(KD_BUILD_EXAMPLES)
         add_library(stb_vorbis STATIC ${CMAKE_SOURCE_DIR}/example/stb_vorbis.c)
         if(NOT WIN32)
             target_link_libraries(stb_vorbis PRIVATE m) 
