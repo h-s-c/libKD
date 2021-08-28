@@ -6,8 +6,8 @@ android {
 
     defaultConfig {
         applicationId = 'com.libkd.example'
-        minSdkVersion 14
-        targetSdkVersion 28
+        minSdkVersion 21
+        targetSdkVersion 29
         externalNativeBuild {
             cmake {
                 arguments '-DKD_BUILD_EXAMPLES=TRUE'

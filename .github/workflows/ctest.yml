@@ -75,3 +75,17 @@ jobs:
       run: cinst ninja curl opencppcoverage cppcheck && refreshenv
     - name: run ctest
       run: ctest -VV -S ci-tools/run_ctest.cmake
+  android:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - uses: gradle/wrapper-validation-action@v1
+    - name: build android example
+      run: cd example/android && ./gradlew build
+    - name: upload debug apk
+      uses: actions/upload-artifact@v2
+      with:
+        name: app
+        path: example/android/app/build/outputs/apk/debug/*.apk
