@@ -253,7 +253,9 @@ void __kdThreadFree(KDThread *thread)
     kdFree(thread);
 }
 
+extern KDThreadOnce __kd_threadinit_once;
 KDThreadOnce __kd_threadinit_once = KD_THREAD_ONCE_INIT;
+extern KDThreadStorageKeyKHR __kd_threadlocal;
 KDThreadStorageKeyKHR __kd_threadlocal = 0;
 void __kdThreadInitOnce(void)
 {

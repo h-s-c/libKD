@@ -78,13 +78,6 @@ KDsize __kdQueueSize(_KDQueue *queue);
 KDint __kdQueuePush(_KDQueue *queue, void *value);
 void *__kdQueuePull(_KDQueue *queue);
 
-extern KDThreadOnce __kd_threadinit_once;
-#ifndef KDThreadStorageKeyKHR
-typedef KDuint32 KDThreadStorageKeyKHR;
-#endif
-extern KDThreadStorageKeyKHR __kd_threadlocal;
-extern KDThreadMutex *__kd_tls_mutex;
-
 #if defined(_WIN32) && defined(KD_FREESTANDING) && !defined(__MINGW32__)
 KDint _fltused;
 #endif

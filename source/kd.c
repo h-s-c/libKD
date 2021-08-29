@@ -2303,6 +2303,9 @@ static BOOL WINAPI __kdSigHandlerWin(DWORD signal)
 }
 #endif
 
+extern KDThreadOnce __kd_threadinit_once;
+extern KDThreadStorageKeyKHR __kd_threadlocal;
+extern KDThreadMutex *__kd_tls_mutex;
 static KDint __kdPreMain(KDint argc, KDchar **argv)
 {
     __kdMallocInit();

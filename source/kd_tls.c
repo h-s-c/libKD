@@ -108,6 +108,7 @@ typedef struct _KDThreadStorage _KDThreadStorage;
 
 static _KDThreadStorage __kd_tls[999];
 static KDuint __kd_tls_index = 0;
+extern KDThreadMutex *__kd_tls_mutex;
 KDThreadMutex *__kd_tls_mutex = KD_NULL;
 KD_API KDThreadStorageKeyKHR KD_APIENTRY KD_APIENTRY kdMapThreadStorageKHR(const void *id)
 {
