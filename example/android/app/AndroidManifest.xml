@@ -16,7 +16,7 @@
          This will take care of integrating with our NDK code. -->
     <activity android:name="android.app.NativeActivity"
               android:label="libKD example"
-              android:configChanges="orientation|keyboardHidden">
+              android:configChanges="orientation|keyboardHidden|screenSize">
       <!-- Tell NativeActivity the name of our .so -->
       <meta-data android:name="android.app.lib_name"
                  android:value="example_angeles" />
