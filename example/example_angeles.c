@@ -1041,6 +1041,7 @@ void appRender(Example *example, KDust tick, KDint width, KDint height)
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     Example *example = exampleInit();
+    /* This should use kdFopen and load from the virtual filesystem location /data/ */
     exampleLoadAudio(example, "data/!Cube - San Angeles Observation.ogg");
 
     appInit();

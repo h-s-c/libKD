@@ -29,7 +29,7 @@ struct KDFile
     KDint nativefile;
     KDint8 padding[4];
 #endif
-    const KDchar *pathname;
+    KDchar pathname[4096];
     KDboolean eof;
     KDboolean error;
 };

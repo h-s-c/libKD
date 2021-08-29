@@ -142,7 +142,7 @@ KDboolean Init(Example *example)
     // Initialize time to cause reset on first update
     userData->time = 1.0f;
 
-    userData->textureId = exampleLoadTexture("data/smoke.png");
+    userData->textureId = exampleLoadTexture("/data/smoke.png");
     if(userData->textureId <= 0)
     {
         return KD_FALSE;

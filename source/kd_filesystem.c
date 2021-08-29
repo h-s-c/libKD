@@ -96,7 +96,18 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         kdSetError(KD_ENOMEM);
         return KD_NULL;
     }
-    file->pathname = pathname;
+
+    /* Map our "Virtual Filesystem" to a real path*/
+    if(kdStrncmp(pathname, "/data/", 6) == 0)
+    {
+        /* Trim leading slash */
+        kdStrncpy_s(file->pathname, sizeof(file->pathname), pathname + 1, sizeof(pathname));
+    }
+    else
+    {
+        /* Just copy */
+        kdStrncpy_s(file->pathname, sizeof(file->pathname), pathname, sizeof(pathname));
+    }
 #if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
@@ -110,14 +121,18 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         case 'w':
         {
-#if defined(_WIN32)
+#if defined(__ANDROID__)
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
+#elif defined(_WIN32)
             access = GENERIC_WRITE;
             create = CREATE_ALWAYS;
+            break;
 #else
             access = O_WRONLY | O_CREAT;
             create = S_IRUSR | S_IWUSR;
-#endif
             break;
+#endif
         }
         case 'r':
         {
@@ -131,14 +146,18 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         }
         case 'a':
         {
-#if defined(_WIN32)
+#if defined(__ANDROID__)
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
+#elif defined(_WIN32)
             access = GENERIC_READ | GENERIC_WRITE;
             create = OPEN_ALWAYS;
             append = 1;
+            break;
 #else
             access = O_WRONLY | O_CREAT | O_APPEND;
-#endif
             break;
+#endif
         }
         default:
         {
@@ -174,7 +193,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     }
 
 #if defined(_WIN32)
-    file->nativefile = CreateFileA(pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
+    file->nativefile = CreateFileA(file->pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
     if(file->nativefile != INVALID_HANDLE_VALUE)
     {
         if(append)
@@ -186,7 +205,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     {
         KDint error = GetLastError();
 #else
-    file->nativefile = open(pathname, access | O_CLOEXEC, create);
+    file->nativefile = open(file->pathname, access | O_CLOEXEC, create);
     if(file->nativefile == -1)
     {
         KDint error = errno;
