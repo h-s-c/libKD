@@ -31,6 +31,21 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
+#if !defined(__ANDROID__)
+#if defined(__EMSCRIPTEN__)
+#include <AL/al.h>
+#include <AL/alc.h>
+#else
+#include <al.h>
+#include <alc.h>
+#endif
+#endif
+
+#if !defined(__ANDROID__)
+#define STB_VORBIS_HEADER_ONLY
+#include "stb_vorbis.c"
+#endif
+
 #if defined(__MINGW32__)
 #undef near
 #undef far
@@ -65,6 +80,22 @@ typedef struct Example {
     {
         KDboolean enable;
     } shadercache;
+#if !defined(__ANDROID__)
+    struct
+    {
+        ALuint id;
+        ALCdevice *device;
+        ALCcontext *context;
+        stb_vorbis *stream;
+        stb_vorbis_info info;
+        ALuint buffers[2];
+        ALuint source;
+        ALenum format;
+        KDsize buffersize;
+        KDsize samplesleft;
+        KDboolean loop;
+    } audio;
+#endif
 } Example;
 
 Example *exampleInit(void);
@@ -78,6 +109,15 @@ KDint exampleDestroy(Example *example);
 static GLuint exampleLoadTexture(const KDchar *filename);
 static GLuint exampleCreateShader(GLenum type, const KDchar *shadersrc);
 static GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc, KDboolean link);
+
+/****************************************************************************** 
+ * OpenAL
+ ******************************************************************************/
+
+static void exampleInitAudio(Example *example);
+static void exampleDestroyAudio(Example *example);
+static KDboolean exampleLoadAudio(Example *example, const KDchar *filename);
+static KDboolean exampleUpdateAudio(Example *example);
 
 /****************************************************************************** 
  * 4x4 Matrix
@@ -225,6 +265,9 @@ Example *exampleInit(void)
     }
 #endif
 
+    /* Init audio */
+    exampleInitAudio(example);
+
     /* Debug message */
     kdLogMessage("-----KD-----");
     kdLogMessagefKHR("Vendor: %s\n", kdQueryAttribcv(KD_ATTRIB_VENDOR));
@@ -294,6 +337,21 @@ Example *exampleInit(void)
         glDeleteProgram(dummyprogram);
     }
 #endif
+#if !defined(__ANDROID__)
+    kdLogMessage("-----AL-----");
+    kdLogMessagefKHR("Vendor: %s\n", (const KDchar *)alGetString(AL_VENDOR));
+    kdLogMessagefKHR("Version: %s\n", (const KDchar *)alGetString(AL_VERSION));
+    kdLogMessagefKHR("Renderer: %s\n", (const KDchar *)alGetString(AL_RENDERER));
+    if(alcIsExtensionPresent(example->audio.device, "ALC_ENUMERATE_ALL_EXT"))
+    {
+        kdLogMessagefKHR("Device: %s\n", (const KDchar *)alcGetString(example->audio.device, ALC_ALL_DEVICES_SPECIFIER));
+    }
+    else
+    {
+        kdLogMessagefKHR("Device: %s\n", (const KDchar *)alcGetString(example->audio.device, ALC_DEVICE_SPECIFIER));
+    }
+    kdLogMessagefKHR("Extensions: %s\n", (const KDchar *)alGetString(AL_EXTENSIONS));
+#endif
     kdLogMessage("---------------");
 
     kdInstallCallback(&exampleCallbackKD, KD_EVENT_QUIT, example);
@@ -351,10 +409,14 @@ void exampleRun(Example *example)
     {
         example->run = KD_TRUE;
     }
+    exampleUpdateAudio(example);
 }
 
 KDint exampleDestroy(Example *example)
 {
+    /* Destroy audio */
+    exampleDestroyAudio(example);
+
     eglMakeCurrent(KD_NULL, KD_NULL, KD_NULL, KD_NULL);
     eglDestroyContext(example->egl.display, example->egl.context);
     eglDestroySurface(example->egl.display, example->egl.surface);
@@ -475,6 +537,130 @@ GLuint exampleCreateProgram(const KDchar *vertexsrc, const KDchar *fragmentsrc, 
         }
     }
     return program;
+}
+
+/****************************************************************************** 
+ * OpenAL
+ ******************************************************************************/
+
+static void exampleInitAudio(Example *example)
+{
+#if !defined(__ANDROID__)
+    example->audio.device = alcOpenDevice(KD_NULL);
+    example->audio.context = alcCreateContext(example->audio.device, KD_NULL);
+    kdAssert(alcMakeContextCurrent(example->audio.context));
+    alGenSources(1, &example->audio.source);
+    alGenBuffers(2, example->audio.buffers);
+    example->audio.buffersize = 4096 * 8;
+    example->audio.loop = KD_TRUE;
+#endif
+}
+
+static void exampleDestroyAudio(Example *example)
+{
+#if !defined(__ANDROID__)
+    alDeleteSources(1, &example->audio.source);
+    alDeleteBuffers(2, example->audio.buffers);
+    stb_vorbis_close(example->audio.stream);
+    alcMakeContextCurrent(KD_NULL);
+    alcDestroyContext(example->audio.context);
+    alcCloseDevice(example->audio.device);
+#endif
+}
+
+static KDboolean exampleBufferAudio(Example *example,  KDint buffer)
+{
+#if !defined(__ANDROID__)
+    //Uncomment this to avoid VLAs
+#define BUFFER_SIZE 4096*32
+#ifndef BUFFER_SIZE//VLAs ftw
+#define BUFFER_SIZE (example->audio.bufferSize)
+#endif
+    ALshort pcm[BUFFER_SIZE];
+    KDint size = 0;
+    KDint result = 0;
+
+    while(size < BUFFER_SIZE)
+    {
+        result = stb_vorbis_get_samples_short_interleaved(example->audio.stream, example->audio.info.channels, pcm + size, BUFFER_SIZE - size);
+        if(result > 0)
+            size += result * example->audio.info.channels;
+        else
+            break;
+    }
+
+    if(size == 0)
+        return KD_FALSE;
+
+    alBufferData(buffer, example->audio.format, pcm, size * sizeof(ALshort), example->audio.info.sample_rate);
+    example->audio.samplesleft -= size;
+#undef BUFFER_SIZE
+
+    return KD_TRUE;
+#endif
+    return KD_FALSE;
+}
+
+KDboolean exampleLoadAudio(Example *example, const KDchar *filename)
+{
+#if !defined(__ANDROID__)
+    example->audio.stream = stb_vorbis_open_filename((KDchar *)filename, KD_NULL, KD_NULL);
+    if(!example->audio.stream)
+        return KD_FALSE;
+    // Get file info
+    example->audio.info = stb_vorbis_get_info(example->audio.stream);
+    if(example->audio.info.channels == 2)
+        example->audio.format = AL_FORMAT_STEREO16;
+    else
+        example->audio.format = AL_FORMAT_MONO16;
+
+    if(!exampleBufferAudio(example, example->audio.buffers[0]))
+        return KD_FALSE;
+    if(!exampleBufferAudio(example, example->audio.buffers[1]))
+        return KD_FALSE;
+    alSourceQueueBuffers(example->audio.source, 2, example->audio.buffers);
+    alSourcePlay(example->audio.source);
+
+    example->audio.samplesleft = stb_vorbis_stream_length_in_samples(example->audio.stream) * example->audio.info.channels;
+
+    return KD_TRUE;
+#endif
+    return KD_FALSE;
+}
+
+KDboolean exampleUpdateAudio(Example *example)
+{
+#if !defined(__ANDROID__)
+    ALint processed = 0;
+
+    alGetSourcei(example->audio.source, AL_BUFFERS_PROCESSED, &processed);
+
+    while(processed--)
+    {
+        ALuint buffer = 0;
+
+        alSourceUnqueueBuffers(example->audio.source, 1, &buffer);
+
+        if(!exampleBufferAudio(example, buffer))
+        {
+            KDboolean exit = KD_TRUE;
+
+            if(example->audio.loop)
+            {
+                stb_vorbis_seek_start(example->audio.stream);
+                example->audio.samplesleft = stb_vorbis_stream_length_in_samples(example->audio.stream) * example->audio.info.channels;
+                exit = !exampleBufferAudio(example, buffer);
+            }
+
+            if(exit)
+                return KD_FALSE;
+        }
+        alSourceQueueBuffers(example->audio.source, 1, &buffer);
+    }
+
+    return KD_TRUE;
+#endif
+    return KD_FALSE;
 }
 
 /****************************************************************************** 

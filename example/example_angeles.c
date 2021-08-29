@@ -31,23 +31,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
-#if !defined(__ANDROID__)
-#if defined(__EMSCRIPTEN__)
-#include <AL/al.h>
-#include <AL/alc.h>
-#else
-#include <al.h>
-#include <alc.h>
-#endif
-#endif
-
 #define EXAMPLE_COMMON_IMPLEMENTATION
 #include "example_common.h"
-
-#if !defined(__ANDROID__)
-#define STB_VORBIS_HEADER_ONLY
-#include "stb_vorbis.c"
-#endif
 
 #include "data/cams.h"
 #include "data/shaders.h"
@@ -138,27 +123,6 @@ typedef struct {
     // uniform
     GLint minFade;
 } SHADERFADE;
-
-#if !defined(__ANDROID__)
-typedef struct {
-    ALuint ID;
-
-    stb_vorbis *stream;
-    stb_vorbis_info info;
-
-    ALuint buffers[2];
-    ALuint source;
-    ALenum format;
-
-    KDsize bufferSize;
-
-    KDsize totalSamplesLeft;
-
-    KDboolean shouldLoop;
-} AUDIOSTREAM;
-
-static AUDIOSTREAM sAudioStream;
-#endif
 
 static SHADERLIT sShaderLit;
 static SHADERFLAT sShaderFlat;
@@ -1074,126 +1038,12 @@ void appRender(Example *example, KDust tick, KDint width, KDint height)
     drawFadeQuad();
 }
 
-#if !defined(__ANDROID__)
-void AudioStreamInit(AUDIOSTREAM *self)
-{
-    kdMemset(self, 0, sizeof(AUDIOSTREAM));
-    alGenSources(1, &self->source);
-    alGenBuffers(2, self->buffers);
-    self->bufferSize = 4096 * 8;
-    self->shouldLoop = KD_TRUE;  //We loop by default
-}
-
-
-void AudioStreamDeinit(AUDIOSTREAM *self)
-{
-    alDeleteSources(1, &self->source);
-    alDeleteBuffers(2, self->buffers);
-    stb_vorbis_close(self->stream);
-    kdMemset(self, 0, sizeof(AUDIOSTREAM));
-}
-
-KDboolean AudioStreamStream(AUDIOSTREAM *self, ALuint buffer)
-{
-    //Uncomment this to avoid VLAs
-#define BUFFER_SIZE 4096*32
-#ifndef BUFFER_SIZE//VLAs ftw
-#define BUFFER_SIZE (self->bufferSize)
-#endif
-    ALshort pcm[BUFFER_SIZE];
-    KDint size = 0;
-    KDint result = 0;
-
-    while(size < BUFFER_SIZE)
-    {
-        result = stb_vorbis_get_samples_short_interleaved(self->stream, self->info.channels, pcm + size, BUFFER_SIZE - size);
-        if(result > 0)
-            size += result * self->info.channels;
-        else
-            break;
-    }
-
-    if(size == 0)
-        return KD_FALSE;
-
-    alBufferData(buffer, self->format, pcm, size * sizeof(ALshort), self->info.sample_rate);
-    self->totalSamplesLeft -= size;
-#undef BUFFER_SIZE
-
-    return KD_TRUE;
-}
-
-KDboolean AudioStreamOpen(AUDIOSTREAM *self, const KDchar *filename)
-{
-    self->stream = stb_vorbis_open_filename((KDchar *)filename, KD_NULL, KD_NULL);
-    if(!self->stream)
-        return KD_FALSE;
-    // Get file info
-    self->info = stb_vorbis_get_info(self->stream);
-    if(self->info.channels == 2)
-        self->format = AL_FORMAT_STEREO16;
-    else
-        self->format = AL_FORMAT_MONO16;
-
-    if(!AudioStreamStream(self, self->buffers[0]))
-        return KD_FALSE;
-    if(!AudioStreamStream(self, self->buffers[1]))
-        return KD_FALSE;
-    alSourceQueueBuffers(self->source, 2, self->buffers);
-    alSourcePlay(self->source);
-
-    self->totalSamplesLeft = stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
-
-    return KD_TRUE;
-}
-
-KDboolean AudioStreamUpdate(AUDIOSTREAM *self)
-{
-    ALint processed = 0;
-
-    alGetSourcei(self->source, AL_BUFFERS_PROCESSED, &processed);
-
-    while(processed--)
-    {
-        ALuint buffer = 0;
-
-        alSourceUnqueueBuffers(self->source, 1, &buffer);
-
-        if(!AudioStreamStream(self, buffer))
-        {
-            KDboolean shouldExit = KD_TRUE;
-
-            if(self->shouldLoop)
-            {
-                stb_vorbis_seek_start(self->stream);
-                self->totalSamplesLeft = stb_vorbis_stream_length_in_samples(self->stream) * self->info.channels;
-                shouldExit = !AudioStreamStream(self, buffer);
-            }
-
-            if(shouldExit)
-                return KD_FALSE;
-        }
-        alSourceQueueBuffers(self->source, 1, &buffer);
-    }
-
-    return KD_TRUE;
-}
-#endif
-
-
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
     Example *example = exampleInit();
+    exampleLoadAudio(example, "data/!Cube - San Angeles Observation.ogg");
 
     appInit();
-
-#if !defined(__ANDROID__)
-    ALCdevice *device = alcOpenDevice(KD_NULL);
-    ALCcontext *context = alcCreateContext(device, KD_NULL);
-    kdAssert(alcMakeContextCurrent(context));
-    AudioStreamInit(&sAudioStream);
-    AudioStreamOpen(&sAudioStream, "data/!Cube - San Angeles Observation.ogg");
-#endif
 
     while(example->run)
     {
@@ -1221,18 +1071,8 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
         eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
         appRender(example, kdGetTimeUST() / 1000000, width, height);
-#if !defined(__ANDROID__)
-        AudioStreamUpdate(&sAudioStream);
-#endif
         exampleRun(example);
     }
-
-#if !defined(__ANDROID__)
-    AudioStreamDeinit(&sAudioStream);
-    alcMakeContextCurrent(KD_NULL);
-    alcDestroyContext(context);
-    alcCloseDevice(device);
-#endif
 
     appDeinit();
 
