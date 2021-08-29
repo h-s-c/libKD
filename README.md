@@ -26,7 +26,7 @@
 -   Assertions and logging
 
 ### Examples
--   [Via WebAssembly running in your browser or Win64 binaries](https://h-s-c.github.io/libkd/)
+-   [Binaries (Windows, Android, Web)](https://h-s-c.github.io/libkd/)
 
 ```
 #include <KD/kd.h>
