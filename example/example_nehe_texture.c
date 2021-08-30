@@ -333,7 +333,14 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 	    EGLint height = 0;
 	    eglQuerySurface(example->egl.display, example->egl.surface, EGL_WIDTH, &width);
 	    eglQuerySurface(example->egl.display, example->egl.surface, EGL_HEIGHT, &height);
-        render(width, height);
+	    if(width > height)
+	    {
+	    	render(width, height);
+	    }
+	    else
+		{
+	    	render(height, width);
+	    }
         exampleRun(example);
     }
 

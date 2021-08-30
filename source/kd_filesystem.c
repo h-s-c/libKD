@@ -83,9 +83,73 @@
 #include <direct.h> /* R_OK etc. */
 #endif
 
+
+#if defined(__ANDROID__)
+#include <android/native_activity.h>
+#include <jni.h>
+//#define MINIZ_NO_STDIO
+//#define MINIZ_NO_TIME
+//#define MINIZ_NO_ARCHIVE_WRITING_APIS
+//#define MINIZ_NO_ZLIB_APIS
+//#define MINIZ_NO_MALLOC
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
+#include "miniz.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#endif
+
 /******************************************************************************
  * File system
  ******************************************************************************/
+
+#if defined(__ANDROID__)
+#include <android/native_activity.h>
+extern ANativeActivity *__kd_androidactivity;
+static void __kdDetectApkPath(KDchar * path)
+{
+    ANativeActivity* activity = __kd_androidactivity;
+    JNIEnv* env=0;
+
+    (*activity->vm)->AttachCurrentThread(activity->vm, &env, 0);
+
+    jclass clazz = (*env)->GetObjectClass(env, activity->clazz);
+    jmethodID methodID = (*env)->GetMethodID(env, clazz, "getPackageCodePath", "()Ljava/lang/String;");
+    jobject result = (*env)->CallObjectMethod(env, activity->clazz, methodID);
+
+    jboolean isCopy;
+    kdSprintfKHR(path, "%s", (*env)->GetStringUTFChars(env, (jstring)result, &isCopy));
+
+    (*activity->vm)->DetachCurrentThread(activity->vm);
+
+    kdLogMessagefKHR("APK path: %s\n", path);
+}
+
+#endif
+
+static void __kdSanitizePath(KDchar *sanitized, const KDchar *pathname)
+{
+    /* Map our "Virtual Filesystem" to a real path */
+    if(kdStrncmp(pathname, "/data/", 6) == 0)
+    {
+#if defined(__ANDROID__)
+        /* Replace "/data/" with "assets/" */
+        kdSprintfKHR(sanitized, "assets/%s", pathname + 6);
+
+#else
+        /* Trim leading slash */
+        kdSprintfKHR(sanitized, "%s", pathname + 1);
+#endif
+    }
+    else
+    {
+        /* Just copy */
+        kdSprintfKHR(sanitized, "%s", pathname);
+    }
+}
 
 /* kdFopen: Open a file from the file system. */
 KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
@@ -97,17 +161,8 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         return KD_NULL;
     }
 
-    /* Map our "Virtual Filesystem" to a real path*/
-    if(kdStrncmp(pathname, "/data/", 6) == 0)
-    {
-        /* Trim leading slash */
-        kdStrncpy_s(file->pathname, sizeof(file->pathname), pathname + 1, sizeof(pathname));
-    }
-    else
-    {
-        /* Just copy */
-        kdStrncpy_s(file->pathname, sizeof(file->pathname), pathname, sizeof(pathname));
-    }
+    __kdSanitizePath(file->pathname, pathname);
+
 #if defined(_WIN32)
     DWORD access = 0;
     DWORD create = 0;
@@ -192,6 +247,28 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         }
     }
 
+#if defined(__ANDROID__)
+    mz_zip_archive archive;
+    kdMemset(&archive, 0, sizeof(archive));
+    KDchar apkpath[4096];
+    __kdDetectApkPath(apkpath);
+    mz_zip_reader_init_file(&archive, apkpath, 0);
+    KDsize size = 0;
+    void* zipfile = mz_zip_reader_extract_file_to_heap(&archive, file->pathname, &size, 0);
+    if(zipfile)
+    {
+        file->nativefile = kdMalloc(size);
+        kdMemcpy(file->nativefile, zipfile, size);
+    }
+    mz_zip_reader_end(&archive);
+
+    if(file->nativefile == KD_NULL)
+    {
+        kdFree(file);
+        kdSetError(KD_EINVAL);
+        return KD_NULL;
+    }
+#else
 #if defined(_WIN32)
     file->nativefile = CreateFileA(file->pathname, access, FILE_SHARE_READ | FILE_SHARE_WRITE, KD_NULL, create, 0, KD_NULL);
     if(file->nativefile != INVALID_HANDLE_VALUE)
@@ -214,6 +291,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_EISDIR | KD_EMFILE | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return KD_NULL;
     }
+#endif
     file->eof = KD_FALSE;
     return file;
 }
@@ -221,6 +299,9 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
 /* kdFclose: Close an open file. */
 KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 {
+#if defined(__ANDROID__)
+    kdFree(file->nativefile);
+#else
     KDint retval = 0;
 #if defined(_WIN32)
     retval = CloseHandle(file->nativefile);
@@ -237,6 +318,7 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
         kdFree(file);
         return KD_EOF;
     }
+#endif
     kdFree(file);
     return 0;
 }
@@ -244,7 +326,8 @@ KD_API KDint KD_APIENTRY kdFclose(KDFile *file)
 /* kdFflush: Flush an open file. */
 KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
 {
-#if !defined(_WIN32)
+#if defined(__ANDROID__)
+#elif !defined(_WIN32)
     KDint retval = fsync(file->nativefile);
     if(retval == -1)
     {
@@ -259,8 +342,12 @@ KD_API KDint KD_APIENTRY kdFflush(KD_UNUSED KDFile *file)
 /* kdFread: Read from a file. */
 KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFile *file)
 {
-    KDssize retval = 0;
     KDsize length = count * size;
+#if defined(__ANDROID__)
+    kdMemcpy(buffer, file->nativefile, length);
+    length = 0;
+#else
+    KDssize retval = 0;
 #if defined(_WIN32)
     BOOL success = ReadFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
     if(success == TRUE)
@@ -291,6 +378,7 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
     }
+#endif
     if(length == 0)
     {
         file->eof = KD_TRUE;
@@ -299,10 +387,11 @@ KD_API KDsize KD_APIENTRY kdFread(void *buffer, KDsize size, KDsize count, KDFil
 }
 
 /* kdFwrite: Write to a file. */
-KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count, KDFile *file)
+KD_API KDsize KD_APIENTRY kdFwrite(KD_UNUSED const void *buffer, KDsize size, KDsize count, KDFile *file)
 {
-    KDssize retval = 0;
     KDsize length = count * size;
+#if !defined(__ANDROID__)
+    KDssize retval = 0;
 #if defined(_WIN32)
     BOOL success = WriteFile(file->nativefile, buffer, (DWORD)length, (LPDWORD)&retval, KD_NULL);
     if(success == TRUE)
@@ -336,6 +425,7 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
         file->error = KD_TRUE;
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
     }
+#endif
     if(length == 0)
     {
         file->eof = KD_TRUE;
@@ -344,9 +434,10 @@ KD_API KDsize KD_APIENTRY kdFwrite(const void *buffer, KDsize size, KDsize count
 }
 
 /* kdGetc: Read next byte from an open file. */
-KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
+KD_API KDint KD_APIENTRY kdGetc(KD_UNUSED KDFile *file)
 {
     KDuint8 byte = 0;
+#if !defined(__ANDROID__)
 #if defined(_WIN32)
     DWORD byteswritten = 0;
     BOOL success = ReadFile(file->nativefile, &byte, 1, &byteswritten, KD_NULL);
@@ -373,13 +464,15 @@ KD_API KDint KD_APIENTRY kdGetc(KDFile *file)
         kdSetErrorPlatformVEN(error, KD_EFBIG | KD_EIO | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
+#endif
     return (KDint)byte;
 }
 
 /* kdPutc: Write a byte to an open file. */
-KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
+KD_API KDint KD_APIENTRY kdPutc(KDint c, KD_UNUSED KDFile *file)
 {
     KDuint8 byte = c & 0xFF;
+#if !defined(__ANDROID__)
 #if defined(_WIN32)
     BOOL success = WriteFile(file->nativefile, &byte, 1, (DWORD[]) {0}, KD_NULL);
     if(success == FALSE)
@@ -395,6 +488,7 @@ KD_API KDint KD_APIENTRY kdPutc(KDint c, KDFile *file)
         kdSetErrorPlatformVEN(error, KD_EBADF | KD_EFBIG | KD_ENOMEM | KD_ENOSPC);
         return KD_EOF;
     }
+#endif
     return (KDint)byte;
 }
 
@@ -464,12 +558,13 @@ typedef struct
 #if defined(_WIN32)
 static _KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, FILE_BEGIN}, {KD_SEEK_CUR, FILE_CURRENT}, {KD_SEEK_END, FILE_END}};
 #else
-static _KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
+static KD_UNUSED _KDSeekOrigin seekorigins[] = {{KD_SEEK_SET, SEEK_SET}, {KD_SEEK_CUR, SEEK_CUR}, {KD_SEEK_END, SEEK_END}};
 #endif
 
 /* kdFseek: Reposition the file position indicator in a file. */
-KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin origin)
+KD_API KDint KD_APIENTRY kdFseek(KD_UNUSED KDFile *file, KD_UNUSED KDoff offset, KD_UNUSED KDfileSeekOrigin origin)
 {
+#if !defined(__ANDROID__)
     KDint error = 0;
     for(KDuint64 i = 0; i < sizeof(seekorigins) / sizeof(seekorigins[0]); i++)
     {
@@ -492,13 +587,15 @@ KD_API KDint KD_APIENTRY kdFseek(KDFile *file, KDoff offset, KDfileSeekOrigin or
             break;
         }
     }
+#endif
     return 0;
 }
 
 /* kdFtell: Get the file position of an open file. */
-KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
+KD_API KDoff KD_APIENTRY kdFtell(KD_UNUSED KDFile *file)
 {
     KDoff position = 0;
+#if !defined(__ANDROID__)
 #if defined(_WIN32)
     position = (KDoff)SetFilePointer(file->nativefile, 0, KD_NULL, FILE_CURRENT);
     if(position == INVALID_SET_FILE_POINTER)
@@ -513,12 +610,14 @@ KD_API KDoff KD_APIENTRY kdFtell(KDFile *file)
         kdSetErrorPlatformVEN(error, KD_EOVERFLOW);
         return -1;
     }
+#endif
     return position;
 }
 
 /* kdMkdir: Create new directory. */
-KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
+KD_API KDint KD_APIENTRY kdMkdir(KD_UNUSED const KDchar *pathname)
 {
+#if !defined(__ANDROID__)
     KDint retval = 0;
 #if defined(_WIN32)
     retval = CreateDirectoryA(pathname, KD_NULL);
@@ -534,12 +633,14 @@ KD_API KDint KD_APIENTRY kdMkdir(const KDchar *pathname)
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return -1;
     }
+#endif
     return 0;
 }
 
 /* kdRmdir: Delete a directory. */
-KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
+KD_API KDint KD_APIENTRY kdRmdir(KD_UNUSED const KDchar *pathname)
 {
+#if !defined(__ANDROID__)
     KDint retval = 0;
 #if defined(_WIN32)
     retval = RemoveDirectoryA(pathname);
@@ -555,12 +656,14 @@ KD_API KDint KD_APIENTRY kdRmdir(const KDchar *pathname)
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EEXIST | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
+#endif
     return 0;
 }
 
 /* kdRename: Rename a file. */
-KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
+KD_API KDint KD_APIENTRY kdRename(KD_UNUSED const KDchar *src, KD_UNUSED const KDchar *dest)
 {
+#if !defined(__ANDROID__)
     KDint retval = 0;
 #if defined(_WIN32)
     retval = MoveFileA(src, dest);
@@ -592,12 +695,14 @@ KD_API KDint KD_APIENTRY kdRename(const KDchar *src, const KDchar *dest)
         }
         return -1;
     }
+#endif
     return 0;
 }
 
 /* kdRemove: Delete a file. */
-KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
+KD_API KDint KD_APIENTRY kdRemove(KD_UNUSED const KDchar *pathname)
 {
+#if !defined(__ANDROID__)
     KDint retval = 0;
 #if defined(_WIN32)
     retval = DeleteFileA(pathname);
@@ -613,12 +718,14 @@ KD_API KDint KD_APIENTRY kdRemove(const KDchar *pathname)
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EBUSY | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
+#endif
     return 0;
 }
 
 /* kdTruncate: Truncate or extend a file. */
-KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff length)
+KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED KDoff length)
 {
+#if !defined(__ANDROID__)
     KDint retval = 0;
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
@@ -638,12 +745,24 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KDoff leng
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EINVAL | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM);
         return -1;
     }
+#endif
     return 0;
 }
 
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
+#if defined(__ANDROID__)
+    mz_zip_archive archive;
+    kdMemset(&archive, 0, sizeof(archive));
+    KDchar apkpath[4096];
+    __kdDetectApkPath(apkpath);
+    mz_zip_reader_init_file(&archive, apkpath, 0);
+    KDchar sanitized[4096];
+    __kdSanitizePath(sanitized, pathname);
+    mz_zip_reader_extract_file_to_heap(&archive, sanitized, (KDsize*)&buf->st_size, 0);
+    mz_zip_reader_end(&archive);
+#else
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
     kdMemset(&data, 0, sizeof(data));
@@ -709,6 +828,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_EOVERFLOW);
         return -1;
     }
+#endif
     return 0;
 }
 
