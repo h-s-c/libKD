@@ -23,7 +23,7 @@
 
 struct KDFile
 {
-#if defined(_WIN32)
+#if defined(__ANDROID__) || defined(_WIN32)
     void *nativefile;
 #else
     KDint nativefile;

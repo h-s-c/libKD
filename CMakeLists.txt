@@ -54,6 +54,7 @@ project (KD C)
 
     file(GLOB KD_SOURCES "${CMAKE_SOURCE_DIR}/source/*.c")
     list(REMOVE_ITEM KD_SOURCES "${CMAKE_SOURCE_DIR}/source/xdg-shell.c")
+    list(REMOVE_ITEM KD_SOURCES "${CMAKE_SOURCE_DIR}/source/miniz.c")
     if(ANDROID OR EMSCRIPTEN)
         list(REMOVE_ITEM KD_SOURCES "${CMAKE_SOURCE_DIR}/source/rpmalloc.c")
     endif()
@@ -195,6 +196,9 @@ project (KD C)
         target_link_libraries(KD PRIVATE android)
         target_link_libraries(KD PRIVATE log)
         target_link_libraries(KD PRIVATE EGL)
+
+        add_library(miniz STATIC ${CMAKE_SOURCE_DIR}/source/miniz.c)
+        target_link_libraries(KD PRIVATE miniz)
     endif()
 
     if(WIN32)

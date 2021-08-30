@@ -2174,8 +2174,9 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /* All Android events are send to the mainthread */
 static KDThread *__kd_androidmainthread = KD_NULL;
 static KDThreadMutex *__kd_androidmainthread_mutex = KD_NULL;
-static ANativeActivity *__kd_androidactivity = KD_NULL;
 static KDThreadMutex *__kd_androidactivity_mutex = KD_NULL;
+extern ANativeActivity *__kd_androidactivity;
+ANativeActivity *__kd_androidactivity = KD_NULL;
 static void __kd_AndroidOnDestroy(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
