@@ -83,15 +83,7 @@
 #include <direct.h> /* R_OK etc. */
 #endif
 
-
 #if defined(__ANDROID__)
-#include <android/native_activity.h>
-#include <jni.h>
-//#define MINIZ_NO_STDIO
-//#define MINIZ_NO_TIME
-//#define MINIZ_NO_ARCHIVE_WRITING_APIS
-//#define MINIZ_NO_ZLIB_APIS
-//#define MINIZ_NO_MALLOC
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
@@ -105,30 +97,6 @@
 /******************************************************************************
  * File system
  ******************************************************************************/
-
-#if defined(__ANDROID__)
-#include <android/native_activity.h>
-extern ANativeActivity *__kd_androidactivity;
-static void __kdDetectApkPath(KDchar * path)
-{
-    ANativeActivity* activity = __kd_androidactivity;
-    JNIEnv* env=0;
-
-    (*activity->vm)->AttachCurrentThread(activity->vm, &env, 0);
-
-    jclass clazz = (*env)->GetObjectClass(env, activity->clazz);
-    jmethodID methodID = (*env)->GetMethodID(env, clazz, "getPackageCodePath", "()Ljava/lang/String;");
-    jobject result = (*env)->CallObjectMethod(env, activity->clazz, methodID);
-
-    jboolean isCopy;
-    kdSprintfKHR(path, "%s", (*env)->GetStringUTFChars(env, (jstring)result, &isCopy));
-
-    (*activity->vm)->DetachCurrentThread(activity->vm);
-
-    kdLogMessagefKHR("APK path: %s\n", path);
-}
-
-#endif
 
 static void __kdSanitizePath(KDchar *sanitized, const KDchar *pathname)
 {
@@ -177,6 +145,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         case 'w':
         {
 #if defined(__ANDROID__)
+            kdFree(file);
             kdSetError(KD_EINVAL);
             return KD_NULL;
 #elif defined(_WIN32)
@@ -202,6 +171,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         case 'a':
         {
 #if defined(__ANDROID__)
+            kdFree(file);
             kdSetError(KD_EINVAL);
             return KD_NULL;
 #elif defined(_WIN32)
@@ -216,6 +186,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
         }
         default:
         {
+            kdFree(file);
             kdSetError(KD_EINVAL);
             return KD_NULL;
         }
@@ -241,6 +212,7 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
             }
             default:
             {
+                kdFree(file);
                 kdSetError(KD_EINVAL);
                 return KD_NULL;
             }
@@ -248,21 +220,24 @@ KD_API KDFile *KD_APIENTRY kdFopen(const KDchar *pathname, const KDchar *mode)
     }
 
 #if defined(__ANDROID__)
-    mz_zip_archive archive;
-    kdMemset(&archive, 0, sizeof(archive));
-    KDchar apkpath[4096];
-    __kdDetectApkPath(apkpath);
-    mz_zip_reader_init_file(&archive, apkpath, 0);
-    KDsize size = 0;
-    void* zipfile = mz_zip_reader_extract_file_to_heap(&archive, file->pathname, &size, 0);
-    if(zipfile)
-    {
-        file->nativefile = kdMalloc(size);
-        kdMemcpy(file->nativefile, zipfile, size);
-    }
-    mz_zip_reader_end(&archive);
 
+    KDStat st;
+    if(kdStat(file->pathname, &st) == -1)
+    {
+        kdFree(file);
+        kdSetError(KD_EINVAL);
+        return KD_NULL;
+    }
+
+    file->nativefile = kdMalloc((KDsize)st.st_size);
     if(file->nativefile == KD_NULL)
+    {
+        kdFree(file);
+        kdSetError(KD_ENOMEM);
+        return KD_NULL;
+    }
+
+    if(!mz_zip_reader_extract_file_to_mem(__kd_apk->archive, file->pathname, file->nativefile, (KDsize)st.st_size, 0))
     {
         kdFree(file);
         kdSetError(KD_EINVAL);
@@ -749,19 +724,52 @@ KD_API KDint KD_APIENTRY kdTruncate(KD_UNUSED const KDchar *pathname, KD_UNUSED 
     return 0;
 }
 
+/* Android shenanigans */
+#if !defined(_WIN32)
+KDint __kdPosixStat(const KDchar *pathname, struct KDStat *buf)
+{
+    struct stat posixstat;
+    kdMemset(&posixstat, 0, sizeof(posixstat));
+    if(stat(pathname, &posixstat) == 0)
+    {
+        if(posixstat.st_mode & S_IFDIR)
+        {
+            buf->st_mode = 0x4000;
+        }
+        else if(posixstat.st_mode & S_IFREG)
+        {
+            buf->st_mode = 0x8000;
+        }
+        else
+        {
+            kdSetError(KD_EACCES);
+            return -1;
+        }
+        buf->st_size = posixstat.st_size;
+#if defined(__APPLE__)
+        buf->st_mtime = posixstat.st_mtimespec.tv_sec;
+#else
+        /* We undef the st_mtime macro*/
+        buf->st_mtime = posixstat.st_mtim.tv_sec;
+#endif
+    }
+    return 0;
+}
+#endif
+
 /* kdStat, kdFstat: Return information about a file. */
 KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
 {
 #if defined(__ANDROID__)
-    mz_zip_archive archive;
-    kdMemset(&archive, 0, sizeof(archive));
-    KDchar apkpath[4096];
-    __kdDetectApkPath(apkpath);
-    mz_zip_reader_init_file(&archive, apkpath, 0);
     KDchar sanitized[4096];
     __kdSanitizePath(sanitized, pathname);
-    mz_zip_reader_extract_file_to_heap(&archive, sanitized, (KDsize*)&buf->st_size, 0);
-    mz_zip_reader_end(&archive);
+
+    KDuint32 fileindex;
+    mz_zip_reader_locate_file_v2(__kd_apk->archive, sanitized, KD_NULL, 0, &fileindex);
+
+    mz_zip_archive_file_stat st;
+    mz_zip_reader_file_stat(__kd_apk->archive, fileindex, &st);
+    buf->st_size = (KDoff)st.m_uncomp_size;
 #else
 #if defined(_WIN32)
     WIN32_FIND_DATA data;
@@ -796,32 +804,7 @@ KD_API KDint KD_APIENTRY kdStat(const KDchar *pathname, struct KDStat *buf)
     {
         KDint error = GetLastError();
 #else
-    struct stat posixstat;
-    kdMemset(&posixstat, 0, sizeof(posixstat));
-    if(stat(pathname, &posixstat) == 0)
-    {
-        if(posixstat.st_mode & S_IFDIR)
-        {
-            buf->st_mode = 0x4000;
-        }
-        else if(posixstat.st_mode & S_IFREG)
-        {
-            buf->st_mode = 0x8000;
-        }
-        else
-        {
-            kdSetError(KD_EACCES);
-            return -1;
-        }
-        buf->st_size = posixstat.st_size;
-#if defined(__APPLE__)
-        buf->st_mtime = posixstat.st_mtimespec.tv_sec;
-#else
-        /* We undef the st_mtime macro*/
-        buf->st_mtime = posixstat.st_mtim.tv_sec;
-#endif
-    }
-    else
+    if(__kdPosixStat(pathname, buf) != 0)
     {
         KDint error = errno;
 #endif

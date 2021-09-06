@@ -61,6 +61,29 @@ struct _KDImageATX
     KDboolean alpha;
 };
 
+#if defined(__ANDROID__)
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
+#include "miniz.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
+typedef struct __KDApk __KDApk;
+struct __KDApk
+{
+    KDint handle;
+    char padding[4];
+    void *data;
+    mz_zip_archive *archive;
+    KDsize size;
+};
+
+extern __KDApk *__kd_apk;
+#endif
+
 void __kdMallocInit(void);
 void __kdMallocFinal(void);
 void __kdMallocThreadInit(void);
@@ -83,3 +106,7 @@ KDint _fltused;
 #endif
 
 KDint __kdDecompressPVRTC(const KDuint8 *pCompressedData, KDint Do2bitMode, KDint XDim, KDint YDim, KDuint8 *pResultImage);
+
+#if !defined(_WIN32)
+KDint __kdPosixStat(const KDchar *pathname, struct KDStat *buf);
+#endif

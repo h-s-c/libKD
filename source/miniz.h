@@ -119,30 +119,30 @@
    If all macros here are defined the only functionality remaining will be CRC-32, adler-32, tinfl, and tdefl. */
 
 /* Define MINIZ_NO_STDIO to disable all usage and any functions which rely on stdio for file I/O. */
-/*#define MINIZ_NO_STDIO */
+#define MINIZ_NO_STDIO
 
 /* If MINIZ_NO_TIME is specified then the ZIP archive functions will not be able to get the current time, or */
 /* get/set file times, and the C run-time funcs that get/set times won't be called. */
 /* The current downside is the times written to your archives will be from 1979. */
-/*#define MINIZ_NO_TIME */
+#define MINIZ_NO_TIME
 
 /* Define MINIZ_NO_ARCHIVE_APIS to disable all ZIP archive API's. */
 /*#define MINIZ_NO_ARCHIVE_APIS */
 
 /* Define MINIZ_NO_ARCHIVE_WRITING_APIS to disable all writing related ZIP archive API's. */
-/*#define MINIZ_NO_ARCHIVE_WRITING_APIS */
+#define MINIZ_NO_ARCHIVE_WRITING_APIS
 
 /* Define MINIZ_NO_ZLIB_APIS to remove all ZLIB-style compression/decompression API's. */
-/*#define MINIZ_NO_ZLIB_APIS */
+#define MINIZ_NO_ZLIB_APIS
 
 /* Define MINIZ_NO_ZLIB_COMPATIBLE_NAME to disable zlib names, to prevent conflicts against stock zlib. */
-/*#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES */
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 
 /* Define MINIZ_NO_MALLOC to disable all calls to malloc, free, and realloc. 
    Note if MINIZ_NO_MALLOC is defined then the user must always provide custom user alloc/free/realloc
    callbacks to the zlib and archive API's, and a few stand-alone helper API's which don't provide custom user
    functions (such as tdefl_compress_mem_to_heap() and tinfl_decompress_mem_to_heap()) won't work. */
-/*#define MINIZ_NO_MALLOC */
+//#define MINIZ_NO_MALLOC
 
 #if defined(__TINYC__) && (defined(__linux) || defined(__linux__))
 /* TODO: Work around "error: include file 'sys\utime.h' when compiling with tcc on Linux */
@@ -526,21 +526,17 @@ typedef struct mz_dummy_time_t_tag
 #define MZ_TIME_T time_t
 #endif
 
-#define MZ_ASSERT(x) assert(x)
+#include <KD/kd.h>
 
-#ifdef MINIZ_NO_MALLOC
-#define MZ_MALLOC(x) NULL
-#define MZ_FREE(x) (void)x, ((void)0)
-#define MZ_REALLOC(p, x) NULL
-#else
-#define MZ_MALLOC(x) malloc(x)
-#define MZ_FREE(x) free(x)
-#define MZ_REALLOC(p, x) realloc(p, x)
-#endif
+#define MZ_ASSERT(x) kdAssert(x)
+
+#define MZ_MALLOC(x) kdMalloc(x)
+#define MZ_FREE(x) kdFree(x)
+#define MZ_REALLOC(p, x) kdRealloc(p, x)
 
 #define MZ_MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MZ_MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MZ_CLEAR_OBJ(obj) memset(&(obj), 0, sizeof(obj))
+#define MZ_CLEAR_OBJ(obj) kdMemset(&(obj), 0, sizeof(obj))
 
 #if MINIZ_USE_UNALIGNED_LOADS_AND_STORES && MINIZ_LITTLE_ENDIAN
 #define MZ_READ_LE16(p) *((const mz_uint16 *)(p))

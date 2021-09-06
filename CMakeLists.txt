@@ -198,6 +198,9 @@ project (KD C)
         target_link_libraries(KD PRIVATE EGL)
 
         add_library(miniz STATIC ${CMAKE_SOURCE_DIR}/source/miniz.c)
+        target_include_directories(miniz PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+        target_include_directories(miniz PUBLIC ${CMAKE_BINARY_DIR}/include ${CMAKE_BINARY_DIR}/include/KD)
+
         target_link_libraries(KD PRIVATE miniz)
     endif()
 

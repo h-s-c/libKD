@@ -78,11 +78,23 @@
 #include <sys/mman.h>  // for mmap, munmap, MAP_SHARED
 #endif
 #if defined(__ANDROID__)
+#include <fcntl.h>                    // for open
+#include <unistd.h>                   // for close
+#include <sys/mman.h>                 // for mmap, munmap, MAP_FAILED, MAP_PRIVATE
+#include <jni.h>
 #include <android/input.h>            // for AInputEvent_getType, AInputQueue
 #include <android/keycodes.h>         // for ::AKEYCODE_ALT_LEFT, ::AKEYCODE...
 #include <android/native_activity.h>  // for ANativeActivity, ANativeActivit...
 #include <android/native_window.h>    // for ANativeWindow, ANativeWindow_se...
 #include <android/window.h>           // for ::AWINDOW_FLAG_KEEP_SCREEN_ON
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
+#include "miniz.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 #endif
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
@@ -2175,62 +2187,138 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 static KDThread *__kd_androidmainthread = KD_NULL;
 static KDThreadMutex *__kd_androidmainthread_mutex = KD_NULL;
 static KDThreadMutex *__kd_androidactivity_mutex = KD_NULL;
-extern ANativeActivity *__kd_androidactivity;
-ANativeActivity *__kd_androidactivity = KD_NULL;
-static void __kd_AndroidOnDestroy(KD_UNUSED ANativeActivity *activity)
+static ANativeActivity *__kd_androidactivity = KD_NULL;
+__KDApk *__kd_apk = KD_NULL;
+
+static void __kdDetectApkPath(KDchar * path)
+{
+    ANativeActivity* activity = __kd_androidactivity;
+    JNIEnv* env=0;
+
+    (*activity->vm)->AttachCurrentThread(activity->vm, &env, 0);
+
+    jclass clazz = (*env)->GetObjectClass(env, activity->clazz);
+    jmethodID methodID = (*env)->GetMethodID(env, clazz, "getPackageCodePath", "()Ljava/lang/String;");
+    jobject result = (*env)->CallObjectMethod(env, activity->clazz, methodID);
+
+    jboolean isCopy;
+    kdSprintfKHR(path, "%s", (*env)->GetStringUTFChars(env, (jstring)result, &isCopy));
+
+    (*activity->vm)->DetachCurrentThread(activity->vm);
+
+    kdLogMessagefKHR("APK path: %s\n", path);
+}
+
+static KDboolean __kdAndroidOpenApk(void)
+{
+    __kd_apk = (__KDApk *)kdMalloc(sizeof(__KDApk));
+    if(__kd_apk == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_FALSE;
+    }
+
+    KDchar apkpath[4096];
+    __kdDetectApkPath(apkpath);
+
+    KDStat st;
+    if(__kdPosixStat(apkpath, &st) == -1)
+    {
+        kdSetError(KD_EIO);
+        return KD_FALSE;
+    }
+    __kd_apk->size = (KDsize)st.st_size;
+
+    __kd_apk->handle = open(apkpath, O_RDONLY | O_CLOEXEC, 0);
+    if(__kd_apk->handle == -1)
+    {
+        kdSetError(KD_EIO);
+        return KD_FALSE;
+    }
+
+    __kd_apk->data = mmap(KD_NULL, __kd_apk->size, PROT_READ, MAP_PRIVATE, __kd_apk->handle, 0);
+    if(__kd_apk->data == MAP_FAILED)
+    {
+        close(__kd_apk->handle);
+        kdSetError(KD_EIO);
+        return KD_FALSE;
+    }
+
+    __kd_apk->archive = (mz_zip_archive *)kdMalloc(sizeof(mz_zip_archive));
+    if(__kd_apk->archive == KD_NULL)
+    {
+        kdSetError(KD_ENOMEM);
+        return KD_FALSE;
+    }
+    mz_zip_zero_struct(__kd_apk->archive);
+
+    mz_zip_reader_init_mem(__kd_apk->archive, __kd_apk->data, __kd_apk->size, 0);
+    return KD_TRUE;
+}
+
+static void __kdAndroidCloseApk(void)
+{
+    mz_zip_reader_end(__kd_apk->archive);
+    kdFree(__kd_apk->archive);
+    munmap(__kd_apk->data, __kd_apk->size);
+    close(__kd_apk->handle);
+    kdFree(__kd_apk);
+}
+
+static void __kdAndroidOnDestroy(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_CLOSE;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnStart(KD_UNUSED ANativeActivity *activity)
+static void __kdAndroidOnStart(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnResume(KD_UNUSED ANativeActivity *activity)
+static void __kdAndroidOnResume(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_RESUME;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void *__kd_AndroidOnSaveInstanceState(KD_UNUSED ANativeActivity *activity, KD_UNUSED KDsize *len)
+static void *__kdAndroidOnSaveInstanceState(KD_UNUSED ANativeActivity *activity, KD_UNUSED KDsize *len)
 {
     /* TODO: Save state */
     return KD_NULL;
 }
 
-static void __kd_AndroidOnPause(KD_UNUSED ANativeActivity *activity)
+static void __kdAndroidOnPause(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnStop(KD_UNUSED ANativeActivity *activity)
+static void __kdAndroidOnStop(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_PAUSE;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnConfigurationChanged(KD_UNUSED ANativeActivity *activity)
+static void __kdAndroidOnConfigurationChanged(KD_UNUSED ANativeActivity *activity)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_ORIENTATION;
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnLowMemory(KD_UNUSED ANativeActivity *activity)
+static void __kdAndroidOnLowMemory(KD_UNUSED ANativeActivity *activity)
 {
     /* TODO: Avoid getting killed by Android */
 }
 
-static void __kd_AndroidOnWindowFocusChanged(KD_UNUSED ANativeActivity *activity, KDint focused)
+static void __kdAndroidOnWindowFocusChanged(KD_UNUSED ANativeActivity *activity, KDint focused)
 {
     KDEvent *event = kdCreateEvent();
     event->type = KD_EVENT_WINDOW_FOCUS;
@@ -2240,14 +2328,14 @@ static void __kd_AndroidOnWindowFocusChanged(KD_UNUSED ANativeActivity *activity
 
 static ANativeWindow *__kd_androidwindow = KD_NULL;
 static KDThreadMutex *__kd_androidwindow_mutex = KD_NULL;
-static void __kd_AndroidOnNativeWindowCreated(KD_UNUSED ANativeActivity *activity, ANativeWindow *window)
+static void __kdAndroidOnNativeWindowCreated(KD_UNUSED ANativeActivity *activity, ANativeWindow *window)
 {
     kdThreadMutexLock(__kd_androidwindow_mutex);
     __kd_androidwindow = window;
     kdThreadMutexUnlock(__kd_androidwindow_mutex);
 }
 
-static void __kd_AndroidOnNativeWindowDestroyed(KD_UNUSED ANativeActivity *activity, KD_UNUSED ANativeWindow *window)
+static void __kdAndroidOnNativeWindowDestroyed(KD_UNUSED ANativeActivity *activity, KD_UNUSED ANativeWindow *window)
 {
     kdThreadMutexLock(__kd_androidwindow_mutex);
     __kd_androidwindow = KD_NULL;
@@ -2257,14 +2345,14 @@ static void __kd_AndroidOnNativeWindowDestroyed(KD_UNUSED ANativeActivity *activ
     kdPostThreadEvent(event, __kd_androidmainthread);
 }
 
-static void __kd_AndroidOnInputQueueCreated(KD_UNUSED ANativeActivity *activity, AInputQueue *queue)
+static void __kdAndroidOnInputQueueCreated(KD_UNUSED ANativeActivity *activity, AInputQueue *queue)
 {
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     __kd_androidinputqueue = queue;
     kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 }
 
-static void __kd_AndroidOnInputQueueDestroyed(KD_UNUSED ANativeActivity *activity, KD_UNUSED AInputQueue *queue)
+static void __kdAndroidOnInputQueueDestroyed(KD_UNUSED ANativeActivity *activity, KD_UNUSED AInputQueue *queue)
 {
     kdThreadMutexLock(__kd_androidinputqueue_mutex);
     __kd_androidinputqueue = KD_NULL;
@@ -2344,6 +2432,14 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     SetConsoleCtrlHandler(__kdSigHandlerWin, TRUE);
 #endif
 
+#if defined(__ANDROID__)
+    if(__kdAndroidOpenApk() == KD_FALSE)
+    {
+        kdLogMessage("Could not open APK.");
+        kdExit(-1);
+    }
+#endif
+
     KDint result = 0;
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__) || (defined(__MINGW32__) && !defined(__MINGW64__))
     result = kdMain(argc, (const KDchar *const *)argv);
@@ -2380,6 +2476,10 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 #endif
 #endif
 
+#if defined(__ANDROID__)
+    __kdAndroidCloseApk();
+#endif
+
     __kdCleanupThreadStorageKHR();
 #if !defined(__ANDROID__)
     __kdThreadFree(thread);
@@ -2408,19 +2508,19 @@ void ANativeActivity_onCreate(ANativeActivity *activity, KD_UNUSED void *savedSt
     __kd_androidinputqueue_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_androidactivity_mutex = kdThreadMutexCreate(KD_NULL);
 
-    activity->callbacks->onDestroy = __kd_AndroidOnDestroy;
-    activity->callbacks->onStart = __kd_AndroidOnStart;
-    activity->callbacks->onResume = __kd_AndroidOnResume;
-    activity->callbacks->onSaveInstanceState = __kd_AndroidOnSaveInstanceState;
-    activity->callbacks->onPause = __kd_AndroidOnPause;
-    activity->callbacks->onStop = __kd_AndroidOnStop;
-    activity->callbacks->onConfigurationChanged = __kd_AndroidOnConfigurationChanged;
-    activity->callbacks->onLowMemory = __kd_AndroidOnLowMemory;
-    activity->callbacks->onWindowFocusChanged = __kd_AndroidOnWindowFocusChanged;
-    activity->callbacks->onNativeWindowCreated = __kd_AndroidOnNativeWindowCreated;
-    activity->callbacks->onNativeWindowDestroyed = __kd_AndroidOnNativeWindowDestroyed;
-    activity->callbacks->onInputQueueCreated = __kd_AndroidOnInputQueueCreated;
-    activity->callbacks->onInputQueueDestroyed = __kd_AndroidOnInputQueueDestroyed;
+    activity->callbacks->onDestroy = __kdAndroidOnDestroy;
+    activity->callbacks->onStart = __kdAndroidOnStart;
+    activity->callbacks->onResume = __kdAndroidOnResume;
+    activity->callbacks->onSaveInstanceState = __kdAndroidOnSaveInstanceState;
+    activity->callbacks->onPause = __kdAndroidOnPause;
+    activity->callbacks->onStop = __kdAndroidOnStop;
+    activity->callbacks->onConfigurationChanged = __kdAndroidOnConfigurationChanged;
+    activity->callbacks->onLowMemory = __kdAndroidOnLowMemory;
+    activity->callbacks->onWindowFocusChanged = __kdAndroidOnWindowFocusChanged;
+    activity->callbacks->onNativeWindowCreated = __kdAndroidOnNativeWindowCreated;
+    activity->callbacks->onNativeWindowDestroyed = __kdAndroidOnNativeWindowDestroyed;
+    activity->callbacks->onInputQueueCreated = __kdAndroidOnInputQueueCreated;
+    activity->callbacks->onInputQueueDestroyed = __kdAndroidOnInputQueueDestroyed;
 
     kdThreadMutexLock(__kd_androidactivity_mutex);
     __kd_androidactivity = activity;

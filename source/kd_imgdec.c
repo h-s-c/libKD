@@ -160,12 +160,12 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     image->size = (KDsize)st.st_size;
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    KDint fd = open(pathname, O_RDONLY | O_CLOEXEC, 0);
-    if(fd == -1)
+    KDint filehandle = open(pathname, O_RDONLY | O_CLOEXEC, 0);
+    if(filehandle == -1)
 #elif(_WIN32)
     WIN32_FIND_DATA data;
-    HANDLE fd = FindFirstFileA(pathname, &data);
-    if(fd == INVALID_HANDLE_VALUE)
+    HANDLE filehandle = FindFirstFileA(pathname, &data);
+    if(filehandle == INVALID_HANDLE_VALUE)
 #endif
     {
         kdFree(image);
@@ -175,10 +175,10 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 
     void *filedata = KD_NULL;
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, fd, 0);
+    filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, filehandle, 0);
     if(filedata == MAP_FAILED)
 #elif defined(_WIN32)
-    HANDLE fm = CreateFileMapping(fd, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
+    HANDLE fm = CreateFileMapping(filehandle, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
     if(fm)
     {
         filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, image->size);
@@ -187,9 +187,9 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 #endif
     {
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-        close(fd);
+        close(filehandle);
 #elif defined(_WIN32)
-        CloseHandle(fd);
+        CloseHandle(filehandle);
 #endif
         kdFree(image);
         kdSetError(KD_EIO);
@@ -233,10 +233,10 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     munmap(filedata, image->size);
-    close(fd);
+    close(filehandle);
 #elif defined(_WIN32)
     UnmapViewOfFile(filedata);
-    CloseHandle(fd);
+    CloseHandle(filehandle);
 #endif
 
     if(error == 0)
