@@ -421,12 +421,12 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
-        x += (KDuint)((KDfloat32)ax * scale);
+        x += kdRoundf(ax * scale);
 
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += (KDuint)((KDfloat32)kern * scale);
+        x += kdRoundf(kern * scale);
     }
 
     *result_w = (KDint)x;
@@ -452,44 +452,45 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
 
     stbtt_InitFont(&info, font, 0);
 
-    /* calculate font scaling */
+    /* Calculate font scaling */
     KDfloat32 scale = stbtt_ScaleForPixelHeight(&info, (KDfloat32)size);
 
     KDuint x = 0;
 
     KDint ascent = 0;
     KDint descent = 0;
-    KDint lineGap = 0;
-    stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
+    stbtt_GetFontVMetrics(&info, &ascent, &descent, 0);
 
-    ascent *= (KDint)scale;
-    descent *= (KDint)scale;
+    ascent = kdRoundf(ascent * scale);
+    descent = kdRoundf(descent * scale);
 
     for(KDsize i = 0; i < kdStrlen(utf8string); ++i)
     {
-        /* get bounding box for character (may be offset to account for chars that dip above or below the line */
+        /* Get bounding box for character (may be offset to account for chars that dip above or below the line */
         KDint c_x1 = 0;
         KDint c_y1 = 0;
         KDint c_x2 = 0;
         KDint c_y2 = 0;
         stbtt_GetCodepointBitmapBox(&info, utf8string[i], scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
 
-        /* compute y (different characters have different heights */
+        /* Compute y (different characters have different heights */
         KDint y = ascent + c_y1;
 
-        /* render character (stride and offset is important here) */
-        KDint byteOffset = (KDint)x + (y * w);
-        stbtt_MakeCodepointBitmap(&info, (KDuint8 *)buffer + byteOffset, c_x2 - c_x1, c_y2 - c_y1, w, scale, scale, utf8string[i]);
+        /* Render character (stride and offset is important here) */
+        KDint offset = (KDint)x + (y * w);
+        stbtt_MakeCodepointBitmap(&info, (KDuint8 *)buffer + offset, c_x2 - c_x1, c_y2 - c_y1, w, scale, scale, utf8string[i]);
 
-        /* how wide is this character */
+        /* How wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
-        x += (KDuint)((KDfloat32)ax * scale);
 
-        /* add kerning */
+        /* Advance */
+        x += kdRoundf(ax * scale);
+
+        /* Add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += (KDuint)((KDfloat32)kern * scale);
+        x += kdRoundf(kern * scale);
     }
 
     kdFree(font);

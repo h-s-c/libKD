@@ -44,19 +44,14 @@ static void stbi_stdio_write(void *context, void *data, int size)
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
-#if 1
-    /* Skip test */
-    return 0;
-#endif
-
     KDint size = 32;
-    const KDchar* utf8string = "This is a test. This is only a test.";
+    const KDchar* utf8string = "This is a test. This is only a test. This is a test. This is only a test.";
 
     KDint w = 0;
     KDint h = 0;
     kdSystemFontGetTextSizeACR(size, 0,  KD_SYSTEM_FONT_TYPE_SANSSERIF_ACR, KD_SYSTEM_FONT_FLAG_BOLD_ACR | KD_SYSTEM_FONT_FLAG_ITALIC_ACR, utf8string, 0, &w, &h);
     
-    void *buffer = kdMalloc(w * h);
+    void *buffer = kdMalloc(w * h * sizeof(KDuint8));
     KDint result = kdSystemFontRenderTextACR(size, 0, KD_SYSTEM_FONT_TYPE_SANSSERIF_ACR, KD_SYSTEM_FONT_FLAG_BOLD_ACR | KD_SYSTEM_FONT_FLAG_ITALIC_ACR, utf8string, w, h, 0, buffer);
     if(result == -1)
     {
@@ -69,11 +64,9 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
         TEST_FAIL();
     }
 
-#if 0
     KDFile *file = kdFopen("test_sysfont.png", "wb");
     stbi_write_png_to_func(stbi_stdio_write, file, w, h, 1, buffer, 0);
     kdFclose(file);
-#endif
 
     kdFree(buffer);
     return 0;
