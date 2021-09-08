@@ -78,9 +78,9 @@
 #include <sys/mman.h>  // for mmap, munmap, MAP_SHARED
 #endif
 #if defined(__ANDROID__)
-#include <fcntl.h>                    // for open
-#include <unistd.h>                   // for close
-#include <sys/mman.h>                 // for mmap, munmap, MAP_FAILED, MAP_PRIVATE
+#include <fcntl.h>     // for open
+#include <unistd.h>    // for close
+#include <sys/mman.h>  // for mmap, munmap, MAP_FAILED, MAP_PRIVATE
 #include <jni.h>
 #include <android/input.h>            // for AInputEvent_getType, AInputQueue
 #include <android/keycodes.h>         // for ::AKEYCODE_ALT_LEFT, ::AKEYCODE...
@@ -141,7 +141,7 @@
 #endif
 
 #if defined(__linux__) || defined(__APPLE__)
-#include <signal.h>    // for signal, SIGINT
+#include <signal.h>  // for signal, SIGINT
 #endif
 
 #if defined(_WIN32)
@@ -2190,10 +2190,10 @@ static KDThreadMutex *__kd_androidactivity_mutex = KD_NULL;
 static ANativeActivity *__kd_androidactivity = KD_NULL;
 __KDApk *__kd_apk = KD_NULL;
 
-static void __kdDetectApkPath(KDchar * path)
+static void __kdDetectApkPath(KDchar *path)
 {
-    ANativeActivity* activity = __kd_androidactivity;
-    JNIEnv* env=0;
+    ANativeActivity *activity = __kd_androidactivity;
+    JNIEnv *env = 0;
 
     (*activity->vm)->AttachCurrentThread(activity->vm, &env, 0);
 
@@ -3213,12 +3213,11 @@ static const struct wl_seat_listener __kd_wl_seat_listener = {
 static void
 __kdWaylandXdbWmBasePing(KD_UNUSED void *data, struct xdg_wm_base *xdg_wm_base, uint32_t serial)
 {
-   xdg_wm_base_pong(xdg_wm_base, serial);
+    xdg_wm_base_pong(xdg_wm_base, serial);
 }
 
 static const struct xdg_wm_base_listener __kd_xdg_wm_base_listener = {
-   __kdWaylandXdbWmBasePing
-};
+    __kdWaylandXdbWmBasePing};
 #endif
 
 static void __kdWaylandRegistryAddObject(void *data, struct wl_registry *registry, KDuint32 name, const KDchar *interface, KD_UNUSED KDuint32 version)
@@ -3309,8 +3308,7 @@ static void __kdWaylandXdgSurfaceConfigure(KD_UNUSED void *data, struct xdg_surf
 }
 
 static const struct xdg_surface_listener __kd_xdg_surface_listener = {
-    __kdWaylandXdgSurfaceConfigure
-};
+    __kdWaylandXdgSurfaceConfigure};
 #endif
 #endif
 

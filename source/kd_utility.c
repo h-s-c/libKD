@@ -59,7 +59,7 @@
 #if defined(__unix__) || defined(__APPLE__)
 // IWYU pragma: no_include  <features.h>
 #include <unistd.h>  // IWYU pragma: keep
-#include <fcntl.h>  // IWYU pragma: keep
+#include <fcntl.h>   // IWYU pragma: keep
 #if defined(__APPLE__) || defined(__GLIBC__)
 #if(__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25) || (defined(__MAC_10_12) && __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12 && __apple_build_version__ >= 800038)
 #include <sys/random.h>  // for getrandom, GRND_NONBLOCK
@@ -554,10 +554,10 @@ KD_API KDint KD_APIENTRY kdCryptoRandom(KD_UNUSED KDuint8 *buf, KD_UNUSED KDsize
     if(urandom)
     {
         KDsize randomlen = 0;
-        while (randomlen < buflen)
+        while(randomlen < buflen)
         {
             KDssize result = read(urandom, buf + randomlen, buflen - randomlen);
-            if (result < 0)
+            if(result < 0)
             {
                 retval = -1;
             }
