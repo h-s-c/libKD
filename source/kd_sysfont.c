@@ -421,12 +421,12 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
         /* how wide is this character */
         KDint ax;
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
-        x += kdRoundf(ax * scale);
+        x += (KDuint)(kdRoundf((KDfloat32)ax * scale));
 
         /* add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += kdRoundf(kern * scale);
+        x += (KDuint)(kdRoundf((KDfloat32)kern * scale));
     }
 
     *result_w = (KDint)x;
@@ -461,8 +461,8 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
     KDint descent = 0;
     stbtt_GetFontVMetrics(&info, &ascent, &descent, 0);
 
-    ascent = kdRoundf(ascent * scale);
-    descent = kdRoundf(descent * scale);
+    ascent = (KDint)(kdRoundf((KDfloat32)ascent * scale));
+    descent = (KDint)(kdRoundf((KDfloat32)descent * scale));
 
     for(KDsize i = 0; i < kdStrlen(utf8string); ++i)
     {
@@ -485,12 +485,12 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
         stbtt_GetCodepointHMetrics(&info, utf8string[i], &ax, 0);
 
         /* Advance */
-        x += kdRoundf(ax * scale);
+        x += (KDuint)(kdRoundf((KDfloat32)ax * scale));
 
         /* Add kerning */
         KDint kern;
         kern = stbtt_GetCodepointKernAdvance(&info, utf8string[i], utf8string[i + 1]);
-        x += kdRoundf(kern * scale);
+        x += (KDuint)(kdRoundf((KDfloat32)kern * scale));
     }
 
     kdFree(font);
