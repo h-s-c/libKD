@@ -5,15 +5,8 @@ android {
     ndkVersion '22.1.7171670'
 
     defaultConfig {
-        applicationId = 'com.libkd.example'
         minSdkVersion 21
         targetSdkVersion 29
-        externalNativeBuild {
-            cmake {
-                arguments '-DKD_BUILD_EXAMPLES=TRUE'
-                targets 'example_angeles'
-            }
-        }
     }
     buildTypes {
         release {
@@ -22,6 +15,76 @@ android {
                     'proguard-rules.pro'
         }
     }
+    flavorDimensions "examples"
+    productFlavors {
+        example_angeles {
+            dimension "examples"
+            applicationId = 'com.libkd.example_angeles'
+            manifestPlaceholders = [name:"example_angeles"]
+            externalNativeBuild {
+                cmake {
+                    arguments '-DKD_BUILD_EXAMPLES=TRUE'
+                    targets 'example_angeles'
+                }
+            }
+        }
+        example_eventloop {
+            dimension "examples"
+            applicationId = 'com.libkd.example_eventloop'
+            manifestPlaceholders = [name:"example_eventloop"]
+            externalNativeBuild {
+                cmake {
+                    arguments '-DKD_BUILD_EXAMPLES=TRUE'
+                    targets 'example_eventloop'
+                }
+            }
+        }
+        example_gears {
+            dimension "examples"
+            applicationId = 'com.libkd.example_gears'
+            manifestPlaceholders = [name:"example_gears"]
+            externalNativeBuild {
+                cmake {
+                    arguments '-DKD_BUILD_EXAMPLES=TRUE'
+                    targets 'example_gears'
+                }
+            }
+        }
+        example_glbook_particle {
+            dimension "examples"
+            applicationId = 'com.libkd.example_glbook_particle'
+            manifestPlaceholders = [name:"example_glbook_particle"]
+            externalNativeBuild {
+                cmake {
+                    arguments '-DKD_BUILD_EXAMPLES=TRUE'
+                    targets 'example_glbook_particle'
+                }
+            }
+        }
+        example_glbook_triangle {
+            dimension "examples"
+            applicationId = 'com.libkd.example_glbook_triangle'
+            manifestPlaceholders = [name:"example_glbook_triangle"]
+            externalNativeBuild {
+                cmake {
+                    arguments '-DKD_BUILD_EXAMPLES=TRUE'
+                    targets 'example_glbook_triangle'
+                }
+            }
+        }
+        example_nehe_texture {
+            dimension "examples"
+            applicationId = 'com.libkd.example_nehe_texture'
+            manifestPlaceholders = [name:"example_nehe_texture"]
+            externalNativeBuild {
+                cmake {
+                    arguments '-DKD_BUILD_EXAMPLES=TRUE'
+                    targets 'example_nehe_texture'
+                }
+            }
+        }
+    }
+
     externalNativeBuild {
         cmake {
             version '3.18.1'
@@ -37,5 +100,5 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'androidx.appcompat:appcompat:1.3.1'
 }

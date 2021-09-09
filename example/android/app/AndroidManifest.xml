@@ -9,17 +9,17 @@
   <application
       android:allowBackup="false"
       android:fullBackupContent="false"
-      android:label="libKD example"
+      android:label="libKD ${name}"
       android:hasCode="false">
 
     <!-- Our activity is the built-in NativeActivity framework class.
          This will take care of integrating with our NDK code. -->
     <activity android:name="android.app.NativeActivity"
-              android:label="libKD example"
+              android:label="libKD ${name}"
               android:configChanges="orientation|keyboardHidden|screenSize">
       <!-- Tell NativeActivity the name of our .so -->
       <meta-data android:name="android.app.lib_name"
-                 android:value="example_angeles" />
+                 android:value="${name}" />
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
