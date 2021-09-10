@@ -157,7 +157,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
         kdSetError(KD_EIO);
         return KD_NULL;
     }
-    image->size = (KDsize)st.st_size;
+    image->size = (KDint)st.st_size;
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     KDint filehandle = open(pathname, O_RDONLY | O_CLOEXEC, 0);
@@ -175,13 +175,13 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
 
     void *filedata = KD_NULL;
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    filedata = mmap(KD_NULL, image->size, PROT_READ, MAP_PRIVATE, filehandle, 0);
+    filedata = mmap(KD_NULL, (KDsize)image->size, PROT_READ, MAP_PRIVATE, filehandle, 0);
     if(filedata == MAP_FAILED)
 #elif defined(_WIN32)
     HANDLE fm = CreateFileMapping(filehandle, KD_NULL, PAGE_READONLY, 0, 0, KD_NULL);
     if(fm)
     {
-        filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, image->size);
+        filedata = MapViewOfFile(fm, FILE_MAP_READ, 0, 0, (KDsize)image->size);
     }
     if(filedata == KD_NULL)
 #endif
@@ -197,7 +197,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
 
     KDint channels = 0;
-    KDint error = stbi_info_from_memory(filedata, (KDint)image->size, &image->width, &image->height, &channels);
+    KDint error = stbi_info_from_memory(filedata, image->size, &image->width, &image->height, &channels);
     switch(channels)
     {
         case(4):
@@ -232,7 +232,7 @@ KD_API KDImageATX KD_APIENTRY kdGetImageInfoATX(const KDchar *pathname)
     }
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
-    munmap(filedata, image->size);
+    munmap(filedata, (KDsize)image->size);
     close(filehandle);
 #elif defined(_WIN32)
     UnmapViewOfFile(filedata);
@@ -400,14 +400,14 @@ KD_API KDImageATX KD_APIENTRY kdGetImageFromStreamATX(KDFile *file, KDint format
         image->height = (KDint)header.dwHeight;
         image->width = (KDint)header.dwWidth;
         image->levels = (KDint)header.dwMipMapCount;
-        image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)channels;
-        image->buffer = kdMalloc(image->size);
+        image->size = image->width * image->height * channels;
+        image->buffer = kdMalloc((KDsize)image->size);
 
         switch(header.dwpfFlags & 0xff)
         {
             case OGL_RGBA_8888:
             {
-                kdMemcpy(image->buffer, (const KDuint8 *)filedata + sizeof(header), image->size);
+                kdMemcpy(image->buffer, (const KDuint8 *)filedata + sizeof(header), (KDsize)image->size);
                 break;
             }
             case OGL_PVRTC2:
@@ -504,9 +504,7 @@ KD_API KDint KD_APIENTRY kdGetImageIntATX(KDImageATX image, KDint attr)
         }
         case(KD_IMAGE_DATASIZE_ATX):
         {
-            /* Specbug: Int is too small... */
-            kdAssert(0);
-            return (KDint)_image->size;
+            return _image->size;
         }
         case(KD_IMAGE_BUFFEROFFSET_ATX):
         {

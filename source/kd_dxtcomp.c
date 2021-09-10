@@ -148,69 +148,10 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressImageATX(KDImageATX image, KDint32 co
         kdSetError(KD_EINVAL);
         return KD_NULL;
     }
-
-    /* Determine max mipmap levels */
-    KDint width = _image->width;
-    KDint height = _image->height;
-    while((width > 1) && (height > 1))
-    {
-        width >>= 1;
-        height >>= 1;
-        _image->levels++;
-    }
-
     return kdDXTCompressBufferATX(_image->buffer, _image->width, _image->height, comptype, _image->levels);
 }
 
-static void __kdExtractBlock(const KDuint8 *src, KDint32 x, KDint32 y, KDint32 w, KDint32 h, KDuint8 *block)
-{
-    if((w - x >= 4) && (h - y >= 4))
-    {
-        /* Full Square shortcut */
-        src += x * 4;
-        src += y * w * 4;
-        for(KDint i = 0; i < 4; ++i)
-        {
-            kdMemcpy(block, src, sizeof(KDuint8));
-            block += 4;
-            src += 4;
-            kdMemcpy(block, src, sizeof(KDuint8));
-            block += 4;
-            src += 4;
-            kdMemcpy(block, src, sizeof(KDuint8));
-            block += 4;
-            src += 4;
-            kdMemcpy(block, src, sizeof(KDuint8));
-            block += 4;
-            src += (w * 4) - 12;
-        }
-        return;
-    }
-
-    KDint32 bw = kdMinVEN(w - x, 4);
-    KDint32 bh = kdMinVEN(h - y, 4);
-
-    const KDint32 rem[] =
-        {
-            0, 0, 0, 0,
-            0, 1, 0, 1,
-            0, 1, 2, 0,
-            0, 1, 2, 3};
-
-    for(KDint i = 0; i < 4; ++i)
-    {
-        KDint32 by = rem[(bh - 1) * 4 + i] + y;
-        for(KDint j = 0; j < 4; ++j)
-        {
-            KDint32 bx = rem[(bw - 1) * 4 + j] + x;
-            block[(i * 4 * 4) + (j * 4) + 0] = src[(by * (w * 4)) + (bx * 4) + 0];
-            block[(i * 4 * 4) + (j * 4) + 1] = src[(by * (w * 4)) + (bx * 4) + 1];
-            block[(i * 4 * 4) + (j * 4) + 2] = src[(by * (w * 4)) + (bx * 4) + 2];
-            block[(i * 4 * 4) + (j * 4) + 3] = src[(by * (w * 4)) + (bx * 4) + 3];
-        }
-    }
-}
-
+/* TODO: Generate Mipmaps */
 KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32 width, KDint32 height, KDint32 comptype, KDint32 levels)
 {
     _KDImageATX *image = (_KDImageATX *)kdMalloc(sizeof(_KDImageATX));
@@ -245,9 +186,9 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
         case(KD_DXTCOMP_TYPE_DXT5_ATX):
         {
-            image->format = KD_IMAGE_FORMAT_DXT5_ATX;
-            image->alpha = KD_TRUE;
-            break;
+            kdFree(image);
+            kdSetError(KD_EINVAL);
+            return KD_NULL;
         }
         default:
         {
@@ -257,18 +198,9 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         }
     }
     image->bpp = image->alpha ? 16 : 8;
-    image->size = (KDsize)image->width * (KDsize)image->height * (KDsize)(image->bpp / 8);
+    image->size = image->width * image->height * image->bpp;
 
-    KDint _width = image->width;
-    KDint _height = image->height;
-    for(KDint i = 0; i < image->levels; i++)
-    {
-        _width >>= 1;
-        _height >>= 1;
-        image->size += (KDsize)_width * (KDsize)_height * (KDsize)(image->bpp / 8);
-    }
-
-    image->buffer = kdMalloc(image->size);
+    image->buffer = kdMalloc((KDsize)image->size);
     if(image->buffer == KD_NULL)
     {
         kdFree(image);
@@ -276,37 +208,36 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         return KD_NULL;
     }
 
-    _width = image->width;
-    _height = image->height;
-    KDint channels = (image->alpha ? 4 : 3);
-    for(KDint i = 0; i <= image->levels; i++)
+    KDint position = 0;
+    const KDuint8 *input = buffer;
+    for(KDint y = 0; y < height; y += 4) 
     {
-        KDsize size = (KDsize)_width * (KDsize)_height * (KDsize)channels;
-        if(size)
+        for(KDint x = 0; x < width; x += 4) 
         {
-            void *tmp = kdMalloc(size);
-            if((_width == image->width) && (_height == image->height))
+            KDuint8 block[64];
+            KDuint8 alpha[16];
+            for(KDint by = 0; by < 4; ++by) 
             {
-                kdMemcpy(tmp, buffer, size);
-            }
-            else
-            {
-                stbir_resize_uint8(buffer, image->width, image->height, 0, tmp, _width, _height, 0, channels);
-            }
-            for(KDint y = 0; y < _height; y += 4)
-            {
-                for(KDint x = 0; x < _width; x += 4)
+                for(KDint bx = 0; bx < 4; ++bx) 
                 {
-                    KDuint8 block[64];
-                    __kdExtractBlock(tmp, x, y, _width, _height, block);
-                    stb_compress_dxt_block(image->buffer, block, image->alpha, STB_DXT_NORMAL);
-                    image->buffer += image->bpp;
+                    KDint ai = (by * 4) + bx;
+                    KDint bi = ai * 4;
+                    KDint xx = kdMinVEN(x + bx, width - 1);
+                    KDint yy = kdMinVEN(y + by, height - 1);
+                    KDint i = ((yy * width) + xx) * 4;
+                    block[bi + 0] = input[i + 0];
+                    block[bi + 1] = input[i + 1];
+                    block[bi + 2] = input[i + 2];
+                    block[bi + 3] = 0xFF;
+                    alpha[ai] = input[i + 3];
                 }
             }
-            kdFree(tmp);
+
+            KDuint8 chunk[8];
+            stb_compress_dxt_block(chunk, block, image->alpha, STB_DXT_HIGHQUAL);
+            kdMemcpy(image->buffer + position, chunk, 8);
+            position += 8;
         }
-        _width >>= 1;
-        _height >>= 1;
     }
 
     return image;

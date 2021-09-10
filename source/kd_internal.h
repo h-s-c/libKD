@@ -51,14 +51,15 @@ struct KDThread
 typedef struct _KDImageATX _KDImageATX;
 struct _KDImageATX
 {
-    KDuint8 *buffer;
-    KDsize size;
+    KDint size;
     KDint width;
     KDint height;
     KDint levels;
     KDint bpp;
     KDint format;
+    KDuint8 *buffer;
     KDboolean alpha;
+    KDchar padding[4]; 
 };
 
 #if defined(__ANDROID__)
