@@ -215,7 +215,6 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
         for(KDint x = 0; x < width; x += 4) 
         {
             KDuint8 block[64];
-            KDuint8 alpha[16];
             for(KDint by = 0; by < 4; ++by) 
             {
                 for(KDint bx = 0; bx < 4; ++bx) 
@@ -229,7 +228,6 @@ KD_API KDImageATX KD_APIENTRY kdDXTCompressBufferATX(const void *buffer, KDint32
                     block[bi + 1] = input[i + 1];
                     block[bi + 2] = input[i + 2];
                     block[bi + 3] = 0xFF;
-                    alpha[ai] = input[i + 3];
                 }
             }
 
