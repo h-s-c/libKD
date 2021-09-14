@@ -1683,6 +1683,9 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
 }
 #endif
 
+#if defined(__ANDROID__)
+static ANativeActivity *__kd_androidactivity = KD_NULL;
+#endif
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
@@ -1702,55 +1705,58 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
 #ifdef KD_WINDOW_SUPPORTED
     KD_UNUSED KDWindow *window = __kd_window;
 #if defined(KD_WINDOW_ANDROID)
-    AInputEvent *aevent = KD_NULL;
-    kdThreadMutexLock(__kd_androidinputqueue_mutex);
-    if(__kd_androidinputqueue)
+    if(__kd_androidactivity != KD_NULL)
     {
-        while(AInputQueue_getEvent(__kd_androidinputqueue, &aevent) >= 0)
+        AInputEvent *aevent = KD_NULL;
+        kdThreadMutexLock(__kd_androidinputqueue_mutex);
+        if(__kd_androidinputqueue)
         {
-            AInputQueue_preDispatchEvent(__kd_androidinputqueue, aevent);
-            KDEvent *event = kdCreateEvent();
-            switch(AInputEvent_getType(aevent))
+            while(AInputQueue_getEvent(__kd_androidinputqueue, &aevent) >= 0)
             {
-                case(AINPUT_EVENT_TYPE_KEY):
+                AInputQueue_preDispatchEvent(__kd_androidinputqueue, aevent);
+                KDEvent *event = kdCreateEvent();
+                switch(AInputEvent_getType(aevent))
                 {
-                    event->type = KD_EVENT_INPUT_KEY_ATX;
-                    KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
+                    case(AINPUT_EVENT_TYPE_KEY):
+                    {
+                        event->type = KD_EVENT_INPUT_KEY_ATX;
+                        KDEventInputKeyATX *keyevent = (KDEventInputKeyATX *)(&event->data);
 
-                    if(AKeyEvent_getAction(aevent) == AKEY_EVENT_ACTION_DOWN)
-                    {
-                        keyevent->flags = KD_KEY_PRESS_ATX;
-                    }
-                    else
-                    {
-                        keyevent->flags = 0;
-                    }
+                        if(AKeyEvent_getAction(aevent) == AKEY_EVENT_ACTION_DOWN)
+                        {
+                            keyevent->flags = KD_KEY_PRESS_ATX;
+                        }
+                        else
+                        {
+                            keyevent->flags = 0;
+                        }
 
-                    KDint32 keycode = AKeyEvent_getKeyCode(aevent);
-                    keyevent->keycode = __KDKeycodeLookup(keycode);
-                    if(!keyevent->keycode)
-                    {
-                        event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
-                        KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
-                        keycharevent->character = keycode;
-                    }
+                        KDint32 keycode = AKeyEvent_getKeyCode(aevent);
+                        keyevent->keycode = __KDKeycodeLookup(keycode);
+                        if(!keyevent->keycode)
+                        {
+                            event->type = KD_EVENT_INPUT_KEYCHAR_ATX;
+                            KDEventInputKeyCharATX *keycharevent = (KDEventInputKeyCharATX *)(&event->data);
+                            keycharevent->character = keycode;
+                        }
 
-                    if(!__kdExecCallback(event))
-                    {
-                        kdPostEvent(event);
+                        if(!__kdExecCallback(event))
+                        {
+                            kdPostEvent(event);
+                        }
+                        break;
                     }
-                    break;
+                    default:
+                    {
+                        kdFreeEvent(event);
+                        break;
+                    }
                 }
-                default:
-                {
-                    kdFreeEvent(event);
-                    break;
-                }
+                AInputQueue_finishEvent(__kd_androidinputqueue, aevent, 1);
             }
-            AInputQueue_finishEvent(__kd_androidinputqueue, aevent, 1);
         }
+        kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
     }
-    kdThreadMutexUnlock(__kd_androidinputqueue_mutex);
 #elif defined(KD_WINDOW_WIN32)
     if(window)
     {
@@ -2187,12 +2193,16 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 static KDThread *__kd_androidmainthread = KD_NULL;
 static KDThreadMutex *__kd_androidmainthread_mutex = KD_NULL;
 static KDThreadMutex *__kd_androidactivity_mutex = KD_NULL;
-static ANativeActivity *__kd_androidactivity = KD_NULL;
 __KDApk *__kd_apk = KD_NULL;
 
 static void __kdDetectApkPath(KDchar *path)
 {
     ANativeActivity *activity = __kd_androidactivity;
+    if(activity == KD_NULL)
+    {
+        return;
+    }
+
     JNIEnv *env = 0;
 
     (*activity->vm)->AttachCurrentThread(activity->vm, &env, 0);
@@ -2414,12 +2424,18 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 
     KDThread *thread = KD_NULL;
 #if defined(__ANDROID__)
-    kdThreadMutexLock(__kd_androidmainthread_mutex);
-    thread = __kd_androidmainthread;
-    kdThreadMutexUnlock(__kd_androidmainthread_mutex);
-#else
-    thread = __kdThreadInit();
+    if(__kd_androidactivity != KD_NULL)
+    {
+        kdThreadMutexLock(__kd_androidmainthread_mutex);
+        thread = __kd_androidmainthread;
+        kdThreadMutexUnlock(__kd_androidmainthread_mutex);
+    }
+    else
 #endif
+    {
+        thread = __kdThreadInit();
+    }
+
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
 
@@ -2433,10 +2449,10 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 #endif
 
 #if defined(__ANDROID__)
-    if(__kdAndroidOpenApk() == KD_FALSE)
+    KDboolean apk = __kdAndroidOpenApk();
+    if(apk == KD_FALSE)
     {
         kdLogMessage("Could not open APK.");
-        kdExit(-1);
     }
 #endif
 
@@ -2444,10 +2460,13 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__) || (defined(__MINGW32__) && !defined(__MINGW64__))
     result = kdMain(argc, (const KDchar *const *)argv);
 #if defined(__ANDROID__)
-    kdThreadMutexFree(__kd_androidactivity_mutex);
-    kdThreadMutexFree(__kd_androidinputqueue_mutex);
-    kdThreadMutexFree(__kd_androidwindow_mutex);
-    kdThreadMutexFree(__kd_androidmainthread_mutex);
+    if(__kd_androidactivity != KD_NULL)
+    {
+        kdThreadMutexFree(__kd_androidactivity_mutex);
+        kdThreadMutexFree(__kd_androidinputqueue_mutex);
+        kdThreadMutexFree(__kd_androidwindow_mutex);
+        kdThreadMutexFree(__kd_androidmainthread_mutex);
+    }
 #endif
 #else
     typedef KDint(KD_APIENTRY * KDMAIN)(KDint, const KDchar *const *);
@@ -2477,13 +2496,21 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 #endif
 
 #if defined(__ANDROID__)
-    __kdAndroidCloseApk();
+    if(apk == KD_TRUE)
+    {
+        __kdAndroidCloseApk();
+    }
 #endif
 
     __kdCleanupThreadStorageKHR();
-#if !defined(__ANDROID__)
-    __kdThreadFree(thread);
+
+#if defined(__ANDROID__)
+    if(__kd_androidactivity != KD_NULL)
 #endif
+    {
+        __kdThreadFree(thread);
+    }
+
     kdThreadMutexFree(__kd_tls_mutex);
     kdThreadMutexFree(__kd_userptrmtx);
 
