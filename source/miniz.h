@@ -526,7 +526,17 @@ typedef struct mz_dummy_time_t_tag
 #define MZ_TIME_T time_t
 #endif
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#if __has_warning("-Wreserved-id-macro")
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#endif
+#endif
 #include <KD/kd.h>
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 #define MZ_ASSERT(x) kdAssert(x)
 
