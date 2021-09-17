@@ -380,6 +380,7 @@ static KDuint8 *__kdLoadFont(KDint32 type, KDint32 flag)
 
     if(!fontfile)
     {
+        kdLogMessage("Could not find any system fonts.");
         kdSetError(KD_EIO);
         return KD_NULL;
     }
@@ -406,6 +407,11 @@ KD_API KDint KD_APIENTRY kdSystemFontGetTextSizeACR(KDint32 size, KDint32 locale
     }
 
     KDuint8 *font = __kdLoadFont(type, flag);
+    if(font == KD_NULL)
+    {
+        kdSetError(KD_EIO);
+        return -1;
+    }
 
     stbtt_fontinfo info;
     kdMemset(&info, 0, sizeof(info));
@@ -446,6 +452,11 @@ KD_API KDint KD_APIENTRY kdSystemFontRenderTextACR(KDint32 size, KDint32 locale,
     }
 
     KDuint8 *font = __kdLoadFont(type, flag);
+    if(font == KD_NULL)
+    {
+        kdSetError(KD_EIO);
+        return -1;
+    }
 
     stbtt_fontinfo info;
     kdMemset(&info, 0, sizeof(info));

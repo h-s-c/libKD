@@ -49,10 +49,20 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 
     KDint w = 0;
     KDint h = 0;
-    kdSystemFontGetTextSizeACR(size, 0,  KD_SYSTEM_FONT_TYPE_SANSSERIF_ACR, KD_SYSTEM_FONT_FLAG_BOLD_ACR | KD_SYSTEM_FONT_FLAG_ITALIC_ACR, utf8string, 0, &w, &h);
+    KDint result = kdSystemFontGetTextSizeACR(size, 0,  KD_SYSTEM_FONT_TYPE_SANSSERIF_ACR, KD_SYSTEM_FONT_FLAG_BOLD_ACR | KD_SYSTEM_FONT_FLAG_ITALIC_ACR, utf8string, 0, &w, &h);
+    if(result == -1)
+    {
+        KDint errorcode = kdGetError();
+        if(errorcode == KD_EIO)
+        {
+            /* No fonts found */
+            return 0;
+        }
+        TEST_FAIL();
+    }
     
     void *buffer = kdMalloc(w * h * sizeof(KDuint8));
-    KDint result = kdSystemFontRenderTextACR(size, 0, KD_SYSTEM_FONT_TYPE_SANSSERIF_ACR, KD_SYSTEM_FONT_FLAG_BOLD_ACR | KD_SYSTEM_FONT_FLAG_ITALIC_ACR, utf8string, w, h, 0, buffer);
+    result = kdSystemFontRenderTextACR(size, 0, KD_SYSTEM_FONT_TYPE_SANSSERIF_ACR, KD_SYSTEM_FONT_FLAG_BOLD_ACR | KD_SYSTEM_FONT_FLAG_ITALIC_ACR, utf8string, w, h, 0, buffer);
     if(result == -1)
     {
         KDint errorcode = kdGetError();
