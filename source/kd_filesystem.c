@@ -664,10 +664,10 @@ KD_API KDint KD_APIENTRY kdMkdir(KD_UNUSED const KDchar *pathname)
     if(retval == -1)
     {
         KDint error = errno;
+#endif
         kdSetErrorPlatformVEN(error, KD_EACCES | KD_EEXIST | KD_EIO | KD_ENAMETOOLONG | KD_ENOENT | KD_ENOMEM | KD_ENOSPC);
         return -1;
     }
-#endif
     return 0;
 }
 
