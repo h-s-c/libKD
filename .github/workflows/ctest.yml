@@ -89,7 +89,7 @@ jobs:
     - name: run ctest
       uses: reactivecircus/android-emulator-runner@v2
       with:
-        api-level: 29
+        api-level: 30
         arch: arm64-v8a
         script: CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_LATEST_HOME}/build/cmake/android.toolchain.cmake ctest -VV -S ci-tools/run_ctest.cmake
   android-examples:
