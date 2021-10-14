@@ -76,8 +76,7 @@ jobs:
     - name: run ctest
       run: ctest -VV -S ci-tools/run_ctest.cmake
   android:
-    runs-on: macos-latest
-    timeout-minutes: 15
+    runs-on: macos-11
     env:
       CC: clang
     steps:
@@ -91,6 +90,7 @@ jobs:
       with:
         api-level: 30
         arch: arm64-v8a
+        emulator-build: 7425822
         script: CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_LATEST_HOME}/build/cmake/android.toolchain.cmake ctest -VV -S ci-tools/run_ctest.cmake
   android-examples:
     runs-on: ubuntu-latest
