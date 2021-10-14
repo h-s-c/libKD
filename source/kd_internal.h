@@ -59,7 +59,7 @@ struct _KDImageATX
     KDchar padding[4]; 
 };
 
-static void *__kd_androidactivity = KD_NULL;
+static KD_UNUSED void *__kd_androidactivity = KD_NULL;
 
 #if defined(__clang__)
 #pragma clang diagnostic push
