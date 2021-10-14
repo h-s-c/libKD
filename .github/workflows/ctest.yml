@@ -29,7 +29,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        submodules: 'true'
+        submodules: true
     - name: install dependencies
       run: sudo apt-get update && sudo apt-get install -yq ninja-build cppcheck flawfinder binutils-gold libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libx11-dev libwayland-dev libxcb1-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-util0-dev
     - name: run ctest
@@ -43,7 +43,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        submodules: 'true'
+        submodules: true
     - name: install dependencies
       run: sudo apt-get update && sudo apt-get install -yq python3 ninja-build
     - name: install cmake
@@ -57,7 +57,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        submodules: 'true'
+        submodules: true
     - name: install dependencies
       run: brew update && brew install ninja cppcheck flawfinder
     - name: run ctest
@@ -69,7 +69,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        submodules: 'true'
+        submodules: true
     - uses: ilammy/msvc-dev-cmd@v1
     - name: install dependencies
       run: cinst ninja curl opencppcoverage cppcheck && refreshenv
@@ -83,10 +83,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        submodules: 'true'
+        submodules: true
     - name: install dependencies
       run: brew update && brew install ninja cppcheck flawfinder
     - name: run ctest
+      continue-on-error: true
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 29
@@ -97,7 +98,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        submodules: 'true'
+        submodules: true
     - uses: gradle/wrapper-validation-action@v1
     - name: build android examples
       run: cd example/android && ./gradlew build
