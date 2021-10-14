@@ -87,11 +87,11 @@ jobs:
     - name: install dependencies
       run: brew update && brew install ninja cppcheck flawfinder
     - name: run ctest
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          cmake: 3.18.1
-          script: ctest -VV -S ci-tools/run_ctest.cmake
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        cmake: 3.18.1
+        script: ctest -VV -S ci-tools/run_ctest.cmake
   android-examples:
     runs-on: ubuntu-latest
     steps:
