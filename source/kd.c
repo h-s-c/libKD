@@ -1777,6 +1777,19 @@ KD_API KDint KD_APIENTRY kdPumpEvents(void)
                     }
                     break;
                 }
+                case WM_SYSCOMMAND:
+                {
+                    if(msg.wParam == SC_CLOSE)
+                    {
+                        ShowWindow(window->nativewindow, SW_HIDE);
+                        kdevent->type = KD_EVENT_WINDOW_CLOSE;
+                        if(!__kdExecCallback(kdevent))
+                        {
+                            kdPostEvent(kdevent);
+                        }
+                    }
+                    break;
+                }
                 case WM_INPUT:
                 {
                     KDchar buffer[sizeof(RAWINPUT)] = {0};
@@ -2407,6 +2420,10 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     __kdMallocInit();
 
 #if defined(_WIN32)
+#ifdef KD_NDEBUG
+    ShowWindow(GetConsoleWindow(), SW_HIDE);
+#endif
+
     WSADATA wsadata;
     kdMemset(&wsadata, 0, sizeof(WSADATA));
     if(WSAStartup(0x202, &wsadata) != 0)
@@ -2832,6 +2849,14 @@ static LRESULT CALLBACK __kdWindowsWindowCallback(HWND hwnd, UINT msg, WPARAM wp
         case WM_QUIT:
         {
             PostQuitMessage(0);
+            break;
+        }
+        case WM_SYSCOMMAND:
+        {
+            if(wparam == SC_CLOSE)
+            {
+                PostQuitMessage(0);
+            }
             break;
         }
         default:
