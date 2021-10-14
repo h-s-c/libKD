@@ -91,7 +91,7 @@ jobs:
       with:
         api-level: 29
         cmake: 3.18.1
-        script: ctest -VV -S ci-tools/run_ctest.cmake
+        script: CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake ctest -VV -S ci-tools/run_ctest.cmake
   android-examples:
     runs-on: ubuntu-latest
     steps:
