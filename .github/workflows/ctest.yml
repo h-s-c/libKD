@@ -76,13 +76,30 @@ jobs:
     - name: run ctest
       run: ctest -VV -S ci-tools/run_ctest.cmake
   android:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    env:
+      CC: clang
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - name: install dependencies
+      run: brew update && brew install ninja cppcheck flawfinder
+    - name: run ctest
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          cmake: 3.18.1
+          script: ctest -VV -S ci-tools/run_ctest.cmake
+  android-examples:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: 'true'
     - uses: gradle/wrapper-validation-action@v1
-    - name: build android example
+    - name: build android examples
       run: cd example/android && ./gradlew build
     - name: upload debug apk
       uses: actions/upload-artifact@v2

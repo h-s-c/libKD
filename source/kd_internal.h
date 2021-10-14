@@ -23,12 +23,9 @@
 
 struct KDFile
 {
-#if defined(__ANDROID__) || defined(_WIN32)
     void *nativefile;
-#else
-    KDint nativefile;
+    KDint nativehandle;
     KDint8 padding[4];
-#endif
     KDchar pathname[4096];
     KDboolean eof;
     KDboolean error;
@@ -62,7 +59,8 @@ struct _KDImageATX
     KDchar padding[4]; 
 };
 
-#if defined(__ANDROID__)
+static void *__kd_androidactivity = KD_NULL;
+
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
@@ -70,7 +68,6 @@ struct _KDImageATX
 #include "miniz.h"
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif
 
 typedef struct __KDApk __KDApk;
 struct __KDApk

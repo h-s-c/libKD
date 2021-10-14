@@ -1683,9 +1683,7 @@ static KDint32 __KDKeycodeLookup(KDint32 keycode)
 }
 #endif
 
-#if defined(__ANDROID__)
-static ANativeActivity *__kd_androidactivity = KD_NULL;
-#endif
+
 KD_API KDint KD_APIENTRY kdPumpEvents(void)
 {
     KDsize queuesize = __kdQueueSize(kdThreadSelf()->eventqueue);
@@ -2192,7 +2190,6 @@ KD_API void KD_APIENTRY kdFreeEvent(KDEvent *event)
 /* All Android events are send to the mainthread */
 static KDThread *__kd_androidmainthread = KD_NULL;
 static KDThreadMutex *__kd_androidmainthread_mutex = KD_NULL;
-static KDThreadMutex *__kd_androidactivity_mutex = KD_NULL;
 __KDApk *__kd_apk = KD_NULL;
 
 static void __kdDetectApkPath(KDchar *path)
@@ -2423,6 +2420,11 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
     __kd_tls_mutex = kdThreadMutexCreate(KD_NULL);
 
     KDThread *thread = KD_NULL;
+    if(__kd_androidactivity == KD_NULL)
+    {
+        thread = __kdThreadInit();
+    }
+    
 #if defined(__ANDROID__)
     if(__kd_androidactivity != KD_NULL)
     {
@@ -2430,11 +2432,8 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
         thread = __kd_androidmainthread;
         kdThreadMutexUnlock(__kd_androidmainthread_mutex);
     }
-    else
 #endif
-    {
-        thread = __kdThreadInit();
-    }
+
 
     kdThreadOnce(&__kd_threadinit_once, __kdThreadInitOnce);
     kdSetThreadStorageKHR(__kd_threadlocal, thread);
@@ -2462,7 +2461,6 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 #if defined(__ANDROID__)
     if(__kd_androidactivity != KD_NULL)
     {
-        kdThreadMutexFree(__kd_androidactivity_mutex);
         kdThreadMutexFree(__kd_androidinputqueue_mutex);
         kdThreadMutexFree(__kd_androidwindow_mutex);
         kdThreadMutexFree(__kd_androidmainthread_mutex);
@@ -2504,9 +2502,7 @@ static KDint __kdPreMain(KDint argc, KDchar **argv)
 
     __kdCleanupThreadStorageKHR();
 
-#if defined(__ANDROID__)
     if(__kd_androidactivity != KD_NULL)
-#endif
     {
         __kdThreadFree(thread);
     }
@@ -2533,7 +2529,6 @@ void ANativeActivity_onCreate(ANativeActivity *activity, KD_UNUSED void *savedSt
     __kd_androidmainthread_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_androidwindow_mutex = kdThreadMutexCreate(KD_NULL);
     __kd_androidinputqueue_mutex = kdThreadMutexCreate(KD_NULL);
-    __kd_androidactivity_mutex = kdThreadMutexCreate(KD_NULL);
 
     activity->callbacks->onDestroy = __kdAndroidOnDestroy;
     activity->callbacks->onStart = __kdAndroidOnStart;
@@ -2549,10 +2544,8 @@ void ANativeActivity_onCreate(ANativeActivity *activity, KD_UNUSED void *savedSt
     activity->callbacks->onInputQueueCreated = __kdAndroidOnInputQueueCreated;
     activity->callbacks->onInputQueueDestroyed = __kdAndroidOnInputQueueDestroyed;
 
-    kdThreadMutexLock(__kd_androidactivity_mutex);
     __kd_androidactivity = activity;
     ANativeActivity_setWindowFlags(__kd_androidactivity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
-    kdThreadMutexUnlock(__kd_androidactivity_mutex);
 
     kdThreadMutexLock(__kd_androidmainthread_mutex);
     __kd_androidmainthread = kdThreadCreate(KD_NULL, __kdAndroidPreMain, KD_NULL);
