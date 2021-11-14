@@ -28,7 +28,7 @@
 ### Examples
 -   [Binaries (Windows, Android, Web)](https://h-s-c.github.io/libkd/)
 
-```
+```C
 #include <KD/kd.h>
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
