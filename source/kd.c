@@ -3115,13 +3115,16 @@ static const struct wl_pointer_listener __kd_wl_pointer_listener = {
     __kdWaylandPointerHandleLeave,
     __kdWaylandPointerHandleMotion,
     __kdWaylandPointerHandleButton,
-    KD_NULL,
 #if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 10)
     KD_NULL,
     KD_NULL,
     KD_NULL,
-    KD_NULL
+    KD_NULL,
 #endif
+#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 21)
+    KD_NULL,
+#endif
+    KD_NULL
 };
 
 static void __kdWaylandKeyboardHandleKeymap(KD_UNUSED void *data, KD_UNUSED struct wl_keyboard *keyboard, KDuint32 format, KDint fd, KDuint32 size)
