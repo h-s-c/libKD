@@ -24,6 +24,12 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
+#if defined(__clang__)
+#if __has_warning("-Wreserved-identifier")
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
+#endif
+
 /******************************************************************************
  * KD includes
  ******************************************************************************/
@@ -366,6 +372,13 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #endif
 #endif
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#if __has_warning("-Wcast-function-type")
+#pragma clang diagnostic ignored "-Wcast-function-type"
+#endif
+#endif
+
 #if defined(KD_THREAD_C11)
         error = thrd_create(&thread->internal->nativethread, (thrd_start_t)__kdThreadRun, thread);
 #elif defined(KD_THREAD_POSIX)
@@ -380,6 +393,11 @@ KD_API KDThread *KD_APIENTRY kdThreadCreate(const KDThreadAttr *attr, void *(*st
 #pragma GCC diagnostic pop
 #endif
 #endif
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
         /* cppcheck-suppress knownConditionTrueFalse */
         if(error != 0)
         {

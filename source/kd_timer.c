@@ -24,6 +24,12 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
+#if defined(__clang__)
+#if __has_warning("-Wreserved-identifier")
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
+#endif
+
 /******************************************************************************
  * KD includes
  ******************************************************************************/
@@ -46,7 +52,14 @@
  * Timer functions
  ******************************************************************************/
 
+
 /* kdSetTimer: Set timer. */
+#if defined(__clang__)
+#pragma clang diagnostic push
+#if __has_warning("-Wreserved-identifier")
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
+#endif
 typedef struct
 {
     KDint64 interval;
@@ -87,6 +100,9 @@ static void *__kdTimerHandler(void *arg)
     }
     return 0;
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 struct KDTimer
 {
     KDThread *thread;

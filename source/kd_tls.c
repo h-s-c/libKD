@@ -25,6 +25,12 @@
  * 3. This notice may not be removed or altered from any source distribution.
  ******************************************************************************/
 
+#if defined(__clang__)
+#if __has_warning("-Wreserved-identifier")
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
+#endif
+
 /******************************************************************************
  * KD includes
  ******************************************************************************/
