@@ -28,7 +28,7 @@ find_library(EGL_LIBRARY NAMES egl EGL libEGL PATHS $ENV{OPENGLES_LIBDIR})
 include(FindPackageHandleStandardArgs)
 
 if(EMSCRIPTEN)
-    set(EGL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include")
+    set(EGL_INCLUDE_DIR "${EMSCRIPTEN_SYSROOT}/include")
     find_package_handle_standard_args(EGL DEFAULT_MSG EGL_INCLUDE_DIR)
     set(EGL_LIBRARY "")
 else()
