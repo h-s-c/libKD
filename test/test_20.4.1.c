@@ -26,6 +26,10 @@
 
 KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 {
+#if defined(__EMSCRIPTEN__)
+    //Skip for now
+    return 0;
+#endif
     KDint retval = kdNameLookup(KD_AF_INET, "www.icann.org", (void *)1234);
     if(retval == -1)
     {
