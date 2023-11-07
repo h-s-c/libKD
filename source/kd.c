@@ -3130,6 +3130,9 @@ static const struct wl_pointer_listener __kd_wl_pointer_listener = {
 #if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 21)
     KD_NULL,
 #endif
+#if WAYLAND_VERSION_MAJOR >= 2 || (WAYLAND_VERSION_MAJOR >= 1 && WAYLAND_VERSION_MINOR >= 22)
+    KD_NULL,
+#endif
     KD_NULL
 };
 
