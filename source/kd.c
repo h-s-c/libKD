@@ -3247,7 +3247,7 @@ static const struct wl_keyboard_listener __kd_wl_keyboard_listener = {
 #endif
 };
 
-static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, enum wl_seat_capability caps)
+static void __kdWaylandSeatHandleCapabilities(void *data, struct wl_seat *seat, uint32_t caps)
 {
     struct KDWindow *window = data;
     if(caps & WL_SEAT_CAPABILITY_POINTER)
