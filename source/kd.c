@@ -3627,7 +3627,7 @@ KD_API KDint KD_APIENTRY kdSetWindowPropertybv(KDWindow *window, KDint pname, KD
             strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
             strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
             strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-            emscripten_enter_soft_fullscreen(0, &strategy);
+            emscripten_enter_soft_fullscreen(EMSCRIPTEN_EVENT_TARGET_SCREEN, &strategy);
         }
         else
         {
