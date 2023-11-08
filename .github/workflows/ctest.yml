@@ -39,7 +39,7 @@ jobs:
       CC: emcc
       CMAKE_TOOLCHAIN_FILE: /emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
     steps:
-    - uses: actions/checkout@v3test
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: install dependencies
