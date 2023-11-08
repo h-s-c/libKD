@@ -13,17 +13,21 @@ jobs:
       matrix:
         include:
         - os: ubuntu-22.04
+          compiler: gcc-9
+        - os: ubuntu-22.04
+          compiler: gcc-10
+        - os: ubuntu-22.04
           compiler: gcc-11
         - os: ubuntu-22.04
           compiler: gcc-12
         - os: ubuntu-22.04
           compiler: gcc-13
         - os: ubuntu-22.04
+          compiler: clang-13
+        - os: ubuntu-22.04
           compiler: clang-14
         - os: ubuntu-22.04
           compiler: clang-15
-        - os: ubuntu-22.04
-          compiler: clang-17
     steps:
     - uses: actions/checkout@v3
       with:
