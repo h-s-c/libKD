@@ -74,7 +74,7 @@ jobs:
         submodules: true
     - uses: ilammy/msvc-dev-cmd@v1
     - name: install dependencies
-      run: choco install ninja curl opencppcoverage cppcheck && refreshenv
+      run: choco install --ignoredetectedreboot -y ninja curl opencppcoverage cppcheck && refreshenv
     - name: run ctest
       run: ctest -VV -S ci-tools/run_ctest.cmake
   android:
