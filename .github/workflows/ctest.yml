@@ -70,8 +70,10 @@ jobs:
         submodules: true
     - uses: ilammy/msvc-dev-cmd@v1
     - name: install dependencies
+      shell: cmd
       run: choco install --ignore-package-exit-codes ninja curl opencppcoverage cppcheck && refreshenv
     - name: run ctest
+      shell: cmd
       run: ctest -VV -S ci-tools/run_ctest.cmake
   android:
     runs-on: macos-latest
