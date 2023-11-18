@@ -163,6 +163,13 @@
 #  include <stdio.h>
 #  include <stdlib.h>
 #  include <time.h>
+#  if defined(__linux__) || defined(__ANDROID__)
+#    include <sys/prctl.h>
+#    if !defined(PR_SET_VMA)
+#      define PR_SET_VMA 0x53564d41
+#      define PR_SET_VMA_ANON_NAME 0
+#    endif
+#  endif
 #  if defined(__APPLE__)
 #    include <TargetConditionals.h>
 #    if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
@@ -171,7 +178,7 @@
 #    endif
 #    include <pthread.h>
 #  endif
-#  if defined(__HAIKU__)
+#  if defined(__HAIKU__) || defined(__TINYC__)
 #    include <pthread.h>
 #  endif
 #endif
@@ -792,7 +799,7 @@ static int32_t _huge_pages_peak;
 //////
 
 //! Current thread heap
-#if (defined(__APPLE__) || defined(__HAIKU__)) && ENABLE_PRELOAD
+#if ((defined(__APPLE__) || defined(__HAIKU__)) && ENABLE_PRELOAD) || defined(__TINYC__)
 static pthread_key_t _memory_thread_heap;
 #else
 #  ifdef _MSC_VER
@@ -839,7 +846,7 @@ static inline uintptr_t
 get_thread_id(void) {
 #if defined(_WIN32)
 	return (uintptr_t)((void*)NtCurrentTeb());
-#elif defined(__GNUC__) || defined(__clang__)
+#elif (defined(__GNUC__) || defined(__clang__)) && !defined(__CYGWIN__)
 	uintptr_t tid;
 #  if defined(__i386__)
 	__asm__("movl %%gs:0, %0" : "=r" (tid) : : );
@@ -870,7 +877,7 @@ get_thread_id(void) {
 //! Set the current thread heap
 static void
 set_thread_heap(heap_t* heap) {
-#if (defined(__APPLE__) || defined(__HAIKU__)) && ENABLE_PRELOAD
+#if ((defined(__APPLE__) || defined(__HAIKU__)) && ENABLE_PRELOAD) || defined(__TINYC__)
 	pthread_setspecific(_memory_thread_heap, heap);
 #else
 	_memory_thread_heap = heap;
@@ -928,6 +935,22 @@ _rpmalloc_thread_destructor(void* value) {
 ///
 //////
 
+static void
+_rpmalloc_set_name(void* address, size_t size) {
+#if defined(__linux__) || defined(__ANDROID__)
+	const char *name = _memory_huge_pages ? _memory_config.huge_page_name : _memory_config.page_name;
+	if (address == MAP_FAILED || !name)
+		return;
+	// If the kernel does not support CONFIG_ANON_VMA_NAME or if the call fails
+	// (e.g. invalid name) it is a no-op basically.
+	(void)prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, (uintptr_t)address, size, (uintptr_t)name);
+#else
+	(void)sizeof(size);
+	(void)sizeof(address);
+#endif
+}
+
+
 //! Map more virtual memory
 //  size is number of bytes to map
 //  offset receives the offset in bytes from start of mapped region
@@ -936,9 +959,12 @@ static void*
 _rpmalloc_mmap(size_t size, size_t* offset) {
 	rpmalloc_assert(!(size % _memory_page_size), "Invalid mmap size");
 	rpmalloc_assert(size >= _memory_page_size, "Invalid mmap size");
+	void* address = _memory_config.memory_map(size, offset);
+	if (EXPECTED(address != 0)) {
 	_rpmalloc_stat_add_peak(&_mapped_pages, (size >> _memory_page_size_shift), _mapped_pages_peak);
 	_rpmalloc_stat_add(&_mapped_total, (size >> _memory_page_size_shift));
-	return _memory_config.memory_map(size, offset);
+	}
+	return address;
 }
 
 //! Unmap virtual memory
@@ -985,6 +1011,19 @@ _rpmalloc_mmap_os(size_t size, size_t* offset) {
 	void* ptr = mmap(0, size + padding, PROT_READ | PROT_WRITE, flags, fd, 0);
 #  elif defined(MAP_HUGETLB)
 	void* ptr = mmap(0, size + padding, PROT_READ | PROT_WRITE | PROT_MAX(PROT_READ | PROT_WRITE), (_memory_huge_pages ? MAP_HUGETLB : 0) | flags, -1, 0);
+#    if defined(MADV_HUGEPAGE)
+	// In some configurations, huge pages allocations might fail thus
+	// we fallback to normal allocations and promote the region as transparent huge page
+	if ((ptr == MAP_FAILED || !ptr) && _memory_huge_pages) {
+		ptr = mmap(0, size + padding, PROT_READ | PROT_WRITE, flags, -1, 0);
+		if (ptr && ptr != MAP_FAILED) {
+			int prm = madvise(ptr, size + padding, MADV_HUGEPAGE);
+			(void)prm;
+			rpmalloc_assert((prm == 0), "Failed to promote the page to THP");
+		}
+	}
+#    endif
+	_rpmalloc_set_name(ptr, size + padding);
 #  elif defined(MAP_ALIGNED)
 	const size_t align = (sizeof(size_t) * 8) - (size_t)(__builtin_clzl(size - 1));
 	void* ptr = mmap(0, size + padding, PROT_READ | PROT_WRITE, (_memory_huge_pages ? MAP_ALIGNED(align) : 0) | flags, -1, 0);
@@ -2309,7 +2348,7 @@ _rpmalloc_aligned_allocate(heap_t* heap, size_t alignment, size_t size) {
 
 #if ENABLE_VALIDATE_ARGS
 	if ((size + alignment) < size) {
-                kdSetError(KD_EINVAL);
+		kdSetError(KD_EINVAL);
 		return 0;
 	}
 	if (alignment & (alignment - 1)) {
@@ -2445,6 +2484,16 @@ _rpmalloc_deallocate_direct_small_or_medium(span_t* span, void* block) {
 	--span->used_count;
 	span->free_list = block;
 	if (UNEXPECTED(span->used_count == span->list_size)) {
+		// If there are no used blocks it is guaranteed that no other external thread is accessing the span
+		if (span->used_count) {
+			// Make sure we have synchronized the deferred list and list size by using acquire semantics
+			// and guarantee that no external thread is accessing span concurrently
+			void* free_list;
+			do {
+				free_list = atomic_exchange_ptr_acquire(&span->free_list_deferred, INVALID_POINTER);
+			} while (free_list == INVALID_POINTER);
+			atomic_store_ptr_release(&span->free_list_deferred, free_list);
+		}
 		_rpmalloc_span_double_link_list_remove(&heap->size_class[span->size_class].partial_span, span);
 		_rpmalloc_span_release_to_cache(heap, span);
 	}
@@ -2473,8 +2522,9 @@ _rpmalloc_deallocate_defer_small_or_medium(span_t* span, void* block) {
 	} while (free_list == INVALID_POINTER);
 		*((void**)block) = free_list;
 	uint32_t free_count = ++span->list_size;
+	int all_deferred_free = (free_count == span->block_count);
 	atomic_store_ptr_release(&span->free_list_deferred, block);
-	if (free_count == span->block_count) {
+	if (all_deferred_free) {
 		// Span was completely freed by this block. Due to the INVALID_POINTER spin lock
 		// no other thread can reach this state simultaneously on this span.
 		// Safe to move to owner heap deferred cache
@@ -2922,7 +2972,7 @@ rpmalloc_initialize_config(const rpmalloc_config_t* config) {
 	_memory_config.span_map_count = _memory_span_map_count;
 	_memory_config.enable_huge_pages = _memory_huge_pages;
 
-#if (defined(__APPLE__) || defined(__HAIKU__)) && ENABLE_PRELOAD
+#if ((defined(__APPLE__) || defined(__HAIKU__)) && ENABLE_PRELOAD) || defined(__TINYC__)
 	if (pthread_key_create(&_memory_thread_heap, _rpmalloc_heap_release_raw_fc))
 		return -1;
 #endif

@@ -95,52 +95,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-#define STBIR_ASSERT kdAssert
-#define STBIR_MEMSET kdMemset
-#define STBIR_MALLOC(s, c) kdMalloc(s)
-#define STBIR_FREE(p, c) kdFree(p)
-#define STBIR_CEIL kdCeilKHR
-#define STBIR_FABS kdFabsKHR
-#define STBIR_FLOOR kdFloorKHR
-#define STBIR_POW kdPowKHR
-#define STB_IMAGE_RESIZE_STATIC
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
-#if defined __INTEL_COMPILER
-#pragma warning push
-#pragma warning disable 279
-#elif defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wbad-function-cast"
-#pragma clang diagnostic ignored "-Wcast-align"
-#pragma clang diagnostic ignored "-Wcast-qual"
-#pragma clang diagnostic ignored "-Wcovered-switch-default"
-#if __has_warning("-Wdouble-promotion")
-#pragma clang diagnostic ignored "-Wdouble-promotion"
-#endif
-#pragma clang diagnostic ignored "-Wfloat-conversion"
-#pragma clang diagnostic ignored "-Wfloat-equal"
-#if __has_warning("-Wimplicit-int-float-conversion")
-#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
-#endif
-#pragma clang diagnostic ignored "-Wpadded"
-#pragma clang diagnostic ignored "-Wsign-conversion"
-#pragma clang diagnostic ignored "-Wstring-conversion"
-#pragma clang diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#elif defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#endif
-#include "stb_image_resize.h"  // for stbir_resize_uint8
-#if defined __INTEL_COMPILER
-#pragma warning(pop)
-#elif defined(__clang__)
-#pragma clang diagnostic pop
-#elif defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
-
 /******************************************************************************
  * OpenKODE Core extension: KD_ATX_dxtcomp
  ******************************************************************************/
