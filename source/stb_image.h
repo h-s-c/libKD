@@ -673,15 +673,7 @@ typedef unsigned char validate_uint32[sizeof(stbi__uint32)==4 ? 1 : -1];
 #define STBI_NOTUSED(v)  (void)sizeof(v)
 #endif
 
-#ifdef _MSC_VER
-#define STBI_HAS_LROTL
-#endif
-
-#ifdef STBI_HAS_LROTL
-   #define stbi_lrot(x,y)  _lrotl(x,y)
-#else
-   #define stbi_lrot(x,y)  (((x) << (y)) | ((x) >> (-(y) & 31)))
-#endif
+#define stbi_lrot(x,y)  (((x) << (y)) | ((x) >> (-(y) & 31)))
 
 #if defined(STBI_MALLOC) && defined(STBI_FREE) && (defined(STBI_REALLOC) || defined(STBI_REALLOC_SIZED))
 // ok
