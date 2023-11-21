@@ -3,7 +3,7 @@
 [![Git Flow](https://img.shields.io/:standard-gitflow-green.svg)](http://nvie.com/git-model)
 
 ##
-[![Build](https://img.shields.io/github/workflow/status/h-s-c/libKD/build%20and%20run%20tests)](https://github.com/h-s-c/libKD/actions)  
+[![Build](https://img.shields.io/github/actions/workflow/status/h-s-c/libKD/ctest.yml?branch=develop)](https://github.com/h-s-c/libKD/actions)  
 [![Coverage](https://img.shields.io/codecov/c/github/h-s-c/libKD/develop.svg?label=coverage)](https://codecov.io/gh/h-s-c/libKD)  
 [![License Scan](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fh-s-c%2FlibKD?ref=badge_shield)
 
