@@ -461,10 +461,7 @@ KD_API KDchar *KD_APIENTRY kdStrchr(const KDchar *str, KDint ch)
     {
         if(*str == (KDchar)ch)
         {
-            KDchar _p;
-            KDchar *p = &_p;
-            kdMemcpy(&p, &str, sizeof(KDchar *));
-            return p;
+            return (KDchar *)str;
         }
         if(*str == '\0')
         {
@@ -824,10 +821,7 @@ KD_API KDchar *KD_APIENTRY kdStrstrVEN(const KDchar *str1, const KDchar *str2)
         } while(kdStrncmp(str1, str2, len) != 0);
         str1--;
     }
-    KDchar _p;
-    KDchar *p = &_p;
-    kdMemcpy(&p, &str1, sizeof(KDchar *));
-    return p;
+    return (KDchar *)str1;
 }
 
 /* kdStrcspnVEN:  Get span until character in string. */
