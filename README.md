@@ -65,19 +65,6 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
 -   GCC (4.7 and up)
 -   Clang/Xcode, Intel C++, Mingw-w64, Tiny C, Emscripten
 
-## Linux Repositories
-### Ubuntu/Debian
-```bash
-curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.deb.sh | sudo bash
-apt-get install libkd
-```
-
-### Fedora
-```bash
-curl -s https://packagecloud.io/install/repositories/h-s-c/libKD/script.rpm.sh | sudo bash
-dnf install libkd
-```
-
 ## Build from source
 ```bash
 cmake -G Ninja -Bbuild -H.
