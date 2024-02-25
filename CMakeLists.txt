@@ -201,7 +201,7 @@ project (KD C)
     endif()
 
     if(EMSCRIPTEN)
-        set_target_properties(KD PROPERTIES SUFFIX ".bc")
+        set_target_properties(KD PROPERTIES SUFFIX ".a")
     endif()
 
 
@@ -306,7 +306,7 @@ project (KD C)
         endif()
         target_compile_definitions(stb_vorbis PRIVATE "_CRT_SECURE_NO_WARNINGS") 
         if(EMSCRIPTEN)
-            set_target_properties(stb_vorbis PROPERTIES SUFFIX ".bc")
+            set_target_properties(stb_vorbis PROPERTIES SUFFIX ".a")
         endif()     
         find_package(EGL REQUIRED)
         find_package(GLES2 REQUIRED)
