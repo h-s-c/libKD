@@ -78,7 +78,7 @@ jobs:
       shell: cmd
       run: ctest -VV -S ci-tools/run_ctest.cmake
   android:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       CC: clang
@@ -87,21 +87,26 @@ jobs:
       with:
         submodules: true
     - name: install dependencies
-      run: brew update && brew install ninja cppcheck flawfinder
+      run: sudo apt-get update && sudo apt-get install -yq ninja-build
+    - name: enable kvm
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
     - name: run ctest
       continue-on-error: true
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 29
         arch: x86_64
-        script: CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_LATEST_HOME}/build/cmake/android.toolchain.cmake CMAKE_ANDROID_ARCH_ABI=x86_64 ctest -VV -S ci-tools/run_ctest.cmake
+        script: CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_LATEST_HOME}/build/cmake/android.toolchain.cmake ANDROID_USE_LEGACY_TOOLCHAIN_FILE=ON ANDROID_ABI=x86_64 ctest -VV -S ci-tools/run_ctest.cmake
   android-examples:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - uses: gradle/wrapper-validation-action@v3
+    - uses: gradle/actions/wrapper-validation@v3
     - name: build android examples
       run: cd example/android && ./gradlew build
     - name: upload debug apk
