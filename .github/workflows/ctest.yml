@@ -110,7 +110,7 @@ jobs:
     - name: build android examples
       run: cd example/android && ./gradlew build
     - name: upload debug apk
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: app
         path: example/android/app/build/outputs/apk/**/*.apk
