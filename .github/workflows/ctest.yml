@@ -27,7 +27,7 @@ jobs:
         - os: ubuntu-22.04
           compiler: clang-15
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - name: install dependencies
@@ -41,7 +41,7 @@ jobs:
       CC: emcc
       CMAKE_TOOLCHAIN_FILE: /emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - name: install dependencies
@@ -55,7 +55,7 @@ jobs:
     env:
       CC: clang
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - name: install dependencies
@@ -67,7 +67,7 @@ jobs:
     env:
       CC: cl
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - uses: ilammy/msvc-dev-cmd@v1
@@ -83,7 +83,7 @@ jobs:
     env:
       CC: clang
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - name: install dependencies
@@ -103,7 +103,7 @@ jobs:
   android-examples:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - uses: gradle/actions/wrapper-validation@v6
