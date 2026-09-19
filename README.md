@@ -44,6 +44,7 @@ KDint KD_APIENTRY kdMain(KDint argc, const KDchar *const *argv)
                 case(KD_EVENT_QUIT):
                 {
                     run = KD_FALSE;
+                    break;
                 }
                 default:
                 {
